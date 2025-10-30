@@ -359,3 +359,65 @@ body.controls-accent-always .sidebar .theme-toggle-single,
 body.controls-accent-always .sidebar .sidebar-logout {
   color: var(--accent-purple);
 }
+
+/* Bento Grid Layout */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 1280px) {
+  .bento-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .bento-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Animation for pulsing notification dot */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(163, 102, 203, 0.5);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(163, 102, 203, 0);
+  }
+}
+
+.blinking-dot {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Upgrade banner */
+.upgrade-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-radius: 9999px;
+  background: var(--accent-purple);
+}
+
+.upgrade-banner button {
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: var(--text-primary);
+  color: #282828;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.upgrade-banner button:hover {
+  opacity: 0.9;
+}
