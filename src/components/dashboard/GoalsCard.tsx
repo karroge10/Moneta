@@ -37,7 +37,7 @@ export default function GoalsCard({ goals }: GoalsCardProps) {
           <button
             key={idx}
             onClick={() => setActiveIndex(idx)}
-            className="w-2 h-2 rounded-full transition-all cursor-pointer hover:bg-accent-purple hover:w-8"
+            className="w-2 h-2 rounded-full transition-all cursor-pointer hover:w-8"
             style={{ backgroundColor: idx === activeIndex ? 'var(--accent-purple)' : 'var(--text-secondary)' }}
             aria-label={`View goal ${idx + 1}`}
           />
