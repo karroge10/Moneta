@@ -9,7 +9,7 @@ interface IncomeCardProps {
 
 export default function IncomeCard({ amount, trend }: IncomeCardProps) {
   return (
-    <Card title="Income">
+    <Card title="Income" href="/income">
       <div className="flex items-end gap-2 mt-2">
         <span className="text-card-currency">$</span>
         <span className="text-card-value">{amount.toLocaleString('en-US')}</span>

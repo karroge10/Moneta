@@ -30,7 +30,7 @@ export default function Dropdown({ label, options, value, onChange, iconLeft }: 
     <div className="relative" ref={ref}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors hover:opacity-90"
+        className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors hover:opacity-90 cursor-pointer"
         style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
       >
         {iconLeft}
@@ -39,7 +39,7 @@ export default function Dropdown({ label, options, value, onChange, iconLeft }: 
       </button>
       
       {isOpen && (
-        <div className="absolute top-full mt-2 right-0 bg-surface rounded-2xl shadow-lg overflow-hidden z-10 min-w-[160px]">
+        <div className="absolute top-full mt-2 right-0 rounded-2xl shadow-lg overflow-hidden z-10 min-w-[160px]" style={{ backgroundColor: 'var(--bg-surface)' }}>
           {options.map((option) => (
             <button
               key={option}
@@ -47,8 +47,11 @@ export default function Dropdown({ label, options, value, onChange, iconLeft }: 
                 onChange(option);
                 setIsOpen(false);
               }}
-              className="w-full text-left px-4 py-3 hover:bg-accent-purple/20 transition-colors text-body"
-              style={{ color: value === option ? 'var(--accent-purple)' : 'var(--text-primary)' }}
+              className="w-full text-left px-4 py-3 hover:bg-accent-purple/20 hover-text-purple transition-colors text-body cursor-pointer"
+              style={{ 
+                backgroundColor: 'transparent',
+                color: value === option ? 'var(--accent-purple)' : 'var(--text-primary)' 
+              }}
             >
               {option}
             </button>

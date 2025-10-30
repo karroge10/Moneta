@@ -75,6 +75,17 @@ body.sidebar-collapsed {
 /* Badges */
 .badge-glow { background: var(--accent-purple-glow); border-radius: 9999px; }
 
+/* Hover utilities */
+.hover-text-purple:hover {
+  color: var(--accent-purple) !important;
+}
+.hover\:bg-accent-purple\/20:hover {
+  background-color: rgba(172, 102, 218, 0.2) !important;
+}
+.hover\:bg-accent-purple:hover {
+  background-color: var(--accent-purple) !important;
+}
+
 /* Sidebar */
 .sidebar {
   width: var(--sidebar-width);
@@ -364,7 +375,7 @@ body.controls-accent-always .sidebar .sidebar-logout {
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 24px;
+  gap: 16px;
 }
 
 @media (max-width: 1280px) {
@@ -384,17 +395,17 @@ body.controls-accent-always .sidebar .sidebar-logout {
   0%, 100% {
     opacity: 1;
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(163, 102, 203, 0.5);
+    box-shadow: 0 0 0 0 rgba(163, 102, 203, 0.3);
   }
   50% {
-    opacity: 0.8;
-    transform: scale(1.05);
-    box-shadow: 0 0 0 8px rgba(163, 102, 203, 0);
+    opacity: 0.9;
+    transform: scale(1.02);
+    box-shadow: 0 0 0 4px rgba(163, 102, 203, 0);
   }
 }
 
 .blinking-dot {
-  animation: pulse-glow 2s ease-in-out infinite;
+  animation: pulse-glow 3s ease-in-out infinite;
 }
 
 /* Upgrade banner */
