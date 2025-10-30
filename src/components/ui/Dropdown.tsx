@@ -47,7 +47,7 @@ export default function Dropdown({ label, options, value, onChange, iconLeft }: 
                 onChange(option);
                 setIsOpen(false);
               }}
-              className="w-full text-left px-4 py-3 hover:bg-accent-purple/20 hover-text-purple transition-colors text-body cursor-pointer"
+              className="w-full text-left px-4 py-3 hover-text-purple transition-colors text-body cursor-pointer"
               style={{ 
                 backgroundColor: 'transparent',
                 color: value === option ? 'var(--accent-purple)' : 'var(--text-primary)' 
