@@ -25,7 +25,7 @@ export default function DashboardHeader({ timePeriod, onTimePeriodChange }: Dash
           label="Time Period"
           options={timePeriodOptions}
           value={timePeriod}
-          onChange={onTimePeriodChange}
+          onChange={(value: string) => onTimePeriodChange(value as TimePeriod)}
           iconLeft={<CalendarCheck width={20} height={20} strokeWidth={1.5} />}
         />
         
