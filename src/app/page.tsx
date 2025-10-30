@@ -3,8 +3,7 @@ import { Wallet } from "iconoir-react";
 
 export default function Home() {
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
-      <main className="mx-auto max-w-5xl px-6 py-16">
+    <main className="mx-auto max-w-5xl px-6 py-16">
         <header className="mb-10 flex items-center gap-4">
           <Image src="/monetalogo.png" alt="Moneta" width={48} height={48} priority />
           <h1 className="text-page-title">Moneta</h1>
@@ -44,7 +43,6 @@ export default function Home() {
             <p className="mt-2 text-helper">Subtle purple glow badge</p>
           </div>
         </section>
-      </main>
-    </div>
+    </main>
   );
 }
