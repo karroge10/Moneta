@@ -1,5 +1,6 @@
 import Card from '@/components/ui/Card';
 import TrendIndicator from '@/components/ui/TrendIndicator';
+import { formatNumber } from '@/lib/utils';
 
 interface InsightCardProps {
   title: string;
@@ -16,11 +17,11 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
         <div className="text-helper mb-4">{title}</div>
         <div className="flex items-end gap-2 mb-4">
           <span className="text-card-currency">$</span>
-          <span className="text-card-value">{amount.toFixed(2)}</span>
+          <span className="text-card-value">{formatNumber(amount)}</span>
         </div>
         <div className="text-body">
           <span>{message} </span>
-          <span style={{ color: 'var(--accent-green)', fontWeight: 600 }}>${investmentAmount}</span>
+          <span style={{ color: 'var(--accent-green)', fontWeight: 600 }}>${formatNumber(investmentAmount, false)}</span>
         </div>
       </div>
     </Card>

@@ -1,7 +1,7 @@
 import Card from '@/components/ui/Card';
 import { Investment } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
-import { getTrendColor } from '@/lib/utils';
+import { getTrendColor, formatNumber } from '@/lib/utils';
 import { StatUp, StatDown } from 'iconoir-react';
 import { NavArrowRight } from 'iconoir-react';
 
@@ -16,14 +16,14 @@ function MiniTrendGraph({ isPositive }: { isPositive: boolean }) {
       <svg viewBox="0 0 60 30" className="w-full h-full">
         {isPositive ? (
           <polyline
-            points="0,25 10,20 20,15 30,10 40,8 50,5"
+            points="0,25 6,13 12,20 18,20 24,06 30,15 36,10 42,9 48,1 54,5"
             fill="none"
             stroke="var(--accent-green)"
             strokeWidth="2"
           />
         ) : (
           <polyline
-            points="0,8 10,12 20,15 30,18 40,20 50,22"
+            points="0,8 6,10 12,11 18,19 24,14 30,15 36,17 42,4 48,19 54,22"
             fill="none"
             stroke="var(--error)"
             strokeWidth="2"
@@ -36,7 +36,7 @@ function MiniTrendGraph({ isPositive }: { isPositive: boolean }) {
 
 export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
   return (
-    <Card title="Investments">
+    <Card title="Investments" href="/investments">
       <div className="space-y-4 mt-2">
         {investments.map((investment) => {
           const Icon = getIcon(investment.icon);
@@ -56,7 +56,7 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
               <MiniTrendGraph isPositive={isPositive} />
               <div className="text-right">
                 <div className="text-body font-semibold">
-                  ${investment.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  ${formatNumber(investment.currentValue)}
                 </div>
                 <div className="flex items-center gap-1 text-sm" style={{ color: trendColor }}>
                   <TrendIcon width={14} height={14} strokeWidth={2} />
@@ -67,8 +67,8 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
           );
         })}
       </div>
-      <div className="text-helper flex items-center gap-1 mt-4 cursor-pointer hover:text-accent-purple transition-colors">
-        Investments <NavArrowRight width={14} height={14} />
+      <div className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors">
+        Investments <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
       </div>
     </Card>
   );

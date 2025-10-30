@@ -2,6 +2,7 @@ import Card from '@/components/ui/Card';
 import { Bill } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { NavArrowRight } from 'iconoir-react';
+import { formatNumber } from '@/lib/utils';
 
 interface UpcomingBillsCardProps {
   bills: Bill[];
@@ -23,14 +24,14 @@ export default function UpcomingBillsCard({ bills }: UpcomingBillsCardProps) {
                 <div className="text-helper">{bill.date}</div>
               </div>
               <div className="text-body font-semibold">
-                ${bill.amount.toFixed(2)}
+                ${formatNumber(bill.amount)}
               </div>
             </div>
           );
         })}
       </div>
-      <div className="text-helper flex items-center gap-1 mt-4 cursor-pointer hover:text-accent-purple transition-colors">
-        View All <NavArrowRight width={14} height={14} />
+      <div className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors">
+        View All <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
       </div>
     </Card>
   );

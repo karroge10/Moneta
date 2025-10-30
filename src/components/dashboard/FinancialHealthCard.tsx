@@ -13,8 +13,8 @@ export default function FinancialHealthCard({ score }: FinancialHealthCardProps)
       <div className="flex items-center justify-center" style={{ color: getHealthColor(score) }}>
         <span className="text-fin-health-key">{score}</span>
       </div>
-      <div className="text-helper flex items-center gap-1 mt-6 cursor-pointer hover:text-accent-purple transition-colors">
-        Learn how we calculate the financial health score <NavArrowRight width={14} height={14} />
+      <div className="text-helper flex items-center gap-1 mt-6 cursor-pointer group hover-text-purple transition-colors">
+        Learn how we calculate the financial health score <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
       </div>
     </div>
   );

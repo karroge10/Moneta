@@ -9,7 +9,7 @@ interface ExpenseCardProps {
 
 export default function ExpenseCard({ amount, trend }: ExpenseCardProps) {
   return (
-    <Card title="Expenses">
+    <Card title="Expenses" href="/expenses">
       <div className="flex items-end gap-2 mt-2">
         <span className="text-card-currency">$</span>
         <span className="text-card-value">{amount.toLocaleString('en-US')}</span>

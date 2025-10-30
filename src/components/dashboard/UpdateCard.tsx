@@ -16,8 +16,8 @@ export default function UpdateCard({ date, message, highlight, link }: UpdateCar
       customHeader={
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center">
-            <h2 className="text-card-header">Update</h2>
             <PulsingDot />
+            <h2 className="text-card-header">Update</h2>
           </div>
         </div>
       }
@@ -31,8 +31,8 @@ export default function UpdateCard({ date, message, highlight, link }: UpdateCar
           </span>
         ))}
       </div>
-      <div className="text-helper flex items-center gap-1 cursor-pointer hover:text-accent-purple transition-colors">
-        {link} <NavArrowRight width={14} height={14} />
+      <div className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors">
+        {link} <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
       </div>
     </Card>
   );

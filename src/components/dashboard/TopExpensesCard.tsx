@@ -2,6 +2,7 @@ import Card from '@/components/ui/Card';
 import DonutChart from '@/components/ui/DonutChart';
 import { ExpenseCategory } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
+import { formatNumber } from '@/lib/utils';
 
 interface TopExpensesCardProps {
   expenses: ExpenseCategory[];
@@ -28,7 +29,7 @@ export default function TopExpensesCard({ expenses }: TopExpensesCardProps) {
                 </div>
                 <div className="flex-1 min-w-0 text-body font-medium">{expense.name}</div>
                 <div className="text-body font-semibold">
-                  ${expense.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  ${formatNumber(expense.amount)}
                 </div>
               </div>
             );

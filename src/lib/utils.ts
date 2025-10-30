@@ -7,6 +7,13 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+export function formatNumber(amount: number, withDecimals = true): string {
+  return amount.toLocaleString('en-US', {
+    minimumFractionDigits: withDecimals ? 2 : 0,
+    maximumFractionDigits: withDecimals ? 2 : 0,
+  });
+}
+
 export function getHealthColor(score: number): string {
   if (score >= 80) return 'var(--accent-purple)';
   if (score >= 60) return 'var(--accent-green)';

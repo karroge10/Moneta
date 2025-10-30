@@ -35,8 +35,8 @@ export default function Home() {
       <DashboardHeader timePeriod={timePeriod} onTimePeriodChange={setTimePeriod} />
       
       <BentoGrid>
-        {/* Row 1 */}
-        <div style={{ gridColumn: 'span 3' }}>
+        {/* Row 1: Update, Income, Expenses, Upcoming Bills */}
+        <div style={{ gridColumn: 'span 3', minHeight: '180px' }} className="h-full">
           <UpdateCard
             date={mockUpdate.date}
             message={mockUpdate.message}
@@ -44,28 +44,28 @@ export default function Home() {
             link={mockUpdate.link}
           />
         </div>
-        <div style={{ gridColumn: 'span 3' }}>
+        <div style={{ gridColumn: 'span 3', minHeight: '180px' }} className="h-full">
           <IncomeCard amount={mockIncome.amount} trend={mockIncome.trend} />
         </div>
-        <div style={{ gridColumn: 'span 3' }}>
+        <div style={{ gridColumn: 'span 3', minHeight: '180px' }} className="h-full">
           <ExpenseCard amount={mockExpenses.amount} trend={mockExpenses.trend} />
         </div>
         <div style={{ gridColumn: 'span 3' }}>
           <UpcomingBillsCard bills={mockBills} />
         </div>
 
-        {/* Row 2 */}
-        <div style={{ gridColumn: 'span 3' }}>
+        {/* Row 2: Transactions (5 cols), Goals (4 cols), Financial Health (3 cols) */}
+        <div style={{ gridColumn: 'span 5' }}>
           <TransactionsCard transactions={mockTransactions} />
         </div>
-        <div style={{ gridColumn: 'span 3' }}>
+        <div style={{ gridColumn: 'span 4', minHeight: '280px' }}>
           <GoalsCard goals={mockGoals} />
         </div>
-        <div style={{ gridColumn: 'span 3' }}>
+        <div style={{ gridColumn: 'span 3', minHeight: '280px' }}>
           <FinancialHealthCard score={mockFinancialHealth} />
         </div>
 
-        {/* Row 3 */}
+        {/* Row 3: Investments (6 cols), Insight (3 cols), Top Expenses (3 cols) */}
         <div style={{ gridColumn: 'span 6' }}>
           <InvestmentsCard investments={mockInvestments} />
         </div>
@@ -83,7 +83,7 @@ export default function Home() {
         </div>
 
         {/* Row 4 - Upgrade Banner */}
-        <div style={{ gridColumn: 'span 9', marginTop: '24px' }}>
+        <div style={{ gridColumn: 'span 12', marginTop: '16px' }}>
           <div className="upgrade-banner">
             <span className="text-body font-semibold">Level Up Your Finance Game!</span>
             <button>Upgrade to Premium</button>
