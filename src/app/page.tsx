@@ -1,60 +1,95 @@
-import Image from "next/image";
-import { Wallet } from "iconoir-react";
+'use client';
+
+import { useState } from 'react';
+import DashboardHeader from '@/components/DashboardHeader';
+import BentoGrid from '@/components/BentoGrid';
+import UpdateCard from '@/components/dashboard/UpdateCard';
+import IncomeCard from '@/components/dashboard/IncomeCard';
+import ExpenseCard from '@/components/dashboard/ExpenseCard';
+import UpcomingBillsCard from '@/components/dashboard/UpcomingBillsCard';
+import TransactionsCard from '@/components/dashboard/TransactionsCard';
+import GoalsCard from '@/components/dashboard/GoalsCard';
+import FinancialHealthCard from '@/components/dashboard/FinancialHealthCard';
+import InvestmentsCard from '@/components/dashboard/InvestmentsCard';
+import InsightCard from '@/components/dashboard/InsightCard';
+import TopExpensesCard from '@/components/dashboard/TopExpensesCard';
+import {
+  mockIncome,
+  mockExpenses,
+  mockUpdate,
+  mockBills,
+  mockTransactions,
+  mockGoals,
+  mockFinancialHealth,
+  mockInvestments,
+  mockInsight,
+  mockTopExpenses,
+} from '@/lib/mockData';
+import { TimePeriod } from '@/types/dashboard';
 
 export default function Home() {
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Year');
+
   return (
-    <main className="mx-auto max-w-5xl px-6 py-16">
-        <header className="mb-10 flex items-center gap-4">
-          <Image src="/monetalogo.png" alt="Moneta" width={48} height={48} priority />
-          <h1 className="text-page-title">Moneta</h1>
-        </header>
+    <main>
+      <DashboardHeader timePeriod={timePeriod} onTimePeriodChange={setTimePeriod} />
+      
+      <BentoGrid>
+        {/* Row 1 */}
+        <div style={{ gridColumn: 'span 3' }}>
+          <UpdateCard
+            date={mockUpdate.date}
+            message={mockUpdate.message}
+            highlight={mockUpdate.highlight}
+            link={mockUpdate.link}
+          />
+        </div>
+        <div style={{ gridColumn: 'span 3' }}>
+          <IncomeCard amount={mockIncome.amount} trend={mockIncome.trend} />
+        </div>
+        <div style={{ gridColumn: 'span 3' }}>
+          <ExpenseCard amount={mockExpenses.amount} trend={mockExpenses.trend} />
+        </div>
+        <div style={{ gridColumn: 'span 3' }}>
+          <UpcomingBillsCard bills={mockBills} />
+        </div>
 
-        <section className="card-surface mb-8">
-          <div className="mb-2 text-card-header">Welcome</div>
-          <p className="text-body" style={{ color: "var(--text-secondary)" }}>
-            A calm, dark-themed finance experience. Built with Next.js 16 and React 19.
-          </p>
-        </section>
+        {/* Row 2 */}
+        <div style={{ gridColumn: 'span 3' }}>
+          <TransactionsCard transactions={mockTransactions} />
+        </div>
+        <div style={{ gridColumn: 'span 3' }}>
+          <GoalsCard goals={mockGoals} />
+        </div>
+        <div style={{ gridColumn: 'span 3' }}>
+          <FinancialHealthCard score={mockFinancialHealth} />
+        </div>
 
-        <section className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <div className="card-surface">
-            <div className="flex items-center gap-2 text-card-header">
-              <Wallet width={22} height={22} />
-              Balance
-            </div>
-            <div className="mt-2 flex items-end gap-2">
-              <span className="text-card-currency">$</span>
-              <span className="text-card-value">24,560</span>
-            </div>
-            <p className="mt-2 text-helper">Updated just now</p>
+        {/* Row 3 */}
+        <div style={{ gridColumn: 'span 6' }}>
+          <InvestmentsCard investments={mockInvestments} />
+        </div>
+        <div style={{ gridColumn: 'span 3' }}>
+          <InsightCard
+            title={mockInsight.title}
+            amount={mockInsight.amount}
+            message={mockInsight.message}
+            investmentAmount={mockInsight.investmentAmount}
+            trend={mockInsight.trend}
+          />
+        </div>
+        <div style={{ gridColumn: 'span 3' }}>
+          <TopExpensesCard expenses={mockTopExpenses} />
+        </div>
+
+        {/* Row 4 - Upgrade Banner */}
+        <div style={{ gridColumn: 'span 9', marginTop: '24px' }}>
+          <div className="upgrade-banner">
+            <span className="text-body font-semibold">Level Up Your Finance Game!</span>
+            <button>Upgrade to Premium</button>
           </div>
-
-          <div className="card-surface">
-            <div className="text-card-header">Health</div>
-            <div className="mt-2 text-fin-health-key" style={{ color: "var(--accent-green)" }}>82</div>
-            <p className="mt-2 text-helper">On track this month</p>
-          </div>
-
-          <div className="card-surface">
-            <div className="text-card-header">Insights</div>
-            <div className="mt-3 badge-glow inline-block px-3 py-1" style={{ color: "var(--text-primary)" }}>
-              New updates
-            </div>
-            <p className="mt-2 text-helper">Subtle purple glow badge</p>
-          </div>
-        </section>
-
-        {/* Extra cards to force scroll for testing */}
-        <section className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, idx) => (
-            <div key={idx} className="card-surface">
-              <div className="text-card-header">Sample Card {idx + 1}</div>
-              <p className="mt-2 text-body" style={{ color: "var(--text-secondary)" }}>
-                Placeholder content for layout and scrolling behavior tests.
-              </p>
-            </div>
-          ))}
-        </section>
+        </div>
+      </BentoGrid>
     </main>
   );
 }
