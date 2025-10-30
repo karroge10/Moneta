@@ -3,8 +3,7 @@ import { Wallet } from "iconoir-react";
 
 export default function Home() {
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
-      <main className="mx-auto max-w-5xl px-6 py-16">
+    <main className="mx-auto max-w-5xl px-6 py-16">
         <header className="mb-10 flex items-center gap-4">
           <Image src="/monetalogo.png" alt="Moneta" width={48} height={48} priority />
           <h1 className="text-page-title">Moneta</h1>
@@ -44,7 +43,18 @@ export default function Home() {
             <p className="mt-2 text-helper">Subtle purple glow badge</p>
           </div>
         </section>
-      </main>
-    </div>
+
+        {/* Extra cards to force scroll for testing */}
+        <section className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div key={idx} className="card-surface">
+              <div className="text-card-header">Sample Card {idx + 1}</div>
+              <p className="mt-2 text-body" style={{ color: "var(--text-secondary)" }}>
+                Placeholder content for layout and scrolling behavior tests.
+              </p>
+            </div>
+          ))}
+        </section>
+    </main>
   );
 }

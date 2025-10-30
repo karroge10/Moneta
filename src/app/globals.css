@@ -12,11 +12,16 @@
   --error: #D93F3F;
 
   --radius-card: 30px;
+  --radius-sidebar-active: 15px;
   --space-xs: 4px;
   --space-s: 8px;
   --space-m: 16px;
   --space-l: 24px;
   --space-xl: 32px;
+
+  /* Sidebar sizing */
+  --sidebar-width: 280px;
+  --sidebar-width-collapsed: 88px;
 }
 
 @theme inline {
@@ -32,12 +37,21 @@ body {
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-sen, "Sen"), Arial, Helvetica, sans-serif;
+  overflow-x: hidden; /* prevent horizontal scroll during sidebar transitions */
+}
+
+html { overflow-x: hidden; }
+
+/* Collapsed sidebar state toggled via body class */
+body.sidebar-collapsed {
+  --sidebar-width: var(--sidebar-width-collapsed);
 }
 
 /* Typography utilities */
 .text-page-title { font-size: 36px; font-weight: 700; line-height: 1.2; }
-.text-sidebar-section { font-size: 24px; font-weight: 700; letter-spacing: 0.15em; }
-.text-sidebar-button { font-size: 20px; font-weight: 600; }
+.text-sidebar-section { font-size: 22px; font-weight: 700; letter-spacing: 0.12em; }
+.text-sidebar-button { font-size: 18px; font-weight: 400; white-space: nowrap; }
+.sidebar-title { font-size: 24px; font-weight: 700; letter-spacing: 0.02em; }
 .text-card-header { font-size: 20px; font-weight: 600; }
 .text-card-value { font-size: 48px; font-weight: 700; line-height: 1.1; }
 .text-card-currency { font-size: 30px; font-weight: 600; }
@@ -60,3 +74,288 @@ body {
 
 /* Badges */
 .badge-glow { background: var(--accent-purple-glow); border-radius: 9999px; }
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--bg-surface);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow: hidden; /* header/footer fixed; middle scrolls */
+  scrollbar-width: thin;
+  transition: width 220ms ease;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 28px 20px 20px;
+  justify-content: space-between;
+}
+
+/* Brand link (logo + title) */
+.sidebar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+.sidebar-brand:hover .sidebar-title { color: var(--accent-purple); }
+
+/* Scrollable middle area */
+.sidebar-scroll {
+  flex: 1;
+  min-height: 0; /* allow flex child to shrink for overflow */
+  overflow-y: auto;
+  overflow-x: hidden; /* avoid transient horizontal scrollbar */
+  padding: 8px 0 8px;
+}
+
+/* Custom thin themed scrollbar */
+.sidebar-scroll::-webkit-scrollbar { width: 8px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: #202020; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: #393939; border-radius: 8px; }
+.sidebar-scroll::-webkit-scrollbar-thumb:hover { background: #4a4a4a; }
+.sidebar-scroll { scrollbar-color: #393939 #202020; scrollbar-width: thin; }
+
+.sidebar-section-title {
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding: 18px 20px 12px;
+  margin: 0;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-radius: var(--radius-sidebar-active);
+  margin: 3px 10px; /* small vertical gap to prevent overlap visuals */
+}
+
+.sidebar-nav-item:hover {
+  background: #333333;
+  color: var(--accent-purple);
+  position: relative;
+}
+
+.sidebar-nav-item.active {
+  background: #393939;
+  color: var(--accent-purple);
+}
+
+/* Ensure icons follow text color */
+.sidebar-nav-item svg {
+  stroke: currentColor;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 18px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar-logout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  padding: 10px 16px; /* match sidebar item padding */
+  background: #202020; /* requested */
+  border-radius: var(--radius-sidebar-active); /* same as active item */
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  overflow: hidden; /* prevent hidden label from affecting layout */
+}
+
+.sidebar-logout:hover { background: #202020; color: var(--accent-purple); }
+.sidebar-logout svg { stroke: currentColor; }
+
+.theme-toggle {
+  display: flex;
+  position: relative;
+  background: #202020;
+  border-radius: var(--radius-sidebar-active);
+  padding: 4px;
+  gap: 4px;
+  overflow: hidden;
+}
+
+/* Sliding pill indicator */
+.theme-toggle-indicator {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  height: calc(100% - 8px);
+  width: calc(50% - 4px);
+  background: #282828;
+  border-radius: calc(var(--radius-sidebar-active) - 5px);
+  transition: transform 200ms ease;
+  z-index: 0;
+}
+.theme-toggle.is-dark .theme-toggle-indicator {
+  transform: translateX(100%);
+}
+
+.theme-toggle-button {
+  flex: 1;
+  padding: 10px 16px; /* match sidebar item vertical rhythm */
+  border-radius: var(--radius-sidebar-active);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, transform 0.1s ease;
+  background: transparent;
+  position: relative;
+  z-index: 1;
+}
+
+.theme-toggle-button:active { transform: scale(0.98); }
+
+/* Expanded mode: make theme icons turn purple on hover */
+.theme-toggle-button:hover { color: var(--accent-purple); }
+.theme-toggle-button svg { stroke: currentColor; }
+
+/* Dividers */
+.sidebar-divider {
+  border: 0;
+  height: 1px;
+  background: rgba(231, 228, 228, 0.4); /* ~40% opacity of E7E4E4 */
+  margin: 12px 20px;
+}
+
+/* Collapsed behavior */
+/* Smoothly hide text when collapsing */
+.sidebar .text-sidebar-button,
+.sidebar .sidebar-title { transition: opacity 180ms ease, transform 200ms ease, color 0.2s ease; }
+body.sidebar-collapsed .sidebar .text-sidebar-button,
+body.sidebar-collapsed .sidebar .sidebar-title { opacity: 0; transform: translateX(-6px); pointer-events: none; visibility: hidden; }
+body.sidebar-collapsed .sidebar {
+  align-items: center;
+}
+body.sidebar-collapsed .sidebar .sidebar-logo {
+  justify-content: center;
+  gap: 0;
+}
+/* Hide logo image in collapsed mode */
+body.sidebar-collapsed .sidebar .sidebar-logo img { display: none; }
+/* Hide left content container so collapse button truly centers */
+body.sidebar-collapsed .sidebar .sidebar-logo > div { display: none; }
+body.sidebar-collapsed .sidebar .collapse-btn { margin: 0 auto; width: 48px; height: 48px; }
+body.sidebar-collapsed .sidebar .sidebar-nav-item {
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  margin: 5px 0; /* more space between */
+}
+body.sidebar-collapsed .sidebar .sidebar-scroll { overflow: hidden; }
+
+/* Collapse button */
+.collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sidebar-active);
+  background: #202020; /* match logout default */
+  transition: background-color 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+.collapse-btn:hover { background: #202020; color: var(--accent-purple); }
+.collapse-btn svg { stroke: currentColor; }
+
+/* Hide section labels when collapsed */
+body.sidebar-collapsed .sidebar .text-sidebar-section { display: none; }
+
+/* Collapsed-specific footer controls */
+body.sidebar-collapsed .sidebar .sidebar-logout {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 10px;
+  gap: 0; /* center icon without spacing for hidden label */
+}
+/* Smoothly hide logout label while collapsed to avoid layout jump during expand */
+body.sidebar-collapsed .sidebar .sidebar-logout .text-sidebar-button {
+  opacity: 0;
+  transform: translateX(-6px);
+  pointer-events: none;
+  visibility: hidden;
+  max-width: 0;
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+}
+body.sidebar-collapsed .sidebar .theme-toggle {
+  background: transparent;
+  padding: 0;
+  gap: 8px;
+}
+body.sidebar-collapsed .sidebar .theme-toggle-indicator { display: none; }
+body.sidebar-collapsed .sidebar .theme-toggle-button {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  background: #202020;
+  border-radius: 10px;
+}
+body.sidebar-collapsed .sidebar .theme-toggle-button.active { background: #282828; }
+
+/* Single compact mode button used in collapsed state */
+.theme-toggle-single {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sidebar-active);
+  background: #202020;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  position: relative;
+  overflow: hidden;
+  color: var(--text-primary);
+}
+.theme-toggle-single:hover { background: #202020; color: var(--accent-purple); }
+.theme-toggle-single:active { transform: scale(0.98); }
+.theme-toggle-single svg { stroke: currentColor; }
+
+/* Crossfade/scale animation for collapsed mode toggle */
+.tt-icon {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.85) rotate(-8deg);
+  transition: opacity 160ms ease, transform 200ms ease;
+}
+.tt-icon.show {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+/* Optional mode: force accent color on controls at rest (toggle via body.controls-accent-always) */
+body.controls-accent-always .sidebar .collapse-btn,
+body.controls-accent-always .sidebar .theme-toggle-single,
+body.controls-accent-always .sidebar .sidebar-logout {
+  color: var(--accent-purple);
+}
