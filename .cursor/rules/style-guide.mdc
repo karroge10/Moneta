@@ -1,0 +1,101 @@
+---
+alwaysApply: true
+---
+# MONETA Design System — Style Rules
+Follow these rules for all UI, components, and screens unless explicitly overridden.
+
+## Typography
+Primary Font: "Sen"
+
+Font Sizes + Usage:
+- Page Title: 36px, weight 700
+- Sidebar Menu Section Labels (caps): 24px, 700, letter-spacing: 15%
+- Sidebar Buttons: 20px, 600
+- Card Header: 20px, 600
+- Card Main Value (large): 48px, 700
+- Card Main Value Currency Symbol: 30px, 600
+- Card Body Text (primary): 16px, 400–500
+- Card Description / Helper Text: 12px, 400, 70% opacity
+- Financial Health Key Number: 90px, 700
+
+General Text Rules:
+- Use tight but readable line height (1.1–1.3 depending on typography role)
+- Currency values always show "$" before amount
+- Avoid overly rounded fonts or serif fonts anywhere
+
+## Color System
+- Background Primary: #202020
+- Sidebar Background: #282828
+- Card Background: #282828
+- Text Primary: #E7E4E4
+- Text Secondary: rgba(231, 228, 228, 0.7)
+- Success/Green: #74C648
+- Accent Purple: #AC66DA
+- Purple UI Glow/Frost Accent: rgba(163, 102, 203, 0.5) (used for update badges)
+- Error/Red: #D93F3F
+
+Contrast & Visual Behavior:
+- No pure white; use #E7E4E4 for light text
+- Dark theme only; no light theme variants
+- Purple accent should be subtle & never overpower content
+
+## Layout & Spacing
+- Consistent vertical rhythm
+- Plenty of breathing space around stats
+- Prefer stacked card layout with grid alignment
+- Space values (approx):
+  - XS: 4px
+  - S: 8px
+  - M: 16px
+  - L: 24px
+  - XL: 32px
+  - Page gutter: 24–32px
+
+## Components
+Cards
+- Background: #282828
+- Corner radius: 30px
+- Padding: 24px
+- Maintain clear section separation
+- Shadows minimal or none (clean Neumorphic-inspired, but flat)
+
+Sidebar
+- Dark panel (#282828)
+- Big logo spacing at top
+- Menu items uppercase section title + menu nav items
+
+Buttons
+- Rounded, clean
+- Filled buttons use accent colors (green/purple)
+- Text always in Sen
+- Do not use gray shades outside palette
+
+Charts & Data Display
+- Minimal lines, clean look
+- Progress arcs & bars use:
+  - Green (#74C648)
+  - Purple (#AC66DA)
+  - Red (#D93F3F) for negative
+- Background grid faint or non-existent
+
+## Iconography & Badges
+- Use rounded soft icons, not sharp edges
+- Dot notification badges = Purple glow (#A366CB @ 50%)
+- For icons use pack iconoir
+
+## Motion/UX Guidelines
+- Smooth fade/slide transitions
+- No bounce animations
+- Data cards appear “calm”, stable
+
+## Tone & UI Copy
+- Encouraging but not childish
+- Insightful, personal finance tone
+- Short, directive microcopy
+- Avoid slang; keep pro-finance feel
+
+## Don’ts
+- ❌ No bright neon colors
+- ❌ No sharp corners (<— all surfaces should feel “soft”)
+- ❌ No serif fonts
+- ❌ No thin unreadable fonts

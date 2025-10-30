@@ -1,20 +1,49 @@
+import Image from "next/image";
+import { Wallet } from "iconoir-react";
+
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <main className="flex flex-col items-center justify-center px-4 py-16 text-center">
-        <div className="mb-8 rounded-3xl bg-white/80 p-12 shadow-xl backdrop-blur-sm dark:bg-gray-800/80 md:p-16">
-          <h1 className="mb-4 bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-6xl font-bold text-transparent md:text-8xl">
-            Moneta
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 md:text-2xl">
-            Your modern Next.js application
+    <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
+      <main className="mx-auto max-w-5xl px-6 py-16">
+        <header className="mb-10 flex items-center gap-4">
+          <Image src="/monetalogo.png" alt="Moneta" width={48} height={48} priority />
+          <h1 className="text-page-title">Moneta</h1>
+        </header>
+
+        <section className="card-surface mb-8">
+          <div className="mb-2 text-card-header">Welcome</div>
+          <p className="text-body" style={{ color: "var(--text-secondary)" }}>
+            A calm, dark-themed finance experience. Built with Next.js 16 and React 19.
           </p>
-        </div>
-        <div className="space-y-4 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400 md:text-base">
-            Built with Next.js 16, React 19, TypeScript, and Tailwind CSS
-          </p>
-        </div>
+        </section>
+
+        <section className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="card-surface">
+            <div className="flex items-center gap-2 text-card-header">
+              <Wallet width={22} height={22} />
+              Balance
+            </div>
+            <div className="mt-2 flex items-end gap-2">
+              <span className="text-card-currency">$</span>
+              <span className="text-card-value">24,560</span>
+            </div>
+            <p className="mt-2 text-helper">Updated just now</p>
+          </div>
+
+          <div className="card-surface">
+            <div className="text-card-header">Health</div>
+            <div className="mt-2 text-fin-health-key" style={{ color: "var(--accent-green)" }}>82</div>
+            <p className="mt-2 text-helper">On track this month</p>
+          </div>
+
+          <div className="card-surface">
+            <div className="text-card-header">Insights</div>
+            <div className="mt-3 badge-glow inline-block px-3 py-1" style={{ color: "var(--text-primary)" }}>
+              New updates
+            </div>
+            <p className="mt-2 text-helper">Subtle purple glow badge</p>
+          </div>
+        </section>
       </main>
     </div>
   );

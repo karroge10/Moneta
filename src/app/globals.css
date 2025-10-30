@@ -1,26 +1,62 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* MONETA Design Tokens */
+  --bg-primary: #202020;
+  --bg-surface: #282828;
+  --text-primary: #E7E4E4;
+  --text-secondary: rgba(231, 228, 228, 0.7);
+  --accent-green: #74C648;
+  --accent-purple: #AC66DA;
+  --accent-purple-glow: rgba(163, 102, 203, 0.5);
+  --error: #D93F3F;
+
+  --radius-card: 30px;
+  --space-xs: 4px;
+  --space-s: 8px;
+  --space-m: 16px;
+  --space-l: 24px;
+  --space-xl: 32px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-background: var(--bg-primary);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-sen);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* Dark theme only */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sen, "Sen"), Arial, Helvetica, sans-serif;
 }
+
+/* Typography utilities */
+.text-page-title { font-size: 36px; font-weight: 700; line-height: 1.2; }
+.text-sidebar-section { font-size: 24px; font-weight: 700; letter-spacing: 0.15em; }
+.text-sidebar-button { font-size: 20px; font-weight: 600; }
+.text-card-header { font-size: 20px; font-weight: 600; }
+.text-card-value { font-size: 48px; font-weight: 700; line-height: 1.1; }
+.text-card-currency { font-size: 30px; font-weight: 600; }
+.text-body { font-size: 16px; font-weight: 400; }
+.text-helper { font-size: 12px; font-weight: 400; opacity: 0.7; }
+.text-fin-health-key { font-size: 90px; font-weight: 700; line-height: 1.1; }
+
+/* Surfaces */
+.card-surface {
+  background: var(--bg-surface);
+  border-radius: var(--radius-card);
+  padding: var(--space-l);
+}
+
+/* Buttons */
+.btn { border-radius: 9999px; font-family: inherit; }
+.btn-primary { background: var(--accent-purple); color: var(--text-primary); }
+.btn-success { background: var(--accent-green); color: var(--text-primary); }
+.btn-danger { background: var(--error); color: var(--text-primary); }
+
+/* Badges */
+.badge-glow { background: var(--accent-purple-glow); border-radius: 9999px; }
