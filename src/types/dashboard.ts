@@ -45,3 +45,25 @@ export interface ExpenseCategory {
 
 export type TimePeriod = 'This Month' | 'This Quarter' | 'This Year' | 'All Time';
 
+export interface IncomeSource {
+  id: string;
+  name: string;
+  amount: number;
+  percentage: number;
+  icon: string;
+  color: string;
+}
+
+export interface PerformanceDataPoint {
+  date: string;
+  value: number;
+}
+
+export interface LatestExpense extends Transaction {
+  month?: string;
+}
+
+export interface LatestIncome extends Transaction {
+  month?: string;
+}
+

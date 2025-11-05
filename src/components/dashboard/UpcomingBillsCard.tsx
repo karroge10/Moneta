@@ -3,6 +3,7 @@ import { Bill } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { NavArrowRight } from 'iconoir-react';
 import { formatNumber } from '@/lib/utils';
+import Link from 'next/link';
 
 interface UpcomingBillsCardProps {
   bills: Bill[];
@@ -42,9 +43,9 @@ export default function UpcomingBillsCard({ bills }: UpcomingBillsCardProps) {
             );
           })}
         </div>
-        <div className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors">
+        <Link href="/expenses" className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors">
           View All <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
-        </div>
+        </Link>
       </div>
     </Card>
   );

@@ -1,17 +1,22 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Crown, Bell, User, Settings, LogOut } from 'iconoir-react';
+import { Crown, Bell, User, Settings, LogOut, Plus } from 'iconoir-react';
 import Dropdown from '@/components/ui/Dropdown';
 import { CalendarCheck } from 'iconoir-react';
 import { TimePeriod } from '@/types/dashboard';
 
 interface DashboardHeaderProps {
+  pageName?: string;
   timePeriod: TimePeriod;
   onTimePeriodChange: (period: TimePeriod) => void;
+  actionButton?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
-export default function DashboardHeader({ timePeriod, onTimePeriodChange }: DashboardHeaderProps) {
+export default function DashboardHeader({ pageName = 'Dashboard', timePeriod, onTimePeriodChange, actionButton }: DashboardHeaderProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -30,9 +35,19 @@ export default function DashboardHeader({ timePeriod, onTimePeriodChange }: Dash
 
   return (
     <div className="flex items-center justify-between mb-8 px-6 pt-7">
-      <h1 className="text-page-title">Dashboard</h1>
+      <h1 className="text-page-title">{pageName}</h1>
       
       <div className="flex items-center gap-4">
+        {actionButton && (
+          <button
+            onClick={actionButton.onClick}
+            className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors cursor-pointer hover:opacity-90"
+            style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+          >
+            <Plus width={18} height={18} strokeWidth={1.5} />
+            <span className="text-sm font-semibold">{actionButton.label}</span>
+          </button>
+        )}
         <Dropdown
           label="Time Period"
           options={timePeriodOptions}
