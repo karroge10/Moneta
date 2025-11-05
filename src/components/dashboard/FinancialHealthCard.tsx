@@ -4,21 +4,60 @@ import { NavArrowRight } from 'iconoir-react';
 
 interface FinancialHealthCardProps {
   score: number;
+  mobile?: boolean;
+  minimal?: boolean;
 }
 
-export default function FinancialHealthCard({ score }: FinancialHealthCardProps) {
+export default function FinancialHealthCard({ score, mobile = false, minimal = false }: FinancialHealthCardProps) {
+  // Minimal variant: like Income/Expense cards (for two-column layout)
+  if (minimal) {
+    return (
+      <Card title="Financial Health" href="/financial-health" showActions={false}>
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-card-value" style={{ color: getHealthColor(score) }}>
+              {score}
+            </span>
+          </div>
+          <div className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors mt-2">
+            <span>Learn how we calculate financial health score</span>
+            <NavArrowRight width={12} height={12} className="stroke-current transition-colors flex-shrink-0" />
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // Mobile variant: short horizontal row
+  if (mobile) {
+    return (
+      <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 min-w-0">
+        <div className="text-card-header mb-2">Financial Health</div>
+        <div className="flex items-center justify-between gap-3 min-w-0">
+          <span className="text-card-value flex-shrink-0 whitespace-nowrap" style={{ color: getHealthColor(score) }}>
+            {score}/100
+          </span>
+        </div>
+        <div className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors">
+          <span>Learn how we calculate financial health score</span>
+          <NavArrowRight width={12} height={12} className="stroke-current transition-colors flex-shrink-0" />
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop variant: full card
   return (
     <Card title="Financial Health" href="/financial-health" showActions={false}>
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 min-h-0">
         <div className="flex items-center gap-2 flex-1 justify-center">
-          <span className="text-card-value" style={{ color: getHealthColor(score) }}>
+          <span className="text-fin-health-key" style={{ color: getHealthColor(score) }}>
             {score}
           </span>
         </div>
-        <div className="text-helper flex items-center gap-2 cursor-pointer group hover-text-purple transition-colors whitespace-nowrap mt-2">
-          <span style={{ width: 20, height: 20, display: 'inline-block' }}></span>
-          <span>Learn how we calculate</span>
-          <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
+        <div className="text-helper flex items-center gap-2 cursor-pointer group hover-text-purple transition-colors mt-2 min-w-0">
+          <span className="text-wrap-safe break-words leading-tight">Learn how we calculate financial health score</span>
+          <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0" />
         </div>
       </div>
     </Card>
