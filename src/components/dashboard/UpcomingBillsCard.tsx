@@ -9,6 +9,17 @@ interface UpcomingBillsCardProps {
 }
 
 export default function UpcomingBillsCard({ bills }: UpcomingBillsCardProps) {
+  if (bills.length === 0) {
+    return (
+      <Card title="Upcoming Bills">
+        <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8">
+          <div className="text-body text-center mb-2 opacity-70">Add your first bill</div>
+          <div className="text-helper text-center">Track recurring payments and due dates</div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card title="Upcoming Bills">
       <div className="flex flex-col flex-1 mt-2">

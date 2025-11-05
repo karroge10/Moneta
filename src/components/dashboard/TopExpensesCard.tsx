@@ -10,6 +10,17 @@ interface TopExpensesCardProps {
 }
 
 export default function TopExpensesCard({ expenses, horizontal = false }: TopExpensesCardProps) {
+  if (expenses.length === 0) {
+    return (
+      <Card title="Top Expenses">
+        <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8">
+          <div className="text-body text-center mb-2 opacity-70">Add transactions to see your spending</div>
+          <div className="text-helper text-center">Your top expense categories will appear here</div>
+        </div>
+      </Card>
+    );
+  }
+
   const chartData = expenses.map(exp => ({
     name: exp.name,
     value: exp.percentage,
