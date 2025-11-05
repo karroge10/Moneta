@@ -9,6 +9,41 @@ interface FinancialHealthCardProps {
 }
 
 export default function FinancialHealthCard({ score, mobile = false, minimal = false }: FinancialHealthCardProps) {
+  // Empty state when score is 0
+  if (score === 0) {
+    if (mobile) {
+      return (
+        <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 min-w-0">
+          <div className="text-card-header mb-2">Financial Health</div>
+          <div className="flex flex-col justify-center items-center py-4">
+            <div className="text-body text-center mb-2 opacity-70">Add transactions to see your score</div>
+            <div className="text-helper text-center">Your financial health score will appear here</div>
+          </div>
+        </div>
+      );
+    }
+
+    if (minimal) {
+      return (
+        <Card title="Financial Health" href="/financial-health" showActions={false}>
+          <div className="flex flex-col flex-1 min-h-0 justify-center items-center py-8">
+            <div className="text-body text-center mb-2 opacity-70">Add transactions to see your score</div>
+            <div className="text-helper text-center">Your financial health score will appear here</div>
+          </div>
+        </Card>
+      );
+    }
+
+    return (
+      <Card title="Financial Health" href="/financial-health" showActions={false}>
+        <div className="flex flex-col flex-1 min-h-0 justify-center items-center py-8">
+          <div className="text-body text-center mb-2 opacity-70">Add transactions to see your score</div>
+          <div className="text-helper text-center">Your financial health score will appear here</div>
+        </div>
+      </Card>
+    );
+  }
+
   // Minimal variant: like Income/Expense cards (for two-column layout)
   if (minimal) {
     return (

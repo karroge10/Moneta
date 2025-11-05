@@ -9,6 +9,17 @@ interface TransactionsCardProps {
 }
 
 export default function TransactionsCard({ transactions }: TransactionsCardProps) {
+  if (transactions.length === 0) {
+    return (
+      <Card title="Transactions" href="/transactions">
+        <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8">
+          <div className="text-body text-center mb-2 opacity-70">Add your first transaction</div>
+          <div className="text-helper text-center">Start tracking your spending and income</div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card title="Transactions" href="/transactions">
       <div className="flex flex-col flex-1 mt-2">
