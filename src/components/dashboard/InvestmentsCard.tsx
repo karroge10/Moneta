@@ -35,6 +35,17 @@ function MiniTrendGraph({ isPositive }: { isPositive: boolean }) {
 }
 
 export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
+  if (investments.length === 0) {
+    return (
+      <Card title="Investments" href="/investments">
+        <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8">
+          <div className="text-body text-center mb-2 opacity-70">Add your first investment</div>
+          <div className="text-helper text-center">Track stocks, crypto, and other assets</div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card title="Investments" href="/investments">
       <div className="flex flex-col flex-1 mt-2">

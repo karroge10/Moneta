@@ -12,7 +12,21 @@ interface GoalsCardProps {
 
 export default function GoalsCard({ goals }: GoalsCardProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const goal = goals[activeIndex];
+  
+  if (goals.length === 0) {
+    return (
+      <Card title="Goals" href="/goals">
+        <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8">
+          <div className="text-body text-center mb-2 opacity-70">Add your first goal</div>
+          <div className="text-helper text-center">Set a financial target to track your progress</div>
+        </div>
+      </Card>
+    );
+  }
+
+  // Ensure activeIndex is within bounds
+  const safeIndex = Math.min(activeIndex, goals.length - 1);
+  const goal = goals[safeIndex];
 
   return (
     <Card title="Goals" href="/goals">

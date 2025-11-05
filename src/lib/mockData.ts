@@ -186,3 +186,122 @@ export const mockTopExpenses: ExpenseCategory[] = [
   },
 ];
 
+// Empty state data (new user)
+export const emptyIncome = {
+  amount: 0,
+  trend: 0,
+};
+
+export const emptyExpenses = {
+  amount: 0,
+  trend: 0,
+};
+
+export const emptyUpdate = {
+  date: 'Welcome!',
+  message: 'Get started by adding your first transaction or connecting your bank account.',
+  highlight: '',
+  link: 'Get Started',
+};
+
+export const emptyBills: Bill[] = [];
+export const emptyTransactions: Transaction[] = [];
+export const emptyGoals: Goal[] = [];
+export const emptyFinancialHealth = 0;
+export const emptyInvestments: Investment[] = [];
+export const emptyInsight = {
+  title: 'Start tracking your finances',
+  amount: 0,
+  message: 'Add transactions to see insights here',
+  investmentAmount: 0,
+  trend: 0,
+};
+export const emptyTopExpenses: ExpenseCategory[] = [];
+
+// Minimal content data (user with some data)
+export const minimalIncome = {
+  amount: 3500,
+  trend: 0,
+};
+
+export const minimalExpenses = {
+  amount: 1200,
+  trend: 0,
+};
+
+export const minimalUpdate = {
+  date: 'Jan 1st 2025',
+  message: 'You\'ve added your first transaction! Keep going to see more insights.',
+  highlight: 'first transaction',
+  link: 'Add More',
+};
+
+export const minimalBills: Bill[] = [
+  {
+    id: '1',
+    name: 'Netflix',
+    date: 'Jan 15th 2025',
+    amount: 15.99,
+    category: 'Entertainment',
+    icon: 'Tv',
+  },
+];
+
+export const minimalTransactions: Transaction[] = [
+  {
+    id: '1',
+    name: 'Coffee Shop',
+    date: 'Dec 30th 2024',
+    amount: 4.50,
+    category: 'Food',
+    icon: 'CoffeeCup',
+  },
+  {
+    id: '2',
+    name: 'Grocery Store',
+    date: 'Dec 28th 2024',
+    amount: 85.20,
+    category: 'Shopping',
+    icon: 'Cart',
+  },
+];
+
+export const minimalGoals: Goal[] = [
+  {
+    id: '1',
+    name: 'Emergency Fund',
+    targetDate: 'Dec 31st 2025',
+    targetAmount: 10000,
+    currentAmount: 500,
+    progress: 5.0,
+  },
+];
+
+export const minimalFinancialHealth = 45;
+export const minimalInvestments: Investment[] = [];
+export const minimalInsight = {
+  title: 'You\'re on the right track!',
+  amount: 12.50,
+  message: 'Add more transactions to see personalized insights',
+  investmentAmount: 0,
+  trend: 0,
+};
+export const minimalTopExpenses: ExpenseCategory[] = [
+  {
+    id: '1',
+    name: 'Groceries',
+    amount: 85.20,
+    percentage: 95,
+    icon: 'Cart',
+    color: '#74C648',
+  },
+  {
+    id: '2',
+    name: 'Food',
+    amount: 4.50,
+    percentage: 5,
+    icon: 'CoffeeCup',
+    color: '#AC66DA',
+  },
+];
+

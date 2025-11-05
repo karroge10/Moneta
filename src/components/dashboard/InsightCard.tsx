@@ -14,8 +14,22 @@ interface InsightCardProps {
 }
 
 export default function InsightCard({ title, amount, message, investmentAmount, trend, shortRow = false, minimal = false }: InsightCardProps) {
+  // Empty state when amount is 0
+  const isEmpty = amount === 0;
+
   // Minimal variant: like Income/Expense cards (for two-column layout)
   if (minimal) {
+    if (isEmpty) {
+      return (
+        <Card title="Insight">
+          <div className="flex flex-col flex-1 min-h-0 justify-center items-center py-8">
+            <div className="text-body text-center mb-2 opacity-70">Add transactions to see insights</div>
+            <div className="text-helper text-center">Personalized insights will appear here</div>
+          </div>
+        </Card>
+      );
+    }
+
     return (
       <Card title="Insight">
         <div className="flex flex-col flex-1 min-h-0">
@@ -33,6 +47,18 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
 
   // Short row variant for tablet/mobile
   if (shortRow) {
+    if (isEmpty) {
+      return (
+        <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 min-w-0">
+          <div className="text-card-header mb-2">Insight</div>
+          <div className="flex flex-col justify-center items-center py-4">
+            <div className="text-body text-center mb-2 opacity-70">Add transactions to see insights</div>
+            <div className="text-helper text-center">Personalized insights will appear here</div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 min-w-0">
         <div className="text-card-header mb-2">Insight</div>
@@ -55,6 +81,17 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
   }
 
   // Full card variant
+  if (isEmpty) {
+    return (
+      <Card title="Insight">
+        <div className="mt-2 flex flex-col flex-1 min-h-0 justify-center items-center py-8">
+          <div className="text-body text-center mb-2 opacity-70">Add transactions to see insights</div>
+          <div className="text-helper text-center">Personalized insights will appear here</div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card title="Insight">
       <div className="mt-2 flex flex-col flex-1 min-h-0">
