@@ -71,7 +71,7 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
               <span className="text-card-currency">$</span>
               <span className="text-card-value">{formatNumber(amount)}</span>
             </div>
-            <div className="text-helper" style={{ color: 'var(--accent-green)' }}>
+            <div style={{ color: 'var(--accent-green)', fontSize: 'clamp(12px, 1.2vw, 14px)', fontWeight: 600 }}>
               +${formatNumber(investmentAmount, false)}
             </div>
           </div>
@@ -100,9 +100,9 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
           <span className="text-card-currency flex-shrink-0">$</span>
           <span className="text-card-value break-all min-w-0">{formatNumber(amount)}</span>
         </div>
-        <div className="text-helper mt-auto text-wrap-safe break-words">
-          <span>{message}</span>
-          <span className="font-semibold ml-1 whitespace-nowrap" style={{ color: 'var(--accent-green)', opacity: 1 }}>
+        <div className="mt-auto text-wrap-safe break-words">
+          <span className="text-helper">{message}</span>
+          <span className="font-semibold ml-1 whitespace-nowrap" style={{ color: 'var(--accent-green)', fontSize: 'clamp(12px, 1.2vw, 14px)' }}>
             ${formatNumber(investmentAmount, false)}
           </span>
         </div>

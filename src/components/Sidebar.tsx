@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   HomeSimpleDoor,
   Wallet,
@@ -23,7 +24,26 @@ interface SidebarProps {
   activeSection?: string;
 }
 
-export default function Sidebar({ activeSection = "dashboard" }: SidebarProps) {
+export default function Sidebar({ activeSection }: SidebarProps) {
+  const pathname = usePathname();
+  
+  // Determine active section from pathname if not provided
+  const getActiveSection = () => {
+    if (activeSection) return activeSection;
+    
+    if (pathname === "/") return "dashboard";
+    if (pathname === "/income") return "income";
+    if (pathname === "/expenses") return "expenses";
+    if (pathname === "/transactions") return "transactions";
+    if (pathname === "/investments") return "investments";
+    if (pathname === "/goals") return "goals";
+    if (pathname === "/statistics") return "statistics";
+    if (pathname === "/help") return "help";
+    
+    return "dashboard"; // default
+  };
+  
+  const currentActiveSection = getActiveSection();
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem("moneta.sidebarCollapsed") === "true";
@@ -79,15 +99,16 @@ export default function Sidebar({ activeSection = "dashboard" }: SidebarProps) {
           {menuItems.map((item) => {
             const Icon = item.icon;
             return (
-              <div
+              <Link
                 key={item.id}
-                className={`sidebar-nav-item ${activeSection === item.id ? "active" : ""}`}
+                href={item.href}
+                className={`sidebar-nav-item ${currentActiveSection === item.id ? "active" : ""}`}
               >
                 <Icon width={20} height={20} strokeWidth={1.5} />
                 {!isCollapsed && (
                   <span className="text-sidebar-button">{item.label}</span>
                 )}
-              </div>
+              </Link>
             );
           })}
         </nav>

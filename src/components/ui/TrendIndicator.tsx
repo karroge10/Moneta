@@ -13,8 +13,9 @@ export default function TrendIndicator({ value, label }: TrendIndicatorProps) {
   return (
     <div className="flex items-center gap-2 mt-2">
       <Icon width={20} height={20} strokeWidth={1.5} style={{ color }} />
-      <span className="text-helper">
-        <span style={{ color, fontWeight: 600 }}>{formatPercentage(value, true)}</span> {label}
+      <span>
+        <span style={{ color, fontWeight: 600 }}>{formatPercentage(value, true)}</span>
+        <span className="text-helper"> {label}</span>
       </span>
     </div>
   );
