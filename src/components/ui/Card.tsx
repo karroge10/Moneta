@@ -13,7 +13,7 @@ interface CardProps {
 
 export default function Card({ title, children, showActions = true, customHeader, href, className = '' }: CardProps) {
   return (
-    <div className={`card-surface ${className}`}>
+    <div className={`card-surface flex flex-col ${className}`}>
       {customHeader || (
         <div className="mb-4 flex items-center justify-between">
           {href ? (
@@ -35,7 +35,9 @@ export default function Card({ title, children, showActions = true, customHeader
           )}
         </div>
       )}
-      {children}
+      <div className="flex-1 flex flex-col">
+        {children}
+      </div>
     </div>
   );
 }

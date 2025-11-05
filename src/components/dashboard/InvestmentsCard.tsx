@@ -37,38 +37,40 @@ function MiniTrendGraph({ isPositive }: { isPositive: boolean }) {
 export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
   return (
     <Card title="Investments" href="/investments">
-      <div className="space-y-4 mt-2">
-        {investments.map((investment) => {
-          const Icon = getIcon(investment.icon);
-          const isPositive = investment.changePercent >= 0;
-          const TrendIcon = isPositive ? StatUp : StatDown;
-          const trendColor = getTrendColor(investment.changePercent);
-          
-          return (
-            <div key={investment.id} className="flex items-center gap-4">
-              <div className="flex-shrink-0">
-                <Icon width={24} height={24} strokeWidth={1.5} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-body font-medium">{investment.name}</div>
-                <div className="text-helper">{investment.subtitle}</div>
-              </div>
-              <MiniTrendGraph isPositive={isPositive} />
-              <div className="text-right">
-                <div className="text-body font-semibold">
-                  ${formatNumber(investment.currentValue)}
+      <div className="flex flex-col flex-1 mt-2">
+        <div className="space-y-4 flex-1">
+          {investments.map((investment) => {
+            const Icon = getIcon(investment.icon);
+            const isPositive = investment.changePercent >= 0;
+            const TrendIcon = isPositive ? StatUp : StatDown;
+            const trendColor = getTrendColor(investment.changePercent);
+            
+            return (
+              <div key={investment.id} className="flex items-center gap-4">
+                <div className="flex-shrink-0">
+                  <Icon width={24} height={24} strokeWidth={1.5} />
                 </div>
-                <div className="flex items-center gap-1 text-sm" style={{ color: trendColor }}>
-                  <TrendIcon width={14} height={14} strokeWidth={2} />
-                  <span>{investment.changePercent >= 0 ? '+' : ''}{investment.changePercent.toFixed(2)}%</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-body font-medium">{investment.name}</div>
+                  <div className="text-helper">{investment.subtitle}</div>
+                </div>
+                <MiniTrendGraph isPositive={isPositive} />
+                <div className="text-right">
+                  <div className="text-body font-semibold">
+                    ${formatNumber(investment.currentValue)}
+                  </div>
+                  <div className="flex items-center gap-1 text-sm" style={{ color: trendColor }}>
+                    <TrendIcon width={14} height={14} strokeWidth={2} />
+                    <span>{investment.changePercent >= 0 ? '+' : ''}{investment.changePercent.toFixed(2)}%</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors">
-        Investments <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
+            );
+          })}
+        </div>
+        <div className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors">
+          Investments <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
+        </div>
       </div>
     </Card>
   );

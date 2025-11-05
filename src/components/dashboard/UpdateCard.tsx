@@ -22,17 +22,21 @@ export default function UpdateCard({ date, message, highlight, link }: UpdateCar
         </div>
       }
     >
-      <div className="text-helper mb-2">{date}</div>
-      <div className="text-body mb-4">
-        {message.split(highlight).map((part, idx) => (
-          <span key={idx}>
-            {part}
-            {idx === 0 && <span style={{ color: 'var(--accent-green)', fontWeight: 600 }}>{highlight}</span>}
-          </span>
-        ))}
-      </div>
-      <div className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors">
-        {link} <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
+      <div className="flex flex-col flex-1">
+        <div className="flex-1">
+          <div className="text-helper mb-2">{date}</div>
+          <div className="text-body mb-4">
+            {message.split(highlight).map((part, idx) => (
+              <span key={idx}>
+                {part}
+                {idx === 0 && <span style={{ color: 'var(--accent-green)', fontWeight: 600 }}>{highlight}</span>}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors">
+          {link} <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
+        </div>
       </div>
     </Card>
   );
