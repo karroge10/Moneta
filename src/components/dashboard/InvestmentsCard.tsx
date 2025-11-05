@@ -46,20 +46,20 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
             const trendColor = getTrendColor(investment.changePercent);
             
             return (
-              <div key={investment.id} className="flex items-center gap-4">
+              <div key={investment.id} className="flex items-center gap-3 min-w-0">
                 <div className="flex-shrink-0">
                   <Icon width={24} height={24} strokeWidth={1.5} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-body font-medium">{investment.name}</div>
-                  <div className="text-helper">{investment.subtitle}</div>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <div className="text-body font-medium text-wrap-safe">{investment.name}</div>
+                  <div className="text-helper text-wrap-safe">{investment.subtitle}</div>
                 </div>
                 <MiniTrendGraph isPositive={isPositive} />
-                <div className="text-right">
-                  <div className="text-body font-semibold">
+                <div className="text-right flex-shrink-0">
+                  <div className="text-body font-semibold whitespace-nowrap">
                     ${formatNumber(investment.currentValue)}
                   </div>
-                  <div className="flex items-center gap-1 text-sm" style={{ color: trendColor }}>
+                  <div className="flex items-center gap-1 text-sm whitespace-nowrap" style={{ color: trendColor }}>
                     <TrendIcon width={14} height={14} strokeWidth={2} />
                     <span>{investment.changePercent >= 0 ? '+' : ''}{investment.changePercent.toFixed(2)}%</span>
                   </div>

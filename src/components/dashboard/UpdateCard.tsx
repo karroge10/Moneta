@@ -22,10 +22,10 @@ export default function UpdateCard({ date, message, highlight, link }: UpdateCar
         </div>
       }
     >
-      <div className="flex flex-col flex-1">
-        <div className="flex-1">
+      <div className="flex flex-col flex-1 min-h-0">
+        <div className="flex-1 min-h-0">
           <div className="text-helper mb-2">{date}</div>
-          <div className="text-body mb-4">
+          <div className="text-body mb-4 text-wrap-safe break-words">
             {message.split(highlight).map((part, idx) => (
               <span key={idx}>
                 {part}
@@ -34,8 +34,8 @@ export default function UpdateCard({ date, message, highlight, link }: UpdateCar
             ))}
           </div>
         </div>
-        <div className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors">
-          {link} <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
+        <div className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap">
+          <span className="text-wrap-safe break-words">{link}</span> <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0" />
         </div>
       </div>
     </Card>

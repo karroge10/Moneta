@@ -43,13 +43,6 @@ export default function DashboardHeader({ timePeriod, onTimePeriodChange }: Dash
         
         <div className="flex items-center gap-4">
           <button
-            className="p-2 rounded-lg transition-colors cursor-pointer hover-text-purple"
-            aria-label="Premium"
-          >
-            <Crown width={20} height={20} strokeWidth={1.5} className="stroke-current" />
-          </button>
-          
-          <button
             className="p-2 rounded-lg transition-colors relative cursor-pointer hover-text-purple"
             aria-label="Notifications"
           >
@@ -74,6 +67,10 @@ export default function DashboardHeader({ timePeriod, onTimePeriodChange }: Dash
                 <button className="w-full text-left px-4 py-3 flex items-center gap-2 hover-text-purple transition-colors text-body cursor-pointer">
                   <Settings width={18} height={18} strokeWidth={1.5} className="stroke-current" />
                   Settings
+                </button>
+                <button className="w-full text-left px-4 py-3 flex items-center gap-2 hover-text-purple transition-colors text-body cursor-pointer">
+                  <Crown width={18} height={18} strokeWidth={1.5} className="stroke-current" />
+                  Premium
                 </button>
                 <button className="w-full text-left px-4 py-3 flex items-center gap-2 hover-text-purple transition-colors text-body cursor-pointer">
                   <LogOut width={18} height={18} strokeWidth={1.5} className="stroke-current" />

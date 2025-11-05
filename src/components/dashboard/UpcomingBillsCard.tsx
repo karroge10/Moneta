@@ -16,15 +16,15 @@ export default function UpcomingBillsCard({ bills }: UpcomingBillsCardProps) {
           {bills.map((bill) => {
             const Icon = getIcon(bill.icon);
             return (
-              <div key={bill.id} className="flex items-center gap-4">
+              <div key={bill.id} className="flex items-center gap-3 min-w-0">
                 <div className="flex-shrink-0">
                   <Icon width={24} height={24} strokeWidth={1.5} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-body font-medium">{bill.name}</div>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <div className="text-body font-medium text-wrap-safe">{bill.name}</div>
                   <div className="text-helper">{bill.date}</div>
                 </div>
-                <div className="text-body font-semibold">
+                <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
                   ${formatNumber(bill.amount)}
                 </div>
               </div>
