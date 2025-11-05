@@ -17,6 +17,7 @@ export default function DonutChart({ data }: DonutChartProps) {
           innerRadius="60%"
           outerRadius="80%"
           dataKey="value"
+          stroke="none"
         >
           {data.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.color} />

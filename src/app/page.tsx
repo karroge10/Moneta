@@ -85,6 +85,7 @@ export default function Home() {
           message={update.message}
           highlight={update.highlight}
           link={update.link}
+          linkHref="/statistics"
         />
 
         {/* Insight short row */}

@@ -1,4 +1,4 @@
-import { Transaction, Bill, Goal, Investment, ExpenseCategory } from '@/types/dashboard';
+import { Transaction, Bill, Goal, Investment, ExpenseCategory, LatestExpense, LatestIncome, IncomeSource, PerformanceDataPoint } from '@/types/dashboard';
 
 export const mockIncome = {
   amount: 151349,
@@ -304,4 +304,271 @@ export const minimalTopExpenses: ExpenseCategory[] = [
     color: '#AC66DA',
   },
 ];
+
+// Expenses Page Mock Data
+export const mockExpensesPage = {
+  total: {
+    amount: 23700.93,
+    trend: 11,
+  },
+  averageMonthly: {
+    amount: 4612.16,
+    trend: 20,
+  },
+  update: {
+    date: 'Dec 25th 2024',
+    message: 'You have uncategorized expenses. Assign for more accurate tracking',
+    highlight: 'uncategorized expenses',
+    link: 'Transactions',
+  },
+  latestExpenses: [
+    {
+      id: '1',
+      name: 'Rent',
+      date: 'Jan 5th 2025',
+      amount: 4000.00,
+      category: 'Housing',
+      icon: 'City',
+      month: 'January 2024',
+    },
+    {
+      id: '2',
+      name: 'Groceries',
+      date: 'Jan 4th 2025',
+      amount: 551.92,
+      category: 'Food',
+      icon: 'Cart',
+      month: 'January 2024',
+    },
+    {
+      id: '3',
+      name: 'Restaurants',
+      date: 'Jan 3rd 2025',
+      amount: 4000.00,
+      category: 'Food',
+      icon: 'PizzaSlice',
+      month: 'January 2024',
+    },
+    {
+      id: '4',
+      name: 'Entertainment',
+      date: 'Jan 2nd 2025',
+      amount: 551.92,
+      category: 'Entertainment',
+      icon: 'Skateboard',
+      month: 'January 2024',
+    },
+    {
+      id: '5',
+      name: 'Health & Fitness',
+      date: 'Jan 1st 2025',
+      amount: 4000.00,
+      category: 'Health',
+      icon: 'Gym',
+      month: 'January 2024',
+    },
+    {
+      id: '6',
+      name: 'Groceries',
+      date: 'Dec 28th 2024',
+      amount: 450.00,
+      category: 'Food',
+      icon: 'Cart',
+      month: 'April 2025',
+    },
+    {
+      id: '7',
+      name: 'Rent',
+      date: 'Dec 25th 2024',
+      amount: 4000.00,
+      category: 'Housing',
+      icon: 'City',
+      month: 'April 2025',
+    },
+  ] as LatestExpense[],
+  performance: {
+    trend: 11,
+    trendText: 'Your income grew +11% over selected time period',
+    data: [
+      { date: 'Dec 2024', value: 4200 },
+      { date: 'Jan 2025', value: 4500 },
+      { date: 'Feb 2025', value: 4800 },
+      { date: 'Mar 2025', value: 4600 },
+      { date: 'Apr 2025', value: 4900 },
+      { date: 'May 2025', value: 5100 },
+    ] as PerformanceDataPoint[],
+  },
+  topCategories: [
+    {
+      id: '1',
+      name: 'Groceries',
+      amount: 3112.53,
+      percentage: 42,
+      icon: 'Cart',
+      color: '#74C648',
+    },
+    {
+      id: '2',
+      name: 'Rent',
+      amount: 4150.00,
+      percentage: 35,
+      icon: 'City',
+      color: '#AC66DA',
+    },
+    {
+      id: '3',
+      name: 'Restaurants',
+      amount: 2988.19,
+      percentage: 23,
+      icon: 'PizzaSlice',
+      color: '#D93F3F',
+    },
+  ] as ExpenseCategory[],
+  demographicComparison: {
+    message: 'Your average expenses are 12% lower than of users in your region. Great job!',
+    percentage: 12,
+    percentageLabel: '12%',
+    link: 'Statistics',
+  },
+  insight: {
+    title: 'By using the round-up feature, you could save',
+    amount: 214.13,
+    message: 'Investing that in BTC would earn you',
+    investmentAmount: 423.58,
+    trend: 1,
+  },
+};
+
+// Income Page Mock Data
+export const mockIncomePage = {
+  total: {
+    amount: 39700.93,
+    trend: 11,
+  },
+  estimatedTax: {
+    amount: 682.79,
+    isEnabled: true,
+  },
+  average: {
+    amount: 4612.16,
+    trend: 20,
+    subtitle: 'Monthly average based on selected time period',
+  },
+  update: {
+    date: 'Dec 25th 2024',
+    message: 'YouTube revenue increased 50% since last month',
+    highlight: '50%',
+    link: 'Statistics',
+  },
+  upcomingIncomes: [
+    {
+      id: '1',
+      name: 'Job Salary',
+      date: 'Jan 5th 2025',
+      amount: 4551.92,
+      category: 'Salary',
+      icon: 'Suitcase',
+    },
+    {
+      id: '2',
+      name: 'YouTube Sponsorship',
+      date: 'Jan 23rd 2025',
+      amount: 850.08,
+      category: 'Freelance',
+      icon: 'Globe',
+    },
+  ] as Transaction[],
+  latestIncomes: [
+    {
+      id: '1',
+      name: 'Job Salary',
+      date: 'May 5th 2025',
+      amount: 4000.00,
+      category: 'Salary',
+      icon: 'Suitcase',
+      month: 'May 2025',
+    },
+    {
+      id: '2',
+      name: 'YouTube Sponsorship',
+      date: 'May 4th 2025',
+      amount: 551.92,
+      category: 'Freelance',
+      icon: 'Globe',
+      month: 'May 2025',
+    },
+    {
+      id: '3',
+      name: 'Gift from Grandma',
+      date: 'May 1st 2025',
+      amount: 100.00,
+      category: 'Gift',
+      icon: 'Gift',
+      month: 'May 2025',
+    },
+    {
+      id: '4',
+      name: 'Job Salary',
+      date: 'Apr 5th 2025',
+      amount: 4000.00,
+      category: 'Salary',
+      icon: 'Suitcase',
+      month: 'April 2025',
+    },
+    {
+      id: '5',
+      name: 'YouTube Sponsorship',
+      date: 'Apr 4th 2025',
+      amount: 551.92,
+      category: 'Freelance',
+      icon: 'Globe',
+      month: 'April 2025',
+    },
+    {
+      id: '6',
+      name: 'Job Salary',
+      date: 'Mar 5th 2025',
+      amount: 5294.14,
+      category: 'Salary',
+      icon: 'Suitcase',
+      month: 'March 2025',
+    },
+  ] as LatestIncome[],
+  performance: {
+    trend: 11,
+    trendText: 'Your income grew +11% over selected time period',
+    data: [
+      { date: 'Dec 2024', value: 4200 },
+      { date: 'Jan 2025', value: 4500 },
+      { date: 'Feb 2025', value: 4800 },
+      { date: 'Mar 2025', value: 4600 },
+      { date: 'Apr 2025', value: 4900 },
+      { date: 'May 2025', value: 5100 },
+    ] as PerformanceDataPoint[],
+  },
+  topSources: [
+    {
+      id: '1',
+      name: 'Job Salary',
+      amount: 4551.92,
+      percentage: 69,
+      icon: 'Suitcase',
+      color: '#AC66DA',
+    },
+    {
+      id: '2',
+      name: 'YouTube Sponsorship',
+      amount: 850.08,
+      percentage: 31,
+      icon: 'Globe',
+      color: '#74C648',
+    },
+  ] as IncomeSource[],
+  demographicComparison: {
+    message: 'Your average income is 75% higher than of users in your region. Great job!',
+    percentage: 75,
+    percentageLabel: '75%',
+    link: 'Statistics',
+  },
+};
 

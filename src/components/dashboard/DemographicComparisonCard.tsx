@@ -1,37 +1,35 @@
 import Card from '@/components/ui/Card';
-import PulsingDot from '@/components/ui/PulsingDot';
 import { NavArrowRight } from 'iconoir-react';
 import Link from 'next/link';
 
-interface UpdateCardProps {
-  date: string;
+interface DemographicComparisonCardProps {
   message: string;
-  highlight: string;
+  percentage: number;
+  percentageLabel: string;
   link: string;
   linkHref?: string;
 }
 
-export default function UpdateCard({ date, message, highlight, link, linkHref }: UpdateCardProps) {
+export default function DemographicComparisonCard({ 
+  message, 
+  percentage, 
+  percentageLabel,
+  link,
+  linkHref
+}: DemographicComparisonCardProps) {
   return (
-    <Card 
-      title="Update"
-      customHeader={
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <PulsingDot />
-            <h2 className="text-card-header">Update</h2>
-          </div>
-        </div>
-      }
-    >
+    <Card title="Demographic Comparison">
       <div className="flex flex-col flex-1 min-h-0">
         <div className="flex-1 min-h-0">
-          <div className="text-helper mb-2">{date}</div>
           <div className="text-body mb-4 text-wrap-safe break-words">
-            {message.split(highlight).map((part, idx) => (
+            {message.split(percentageLabel).map((part, idx) => (
               <span key={idx}>
                 {part}
-                {idx === 0 && <span style={{ color: 'var(--accent-green)', fontWeight: 600 }}>{highlight}</span>}
+                {idx === 0 && (
+                  <span style={{ color: 'var(--accent-green)', fontWeight: 600 }}>
+                    {percentageLabel}
+                  </span>
+                )}
               </span>
             ))}
           </div>

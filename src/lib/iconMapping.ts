@@ -14,6 +14,17 @@ import {
   City,
   NavArrowRight,
   NavArrowLeft,
+  Gift,
+  Suitcase,
+  Globe,
+  PizzaSlice,
+  Sofa,
+  Droplet,
+  Flash,
+  Gym,
+  Tram,
+  Heart,
+  Skateboard,
 } from 'iconoir-react';
 
 const iconMap: Record<string, React.ComponentType<{ width?: number; height?: number; strokeWidth?: number; style?: React.CSSProperties }>> = {
@@ -31,6 +42,17 @@ const iconMap: Record<string, React.ComponentType<{ width?: number; height?: num
   City,
   NavArrowRight,
   NavArrowLeft,
+  Gift,
+  Suitcase,
+  Globe,
+  PizzaSlice,
+  Sofa,
+  Droplet,
+  Flash,
+  Gym,
+  Tram,
+  Heart,
+  Skateboard,
 };
 
 export function getIcon(iconName: string) {
