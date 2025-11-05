@@ -8,15 +8,20 @@ interface FinancialHealthCardProps {
 
 export default function FinancialHealthCard({ score }: FinancialHealthCardProps) {
   return (
-    <div className="card-surface">
-      <h2 className="text-card-header mb-4">Financial Health</h2>
-      <div className="flex items-center justify-center" style={{ color: getHealthColor(score) }}>
-        <span className="text-fin-health-key">{score}</span>
+    <Card title="Financial Health" href="/financial-health" showActions={false}>
+      <div className="flex flex-col flex-1">
+        <div className="flex items-center gap-2 flex-1 justify-center">
+          <span className="text-card-value" style={{ color: getHealthColor(score) }}>
+            {score}
+          </span>
+        </div>
+        <div className="text-helper flex items-center gap-2 cursor-pointer group hover-text-purple transition-colors whitespace-nowrap mt-2">
+          <span style={{ width: 20, height: 20, display: 'inline-block' }}></span>
+          <span>Learn how we calculate</span>
+          <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
+        </div>
       </div>
-      <div className="text-helper flex items-center gap-1 mt-6 cursor-pointer group hover-text-purple transition-colors">
-        Learn how we calculate the financial health score <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
-      </div>
-    </div>
+    </Card>
   );
 }
 

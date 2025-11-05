@@ -47,17 +47,17 @@ body.sidebar-collapsed {
   --sidebar-width: var(--sidebar-width-collapsed);
 }
 
-/* Typography utilities */
-.text-page-title { font-size: 36px; font-weight: 700; line-height: 1.2; }
+/* Typography utilities - Responsive with mobile-first clamp() */
+.text-page-title { font-size: clamp(28px, 2.5vw, 36px); font-weight: 700; line-height: 1.2; }
 .text-sidebar-section { font-size: 22px; font-weight: 700; letter-spacing: 0.12em; }
 .text-sidebar-button { font-size: 18px; font-weight: 400; white-space: nowrap; }
 .sidebar-title { font-size: 24px; font-weight: 700; letter-spacing: 0.02em; }
-.text-card-header { font-size: 20px; font-weight: 600; }
-.text-card-value { font-size: 48px; font-weight: 700; line-height: 1.1; }
-.text-card-currency { font-size: 30px; font-weight: 600; }
-.text-body { font-size: 16px; font-weight: 400; }
-.text-helper { font-size: 12px; font-weight: 400; opacity: 0.7; }
-.text-fin-health-key { font-size: 90px; font-weight: 700; line-height: 1.1; }
+.text-card-header { font-size: clamp(18px, 1.5vw, 20px); font-weight: 600; }
+.text-card-value { font-size: clamp(36px, 4vw, 48px); font-weight: 700; line-height: 1.1; }
+.text-card-currency { font-size: clamp(28px, 2.5vw, 30px); font-weight: 600; }
+.text-body { font-size: clamp(15px, 1.2vw, 16px); font-weight: 400; }
+.text-helper { font-size: clamp(11px, 1vw, 12px); font-weight: 400; opacity: 0.7; }
+.text-fin-health-key { font-size: clamp(70px, 8vw, 90px); font-weight: 700; line-height: 1.1; }
 
 /* Surfaces */
 .card-surface {
@@ -371,22 +371,238 @@ body.controls-accent-always .sidebar .sidebar-logout {
   color: var(--accent-purple);
 }
 
-/* Bento Grid Layout */
+/* Bento Grid Layout - Using Flexbox for flexible heights */
 .bento-grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 16px;
 }
 
-@media (max-width: 1280px) {
-  .bento-grid {
-    grid-template-columns: repeat(8, 1fr);
+/* Prevent height jumping/flickering in testdash - applies immediately on load */
+.testdash-grid-container {
+  align-items: stretch !important;
+}
+
+.testdash-grid-container .grid {
+  align-items: stretch !important;
+}
+
+.testdash-grid-container > *,
+.testdash-grid-container .grid > * {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  min-height: 0 !important;
+}
+
+.testdash-grid-container .grid > * > .card-surface {
+  width: 100% !important;
+  height: 100% !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.testdash-grid-container .flex-col > * > .card-surface {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.testdash-grid-container .flex-\[7\] > .card-surface,
+.testdash-grid-container .flex-\[3\] > .card-surface,
+.testdash-grid-container .flex-1 > .card-surface,
+.testdash-grid-container .flex-1 > * > .card-surface {
+  width: 100% !important;
+  height: 100% !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Prevent layout flash on load */
+.dashboard-mobile,
+.dashboard-tablet,
+.dashboard-desktop {
+  opacity: 1;
+  transition: opacity 0.1s ease-in;
+}
+
+/* Ensure proper responsive behavior */
+@media (max-width: 767px) {
+  .dashboard-tablet,
+  .dashboard-desktop {
+    display: none !important;
   }
 }
 
+@media (min-width: 768px) and (max-width: 1279px) {
+  .dashboard-mobile,
+  .dashboard-desktop {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .dashboard-mobile,
+  .dashboard-tablet {
+    display: none !important;
+  }
+}
+
+/* Width utilities for 12-column system (desktop >1280px) */
+.bento-grid > * {
+  flex: 0 0 auto;
+}
+
+/* span 2 = 16.666% of 12 columns */
+/* For 5+2+2 layout: (75% - 2*gaps) / 9 * span, where gaps = 2 * 16px = 32px */
+.bento-item-2 {
+  width: calc(16.666% - 7.111px); /* (75% - 32px) * 2/9 */
+}
+
+/* span 3 = 25% of 12 columns. With 4 items per row: 4*width + 3*gaps = 100% */
+.bento-item-3 {
+  width: calc(25% - 12px); /* (100% - 48px) / 4 */
+}
+
+/* span 4 = 33.333% of 12 columns. With 3 items per row: 3*width + 2*gaps = 100% */
+.bento-item-4 {
+  width: calc(33.333% - 10.667px); /* (100% - 32px) / 3 */
+}
+
+/* span 5 = 41.666% of 12 columns. For Transactions card in 5+2+2 layout */
+/* For 5+2+2 layout: (75% - 2*gaps) / 9 * span */
+.bento-item-5 {
+  width: calc(41.666% - 17.778px); /* (75% - 32px) * 5/9 */
+}
+
+/* span 6 = 50% of 12 columns. With 2 items per row: 2*width + 1*gap = 100% */
+.bento-item-6 {
+  width: calc(50% - 8px); /* (100% - 16px) / 2 */
+}
+
+.bento-item-12 {
+  width: 100%;
+}
+
+/* Row grouping for proper alignment */
+.bento-row-group {
+  flex: 0 0 auto;
+}
+
+/* Optional: Height matching groups - wrap items that should share height */
+/* Usage: Wrap items in a div with bento-height-match class to make them share the same height */
+/* Example: <div className="bento-height-match"><div className="bento-item-3">...</div><div className="bento-item-3">...</div></div> */
+.bento-height-match {
+  display: flex;
+  gap: 16px;
+  flex: 0 0 auto;
+}
+
+/* Items inside height-match container are sized relative to the container */
+.bento-height-match > .bento-item-3 {
+  flex: 0 0 calc(33.333% - 10.667px); /* 3 equal items: (100% - 2*gap) / 3 */
+}
+
+.bento-height-match > .bento-item-4 {
+  flex: 0 0 calc(33.333% - 10.667px);
+}
+
+.bento-height-match > .bento-item-5 {
+  flex: 0 0 calc(33.333% - 10.667px);
+}
+
+.bento-height-match > .bento-item-6 {
+  flex: 0 0 calc(50% - 8px);
+}
+
+.bento-height-match > * {
+  display: flex;
+  flex-direction: column;
+}
+
+.bento-height-match .card-surface {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure card surfaces fill their container when height is constrained */
+.height-constrained > .card-surface {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tablet: 8-column system (≤1280px) */
+@media (max-width: 1280px) {
+  .bento-item-2 {
+    width: calc(25% - 6px); /* For 8-column system */
+  }
+  
+  /* span 3 = 37.5% of 8 columns. With ~2-3 items per row */
+  .bento-item-3 {
+    width: calc(37.5% - 8px); /* Approximately for mixed layouts */
+  }
+  
+  /* span 4 = 50% of 8 columns. With 2 items per row: 2*width + 1*gap = 100% */
+  .bento-item-4 {
+    width: calc(50% - 8px); /* (100% - 16px) / 2 */
+  }
+  
+  /* span 5 = 62.5% of 8 columns */
+  .bento-item-5 {
+    width: calc(62.5% - 8px); /* Approximately */
+  }
+  
+  /* span 6 = 75% of 8 columns */
+  .bento-item-6 {
+    width: calc(75% - 8px); /* Approximately */
+  }
+  
+  .bento-item-12 {
+    width: 100%;
+  }
+  
+  /* Height-match container: 3 items (75% of 8 cols = 75%) */
+  .bento-height-match[style*="75%"] {
+    width: calc(75% - 12px) !important;
+  }
+}
+
+/* Mobile: 4-column system (≤768px) */
 @media (max-width: 768px) {
-  .bento-grid {
-    grid-template-columns: repeat(4, 1fr);
+  .bento-item-3 {
+    width: calc(75% - 8px); /* (100% - 1 gap) / 4 * 3 spans */
+  }
+  
+  .bento-item-4 {
+    width: 100%; /* Full width on mobile */
+  }
+  
+  .bento-item-5 {
+    width: 100%; /* Full width on mobile */
+  }
+  
+  .bento-item-6 {
+    width: 100%; /* Full width on mobile */
+  }
+  
+  .bento-item-12 {
+    width: 100%;
+  }
+  
+  /* Height-match container: full width on mobile, items stack */
+  .bento-height-match {
+    width: 100% !important;
+    flex-direction: column;
+  }
+  
+  .bento-height-match > * {
+    width: 100% !important;
+    flex: none !important;
   }
 }
 
@@ -411,11 +627,14 @@ body.controls-accent-always .sidebar .sidebar-logout {
 /* Upgrade banner */
 .upgrade-banner {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
-  border-radius: 9999px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 16px;
+  padding: var(--space-l);
+  border-radius: var(--radius-card);
   background: var(--accent-purple);
+  height: 100%;
 }
 
 .upgrade-banner button {
@@ -431,4 +650,9 @@ body.controls-accent-always .sidebar .sidebar-logout {
 
 .upgrade-banner button:hover {
   opacity: 0.9;
+}
+
+/* Level Up Card - Purple background */
+.level-up-card.card-surface {
+  background: var(--accent-purple);
 }

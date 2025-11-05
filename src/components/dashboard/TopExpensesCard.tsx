@@ -17,9 +17,9 @@ export default function TopExpensesCard({ expenses }: TopExpensesCardProps) {
 
   return (
     <Card title="Top Expenses">
-      <div className="mt-2">
+      <div className="mt-2 flex flex-col flex-1">
         <DonutChart data={chartData} />
-        <div className="space-y-3 mt-4">
+        <div className="space-y-3 mt-4 flex-1">
           {expenses.map((expense) => {
             const Icon = getIcon(expense.icon);
             return (
