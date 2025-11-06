@@ -26,6 +26,15 @@ import {
   Heart,
   Skateboard,
   HelpCircle,
+  CheckCircle,
+  Clock,
+  Xmark,
+  Trophy,
+  Page,
+  Timer,
+  LotOfCash,
+  Wallet,
+  ShoppingBag,
 } from 'iconoir-react';
 
 const iconMap: Record<string, React.ComponentType<{ width?: number; height?: number; strokeWidth?: number; style?: React.CSSProperties }>> = {
@@ -55,6 +64,15 @@ const iconMap: Record<string, React.ComponentType<{ width?: number; height?: num
   Heart,
   Skateboard,
   HelpCircle,
+  CheckCircle,
+  Clock,
+  Xmark,
+  Trophy,
+  Page,
+  Timer,
+  LotOfCash,
+  Wallet,
+  ShoppingBag,
 };
 
 export function getIcon(iconName: string) {

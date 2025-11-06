@@ -4,6 +4,7 @@ import { XAxis, YAxis, ResponsiveContainer, Tooltip, Area, AreaChart } from 'rec
 
 interface LineChartProps {
   data: Array<{ date: string; value: number }>;
+  noPadding?: boolean;
 }
 
 // Format date for x-axis: "Dec 2024" -> "Dec" on top, "2024" below
@@ -32,12 +33,16 @@ const CustomXAxisTick = ({ x, y, payload }: any) => {
   );
 };
 
-export default function LineChart({ data }: LineChartProps) {
+export default function LineChart({ data, noPadding = false }: LineChartProps) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data}>
+    <div style={{ width: '100%', height: '100%' }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart 
+          data={data} 
+          margin={noPadding ? { top: 10, right: 0, left: 0, bottom: 0 } : { top: 10, right: 10, left: 10, bottom: 10 }}
+        >
         <defs>
-          <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={`colorGradient-${noPadding ? 'no-pad' : 'default'}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#AC66DA" stopOpacity={1} />
             <stop offset="100%" stopColor="#282828" stopOpacity={1} />
           </linearGradient>
@@ -66,12 +71,13 @@ export default function LineChart({ data }: LineChartProps) {
           dataKey="value"
           stroke="#AC66DA"
           strokeWidth={2}
-          fill="url(#colorGradient)"
+          fill={`url(#colorGradient-${noPadding ? 'no-pad' : 'default'})`}
           dot={{ fill: '#E7E4E4', r: 4, strokeWidth: 0 }}
           activeDot={{ r: 6 }}
         />
       </AreaChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 

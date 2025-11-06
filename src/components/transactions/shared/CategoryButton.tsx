@@ -29,17 +29,17 @@ export default function CategoryButton({ category, onClick, size = 'md', classNa
     <button
       onClick={onClick}
       className={`flex flex-col items-center justify-center gap-1 p-3 rounded-2xl transition-all cursor-pointer hover:scale-105 ${sizeClasses[size]} ${className}`}
-      style={{ backgroundColor: category.color + '20' }}
+      style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
     >
       <Icon 
         width={iconSizes[size].width} 
         height={iconSizes[size].height} 
         strokeWidth={1.5}
-        style={{ color: category.color }}
+        style={{ color: '#E7E4E4' }}
       />
       <span 
         className="text-xs font-medium text-center"
-        style={{ color: category.color }}
+        style={{ color: '#E7E4E4' }}
       >
         {category.name}
       </span>
