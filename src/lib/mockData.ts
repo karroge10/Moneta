@@ -1,4 +1,4 @@
-import { Transaction, Bill, Goal, Investment, ExpenseCategory, LatestExpense, LatestIncome, IncomeSource, PerformanceDataPoint, Category, InvestmentActivity, FinancialMilestone, DemographicComparison, MonthlySummaryRow, StatisticsSummaryItem } from '@/types/dashboard';
+import { Transaction, Bill, Goal, Investment, ExpenseCategory, LatestExpense, LatestIncome, IncomeSource, PerformanceDataPoint, Category, InvestmentActivity, FinancialMilestone, DemographicComparison, MonthlySummaryRow, StatisticsSummaryItem, UserSettings, LoginHistoryEntry, Achievement, NotificationEntry, NotificationSettings } from '@/types/dashboard';
 
 export const mockIncome = {
   amount: 151349,
@@ -1155,5 +1155,146 @@ export const mockStatisticsPage = {
       },
     ] as StatisticsSummaryItem[],
   },
+};
+
+export const mockUserSettings: UserSettings = {
+  name: 'Egor Kabantsov',
+  username: 'karoge',
+  email: 'egorkabantsov@gmail.com',
+  jobPosition: 'Frontend Developer',
+  age: 23,
+  city: 'Tbilisi',
+  country: 'United States of America',
+  language: 'English',
+  currency: '$ USD',
+  dateOfBirth: 'March 20th 2001',
+  profession: 'Frontend Developer',
+  defaultPage: 'Dashboard',
+  plan: 'basic',
+};
+
+export const mockLoginHistory: LoginHistoryEntry[] = [
+  { date: '22.01.2023', time: '20:32:10', device: 'iPhone 16 Pro', location: 'Tbilisi, Georgia' },
+  { date: '22.01.2023', time: '20:30:15', device: 'iPhone 16 Pro', location: 'Tbilisi, Georgia' },
+  { date: '21.01.2023', time: '14:09:29', device: 'Desktop PC', location: 'Tbilisi, Georgia' },
+  { date: '20.01.2023', time: '18:45:16', device: 'iPhone 16 Pro', location: 'Tbilisi, Georgia' },
+  { date: '19.01.2023', time: '10:22:33', device: 'Desktop PC', location: 'Tbilisi, Georgia' },
+  { date: '18.01.2023', time: '16:55:42', device: 'iPhone 16 Pro', location: 'Tbilisi, Georgia' },
+  { date: '17.01.2023', time: '09:11:28', device: 'Desktop PC', location: 'Tbilisi, Georgia' },
+];
+
+export const mockAchievements: Achievement[] = [
+  { id: '1', name: 'First Savings', unlocked: true, icon: 'LotOfCash' },
+  { id: '2', name: 'Goal Achiever', unlocked: true, icon: 'LotOfCash' },
+  { id: '3', name: 'Budget Master', unlocked: true, icon: 'LotOfCash' },
+  { id: '4', name: 'Investment Starter', unlocked: true, icon: 'LotOfCash' },
+  { id: '5', name: 'Consistent Saver', unlocked: true, icon: 'LotOfCash' },
+  { id: '6', name: 'Millionaire', unlocked: false, icon: 'LotOfCash' },
+  { id: '7', name: 'Early Retiree', unlocked: false, icon: 'LotOfCash' },
+  { id: '8', name: 'Debt Free', unlocked: false, icon: 'LotOfCash' },
+  { id: '9', name: 'Financial Guru', unlocked: false, icon: 'LotOfCash' },
+  { id: '10', name: 'Wealth Builder', unlocked: false, icon: 'LotOfCash' },
+  { id: '11', name: 'Smart Investor', unlocked: false, icon: 'LotOfCash' },
+  { id: '12', name: 'Expense Tracker', unlocked: false, icon: 'LotOfCash' },
+];
+
+export const mockNotifications: NotificationEntry[] = [
+  { 
+    id: '1', 
+    date: '22.01.2023', 
+    time: '20:32:10', 
+    type: 'Upcoming Bills', 
+    text: 'Your Netflix Subscription is due in 1 day' 
+  },
+  { 
+    id: '2', 
+    date: '22.01.2023', 
+    time: '18:15:42', 
+    type: 'Goal Update', 
+    text: "You're halfway there to reaching your savings goal!" 
+  },
+  { 
+    id: '3', 
+    date: '21.01.2023', 
+    time: '14:28:55', 
+    type: 'Upcoming Income', 
+    text: 'Almost there! Less than 100$ left in your budget' 
+  },
+  { 
+    id: '4', 
+    date: '21.01.2023', 
+    time: '10:45:30', 
+    type: 'Upcoming Income', 
+    text: 'You will receive $1,400 next week!' 
+  },
+  { 
+    id: '5', 
+    date: '20.01.2023', 
+    time: '16:20:15', 
+    type: 'Investments', 
+    text: 'Your Bitcoin portfolio increased by 5.2%' 
+  },
+  { 
+    id: '6', 
+    date: '20.01.2023', 
+    time: '09:10:05', 
+    type: 'Goals', 
+    text: 'Congratulations! You completed your emergency fund goal' 
+  },
+  { 
+    id: '7', 
+    date: '19.01.2023', 
+    time: '22:05:18', 
+    type: 'AI Insights', 
+    text: 'New spending pattern detected: Consider reviewing your subscription costs' 
+  },
+  { 
+    id: '8', 
+    date: '19.01.2023', 
+    time: '11:30:00', 
+    type: 'Upcoming Bills', 
+    text: 'Electricity bill of $85.50 is due in 3 days' 
+  },
+];
+
+export const mockDeletedNotifications: NotificationEntry[] = [
+  { 
+    id: 'd1', 
+    date: '18.01.2023', 
+    time: '15:22:33', 
+    type: 'Upcoming Bills', 
+    text: 'Your Netflix Sub...' 
+  },
+  { 
+    id: 'd2', 
+    date: '17.01.2023', 
+    time: '12:10:20', 
+    type: 'Goal Update', 
+    text: "You're halfway t..." 
+  },
+  { 
+    id: 'd3', 
+    date: '16.01.2023', 
+    time: '08:45:10', 
+    type: 'Upcoming Income', 
+    text: 'Almost there! Le...' 
+  },
+  { 
+    id: 'd4', 
+    date: '15.01.2023', 
+    time: '19:30:45', 
+    type: 'Upcoming Income', 
+    text: 'You will recieve...' 
+  },
+];
+
+export const mockNotificationSettings: NotificationSettings = {
+  pushNotifications: true,
+  upcomingBills: true,
+  upcomingIncome: true,
+  investments: true,
+  goals: true,
+  promotionalEmail: true,
+  aiInsights: true,
 };
 

@@ -16,12 +16,12 @@ export default function UpdateCard({ date, message, highlight, link, linkHref }:
     <Card 
       title="Update"
       customHeader={
-        <div className="mb-4 flex items-center justify-between">
+        <Link href="/updates" className="mb-4 flex items-center justify-between hover-text-purple transition-colors cursor-pointer">
           <div className="flex items-center">
             <PulsingDot />
             <h2 className="text-card-header">Update</h2>
           </div>
-        </div>
+        </Link>
       }
     >
       <div className="flex flex-col flex-1 min-h-0">
