@@ -57,7 +57,7 @@ export default function IncomePage() {
         />
         <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3">
           <h2 className="text-card-header">Total</h2>
-          <div className="flex items-baseline gap-2 flex-1 min-w-0 flex-wrap">
+          <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
             <span className="text-card-currency flex-shrink-0">$</span>
             <span className="text-card-value break-all min-w-0">{formatNumber(data.total.amount)}</span>
           </div>
@@ -100,7 +100,7 @@ export default function IncomePage() {
         />
         <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3">
           <h2 className="text-card-header">Total</h2>
-          <div className="flex items-baseline gap-2 flex-1 min-w-0 flex-wrap">
+          <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
             <span className="text-card-currency flex-shrink-0">$</span>
             <span className="text-card-value break-all min-w-0">{formatNumber(data.total.amount)}</span>
           </div>
@@ -150,7 +150,7 @@ export default function IncomePage() {
             <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
               <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 h-full">
                 <h2 className="text-card-header">Total</h2>
-                <div className="flex items-baseline gap-2 flex-1 min-w-0 flex-wrap">
+                <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
                   <span className="text-card-currency flex-shrink-0">$</span>
                   <span className="text-card-value break-all min-w-0">{formatNumber(data.total.amount)}</span>
                 </div>
