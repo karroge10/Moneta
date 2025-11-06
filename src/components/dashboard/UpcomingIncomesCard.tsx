@@ -30,7 +30,12 @@ export default function UpcomingIncomesCard({ incomes }: UpcomingIncomesCardProp
             return (
               <div key={income.id} className="flex items-center gap-3 min-w-0">
                 <div className="flex-shrink-0">
-                  <Icon width={24} height={24} strokeWidth={1.5} />
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
+                  >
+                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: '#E7E4E4' }} />
+                  </div>
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden">
                   <div className="text-body font-medium text-wrap-safe">{income.name}</div>

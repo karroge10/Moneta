@@ -3,7 +3,7 @@ export interface Transaction {
   name: string;
   date: string;
   amount: number;
-  category: string;
+  category: string | null;
   icon: string;
 }
 
@@ -65,5 +65,12 @@ export interface LatestExpense extends Transaction {
 
 export interface LatestIncome extends Transaction {
   month?: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
 }
 
