@@ -12,13 +12,13 @@ import {
   BitcoinCircle,
   CalendarCheck,
   Reports,
-  HeadsetHelp,
   LogOut,
   SunLight,
   HalfMoon,
   NavArrowRight,
   NavArrowLeft,
 } from "iconoir-react";
+import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 
 interface SidebarProps {
   activeSection?: string;
@@ -31,6 +31,11 @@ export default function Sidebar({ activeSection }: SidebarProps) {
   const getActiveSection = () => {
     if (activeSection) return activeSection;
     
+    // Don't highlight sidebar items when on settings, help, or other non-main pages
+    if (pathname === "/settings" || pathname === "/help" || pathname.startsWith("/help")) {
+      return null;
+    }
+    
     if (pathname === "/") return "dashboard";
     if (pathname === "/income") return "income";
     if (pathname === "/expenses") return "expenses";
@@ -38,9 +43,8 @@ export default function Sidebar({ activeSection }: SidebarProps) {
     if (pathname === "/investments") return "investments";
     if (pathname === "/goals") return "goals";
     if (pathname === "/statistics") return "statistics";
-    if (pathname === "/help") return "help";
     
-    return "dashboard"; // default
+    return null; // default - no active section for unknown pages
   };
   
   const currentActiveSection = getActiveSection();
@@ -66,14 +70,13 @@ export default function Sidebar({ activeSection }: SidebarProps) {
     } catch {}
   };
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: HomeSimpleDoor, href: "/" },
-    { id: "income", label: "Income", icon: Wallet, href: "/income" },
-    { id: "expenses", label: "Expenses", icon: ShoppingBag, href: "/expenses" },
-    { id: "transactions", label: "Transactions", icon: LotOfCash, href: "/transactions" },
-    { id: "investments", label: "Investments", icon: BitcoinCircle, href: "/investments" },
-    { id: "goals", label: "Goals", icon: CalendarCheck, href: "/goals" },
-    { id: "statistics", label: "Statistics", icon: Reports, href: "/statistics" },
-    { id: "help", label: "Help Center", icon: HeadsetHelp, href: "/help" },
+    { id: "dashboard", label: "Dashboard", icon: HomeSimpleDoor, href: "/", comingSoon: false },
+    { id: "income", label: "Income", icon: Wallet, href: "/income", comingSoon: false },
+    { id: "expenses", label: "Expenses", icon: ShoppingBag, href: "/expenses", comingSoon: false },
+    { id: "transactions", label: "Transactions", icon: LotOfCash, href: "/transactions", comingSoon: false },
+    { id: "investments", label: "Investments", icon: BitcoinCircle, href: "/investments", comingSoon: true },
+    { id: "goals", label: "Goals", icon: CalendarCheck, href: "/goals", comingSoon: true },
+    { id: "statistics", label: "Statistics", icon: Reports, href: "/statistics", comingSoon: true },
   ];
 
   return (
@@ -106,7 +109,12 @@ export default function Sidebar({ activeSection }: SidebarProps) {
               >
                 <Icon width={20} height={20} strokeWidth={1.5} />
                 {!isCollapsed && (
-                  <span className="text-sidebar-button">{item.label}</span>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-sidebar-button truncate">{item.label}</span>
+                    {item.comingSoon && (
+                      <ComingSoonBadge size="sm" />
+                    )}
+                  </div>
                 )}
               </Link>
             );
