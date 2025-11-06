@@ -12,7 +12,7 @@ interface InvestmentsCardProps {
 // Simple placeholder for mini trend graph
 function MiniTrendGraph({ isPositive }: { isPositive: boolean }) {
   return (
-    <div className="flex-shrink-0 w-16 h-8">
+    <div className="shrink-0 w-16 h-8">
       <svg viewBox="0 0 60 30" className="w-full h-full">
         {isPositive ? (
           <polyline
@@ -57,16 +57,23 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
             const trendColor = getTrendColor(investment.changePercent);
             
             return (
-              <div key={investment.id} className="flex items-center gap-3 min-w-0">
-                <div className="flex-shrink-0">
-                  <Icon width={24} height={24} strokeWidth={1.5} />
+              <div key={investment.id} className="relative flex items-center gap-3 min-w-0">
+                <div className="shrink-0">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
+                  >
+                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: '#E7E4E4' }} />
+                  </div>
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden">
                   <div className="text-body font-medium text-wrap-safe">{investment.name}</div>
                   <div className="text-helper text-wrap-safe">{investment.subtitle}</div>
                 </div>
-                <MiniTrendGraph isPositive={isPositive} />
-                <div className="text-right flex-shrink-0">
+                <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
+                  <MiniTrendGraph isPositive={isPositive} />
+                </div>
+                <div className="text-right shrink-0 ml-auto">
                   <div className="text-body font-semibold whitespace-nowrap">
                     ${formatNumber(investment.currentValue)}
                   </div>

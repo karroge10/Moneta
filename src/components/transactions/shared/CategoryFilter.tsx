@@ -1,0 +1,96 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import { NavArrowDown, Filter } from 'iconoir-react';
+import { Category } from '@/types/dashboard';
+import { getIcon } from '@/lib/iconMapping';
+
+interface CategoryFilterProps {
+  categories: Category[];
+  selectedCategory: string | null;
+  onSelect: (category: string | null) => void;
+}
+
+export default function CategoryFilter({ categories, selectedCategory, onSelect }: CategoryFilterProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedCategoryObj = categories.find(cat => cat.name === selectedCategory);
+  const displayValue = selectedCategory || 'All Categories';
+  const textColor = isHovered ? '#AC66DA' : '#E7E4E4';
+  const DisplayIcon = selectedCategoryObj ? getIcon(selectedCategoryObj.icon) : null;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors cursor-pointer w-full justify-between"
+        style={{ backgroundColor: '#202020', color: textColor }}
+      >
+        <div className="flex items-center gap-2">
+          <Filter width={18} height={18} strokeWidth={1.5} style={{ color: textColor }} />
+          {DisplayIcon && (
+            <DisplayIcon width={18} height={18} strokeWidth={1.5} style={{ color: textColor }} />
+          )}
+          <span className="text-sm font-semibold">{displayValue}</span>
+        </div>
+        <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: textColor }} />
+      </button>
+      
+      {isOpen && (
+        <div className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: '#202020' }}>
+          <button
+            onClick={() => {
+              onSelect(null);
+              setIsOpen(false);
+            }}
+            className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
+            style={{ 
+              backgroundColor: 'transparent',
+              color: selectedCategory === null ? 'var(--accent-purple)' : 'var(--text-primary)' 
+            }}
+          >
+            <span>All Categories</span>
+          </button>
+          {categories.map((category) => {
+            const Icon = getIcon(category.icon);
+            const isSelected = selectedCategory === category.name;
+            return (
+              <button
+                key={category.id}
+                onClick={() => {
+                  onSelect(category.name);
+                  setIsOpen(false);
+                }}
+                className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
+                style={{ 
+                  backgroundColor: 'transparent',
+                  color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' 
+                }}
+              >
+                <Icon width={20} height={20} strokeWidth={1.5} style={{ color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' }} />
+                <span>{category.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+

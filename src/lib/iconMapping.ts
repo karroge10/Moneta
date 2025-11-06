@@ -25,6 +25,7 @@ import {
   Tram,
   Heart,
   Skateboard,
+  HelpCircle,
 } from 'iconoir-react';
 
 const iconMap: Record<string, React.ComponentType<{ width?: number; height?: number; strokeWidth?: number; style?: React.CSSProperties }>> = {
@@ -53,9 +54,10 @@ const iconMap: Record<string, React.ComponentType<{ width?: number; height?: num
   Tram,
   Heart,
   Skateboard,
+  HelpCircle,
 };
 
 export function getIcon(iconName: string) {
-  return iconMap[iconName] || CoffeeCup;
+  return iconMap[iconName] || HelpCircle;
 }
 

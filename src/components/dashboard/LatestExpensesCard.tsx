@@ -51,7 +51,7 @@ export default function LatestExpensesCard({ expenses }: LatestExpensesCardProps
   return (
     <Card title="Latest Expenses">
       <div className="flex flex-col flex-1 mt-2 min-h-0 overflow-hidden">
-        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 space-y-4">
+        <div className="h-[400px] overflow-y-auto overflow-x-hidden space-y-4 pr-2 custom-scrollbar">
           {months.map((month) => {
             const monthExpenses = groupedByMonth[month];
             const monthTotal = monthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -75,16 +75,21 @@ export default function LatestExpensesCard({ expenses }: LatestExpensesCardProps
                 </button>
                 <div 
                   className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                    isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+                    isExpanded ? 'max-h-[200px] opacity-100' : 'max-h-0 opacity-0'
                   }`}
                 >
-                  <div className="ml-4 space-y-3 mt-2 pb-2">
+                  <div className="ml-4 space-y-3 mt-2 pb-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-4">
                     {monthExpenses.map((expense) => {
                       const Icon = getIcon(expense.icon);
                       return (
                         <div key={expense.id} className="flex items-center gap-3 min-w-0">
                           <div className="flex-shrink-0">
-                            <Icon width={24} height={24} strokeWidth={1.5} />
+                            <div
+                              className="w-12 h-12 rounded-full flex items-center justify-center"
+                              style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
+                            >
+                              <Icon width={24} height={24} strokeWidth={1.5} style={{ color: '#E7E4E4' }} />
+                            </div>
                           </div>
                           <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="text-body font-medium text-wrap-safe">{expense.name}</div>

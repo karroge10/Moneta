@@ -31,7 +31,7 @@ export default function Dropdown({ label, options, value, onChange, iconLeft }: 
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors hover:opacity-90 cursor-pointer"
-        style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
+        style={{ backgroundColor: '#282828', color: '#E7E4E4' }}
       >
         {iconLeft}
         <span className="text-sm font-semibold">{value}</span>

@@ -42,7 +42,7 @@ export default function DashboardHeader({ pageName = 'Dashboard', timePeriod, on
           <button
             onClick={actionButton.onClick}
             className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors cursor-pointer hover:opacity-90"
-            style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+            style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
           >
             <Plus width={18} height={18} strokeWidth={1.5} />
             <span className="text-sm font-semibold">{actionButton.label}</span>
