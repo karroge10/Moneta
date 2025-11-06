@@ -74,3 +74,48 @@ export interface Category {
   color: string;
 }
 
+export interface InvestmentActivity {
+  id: string;
+  assetName: string;
+  date: string;
+  change: string; // e.g., "+0.021 BTC", "-1 NVDA"
+  changeType: 'positive' | 'negative';
+  icon: string;
+}
+
+export interface FinancialMilestone {
+  date: string;
+  message: string;
+  completedGoals: number;
+}
+
+export interface DemographicComparison {
+  id: string;
+  label: string;
+  comparison: string; // e.g., "9% higher than others"
+  icon: string;
+  iconColor: string;
+}
+
+export interface MonthlySummaryRow {
+  month: string; // Format: "Jan 2025"
+  income: number;
+  expenses: number;
+  savings: number;
+  topCategory: {
+    name: string;
+    percentage: number;
+  };
+}
+
+export interface StatisticsSummaryItem {
+  id: string;
+  label: string;
+  value: string | number;
+  change: string; // e.g., "+35% from beginning"
+  icon: string;
+  iconColor: string;
+  isLarge?: boolean; // For Financial Health Score card
+  link?: string; // Optional link text
+}
+

@@ -19,6 +19,13 @@
   --space-l: 24px;
   --space-xl: 32px;
 
+  /* Scrollable list heights - consistent bottom cutoff */
+  --scroll-item-height: 60px;
+  --scroll-item-gap: 16px;
+  --scroll-partial-cutoff: 32px;
+  --scroll-portfolio-items: 8;
+  --scroll-activities-items: 5;
+
   /* Sidebar sizing */
   --sidebar-width: 280px;
   --sidebar-width-collapsed: 88px;
@@ -65,6 +72,15 @@ body.sidebar-collapsed {
   border-radius: var(--radius-card);
   padding: var(--space-l);
   overflow: hidden; /* Prevent content from overflowing card boundaries */
+}
+
+/* Scrollable list containers with consistent cutoff */
+.scroll-list-portfolio {
+  max-height: calc((var(--scroll-portfolio-items) - 1) * (var(--scroll-item-height) + var(--scroll-item-gap)) + var(--scroll-item-height) + var(--scroll-partial-cutoff));
+}
+
+.scroll-list-activities {
+  max-height: calc((var(--scroll-activities-items) - 1) * (var(--scroll-item-height) + var(--scroll-item-gap)) + var(--scroll-item-height) + var(--scroll-partial-cutoff));
 }
 
 /* Text overflow utilities - reusable system */
