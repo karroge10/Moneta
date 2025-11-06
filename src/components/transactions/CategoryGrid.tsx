@@ -2,8 +2,8 @@
 
 import { Category } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
-import SearchBar from '../shared/SearchBar';
-import CategoryFilter from '../shared/CategoryFilter';
+import SearchBar from './shared/SearchBar';
+import CategoryFilter from './shared/CategoryFilter';
 import Card from '@/components/ui/Card';
 
 interface CategoryGridProps {
