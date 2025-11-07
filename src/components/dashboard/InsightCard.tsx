@@ -1,6 +1,7 @@
 'use client';
 
 import Card from '@/components/ui/Card';
+import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import { formatNumber } from '@/lib/utils';
 
 interface InsightCardProps {
@@ -21,7 +22,18 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
   if (minimal) {
     if (isEmpty) {
       return (
-        <Card title="Insight">
+        <Card 
+          title="Insight"
+          customHeader={
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <h2 className="text-card-header">Insight</h2>
+                <ComingSoonBadge />
+              </div>
+            </div>
+          }
+          showActions={false}
+        >
           <div className="flex flex-col flex-1 min-h-0 justify-center items-center py-8">
             <div className="text-body text-center mb-2 opacity-70">Add transactions to see insights</div>
             <div className="text-helper text-center">Personalized insights will appear here</div>
@@ -31,7 +43,18 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
     }
 
     return (
-      <Card title="Insight">
+      <Card 
+        title="Insight"
+        customHeader={
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-card-header">Insight</h2>
+              <ComingSoonBadge />
+            </div>
+          </div>
+        }
+        showActions={false}
+      >
         <div className="flex flex-col flex-1 min-h-0">
           <div className="flex items-center gap-2 flex-1">
             <span className="text-card-currency">$</span>
@@ -50,7 +73,10 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
     if (isEmpty) {
       return (
         <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 min-w-0">
-          <div className="text-card-header mb-2">Insight</div>
+          <div className="mb-2 flex items-center gap-3">
+            <div className="text-card-header">Insight</div>
+            <ComingSoonBadge />
+          </div>
           <div className="flex flex-col justify-center items-center py-4">
             <div className="text-body text-center mb-2 opacity-70">Add transactions to see insights</div>
             <div className="text-helper text-center">Personalized insights will appear here</div>
@@ -61,7 +87,10 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
 
     return (
       <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 min-w-0">
-        <div className="text-card-header mb-2">Insight</div>
+        <div className="mb-2 flex items-center gap-3">
+          <div className="text-card-header">Insight</div>
+          <ComingSoonBadge />
+        </div>
         <div className="flex items-center justify-between gap-3 min-w-0">
           <div className="flex-1 min-w-0">
             <div className="text-helper text-truncate-safe">{message}</div>
@@ -83,7 +112,18 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
   // Full card variant
   if (isEmpty) {
     return (
-      <Card title="Insight">
+      <Card 
+        title="Insight"
+        customHeader={
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-card-header">Insight</h2>
+              <ComingSoonBadge />
+            </div>
+          </div>
+        }
+        showActions={false}
+      >
         <div className="mt-2 flex flex-col flex-1 min-h-0 justify-center items-center py-8">
           <div className="text-body text-center mb-2 opacity-70">Add transactions to see insights</div>
           <div className="text-helper text-center">Personalized insights will appear here</div>
@@ -93,7 +133,18 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
   }
 
   return (
-    <Card title="Insight">
+    <Card 
+      title="Insight"
+      customHeader={
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-card-header">Insight</h2>
+            <ComingSoonBadge />
+          </div>
+        </div>
+      }
+      showActions={false}
+    >
       <div className="mt-2 flex flex-col flex-1 min-h-0">
         <div className="text-helper mb-4 text-wrap-safe break-words">{title}</div>
         <div className="flex items-baseline gap-2 mb-4 min-w-0 flex-wrap">

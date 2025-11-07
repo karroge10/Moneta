@@ -11,7 +11,6 @@ import {
   BitcoinCircle,
   CalendarCheck,
   Reports,
-  HeadsetHelp,
   LogOut,
   NavArrowLeft,
   Xmark,
@@ -44,7 +43,6 @@ export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboa
     { id: 'investments', label: 'Investments', icon: BitcoinCircle, href: '/investments' },
     { id: 'goals', label: 'Goals', icon: CalendarCheck, href: '/goals' },
     { id: 'statistics', label: 'Statistics', icon: Reports, href: '/statistics' },
-    { id: 'help', label: 'Help Center', icon: HeadsetHelp, href: '/help' },
   ];
 
   return (

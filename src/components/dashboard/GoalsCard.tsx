@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Card from '@/components/ui/Card';
+import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { Goal } from '@/types/dashboard';
 import { InfoCircle } from 'iconoir-react';
@@ -15,7 +16,19 @@ export default function GoalsCard({ goals }: GoalsCardProps) {
   
   if (goals.length === 0) {
     return (
-      <Card title="Goals" href="/goals">
+      <Card 
+        title="Goals" 
+        href="/goals"
+        customHeader={
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-card-header">Goals</h2>
+              <ComingSoonBadge />
+            </div>
+          </div>
+        }
+        showActions={false}
+      >
         <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8">
           <div className="text-body text-center mb-2 opacity-70">Add your first goal</div>
           <div className="text-helper text-center">Set a financial target to track your progress</div>
@@ -29,7 +42,19 @@ export default function GoalsCard({ goals }: GoalsCardProps) {
   const goal = goals[safeIndex];
 
   return (
-    <Card title="Goals" href="/goals">
+    <Card 
+      title="Goals" 
+      href="/goals"
+      customHeader={
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-card-header">Goals</h2>
+            <ComingSoonBadge />
+          </div>
+        </div>
+      }
+      showActions={false}
+    >
       <div className="flex flex-col flex-1 mt-2">
         <div className="flex-1 min-h-0">
           <div className="text-helper mb-2">{goal.targetDate}</div>
