@@ -135,3 +135,4 @@ export function getEncouragingMessage(goal: Goal): string {
   return "Every journey begins with a single step. You've got this!";
 }
 
+
