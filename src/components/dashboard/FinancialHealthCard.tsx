@@ -1,4 +1,5 @@
 import Card from '@/components/ui/Card';
+import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import { getHealthColor } from '@/lib/utils';
 import { NavArrowRight } from 'iconoir-react';
 
@@ -14,7 +15,10 @@ export default function FinancialHealthCard({ score, mobile = false, minimal = f
     if (mobile) {
       return (
         <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 min-w-0">
-          <div className="text-card-header mb-2">Financial Health</div>
+          <div className="mb-2 flex items-center gap-3">
+            <div className="text-card-header">Financial Health</div>
+            <ComingSoonBadge />
+          </div>
           <div className="flex flex-col justify-center items-center py-4">
             <div className="text-body text-center mb-2 opacity-70">Add transactions to see your score</div>
             <div className="text-helper text-center">Your financial health score will appear here</div>
@@ -25,7 +29,19 @@ export default function FinancialHealthCard({ score, mobile = false, minimal = f
 
     if (minimal) {
       return (
-        <Card title="Financial Health" href="/financial-health" showActions={false}>
+        <Card 
+          title="Financial Health" 
+          href="/financial-health" 
+          showActions={false}
+          customHeader={
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <h2 className="text-card-header">Financial Health</h2>
+                <ComingSoonBadge />
+              </div>
+            </div>
+          }
+        >
           <div className="flex flex-col flex-1 min-h-0 justify-center items-center py-8">
             <div className="text-body text-center mb-2 opacity-70">Add transactions to see your score</div>
             <div className="text-helper text-center">Your financial health score will appear here</div>
@@ -35,7 +51,19 @@ export default function FinancialHealthCard({ score, mobile = false, minimal = f
     }
 
     return (
-      <Card title="Financial Health" href="/financial-health" showActions={false}>
+      <Card 
+        title="Financial Health" 
+        href="/financial-health" 
+        showActions={false}
+        customHeader={
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-card-header">Financial Health</h2>
+              <ComingSoonBadge />
+            </div>
+          </div>
+        }
+      >
         <div className="flex flex-col flex-1 min-h-0 justify-center items-center py-8">
           <div className="text-body text-center mb-2 opacity-70">Add transactions to see your score</div>
           <div className="text-helper text-center">Your financial health score will appear here</div>
@@ -47,7 +75,19 @@ export default function FinancialHealthCard({ score, mobile = false, minimal = f
   // Minimal variant: like Income/Expense cards (for two-column layout)
   if (minimal) {
     return (
-      <Card title="Financial Health" href="/financial-health" showActions={false}>
+      <Card 
+        title="Financial Health" 
+        href="/financial-health" 
+        showActions={false}
+        customHeader={
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-card-header">Financial Health</h2>
+              <ComingSoonBadge />
+            </div>
+          </div>
+        }
+      >
         <div className="flex flex-col flex-1 min-h-0">
           <div className="flex items-center gap-2 flex-1">
             <span className="text-card-value" style={{ color: getHealthColor(score) }}>
@@ -67,7 +107,10 @@ export default function FinancialHealthCard({ score, mobile = false, minimal = f
   if (mobile) {
     return (
       <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 min-w-0">
-        <div className="text-card-header mb-2">Financial Health</div>
+        <div className="mb-2 flex items-center gap-3">
+          <div className="text-card-header">Financial Health</div>
+          <ComingSoonBadge />
+        </div>
         <div className="flex items-center justify-between gap-3 min-w-0">
           <span className="text-card-value flex-shrink-0 whitespace-nowrap" style={{ color: getHealthColor(score) }}>
             {score}/100
@@ -83,7 +126,19 @@ export default function FinancialHealthCard({ score, mobile = false, minimal = f
 
   // Desktop variant: full card
   return (
-    <Card title="Financial Health" href="/financial-health" showActions={false}>
+    <Card 
+      title="Financial Health" 
+      href="/financial-health" 
+      showActions={false}
+      customHeader={
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-card-header">Financial Health</h2>
+            <ComingSoonBadge />
+          </div>
+        </div>
+      }
+    >
       <div className="flex flex-col flex-1 min-h-0">
         <div className="flex items-center gap-2 flex-1 justify-center">
           <span className="text-fin-health-key" style={{ color: getHealthColor(score) }}>

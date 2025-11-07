@@ -1,4 +1,5 @@
 import Card from '@/components/ui/Card';
+import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import { Investment } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { getTrendColor, formatNumber } from '@/lib/utils';
@@ -37,7 +38,19 @@ function MiniTrendGraph({ isPositive }: { isPositive: boolean }) {
 export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
   if (investments.length === 0) {
     return (
-      <Card title="Investments" href="/investments">
+      <Card 
+        title="Investments" 
+        href="/investments"
+        customHeader={
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-card-header">Investments</h2>
+              <ComingSoonBadge />
+            </div>
+          </div>
+        }
+        showActions={false}
+      >
         <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8">
           <div className="text-body text-center mb-2 opacity-70">Add your first investment</div>
           <div className="text-helper text-center">Track stocks, crypto, and other assets</div>
@@ -47,7 +60,19 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
   }
 
   return (
-    <Card title="Investments" href="/investments">
+    <Card 
+      title="Investments" 
+      href="/investments"
+      customHeader={
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-card-header">Investments</h2>
+            <ComingSoonBadge />
+          </div>
+        </div>
+      }
+      showActions={false}
+    >
       <div className="flex flex-col flex-1 mt-2">
         <div className="space-y-4 flex-1">
           {investments.map((investment) => {
