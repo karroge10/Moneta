@@ -320,6 +320,9 @@ body.sidebar-collapsed {
 .theme-toggle.is-dark .theme-toggle-indicator {
   transform: translateX(100%);
 }
+.theme-toggle.is-enabled .theme-toggle-indicator {
+  transform: translateX(100%);
+}
 
 .theme-toggle-button {
   flex: 1;
@@ -489,5 +492,27 @@ body.controls-accent-always .sidebar .sidebar-logout {
 
 .blinking-dot {
   animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Coming Soon Badge - Blur content when badge is present */
+/* For Card components with .flex-1 wrapper */
+.card-surface:has(.coming-soon-badge) > .flex-1 {
+  filter: blur(4px);
+  pointer-events: none;
+  user-select: none;
+  position: relative;
+}
+
+/* For direct card-surface divs (mobile variants) - blur all children except header */
+.card-surface:has(.coming-soon-badge) > :not(:first-child) {
+  filter: blur(4px);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Ensure blurred cards maintain their layout in grid */
+.card-surface:has(.coming-soon-badge) {
+  position: relative;
+  overflow: hidden;
 }
 
