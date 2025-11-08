@@ -13,9 +13,15 @@ interface TransactionListProps {
   transactions: Transaction[];
   categories: Category[];
   onTransactionClick: (transaction: Transaction) => void;
+  onAddTransaction?: () => void;
 }
 
-export default function TransactionList({ transactions, categories, onTransactionClick }: TransactionListProps) {
+export default function TransactionList({
+  transactions,
+  categories,
+  onTransactionClick,
+  onAddTransaction,
+}: TransactionListProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [categoryFilter, setCategoryFilter] = React.useState<string | null>(null);
   const [expandedMonth, setExpandedMonth] = React.useState<string | null>(null);
@@ -51,7 +57,7 @@ export default function TransactionList({ transactions, categories, onTransactio
   };
 
   return (
-    <Card title="Latest Transactions" className="h-full flex flex-col">
+    <Card title="Latest Transactions" className="h-full flex flex-col" onAdd={onAddTransaction}>
       <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0">
         <div className="flex gap-3 shrink-0">
           <div className="flex-[0.6]">
