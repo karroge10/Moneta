@@ -119,51 +119,24 @@ export interface StatisticsSummaryItem {
   link?: string; // Optional link text
 }
 
-export interface UserSettings {
-  name: string;
-  username: string;
-  email: string;
-  jobPosition: string;
-  age: number;
-  city: string;
-  country: string;
-  language: string;
+export interface TransactionUploadMetadata {
   currency: string;
-  dateOfBirth: string;
-  profession: string;
-  defaultPage: string;
-  plan: 'basic' | 'premium';
+  source: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
 }
 
-export interface LoginHistoryEntry {
+export interface UploadedTransaction {
   date: string;
-  time: string;
-  device: string;
-  location: string;
+  description: string;
+  translatedDescription: string;
+  amount: number;
+  category: string | null;
+  confidence: number;
 }
 
-export interface Achievement {
-  id: string;
-  name: string;
-  unlocked: boolean;
-  icon: string;
-}
-
-export interface NotificationEntry {
-  id: string;
-  date: string;
-  time: string;
-  type: string;
-  text: string;
-}
-
-export interface NotificationSettings {
-  pushNotifications: boolean;
-  upcomingBills: boolean;
-  upcomingIncome: boolean;
-  investments: boolean;
-  goals: boolean;
-  promotionalEmail: boolean;
-  aiInsights: boolean;
+export interface TransactionUploadResponse {
+  transactions: UploadedTransaction[];
+  metadata?: TransactionUploadMetadata;
 }
 
