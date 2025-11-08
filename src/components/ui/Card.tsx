@@ -9,9 +9,18 @@ interface CardProps {
   customHeader?: ReactNode;
   href?: string;
   className?: string;
+  onAdd?: () => void;
 }
 
-export default function Card({ title, children, showActions = true, customHeader, href, className = '' }: CardProps) {
+export default function Card({
+  title,
+  children,
+  showActions = true,
+  customHeader,
+  href,
+  className = '',
+  onAdd,
+}: CardProps) {
   return (
     <div className={`card-surface flex flex-col ${className}`}>
       {customHeader || (
@@ -25,7 +34,13 @@ export default function Card({ title, children, showActions = true, customHeader
           )}
           {showActions && (
             <div className="flex items-center gap-2">
-              <button className="hover-text-purple transition-colors cursor-pointer group" aria-label="Add">
+              <button
+                className="hover-text-purple transition-colors cursor-pointer group disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Add"
+                type="button"
+                onClick={onAdd}
+                disabled={!onAdd}
+              >
                 <Plus width={20} height={20} strokeWidth={1.5} className="stroke-current" />
               </button>
               <button className="hover-text-purple transition-colors cursor-pointer group" aria-label="More options">

@@ -1,8 +1,9 @@
 interface ProgressBarProps {
   value: number;
+  showLabel?: boolean;
 }
 
-export default function ProgressBar({ value }: ProgressBarProps) {
+export default function ProgressBar({ value, showLabel = true }: ProgressBarProps) {
   return (
     <div className="relative w-full h-8 rounded-full overflow-hidden" style={{ backgroundColor: '#E7E4E4' }}>
       <div
@@ -12,7 +13,7 @@ export default function ProgressBar({ value }: ProgressBarProps) {
           width: `${Math.min(100, Math.max(0, value))}%`,
         }}
       >
-        {value >= 50 && (
+        {showLabel && value >= 50 && (
           <span className="text-xs font-semibold" style={{ color: '#282828' }}>
             % {value.toFixed(1)}
           </span>
