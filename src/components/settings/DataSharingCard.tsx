@@ -47,3 +47,4 @@ export default function DataSharingCard({ isEnabled = true, onToggle }: DataShar
   );
 }
 
+
