@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Sen } from "next/font/google";
+import { ClerkProvider, SignedIn, SignedOut } from "@clerk/nextjs";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 
@@ -57,21 +58,28 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${sen.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <div style={{ display: "flex", minHeight: "100vh" }}>
-          <div className="hidden md:block">
-            <Sidebar />
-          </div>
-          <div 
-            className="flex-1 transition-all duration-200 ease-in-out md:ml-[var(--sidebar-width)]"
-          >
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning>
+        <body
+          className={`${sen.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
+        >
+          <SignedIn>
+            <div style={{ display: "flex", minHeight: "100vh" }}>
+              <div className="hidden md:block">
+                <Sidebar />
+              </div>
+              <div 
+                className="flex-1 transition-all duration-200 ease-in-out md:ml-[var(--sidebar-width)]"
+              >
+                {children}
+              </div>
+            </div>
+          </SignedIn>
+          <SignedOut>
             {children}
-          </div>
-        </div>
-      </body>
-    </html>
+          </SignedOut>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
