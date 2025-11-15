@@ -5,6 +5,7 @@ import { MoreHoriz, StatUp, NavArrowRight } from 'iconoir-react';
 import Card from '@/components/ui/Card';
 import { getIcon } from '@/lib/iconMapping';
 import { formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 import Link from 'next/link';
 
 interface StatisticsSummaryProps {
@@ -12,6 +13,7 @@ interface StatisticsSummaryProps {
 }
 
 export default function StatisticsSummary({ items }: StatisticsSummaryProps) {
+  const { currency } = useCurrency();
   const regularItems = items.filter(item => !item.isLarge);
   const largeItem = items.find(item => item.isLarge);
 
@@ -70,7 +72,7 @@ export default function StatisticsSummary({ items }: StatisticsSummaryProps) {
                   )}
                 </div>
                 <div className="flex items-baseline gap-1 flex-shrink-0">
-                  {typeof item.value === 'number' && <span className="text-body font-semibold">$</span>}
+                  {typeof item.value === 'number' && <span className="text-body font-semibold">{currency.symbol}</span>}
                   <span className="text-body font-semibold">{displayValue}</span>
                 </div>
               </div>

@@ -1,14 +1,18 @@
+'use client';
+
 import Card from '@/components/ui/Card';
 import DonutChart from '@/components/ui/DonutChart';
 import { ExpenseCategory } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface TopCategoriesCardProps {
   categories: ExpenseCategory[];
 }
 
 export default function TopCategoriesCard({ categories }: TopCategoriesCardProps) {
+  const { currency } = useCurrency();
   if (categories.length === 0) {
     return (
       <Card title="Top Categories">
@@ -47,7 +51,7 @@ export default function TopCategoriesCard({ categories }: TopCategoriesCardProps
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden text-body font-medium text-wrap-safe break-words">{category.name}</div>
                 <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
-                  ${formatNumber(category.amount)}
+                  {currency.symbol}{formatNumber(category.amount)}
                 </div>
               </div>
             );

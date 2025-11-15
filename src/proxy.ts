@@ -18,7 +18,16 @@ export default clerkMiddleware(async (auth, request) => {
     }
   }
 
-  return NextResponse.next();
+  // Set header to indicate pages that should render without sidebar
+  const response = NextResponse.next();
+  if (request.nextUrl.pathname === "/unauthorized") {
+    response.headers.set("x-is-unauthorized", "true");
+  }
+  if (request.nextUrl.pathname === "/") {
+    response.headers.set("x-is-landing-page", "true");
+  }
+  
+  return response;
 });
 
 export const config = {
