@@ -1,31 +1,28 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Crown, Bell, Settings, LogOut, Plus, HeadsetHelp } from 'iconoir-react';
-import Dropdown from '@/components/ui/Dropdown';
-import { CalendarCheck } from 'iconoir-react';
-import { TimePeriod } from '@/types/dashboard';
+import { Crown, Bell, Settings, LogOut, Plus, HeadsetHelp, Upload } from 'iconoir-react';
 import Link from 'next/link';
 import NotificationsDropdown from '@/components/updates/NotificationsDropdown';
 import { mockNotifications } from '@/lib/mockData';
 
-interface DashboardHeaderProps {
-  pageName?: string;
-  timePeriod: TimePeriod;
-  onTimePeriodChange: (period: TimePeriod) => void;
-  actionButton?: {
-    label: string;
-    onClick: () => void;
-  };
+interface ActionButton {
+  label: string;
+  onClick: () => void;
+  icon?: React.ReactNode;
 }
 
-export default function DashboardHeader({ pageName = 'Dashboard', timePeriod, onTimePeriodChange, actionButton }: DashboardHeaderProps) {
+interface DashboardHeaderProps {
+  pageName?: string;
+  actionButton?: ActionButton;
+  actionButtons?: ActionButton[];
+}
+
+export default function DashboardHeader({ pageName = 'Dashboard', actionButton, actionButtons }: DashboardHeaderProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
-
-  const timePeriodOptions: TimePeriod[] = ['This Month', 'This Quarter', 'This Year', 'All Time'];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -46,23 +43,17 @@ export default function DashboardHeader({ pageName = 'Dashboard', timePeriod, on
       <h1 className="text-page-title">{pageName}</h1>
       
       <div className="flex items-center gap-4">
-        {actionButton && (
+        {(actionButtons || (actionButton ? [actionButton] : [])).map((btn, index) => (
           <button
-            onClick={actionButton.onClick}
+            key={index}
+            onClick={btn.onClick}
             className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors cursor-pointer hover:opacity-90"
             style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
           >
-            <Plus width={18} height={18} strokeWidth={1.5} />
-            <span className="text-sm font-semibold">{actionButton.label}</span>
+            {btn.icon || <Plus width={18} height={18} strokeWidth={1.5} />}
+            <span className="text-sm font-semibold">{btn.label}</span>
           </button>
-        )}
-        <Dropdown
-          label="Time Period"
-          options={timePeriodOptions}
-          value={timePeriod}
-          onChange={(value: string) => onTimePeriodChange(value as TimePeriod)}
-          iconLeft={<CalendarCheck width={20} height={20} strokeWidth={1.5} />}
-        />
+        ))}
         
         <div className="flex items-center gap-4">
           <div className="relative" ref={notificationsRef}>

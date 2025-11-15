@@ -1,14 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { SignInButton, SignUpButton } from "@clerk/nextjs";
-import { Wallet, LotOfCash, Reports, Spark } from "iconoir-react";
+import Link from "next/link";
+import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { Wallet, LotOfCash, Reports, Spark, HomeSimpleDoor } from "iconoir-react";
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#202020] flex flex-col">
-      {/* Header */}
-      <header className="w-full px-6 md:px-8 py-6 flex justify-between items-center">
+      {/* Header / Navigation Bar */}
+      <header className="w-full px-6 md:px-8 py-6 flex justify-between items-center border-b border-[#3a3a3a]">
         <div className="flex items-center gap-3">
           <Image
             src="/monetalogo.png"
@@ -19,18 +20,43 @@ export default function LandingPage() {
           />
           <span className="text-sidebar-title text-[#E7E4E4]">MONETA</span>
         </div>
-        <div className="flex items-center gap-4">
-          <SignInButton mode="modal" redirectUrl="/dashboard">
-            <button type="button" className="px-6 py-2.5 rounded-full text-body font-semibold text-[#E7E4E4] hover:opacity-80 transition-opacity">
-              Sign In
-            </button>
-          </SignInButton>
-          <SignUpButton mode="modal" redirectUrl="/dashboard">
-            <button type="button" className="px-6 py-2.5 rounded-full bg-[#AC66DA] text-[#E7E4E4] font-semibold hover:opacity-90 transition-opacity">
-              Get Started
-            </button>
-          </SignUpButton>
-        </div>
+        <nav className="flex items-center gap-4">
+          <SignedIn>
+            <div className="flex items-center gap-4">
+              <Link 
+                href="/dashboard"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#AC66DA] text-[#E7E4E4] font-semibold text-body hover:opacity-90 transition-opacity"
+              >
+                <HomeSimpleDoor width={20} height={20} strokeWidth={1.5} />
+                <span>Go to Dashboard</span>
+              </Link>
+              <UserButton 
+                appearance={{
+                  elements: {
+                    avatarBox: "w-8 h-8",
+                    userButtonPopoverCard: "bg-[#282828] border border-[#3a3a3a]",
+                    userButtonPopoverActionButton: "text-[#E7E4E4] hover:bg-[#3a3a3a]",
+                    userButtonPopoverActionButtonText: "text-[#E7E4E4]",
+                  },
+                }}
+              />
+            </div>
+          </SignedIn>
+          <SignedOut>
+            <div className="flex items-center gap-4">
+              <SignInButton mode="modal" fallbackRedirectUrl="/dashboard">
+                <button type="button" className="px-6 py-2.5 rounded-full text-body font-semibold text-[#E7E4E4] hover:opacity-80 transition-opacity">
+                  Sign In
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard">
+                <button type="button" className="px-6 py-2.5 rounded-full bg-[#AC66DA] text-[#E7E4E4] font-semibold hover:opacity-90 transition-opacity">
+                  Get Started
+                </button>
+              </SignUpButton>
+            </div>
+          </SignedOut>
+        </nav>
       </header>
 
       {/* Hero Section */}
@@ -50,12 +76,12 @@ export default function LandingPage() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <SignUpButton mode="modal" redirectUrl="/dashboard">
+            <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard">
               <button type="button" className="px-8 py-3.5 rounded-full bg-[#AC66DA] text-[#E7E4E4] font-semibold text-body hover:opacity-90 transition-opacity w-full sm:w-auto">
                 Start Free Trial
               </button>
             </SignUpButton>
-            <SignInButton mode="modal" redirectUrl="/dashboard">
+            <SignInButton mode="modal" fallbackRedirectUrl="/dashboard">
               <button type="button" className="px-8 py-3.5 rounded-full border border-[#3a3a3a] text-[#E7E4E4] font-semibold text-body hover:bg-[#282828] transition-colors w-full sm:w-auto">
                 Sign In
               </button>

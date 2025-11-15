@@ -1,14 +1,18 @@
+'use client';
+
 import Card from '@/components/ui/Card';
 import DonutChart from '@/components/ui/DonutChart';
 import { IncomeSource } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface TopSourcesCardProps {
   sources: IncomeSource[];
 }
 
 export default function TopSourcesCard({ sources }: TopSourcesCardProps) {
+  const { currency } = useCurrency();
   if (sources.length === 0) {
     return (
       <Card title="Top Sources">
@@ -47,7 +51,7 @@ export default function TopSourcesCard({ sources }: TopSourcesCardProps) {
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden text-body font-medium text-wrap-safe break-words">{source.name}</div>
                 <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
-                  ${formatNumber(source.amount)}
+                  {currency.symbol}{formatNumber(source.amount)}
                 </div>
               </div>
             );

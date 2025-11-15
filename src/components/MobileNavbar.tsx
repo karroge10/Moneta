@@ -11,8 +11,8 @@ import { mockNotifications } from '@/lib/mockData';
 
 interface MobileNavbarProps {
   pageName: string;
-  timePeriod: TimePeriod;
-  onTimePeriodChange: (period: TimePeriod) => void;
+  timePeriod?: TimePeriod;
+  onTimePeriodChange?: (period: TimePeriod) => void;
   activeSection?: string;
 }
 
@@ -41,13 +41,15 @@ export default function MobileNavbar({ pageName, timePeriod, onTimePeriodChange,
         <h1 className="text-page-title">{pageName}</h1>
         
         <div className="flex items-center gap-3">
-          <Dropdown
-            label="Time Period"
-            options={timePeriodOptions}
-            value={timePeriod}
-            onChange={(value: string) => onTimePeriodChange(value as TimePeriod)}
-            iconLeft={<CalendarCheck width={18} height={18} strokeWidth={1.5} />}
-          />
+          {timePeriod && onTimePeriodChange && (
+            <Dropdown
+              label="Time Period"
+              options={timePeriodOptions}
+              value={timePeriod}
+              onChange={(value: string) => onTimePeriodChange(value as TimePeriod)}
+              iconLeft={<CalendarCheck width={18} height={18} strokeWidth={1.5} />}
+            />
+          )}
           
           <div className="relative" ref={notificationsRef}>
             <button

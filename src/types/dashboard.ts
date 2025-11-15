@@ -1,7 +1,10 @@
 export interface Transaction {
   id: string;
-  name: string;
+  name: string; // Cleaned/display name
+  fullName?: string; // Full original description (for transaction modal)
+  originalDescription?: string; // Original description from database (before translation)
   date: string;
+  dateRaw?: string; // ISO date string (YYYY-MM-DD) for filtering
   amount: number;
   category: string | null;
   icon: string;

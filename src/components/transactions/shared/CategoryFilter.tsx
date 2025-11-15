@@ -38,55 +38,58 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
         onClick={() => setIsOpen(!isOpen)}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors cursor-pointer w-full justify-between"
-        style={{ backgroundColor: '#202020', color: textColor }}
+        className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors duration-150 cursor-pointer w-full justify-between text-body"
+        style={{ backgroundColor: '#202020', color: textColor, transitionProperty: 'color' }}
       >
         <div className="flex items-center gap-2">
-          <Filter width={18} height={18} strokeWidth={1.5} style={{ color: textColor }} />
-          {DisplayIcon && (
-            <DisplayIcon width={18} height={18} strokeWidth={1.5} style={{ color: textColor }} />
+          {DisplayIcon ? (
+            <DisplayIcon width={20} height={20} strokeWidth={1.5} style={{ color: textColor, transition: 'color 150ms ease-in-out' }} />
+          ) : (
+            <Filter width={20} height={20} strokeWidth={1.5} style={{ color: textColor, transition: 'color 150ms ease-in-out' }} />
           )}
-          <span className="text-sm font-semibold">{displayValue}</span>
+          <span className="font-semibold" style={{ transition: 'color 150ms ease-in-out' }}>{displayValue}</span>
         </div>
-        <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: textColor }} />
+        <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: textColor, transition: 'color 150ms ease-in-out' }} />
       </button>
       
       {isOpen && (
         <div className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: '#202020' }}>
-          <button
-            onClick={() => {
-              onSelect(null);
-              setIsOpen(false);
-            }}
-            className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
-            style={{ 
-              backgroundColor: 'transparent',
-              color: selectedCategory === null ? 'var(--accent-purple)' : 'var(--text-primary)' 
-            }}
-          >
-            <span>All Categories</span>
-          </button>
-          {categories.map((category) => {
-            const Icon = getIcon(category.icon);
-            const isSelected = selectedCategory === category.name;
-            return (
-              <button
-                key={category.id}
-                onClick={() => {
-                  onSelect(category.name);
-                  setIsOpen(false);
-                }}
-                className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
-                style={{ 
-                  backgroundColor: 'transparent',
-                  color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' 
-                }}
-              >
-                <Icon width={20} height={20} strokeWidth={1.5} style={{ color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' }} />
-                <span>{category.name}</span>
-              </button>
-            );
-          })}
+          <div className="max-h-[240px] overflow-y-auto custom-scrollbar">
+            <button
+              onClick={() => {
+                onSelect(null);
+                setIsOpen(false);
+              }}
+              className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
+              style={{ 
+                backgroundColor: 'transparent',
+                color: selectedCategory === null ? 'var(--accent-purple)' : 'var(--text-primary)' 
+              }}
+            >
+              <span>All Categories</span>
+            </button>
+            {categories.map((category) => {
+              const Icon = getIcon(category.icon);
+              const isSelected = selectedCategory === category.name;
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => {
+                    onSelect(category.name);
+                    setIsOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' 
+                  }}
+                >
+                  <Icon width={20} height={20} strokeWidth={1.5} style={{ color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' }} />
+                  <span>{category.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

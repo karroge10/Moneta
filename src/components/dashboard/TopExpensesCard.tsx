@@ -1,8 +1,11 @@
+'use client';
+
 import Card from '@/components/ui/Card';
 import DonutChart from '@/components/ui/DonutChart';
 import { ExpenseCategory } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface TopExpensesCardProps {
   expenses: ExpenseCategory[];
@@ -10,6 +13,7 @@ interface TopExpensesCardProps {
 }
 
 export default function TopExpensesCard({ expenses, horizontal = false }: TopExpensesCardProps) {
+  const { currency } = useCurrency();
   if (expenses.length === 0) {
     return (
       <Card title="Top Expenses">
@@ -53,7 +57,7 @@ export default function TopExpensesCard({ expenses, horizontal = false }: TopExp
                     </div>
                     <div className="flex-1 min-w-0 overflow-hidden text-body font-medium text-wrap-safe break-words">{expense.name}</div>
                     <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
-                      ${formatNumber(expense.amount)}
+                      {currency.symbol}{formatNumber(expense.amount)}
                     </div>
                   </div>
                 );
@@ -82,7 +86,7 @@ export default function TopExpensesCard({ expenses, horizontal = false }: TopExp
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden text-body font-medium text-wrap-safe break-words">{expense.name}</div>
                 <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
-                  ${formatNumber(expense.amount)}
+                  {currency.symbol}{formatNumber(expense.amount)}
                 </div>
               </div>
             );
