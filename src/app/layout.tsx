@@ -3,6 +3,8 @@ import { Geist, Geist_Mono, Sen } from "next/font/google";
 import { ClerkProvider, SignedIn, SignedOut } from "@clerk/nextjs";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
+import { CurrencyProvider } from "@/contexts/CurrencyContext";
+import { headers } from "next/headers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,32 +54,58 @@ export const viewport: Viewport = {
   themeColor: "#202020",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = await headers();
+  const isUnauthorizedPage = headersList.get("x-is-unauthorized") === "true";
+  const isLandingPage = headersList.get("x-is-landing-page") === "true";
+  
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <body
           className={`${sen.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <SignedIn>
-            <div style={{ display: "flex", minHeight: "100vh" }}>
-              <div className="hidden md:block">
-                <Sidebar />
-              </div>
-              <div 
-                className="flex-1 transition-all duration-200 ease-in-out md:ml-[var(--sidebar-width)]"
-              >
+          {isUnauthorizedPage ? (
+            // Always render unauthorized page without sidebar (signed out context)
+            <SignedOut>
+              {children}
+            </SignedOut>
+          ) : isLandingPage ? (
+            // Always render landing page without sidebar (but allow signed in state)
+            <>
+              <SignedIn>
                 {children}
-              </div>
-            </div>
-          </SignedIn>
-          <SignedOut>
-            {children}
-          </SignedOut>
+              </SignedIn>
+              <SignedOut>
+                {children}
+              </SignedOut>
+            </>
+          ) : (
+            // Regular pages with sidebar for signed in users
+            <>
+              <SignedIn>
+                <CurrencyProvider>
+                  <div style={{ display: "flex", minHeight: "100vh" }}>
+                    <div className="hidden md:block">
+                      <Sidebar />
+                    </div>
+                    <div 
+                      className="flex-1 transition-all duration-200 ease-in-out md:ml-[var(--sidebar-width)]"
+                    >
+                      {children}
+                    </div>
+                  </div>
+                </CurrencyProvider>
+              </SignedIn>
+              <SignedOut>
+                {children}
+              </SignedOut>
+            </>
+          )}
         </body>
       </html>
     </ClerkProvider>

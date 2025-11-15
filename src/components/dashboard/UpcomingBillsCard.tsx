@@ -1,9 +1,12 @@
+'use client';
+
 import Card from '@/components/ui/Card';
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import { Bill } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { NavArrowRight } from 'iconoir-react';
 import { formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 import Link from 'next/link';
 
 interface UpcomingBillsCardProps {
@@ -11,6 +14,7 @@ interface UpcomingBillsCardProps {
 }
 
 export default function UpcomingBillsCard({ bills }: UpcomingBillsCardProps) {
+  const { currency } = useCurrency();
   if (bills.length === 0) {
     return (
       <Card 
@@ -65,7 +69,7 @@ export default function UpcomingBillsCard({ bills }: UpcomingBillsCardProps) {
                   <div className="text-helper">{bill.date}</div>
                 </div>
                 <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
-                  ${formatNumber(bill.amount)}
+                  {currency.symbol}{formatNumber(bill.amount)}
                 </div>
               </div>
             );

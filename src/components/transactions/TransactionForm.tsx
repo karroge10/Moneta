@@ -1,16 +1,19 @@
 'use client';
 
 import { useState, useEffect, useRef, CSSProperties } from 'react';
-import { NavArrowDown, NavArrowLeft, NavArrowRight } from 'iconoir-react';
+import { NavArrowDown, NavArrowLeft, NavArrowRight, Trash } from 'iconoir-react';
 import { Transaction } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { mockCategories } from '@/lib/mockData';
+import { useCurrency } from '@/hooks/useCurrency';
+import { formatNumber } from '@/lib/utils';
 
 interface TransactionFormProps {
   transaction: Transaction;
   mode: 'add' | 'edit';
   onSave: (transaction: Transaction) => void;
   onCancel: () => void;
+  onDelete?: () => void;
   onFloatingPanelToggle?: (isOpen: boolean) => void;
 }
 
@@ -27,13 +30,18 @@ export default function TransactionForm({
   mode,
   onSave,
   onCancel,
+  onDelete,
   onFloatingPanelToggle,
 }: TransactionFormProps) {
+  const { currency } = useCurrency();
   const [formData, setFormData] = useState<Transaction>(transaction);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
+  const [transactionType, setTransactionType] = useState<'expense' | 'income'>(
+    transaction.amount < 0 ? 'expense' : 'income'
+  );
   const [amountInput, setAmountInput] = useState(
-    transaction.amount ? transaction.amount.toString() : ''
+    transaction.amount ? Math.abs(transaction.amount).toString() : ''
   );
   const [dateInput, setDateInput] = useState('');
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
@@ -44,8 +52,14 @@ export default function TransactionForm({
   });
 
   useEffect(() => {
-    setFormData(transaction);
-    setAmountInput(transaction.amount ? transaction.amount.toString() : '');
+    // Use fullName if available (for transaction modal), otherwise use name
+    const transactionToUse = {
+      ...transaction,
+      name: transaction.fullName || transaction.name,
+    };
+    setFormData(transactionToUse);
+    setTransactionType(transaction.amount < 0 ? 'expense' : 'income');
+    setAmountInput(transaction.amount ? Math.abs(transaction.amount).toString() : '');
     const initial = formatDateToInput(transaction.date);
     setDateInput(initial);
     setCurrentMonth(initial ? new Date(initial) : new Date());
@@ -74,7 +88,15 @@ export default function TransactionForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    // Apply transaction type to amount (negative for expense, positive for income)
+    const finalAmount = transactionType === 'expense' ? -formData.amount : formData.amount;
+    onSave({ ...formData, amount: finalAmount });
+  };
+
+  const handleDelete = async () => {
+    if (onDelete && window.confirm('Are you sure you want to delete this transaction?')) {
+      onDelete();
+    }
   };
 
   const selectedCategory = formData.category
@@ -115,6 +137,11 @@ export default function TransactionForm({
     setIsDateOpen(false);
   };
 
+  // Check if translation is available and different from original
+  const hasTranslation = transaction.originalDescription && 
+    transaction.originalDescription !== transaction.fullName &&
+    transaction.originalDescription.trim() !== '';
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
@@ -127,6 +154,22 @@ export default function TransactionForm({
           style={{ color: 'var(--text-primary)' }}
           placeholder="Enter a name"
         />
+        {hasTranslation && (
+          <div className="mt-2 p-3 rounded-xl bg-[#202020] border border-[#3a3a3a]">
+            <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+              Original:
+            </div>
+            <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
+              {transaction.originalDescription}
+            </div>
+            <div className="text-xs mt-2 mb-1" style={{ color: 'var(--text-secondary)' }}>
+              Translation:
+            </div>
+            <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
+              {transaction.fullName || transaction.name}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -235,42 +278,106 @@ export default function TransactionForm({
       </div>
 
       <div>
-        <label className="block text-body font-medium mb-2">Amount</label>
-        <input
-          type="text"
-          inputMode="decimal"
-          value={amountInput}
-          onChange={(e) => {
-            const sanitized = e.target.value.replace(/[^0-9.,]/g, '');
-            setAmountInput(sanitized);
-            const numericValue = parseFloat(sanitized.replace(/,/g, '.'));
-            setFormData(prev => ({
-              ...prev,
-              amount: Number.isNaN(numericValue) ? 0 : numericValue,
-            }));
-          }}
-          className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C]"
-          style={{ color: 'var(--text-primary)' }}
-          placeholder="0.00"
-        />
+        <label className="block text-body font-medium mb-2">Type</label>
+        <div className="flex gap-3 mb-4">
+          <button
+            type="button"
+            onClick={() => setTransactionType('expense')}
+            className={`flex-1 px-4 py-2 rounded-xl text-body font-semibold transition-colors ${
+              transactionType === 'expense'
+                ? 'text-white'
+                : 'border border-[#3a3a3a]'
+            }`}
+            style={{
+              backgroundColor: transactionType === 'expense' ? '#D93F3F' : 'transparent',
+              color: transactionType === 'expense' ? 'var(--text-primary)' : 'var(--text-primary)',
+            }}
+          >
+            Expense
+          </button>
+          <button
+            type="button"
+            onClick={() => setTransactionType('income')}
+            className={`flex-1 px-4 py-2 rounded-xl text-body font-semibold transition-colors ${
+              transactionType === 'income'
+                ? 'text-white'
+                : 'border border-[#3a3a3a]'
+            }`}
+            style={{
+              backgroundColor: transactionType === 'income' ? '#74C648' : 'transparent',
+              color: transactionType === 'income' ? 'var(--text-primary)' : 'var(--text-primary)',
+            }}
+          >
+            Income
+          </button>
+        </div>
       </div>
 
-      <div className="flex gap-4 pt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 px-6 py-3 rounded-full text-body font-semibold transition-colors cursor-pointer hover:opacity-80"
-          style={{ backgroundColor: '#3a3a3a' }}
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="flex-1 px-6 py-3 rounded-full text-body font-semibold transition-colors cursor-pointer hover:opacity-90"
-          style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
-        >
-          {mode === 'add' ? 'Add Transaction' : 'Save Changes'}
-        </button>
+      <div>
+        <label className="block text-body font-medium mb-2">Amount</label>
+        <div className="relative">
+          <span 
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-body font-semibold"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            {currency.symbol}
+          </span>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={amountInput}
+            onChange={(e) => {
+              const sanitized = e.target.value.replace(/[^0-9.,]/g, '');
+              setAmountInput(sanitized);
+              const numericValue = parseFloat(sanitized.replace(/,/g, '.'));
+              setFormData(prev => ({
+                ...prev,
+                amount: Number.isNaN(numericValue) ? 0 : numericValue,
+              }));
+            }}
+            className="w-full pl-8 pr-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C]"
+            style={{ color: 'var(--text-primary)' }}
+            placeholder="0.00"
+          />
+        </div>
+        {amountInput && !isNaN(parseFloat(amountInput.replace(/,/g, '.'))) && (
+          <div className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            {transactionType === 'expense' ? 'Expense' : 'Income'}: {currency.symbol}{formatNumber(parseFloat(amountInput.replace(/,/g, '.')) || 0)}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-3 pt-4">
+        <div className="flex gap-4">
+          {mode === 'edit' && onDelete && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="px-6 py-3 rounded-full text-body font-semibold transition-colors cursor-pointer hover:opacity-90 flex items-center justify-center gap-2"
+              style={{ backgroundColor: '#D93F3F', color: 'var(--text-primary)' }}
+            >
+              <Trash width={18} height={18} strokeWidth={1.5} />
+              Delete
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onCancel}
+            className={`px-6 py-3 rounded-full text-body font-semibold transition-colors cursor-pointer hover:opacity-80 ${
+              mode === 'edit' && onDelete ? 'flex-1' : 'flex-1'
+            }`}
+            style={{ backgroundColor: '#3a3a3a' }}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="flex-1 px-6 py-3 rounded-full text-body font-semibold transition-colors cursor-pointer hover:opacity-90"
+            style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+          >
+            {mode === 'add' ? 'Add Transaction' : 'Save Changes'}
+          </button>
+        </div>
       </div>
     </form>
   );

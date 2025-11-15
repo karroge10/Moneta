@@ -4,12 +4,25 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { SignInButton, SignUpButton } from "@clerk/nextjs";
+import { useClerk } from "@clerk/nextjs";
 import { NavArrowLeft } from "iconoir-react";
 
 function UnauthorizedContent() {
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get("redirect") || "/dashboard";
+  const { openSignIn, openSignUp } = useClerk();
+  
+  const handleSignIn = () => {
+    openSignIn({
+      redirectUrl: redirectUrl,
+    });
+  };
+  
+  const handleSignUp = () => {
+    openSignUp({
+      redirectUrl: redirectUrl,
+    });
+  };
   
   return (
     <div className="min-h-screen bg-[#202020] flex flex-col items-center justify-center px-6 md:px-8 py-12">
@@ -47,16 +60,20 @@ function UnauthorizedContent() {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-          <SignInButton mode="modal" redirectUrl={redirectUrl}>
-            <button type="button" className="px-8 py-3.5 rounded-full bg-[#AC66DA] text-[#E7E4E4] font-semibold text-body hover:opacity-90 transition-opacity w-full sm:w-auto flex items-center justify-center gap-2">
-              Sign In
-            </button>
-          </SignInButton>
-          <SignUpButton mode="modal" redirectUrl={redirectUrl}>
-            <button type="button" className="px-8 py-3.5 rounded-full border border-[#3a3a3a] text-[#E7E4E4] font-semibold text-body hover:bg-[#282828] transition-colors w-full sm:w-auto">
-              Create Account
-            </button>
-          </SignUpButton>
+          <button 
+            type="button" 
+            onClick={handleSignIn}
+            className="px-8 py-3.5 rounded-full bg-[#AC66DA] text-[#E7E4E4] font-semibold text-body hover:opacity-90 transition-opacity w-full sm:w-auto flex items-center justify-center gap-2"
+          >
+            Sign In
+          </button>
+          <button 
+            type="button" 
+            onClick={handleSignUp}
+            className="px-8 py-3.5 rounded-full border border-[#3a3a3a] text-[#E7E4E4] font-semibold text-body hover:bg-[#282828] transition-colors w-full sm:w-auto"
+          >
+            Create Account
+          </button>
         </div>
 
         {/* Back to Home Link */}

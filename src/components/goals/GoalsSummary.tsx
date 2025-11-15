@@ -4,6 +4,7 @@ import { Goal } from '@/types/dashboard';
 import { calculateSummaryStats } from '@/lib/goalUtils';
 import { Clock, CheckCircle, Xmark, Trophy, Page, FireFlame, Timer, LotOfCash, MoreHoriz } from 'iconoir-react';
 import Card from '@/components/ui/Card';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface GoalsSummaryProps {
   goals: Goal[];
@@ -16,6 +17,7 @@ interface SummaryItem {
 }
 
 export default function GoalsSummary({ goals }: GoalsSummaryProps) {
+  const { currency } = useCurrency();
   const stats = calculateSummaryStats(goals);
 
   const summaryItems: SummaryItem[] = [
@@ -98,7 +100,7 @@ export default function GoalsSummary({ goals }: GoalsSummaryProps) {
           </div>
           <h3 className="text-card-header mb-2">Total Money Saved</h3>
           <div className="flex items-baseline gap-2">
-            <span className="text-card-currency">$</span>
+            <span className="text-card-currency">{currency.symbol}</span>
             <span className="text-card-value">
               {stats.totalMoneySaved.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>

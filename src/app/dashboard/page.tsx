@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import UpdateCard from '@/components/dashboard/UpdateCard';
@@ -13,48 +13,129 @@ import FinancialHealthCard from '@/components/dashboard/FinancialHealthCard';
 import InvestmentsCard from '@/components/dashboard/InvestmentsCard';
 import InsightCard from '@/components/dashboard/InsightCard';
 import TopExpensesCard from '@/components/dashboard/TopExpensesCard';
+import { Transaction, ExpenseCategory } from '@/types/dashboard';
 import {
-  mockIncome,
-  mockExpenses,
   mockUpdate,
   mockBills,
-  mockTransactions,
   mockGoals,
   mockFinancialHealth,
   mockInvestments,
   mockInsight,
-  mockTopExpenses,
 } from '@/lib/mockData';
-import { TimePeriod } from '@/types/dashboard';
 
 export default function DashboardPage() {
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Year');
+  const [income, setIncome] = useState({ amount: 0, trend: 0 });
+  const [expenses, setExpenses] = useState({ amount: 0, trend: 0 });
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [topExpenses, setTopExpenses] = useState<ExpenseCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  // Use mock data (can be replaced with real data from API)
-  const income = mockIncome;
-  const expenses = mockExpenses;
+  // Keep mock data for other components (not requested to be changed)
   const update = mockUpdate;
   const bills = mockBills;
-  const transactions = mockTransactions;
   const goals = mockGoals;
   const financialHealth = mockFinancialHealth;
   const investments = mockInvestments;
   const insight = mockInsight;
-  const topExpenses = mockTopExpenses;
+  
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch('/api/dashboard');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard data');
+        }
+        
+        const data = await response.json();
+        setIncome(data.income);
+        setExpenses(data.expenses);
+        setTransactions(data.transactions || []);
+        setTopExpenses(data.topExpenses || []);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+        // Set empty defaults on error
+        setIncome({ amount: 0, trend: 0 });
+        setExpenses({ amount: 0, trend: 0 });
+        setTransactions([]);
+        setTopExpenses([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#202020]">
+        {/* Desktop Header */}
+        <div className="hidden md:block">
+          <DashboardHeader />
+        </div>
+
+        {/* Mobile Navbar */}
+        <div className="md:hidden">
+          <MobileNavbar 
+            pageName="Dashboard" 
+            activeSection="dashboard"
+          />
+        </div>
+
+        {/* Loading State */}
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-body opacity-70">Loading dashboard...</div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="min-h-screen bg-[#202020]">
+        {/* Desktop Header */}
+        <div className="hidden md:block">
+          <DashboardHeader />
+        </div>
+
+        {/* Mobile Navbar */}
+        <div className="md:hidden">
+          <MobileNavbar 
+            pageName="Dashboard" 
+            activeSection="dashboard"
+          />
+        </div>
+
+        {/* Error State */}
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
+          <div className="text-body opacity-70 text-center">{error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-full bg-[#AC66DA] text-[#E7E4E4] text-body font-medium hover:opacity-90 transition-opacity"
+          >
+            Retry
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#202020]">
       {/* Desktop Header */}
       <div className="hidden md:block">
-        <DashboardHeader timePeriod={timePeriod} onTimePeriodChange={setTimePeriod} />
+        <DashboardHeader />
       </div>
 
       {/* Mobile Navbar */}
       <div className="md:hidden">
         <MobileNavbar 
           pageName="Dashboard" 
-          timePeriod={timePeriod} 
-          onTimePeriodChange={setTimePeriod}
           activeSection="dashboard"
         />
       </div>

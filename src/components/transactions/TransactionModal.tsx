@@ -10,6 +10,7 @@ interface TransactionModalProps {
   mode?: 'add' | 'edit';
   onClose: () => void;
   onSave: (transaction: Transaction) => void;
+  onDelete?: () => void;
 }
 
 export default function TransactionModal({
@@ -17,6 +18,7 @@ export default function TransactionModal({
   mode = 'edit',
   onClose,
   onSave,
+  onDelete,
 }: TransactionModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [isFloatingPanelOpen, setIsFloatingPanelOpen] = useState(false);
@@ -82,6 +84,7 @@ export default function TransactionModal({
                 mode={mode}
                 onSave={onSave}
                 onCancel={onClose}
+                onDelete={onDelete}
                 onFloatingPanelToggle={setIsFloatingPanelOpen}
               />
             </div>
