@@ -33,6 +33,7 @@ export default function TransactionsPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Pagination
@@ -196,8 +197,10 @@ export default function TransactionsPage() {
   const handleSave = async (updatedTransaction: Transaction) => {
     try {
       setError(null);
+      setIsSaving(true);
       
-      const isNew = isNaN(parseInt(updatedTransaction.id));
+      // Use modalMode to determine if this is a new transaction or edit
+      const isNew = modalMode === 'add';
       
       let response: Response;
       if (isNew) {
@@ -235,6 +238,8 @@ export default function TransactionsPage() {
     } catch (err) {
       console.error('Error saving transaction:', err);
       setError(err instanceof Error ? err.message : 'Failed to save transaction');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -327,11 +332,11 @@ export default function TransactionsPage() {
       </div>
 
       {/* Content */}
-      <div className="px-4 md:px-6 pb-6">
-        <Card title="History" onAdd={handleAddTransactionClick}>
-          <div className="flex flex-col gap-4">
+      <div className="px-4 md:px-6 pb-6 flex flex-col min-h-[calc(100vh-120px)]">
+        <Card title="History" onAdd={handleAddTransactionClick} className="flex-1 flex flex-col">
+          <div className="flex flex-col gap-4 flex-1 min-h-0">
             {/* Filters */}
-            <div className={`flex flex-col md:flex-row md:items-center gap-3 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className={`flex flex-col md:flex-row md:items-center gap-3 shrink-0 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="flex-[0.6]">
                 <SearchBar
                   placeholder="Search transactions..."
@@ -364,103 +369,107 @@ export default function TransactionsPage() {
 
             {/* Error message */}
             {error && (
-              <div className="text-sm" style={{ color: '#D93F3F' }}>
+              <div className="text-sm shrink-0" style={{ color: '#D93F3F' }}>
                 {error}
               </div>
             )}
 
             {/* Table */}
-            <div className="overflow-x-auto rounded-3xl border border-[#3a3a3a]" style={{ backgroundColor: '#202020' }}>
-              <table className="min-w-full">
-                    <thead>
-                      <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                        <th className="px-5 py-3 align-top">Date</th>
-                        <th className="px-5 py-3 align-top">Description</th>
-                        <th className="px-5 py-3 align-top">Type</th>
-                        <th className="px-5 py-3 align-top">Amount</th>
-                        <th className="px-5 py-3 align-top">Category</th>
+            <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020', minHeight: transactions.length === 0 && !loading ? 'calc(100vh - 400px)' : 'auto' }}>
+              <div className="flex-1 overflow-x-auto">
+                <table className="min-w-full" style={{ height: transactions.length === 0 && !loading ? '100%' : 'auto' }}>
+                      <thead>
+                        <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+                          <th className="px-5 py-3 align-top">Date</th>
+                          <th className="px-5 py-3 align-top">Description</th>
+                          <th className="px-5 py-3 align-top">Type</th>
+                          <th className="px-5 py-3 align-top">Amount</th>
+                          <th className="px-5 py-3 align-top">Category</th>
+                        </tr>
+                      </thead>
+                  <tbody>
+                    {loading ? (
+                      <>
+                        {/* Loading skeleton rows */}
+                        {Array.from({ length: pageSize }).map((_, index) => (
+                          <tr key={`skeleton-${index}`} className="border-t border-[#2A2A2A]">
+                            <td className="px-5 py-4">
+                              <div className="h-4 w-20 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="h-4 w-48 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="h-4 w-24 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="h-4 w-20 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="h-4 w-32 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                            </td>
+                          </tr>
+                        ))}
+                      </>
+                    ) : transactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)', height: '100%' }}>
+                          <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 500px)' }}>
+                            No transactions found. Try adjusting your filters.
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-                <tbody>
-                  {loading ? (
-                    <>
-                      {/* Loading skeleton rows */}
-                      {Array.from({ length: pageSize }).map((_, index) => (
-                        <tr key={`skeleton-${index}`} className="border-t border-[#2A2A2A]">
-                          <td className="px-5 py-4">
-                            <div className="h-4 w-20 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
-                          </td>
-                          <td className="px-5 py-4">
-                            <div className="h-4 w-48 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
-                          </td>
-                          <td className="px-5 py-4">
-                            <div className="h-4 w-24 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
-                          </td>
-                          <td className="px-5 py-4">
-                            <div className="h-4 w-20 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
-                          </td>
-                          <td className="px-5 py-4">
-                            <div className="h-4 w-32 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
-                          </td>
-                        </tr>
-                      ))}
-                    </>
-                  ) : transactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        No transactions found. Try adjusting your filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    transactions.map(transaction => {
-                      const isExpense = transaction.amount < 0;
-                      const absoluteAmount = Math.abs(transaction.amount);
-                      const truncatedName = truncateName(transaction.name, MAX_NAME_LENGTH);
-                      const categoryObj = categories.find(c => c.name === transaction.category);
-                      const CategoryIcon = categoryObj ? getIcon(categoryObj.icon) : null;
-                      
-                      return (
-                        <tr
-                          key={transaction.id}
-                          className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={() => handleTransactionClick(transaction)}
-                        >
-                          <td className="px-5 py-4 align-top">
-                            <span className="text-sm">{transaction.date}</span>
-                          </td>
-                          <td className="px-5 py-4 align-top">
-                            <div className="text-sm" title={transaction.name.length > MAX_NAME_LENGTH ? transaction.name : undefined}>
-                              {truncatedName}
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 align-top">
-                            <span className="text-sm font-semibold" style={{ color: isExpense ? '#D93F3F' : '#74C648' }}>
-                              {isExpense ? 'Expense' : 'Income'}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 align-top">
-                            <span className="text-sm font-semibold">
-                              {currency.symbol}{formatNumber(absoluteAmount)}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 align-top">
-                            <div className="flex items-center gap-2">
-                              {CategoryIcon && (
-                                <CategoryIcon width={16} height={16} strokeWidth={1.5} style={{ color: categoryObj?.color || '#E7E4E4' }} />
-                              )}
-                              <span className="text-sm">{transaction.category || 'Uncategorized'}</span>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      transactions.map(transaction => {
+                        const isExpense = transaction.amount < 0;
+                        const absoluteAmount = Math.abs(transaction.amount);
+                        const truncatedName = truncateName(transaction.name, MAX_NAME_LENGTH);
+                        const categoryObj = categories.find(c => c.name === transaction.category);
+                        const CategoryIcon = categoryObj ? getIcon(categoryObj.icon) : null;
+                        
+                        return (
+                          <tr
+                            key={transaction.id}
+                            className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => handleTransactionClick(transaction)}
+                          >
+                            <td className="px-5 py-4 align-top">
+                              <span className="text-sm">{transaction.date}</span>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <div className="text-sm" title={transaction.name.length > MAX_NAME_LENGTH ? transaction.name : undefined}>
+                                {truncatedName}
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <span className="text-sm font-semibold" style={{ color: isExpense ? '#D93F3F' : '#74C648' }}>
+                                {isExpense ? 'Expense' : 'Income'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <span className="text-sm font-semibold">
+                                {currency.symbol}{formatNumber(absoluteAmount)}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <div className="flex items-center gap-2">
+                                {CategoryIcon && (
+                                  <CategoryIcon width={16} height={16} strokeWidth={1.5} style={{ color: categoryObj?.color || '#E7E4E4' }} />
+                                )}
+                                <span className="text-sm">{transaction.category || 'Uncategorized'}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Pagination */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2 shrink-0">
               <div className="flex items-center gap-3">
                 <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   Showing {transactions.length} of {total} transactions
@@ -533,6 +542,7 @@ export default function TransactionsPage() {
           onClose={handleCloseModal}
           onSave={handleSave}
           onDelete={handleDelete}
+          isSaving={isSaving}
         />
       )}
 

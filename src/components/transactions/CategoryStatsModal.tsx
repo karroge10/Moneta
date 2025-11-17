@@ -75,9 +75,10 @@ export default function CategoryStatsModal({
     fetchAllTransactions();
   }, [timePeriod, providedTransactions]);
 
-  // Calculate category statistics
-  const categoryStats = useMemo(() => {
-    const stats = new Map<string, { category: Category; total: number; count: number }>();
+  // Calculate category statistics separated by income and expense
+  const { incomeStats, expenseStats, incomeTotal, expenseTotal } = useMemo(() => {
+    const incomeMap = new Map<string, { category: Category; total: number; count: number }>();
+    const expenseMap = new Map<string, { category: Category; total: number; count: number }>();
     
     allTransactions.forEach(transaction => {
       if (!transaction.category) return;
@@ -85,19 +86,24 @@ export default function CategoryStatsModal({
       const category = categories.find(c => c.name === transaction.category);
       if (!category) return;
       
-      const existing = stats.get(category.id) || { category, total: 0, count: 0 };
+      const isIncome = transaction.amount >= 0;
+      const map = isIncome ? incomeMap : expenseMap;
+      const existing = map.get(category.id) || { category, total: 0, count: 0 };
       existing.total += Math.abs(transaction.amount);
       existing.count += 1;
-      stats.set(category.id, existing);
+      map.set(category.id, existing);
     });
     
-    return Array.from(stats.values())
+    const incomeStats = Array.from(incomeMap.values())
       .sort((a, b) => b.total - a.total);
+    const expenseStats = Array.from(expenseMap.values())
+      .sort((a, b) => b.total - a.total);
+    
+    const incomeTotal = incomeStats.reduce((sum, stat) => sum + stat.total, 0);
+    const expenseTotal = expenseStats.reduce((sum, stat) => sum + stat.total, 0);
+    
+    return { incomeStats, expenseStats, incomeTotal, expenseTotal };
   }, [categories, allTransactions]);
-
-  const totalAmount = useMemo(() => {
-    return categoryStats.reduce((sum, stat) => sum + stat.total, 0);
-  }, [categoryStats]);
 
   if (!categories.length) {
     return null;
@@ -140,52 +146,109 @@ export default function CategoryStatsModal({
               <div className="text-center py-8">
                 <div className="text-body opacity-70">Loading category statistics...</div>
               </div>
-            ) : categoryStats.length === 0 ? (
+            ) : incomeStats.length === 0 && expenseStats.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-body opacity-70">No category data available</div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {categoryStats.map(stat => {
-                  const Icon = getIcon(stat.category.icon);
-                  const percentage = totalAmount > 0 ? (stat.total / totalAmount) * 100 : 0;
-                  
-                  return (
-                    <div
-                      key={stat.category.id}
-                      className="rounded-2xl p-4 border border-[#3a3a3a]"
-                      style={{ backgroundColor: '#181818' }}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
+              <div className="space-y-8">
+                {/* Incomes Section */}
+                {incomeStats.length > 0 && (
+                  <div>
+                    <h3 className="text-card-header mb-4" style={{ color: '#74C648' }}>Incomes</h3>
+                    <div className="space-y-4">
+                      {incomeStats.map(stat => {
+                        const Icon = getIcon(stat.category.icon);
+                        const percentage = incomeTotal > 0 ? (stat.total / incomeTotal) * 100 : 0;
+                        
+                        return (
                           <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                            style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
+                            key={`income-${stat.category.id}`}
+                            className="rounded-2xl p-4 border border-[#3a3a3a]"
+                            style={{ backgroundColor: '#181818' }}
                           >
-                            <Icon width={20} height={20} strokeWidth={1.5} style={{ color: stat.category.color || '#E7E4E4' }} />
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                                  style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
+                                >
+                                  <Icon width={20} height={20} strokeWidth={1.5} style={{ color: stat.category.color || '#E7E4E4' }} />
+                                </div>
+                                <div>
+                                  <div className="text-body font-semibold">{stat.category.name}</div>
+                                  <div className="text-helper text-xs">{stat.count} transactions</div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-body font-semibold" style={{ color: '#74C648' }}>{currency.symbol}{formatNumber(stat.total)}</div>
+                                <div className="text-helper text-xs">{percentage.toFixed(1)}%</div>
+                              </div>
+                            </div>
+                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#2A2A2A' }}>
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{
+                                  backgroundColor: stat.category.color || '#74C648',
+                                  width: `${percentage}%`,
+                                }}
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <div className="text-body font-semibold">{stat.category.name}</div>
-                            <div className="text-helper text-xs">{stat.count} transactions</div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-body font-semibold">{currency.symbol}{formatNumber(stat.total)}</div>
-                          <div className="text-helper text-xs">{percentage.toFixed(1)}%</div>
-                        </div>
-                      </div>
-                      <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#2A2A2A' }}>
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{
-                            backgroundColor: stat.category.color || '#AC66DA',
-                            width: `${percentage}%`,
-                          }}
-                        />
-                      </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  </div>
+                )}
+
+                {/* Expenses Section */}
+                {expenseStats.length > 0 && (
+                  <div>
+                    <h3 className="text-card-header mb-4" style={{ color: '#D93F3F' }}>Expenses</h3>
+                    <div className="space-y-4">
+                      {expenseStats.map(stat => {
+                        const Icon = getIcon(stat.category.icon);
+                        const percentage = expenseTotal > 0 ? (stat.total / expenseTotal) * 100 : 0;
+                        
+                        return (
+                          <div
+                            key={`expense-${stat.category.id}`}
+                            className="rounded-2xl p-4 border border-[#3a3a3a]"
+                            style={{ backgroundColor: '#181818' }}
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                                  style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
+                                >
+                                  <Icon width={20} height={20} strokeWidth={1.5} style={{ color: stat.category.color || '#E7E4E4' }} />
+                                </div>
+                                <div>
+                                  <div className="text-body font-semibold">{stat.category.name}</div>
+                                  <div className="text-helper text-xs">{stat.count} transactions</div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-body font-semibold" style={{ color: '#D93F3F' }}>{currency.symbol}{formatNumber(stat.total)}</div>
+                                <div className="text-helper text-xs">{percentage.toFixed(1)}%</div>
+                              </div>
+                            </div>
+                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#2A2A2A' }}>
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{
+                                  backgroundColor: stat.category.color || '#D93F3F',
+                                  width: `${percentage}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
