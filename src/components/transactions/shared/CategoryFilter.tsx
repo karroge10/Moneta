@@ -54,13 +54,13 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
       
       {isOpen && (
         <div className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: '#202020' }}>
-          <div className="max-h-[240px] overflow-y-auto custom-scrollbar">
+          <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
             <button
               onClick={() => {
                 onSelect(null);
                 setIsOpen(false);
               }}
-              className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
+              className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer group"
               style={{ 
                 backgroundColor: 'transparent',
                 color: selectedCategory === null ? 'var(--accent-purple)' : 'var(--text-primary)' 
@@ -78,13 +78,21 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
                     onSelect(category.name);
                     setIsOpen(false);
                   }}
-                  className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
+                  className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer group"
                   style={{ 
                     backgroundColor: 'transparent',
                     color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' 
                   }}
                 >
-                  <Icon width={20} height={20} strokeWidth={1.5} style={{ color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' }} />
+                  <Icon 
+                    width={20} 
+                    height={20} 
+                    strokeWidth={1.5} 
+                    className="transition-colors duration-150"
+                    style={{ 
+                      color: 'currentColor'
+                    }}
+                  />
                   <span>{category.name}</span>
                 </button>
               );
