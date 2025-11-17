@@ -594,7 +594,11 @@ def predict_category(description_en: str, model) -> Tuple[Optional[str], float]:
     if ('atm' in lowered or 
         'cash withdrawal' in lowered or
         'money withdrawal' in lowered or
-        ('withdrawal' in lowered and ('account' in lowered or 'from account' in lowered))):
+        'withdrawal of money' in lowered or
+        ('withdrawal' in lowered and ('account' in lowered or 'from account' in lowered)) or
+        ('withdraw' in lowered and 'account' in lowered) or
+        ('take out' in lowered and ('account' in lowered or 'money' in lowered)) or
+        ('takeout' in lowered and ('account' in lowered or 'money' in lowered))):
         return None, 0.35  # Return uncategorized for withdrawals
     
     if model is not None:
@@ -612,6 +616,20 @@ def predict_category(description_en: str, model) -> Tuple[Optional[str], float]:
         except Exception:  # pragma: no cover
             traceback.print_exc()
 
+    # Double-check for withdrawal patterns after normalization (in case translation uses different wording)
+    # Check again after normalization to catch variations
+    normalized_for_withdrawal_check = re.sub(r'[^\w\s]', ' ', lowered)
+    normalized_for_withdrawal_check = ' '.join(normalized_for_withdrawal_check.split())
+    if ('atm' in normalized_for_withdrawal_check or 
+        'cash withdrawal' in normalized_for_withdrawal_check or
+        'money withdrawal' in normalized_for_withdrawal_check or
+        'withdrawal of money' in normalized_for_withdrawal_check or
+        ('withdrawal' in normalized_for_withdrawal_check and ('account' in normalized_for_withdrawal_check or 'from account' in normalized_for_withdrawal_check)) or
+        ('withdraw' in normalized_for_withdrawal_check and 'account' in normalized_for_withdrawal_check) or
+        ('take out' in normalized_for_withdrawal_check and ('account' in normalized_for_withdrawal_check or 'money' in normalized_for_withdrawal_check)) or
+        ('takeout' in normalized_for_withdrawal_check and ('account' in normalized_for_withdrawal_check or 'money' in normalized_for_withdrawal_check))):
+        return None, 0.35  # Return uncategorized for withdrawals
+    
     # Improved keyword matching with word boundaries and better scoring
     # Normalize text: remove punctuation, extra spaces
     normalized = re.sub(r'[^\w\s]', ' ', lowered)

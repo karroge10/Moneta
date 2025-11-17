@@ -113,6 +113,18 @@ export async function POST(request: NextRequest) {
         let matchedMerchant: string | null = null;
         let matchMethod: string | null = null;
         
+        // Check for special transaction types FIRST (before user selection or Python suggestions)
+        // This ensures withdrawals are excluded even if Python categorized them incorrectly
+        // Always use translated description for checks (categories are in English)
+        const descriptionForMatching = item.translatedDescription || item.description;
+        const specialType = detectSpecialTransactionType(descriptionForMatching);
+        
+        // If transaction should be completely excluded (roundup, currency exchange, withdrawals), skip it entirely
+        if (specialType === 'EXCLUDE') {
+          console.log(`[merchant-match] ⊘ Excluding transaction: "${item.description.substring(0, 50)}..." (${specialType})`);
+          return null; // Return null to filter out this transaction
+        }
+        
         // Priority 0: If user provided a category in the UI, use it directly (skip all matching)
         // If user explicitly set category to null/empty, also skip matching (save as uncategorized)
         if (item.category !== undefined && item.category !== null && item.category !== '') {
@@ -136,21 +148,9 @@ export async function POST(request: NextRequest) {
           console.log(`[merchant-match] ⊘ User cleared category, saving as uncategorized`);
         }
         
-        // Check for special transaction types that should be completely excluded (roundup, currency exchange)
-        // Do this BEFORE checking user-selected category, so we can filter them out entirely
-        // Always use translated description for checks (categories are in English)
-        const descriptionForMatching = item.translatedDescription || item.description;
-        const specialType = detectSpecialTransactionType(descriptionForMatching);
-        
         // Extract and normalize merchant name (needed for matching and logging)
         const merchantName = extractMerchantFromDescription(descriptionForMatching);
         const normalizedMerchant = normalizeMerchantName(merchantName);
-        
-        // If transaction should be completely excluded (roundup, currency exchange), skip it entirely
-        if (specialType === 'EXCLUDE') {
-          console.log(`[merchant-match] ⊘ Excluding transaction: "${item.description.substring(0, 50)}..." (${specialType})`);
-          return null; // Return null to filter out this transaction
-        }
         
         // Track why this transaction didn't match (for unmatched transactions)
         const unmatchedReasons: string[] = [];
