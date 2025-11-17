@@ -178,6 +178,48 @@ async function analyzeCategorization(transactions: UploadedTransaction[]): Promi
       // Use translated description for all matching operations (fallback to original if not available)
       const descriptionForMatching = item.translatedDescription || item.description;
 
+      // Check for utility payment patterns that should be categorized as Utilities
+      // These patterns indicate utility payments and should not be matched to Groceries
+      const descLower = descriptionForMatching.toLowerCase();
+      if (descLower.includes('cleaning') && (descLower.includes('tbilservi') || descLower.includes('tbilisi servis') || descLower.includes('service group'))) {
+        // This is a cleaning/utility payment - should be Utilities category, not Groceries
+        const utilitiesCategoryId = categoryMap.get('utilities');
+        if (utilitiesCategoryId) {
+          const utilitiesCategoryName = categoryByIdMap.get(utilitiesCategoryId);
+          if (utilitiesCategoryName) {
+            return {
+              ...item,
+              category: utilitiesCategoryName,
+            };
+          }
+        }
+        // If Utilities category not found, leave uncategorized rather than matching to Groceries
+        return {
+          ...item,
+          category: null,
+        };
+      }
+      
+      // Check for "Various - All Service Group" or similar utility service patterns
+      if ((descLower.includes('various') || descLower.includes('სხვადასხვა')) && descLower.includes('service group')) {
+        // This is a utility service payment - should be uncategorized or Utilities, not Groceries
+        const utilitiesCategoryId = categoryMap.get('utilities');
+        if (utilitiesCategoryId) {
+          const utilitiesCategoryName = categoryByIdMap.get(utilitiesCategoryId);
+          if (utilitiesCategoryName) {
+            return {
+              ...item,
+              category: utilitiesCategoryName,
+            };
+          }
+        }
+        // If Utilities category not found, leave uncategorized rather than matching to Groceries
+        return {
+          ...item,
+          category: null,
+        };
+      }
+
       // Check for special transaction types first (roundup, currency exchange, etc.)
       const specialType = detectSpecialTransactionType(descriptionForMatching);
       if (specialType === 'EXCLUDE') {
@@ -384,18 +426,18 @@ async function analyzeCategorization(transactions: UploadedTransaction[]): Promi
       console.log(`█  [UNCATEGORIZED TRANSACTIONS - ${unmatchedTransactions.length} total]`);
       console.log('█'.repeat(80));
       console.log('█'.repeat(80));
-      unmatchedTransactions.forEach((tx, index) => {
+      unmatchedTransactions.forEach((tx: { original: string; extracted: string; normalized: string; reasons: string[]; checkedPatterns: Array<{ pattern: string; similarity: number; type: string }> }, index: number) => {
         console.log(`\n█  ┌─ Transaction #${index + 1} ────────────────────────────────────────────────────────────`);
         console.log(`█  │ Original: "${tx.original}"`);
         console.log(`█  │ Extracted: "${tx.extracted}"`);
         console.log(`█  │ Normalized: "${tx.normalized}"`);
         console.log(`█  │ Reasons why it didn't match:`);
-        tx.reasons.forEach(reason => {
+        tx.reasons.forEach((reason: string) => {
           console.log(`█  │   • ${reason}`);
         });
         if (tx.checkedPatterns.length > 0) {
           console.log(`█  │ Top checked patterns (similarity > 0):`);
-          tx.checkedPatterns.slice(0, 5).forEach(pattern => {
+          tx.checkedPatterns.slice(0, 5).forEach((pattern: { pattern: string; similarity: number; type: string }) => {
             console.log(`█  │   • "${pattern.pattern}" (${pattern.type}): ${pattern.similarity.toFixed(3)}`);
           });
         }

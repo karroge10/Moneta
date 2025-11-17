@@ -276,7 +276,7 @@ async function importTransactions(userId: number, currencyId: number) {
   // Get all categories
   const allCategories = await prisma.category.findMany();
   const categoryMap = new Map<string, number>();
-  allCategories.forEach((cat) => {
+  allCategories.forEach((cat: { id: number; name: string }) => {
     categoryMap.set(cat.name, cat.id);
   });
 

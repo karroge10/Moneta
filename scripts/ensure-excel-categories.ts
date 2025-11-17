@@ -251,12 +251,12 @@ async function ensureCategories() {
 
   if (results.created.length > 0) {
     console.log('\n✨ Newly created categories:');
-    results.created.forEach((name) => console.log(`  - ${name}`));
+    results.created.forEach((name: string) => console.log(`  - ${name}`));
   }
 
   if (results.updated.length > 0) {
     console.log('\n✏️  Updated categories:');
-    results.updated.forEach((name) => console.log(`  - ${name}`));
+    results.updated.forEach((name: string) => console.log(`  - ${name}`));
   }
 
   console.log('\n✅ All Excel categories are now in the database!\n');
@@ -264,7 +264,7 @@ async function ensureCategories() {
   // Print mapping table for reference
   console.log('📋 Excel → Database Category Mapping:');
   console.log('─'.repeat(60));
-  EXCEL_CATEGORY_MAPPINGS.forEach((mapping) => {
+  EXCEL_CATEGORY_MAPPINGS.forEach((mapping: CategoryMapping) => {
     console.log(`  ${mapping.excelName.padEnd(30)} → ${mapping.englishName}`);
   });
   console.log();
