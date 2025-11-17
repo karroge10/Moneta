@@ -10,18 +10,31 @@ from pathlib import Path
 import sys
 
 # Add parent directory to path to import process_pdf
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# The process_pdf module is in the python/ directory
+project_root = Path(__file__).resolve().parent.parent
+python_dir = project_root / 'python'
 
-from process_pdf import extract_transactions_with_pdfplumber, StatementMetadata
-from process_pdf import translate_to_english, predict_category, load_classifier
+# Add project root to path so we can import python.process_pdf
+sys.path.insert(0, str(project_root))
+
+# Import from process_pdf module in python/ directory
+# Try both import styles for compatibility
+try:
+    from python.process_pdf import extract_transactions_with_pdfplumber, StatementMetadata
+    from python.process_pdf import translate_to_english, predict_category, load_classifier
+except ImportError:
+    # Fallback: add python directory directly to path
+    sys.path.insert(0, str(python_dir))
+    from process_pdf import extract_transactions_with_pdfplumber, StatementMetadata
+    from process_pdf import translate_to_english, predict_category, load_classifier
 
 app = Flask(__name__)
 CORS(app)  # Allow requests from Vercel frontend
 
 # Load classifier model once at startup
-model_path = Path(__file__).parent.parent / 'python' / 'models' / 'categories.ftz'
-if os.getenv('CATEGORIES_MODEL_PATH'):
-    model_path = Path(os.getenv('CATEGORIES_MODEL_PATH'))
+# Default to python/models/categories.ftz relative to project root
+default_model_path = project_root / 'python' / 'models' / 'categories.ftz'
+model_path = Path(os.getenv('CATEGORIES_MODEL_PATH', str(default_model_path)))
 classifier_model = load_classifier(model_path)
 
 @app.route('/health', methods=['GET'])
