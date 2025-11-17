@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
       },
     });
     
-    const filteredAll = allTransactions.filter(t => {
+    const filteredAll = allTransactions.filter((t: typeof allTransactions[0]) => {
       const specialType = detectSpecialTransactionType(t.description);
       if (specialType === 'EXCLUDE') return false;
       if (t.category?.name && t.category.name.toLowerCase() === 'currency exchange') return false;
@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
     });
     
     // Filter out excluded transactions (currency exchange, roundup, etc.)
-    const filteredTransactions = dbTransactions.filter(t => {
+    const filteredTransactions = dbTransactions.filter((t: typeof dbTransactions[0]) => {
       // Check if transaction should be excluded based on description
       const specialType = detectSpecialTransactionType(t.description);
       if (specialType === 'EXCLUDE') {
@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
     }).slice(0, pageSize); // Take only the requested page size
     
     // Transform to frontend format
-    const transactions: TransactionType[] = filteredTransactions.map(t => {
+    const transactions: TransactionType[] = filteredTransactions.map((t: typeof filteredTransactions[0]) => {
       // For transaction history page, show full name (translated if needed, but not cleaned)
       const fullName = formatTransactionName(t.description, userLanguageAlias, true);
       
