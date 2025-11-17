@@ -1,0 +1,103 @@
+/**
+ * Alternative implementation that calls external Python service
+ * Rename this to route.ts to use external service instead of local Python
+ * 
+ * Set PYTHON_SERVICE_URL environment variable in Vercel:
+ * - Development: http://localhost:5000
+ * - Production: https://your-pdf-processor.onrender.com
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { TransactionUploadResponse, UploadedTransaction } from '@/types/dashboard';
+import { requireCurrentUser } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, findMerchantByBaseWords, detectSpecialTransactionType } from '@/lib/merchant';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+async function callPythonService(file: File): Promise<TransactionUploadResponse> {
+  const serviceUrl = process.env.PYTHON_SERVICE_URL;
+  
+  if (!serviceUrl) {
+    throw new Error('PYTHON_SERVICE_URL environment variable is not set');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${serviceUrl}/process-pdf`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Service returned status ${response.status}`);
+  }
+
+  return response.json() as Promise<TransactionUploadResponse>;
+}
+
+async function analyzeCategorization(transactions: UploadedTransaction[]): Promise<UploadedTransaction[]> {
+  // ... (keep the same analyzeCategorization function from the original route.ts)
+  // This function stays the same - it uses your database
+  // Copy the entire function from the original file
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const formData = await request.formData();
+    const file = formData.get('file');
+
+    if (!file || !(file instanceof File)) {
+      return NextResponse.json({ error: 'A PDF file is required.' }, { status: 400 });
+    }
+
+    try {
+      // Call external Python service
+      const result = await callPythonService(file as File);
+      
+      // Check if we got sample data (indicates PDF extraction failed)
+      if (result.transactions && result.transactions.length === 3) {
+        const sampleDescriptions = ['Sample Subscription', 'Coffee Shop', 'Salary'];
+        const isSampleData = result.transactions.every(tx => 
+          sampleDescriptions.some(sample => tx.description.includes(sample))
+        );
+        
+        if (isSampleData) {
+          console.error('[upload-bank-statement] PDF extraction failed - received sample data');
+          return NextResponse.json(
+            { 
+              error: 'Failed to extract transactions from PDF. The PDF structure may not match the expected format.',
+              transactions: [],
+              metadata: result.metadata || {},
+            },
+            { status: 400 }
+          );
+        }
+      }
+      
+      // Analyze categorization after parsing and apply matched categories
+      if (result.transactions && result.transactions.length > 0) {
+        const updatedTransactions = await analyzeCategorization(result.transactions);
+        result.transactions = updatedTransactions;
+      }
+      
+      return NextResponse.json(result);
+    } catch (error) {
+      console.error('[upload-bank-statement] error', error);
+      return NextResponse.json(
+        { error: 'Failed to process bank statement. Please try again.' },
+        { status: 500 },
+      );
+    }
+  } catch (error) {
+    console.error('[upload-bank-statement] error', error);
+    return NextResponse.json(
+      { error: 'Failed to process bank statement. Please try again.' },
+      { status: 500 },
+    );
+  }
+}
+

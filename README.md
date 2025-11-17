@@ -66,22 +66,44 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 - Temporary PDFs are saved under `tmp/uploads` and removed once processing finishes
 - Override the temp directory with `TMPDIR`
 
-## Deployment Prep (Render + Vercel)
+## Deployment Prep
 
-- **Backend (Render)**
-  - Deploy the Next.js server with Python available
-  - Install requirements: `pip install -r python/requirements.txt`
-  - Environment variables: `PYTHON_PATH`, `CATEGORIES_MODEL_PATH`, `TMPDIR`, and any future Supabase credentials
-  - Ensure the service build step runs both `npm install` and `pip install`
+### ⚠️ Important: Python Dependencies
 
-- **Frontend (Vercel)**
-  - Configure `NEXT_PUBLIC_API_BASE_URL` to point at the Render deployment (fallback to `http://localhost:3000` locally)
+Python dependencies (`pdfplumber`, `scikit-learn`, `deep-translator`) are required for PDF processing. They are automatically installed when you run `npm install` (via the `postinstall` script), but you can also install them manually:
 
-- **Supabase**
-  - When ready, update `/api/transactions/import` to persist to Supabase and store credentials in environment variables
+```bash
+pip install -r python/requirements.txt
+```
 
-- **Static Assets**
-  - Replace `python/models/categories.ftz` with the trained model or download from object storage at runtime
+### Vercel Deployment
+
+**⚠️ Vercel Limitation**: Vercel's serverless functions don't support Python by default. You have two options:
+
+#### Option 1: Use Vercel with External Python Service (Recommended)
+- Deploy your Next.js app to Vercel (frontend + API routes that don't need Python)
+- Deploy a separate Python service (e.g., on Render, Railway, or Fly.io) for PDF processing
+- Update `/api/transactions/upload-bank-statement` to call the external Python service via HTTP
+- Set `PYTHON_SERVICE_URL` environment variable in Vercel
+
+#### Option 2: Use Vercel with Docker (Advanced)
+- Use Vercel's Docker support to run a container with both Node.js and Python
+- Requires custom Dockerfile and more complex setup
+
+#### Option 3: Deploy Everything to Render/Railway
+- Deploy the full Next.js app to Render or Railway (both support Python)
+- Install Python dependencies in the build step: `pip install -r python/requirements.txt`
+- Set environment variables: `PYTHON_PATH`, `CATEGORIES_MODEL_PATH`, `TMPDIR`
+
+### Environment Variables
+
+For any deployment, set these environment variables:
+- `PYTHON_PATH` - Path to Python executable (default: `python3` on Linux/Mac, `python` on Windows)
+- `CATEGORIES_MODEL_PATH` - Path to the ML model file (optional, defaults to `python/models/categories.ftz`)
+- `TMPDIR` - Temporary directory for uploaded PDFs (optional)
+
+### Static Assets
+- Replace `python/models/categories.ftz` with the trained model or download from object storage at runtime
 
 ## Learn More
 

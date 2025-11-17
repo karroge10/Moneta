@@ -156,6 +156,7 @@ CATEGORY_KEYWORDS: Dict[str, Dict[str, float]] = {
         "entertainment": 1.0,
         "movie": 0.9,
         "cinema": 1.0,
+        "cavea": 1.0,
         "theater": 0.9,
         "netflix": 1.0,
         "spotify": 1.0,
@@ -336,87 +337,250 @@ def parse_amount(candidates: Iterable[str]) -> Optional[float]:
 
 def extract_transactions_with_pdfplumber(pdf_path: Path) -> Tuple[List[RawTransaction], StatementMetadata]:
     if pdfplumber is None:
+        logger.warning("pdfplumber is not available")
         return [], StatementMetadata()
 
+    logger.info("Starting PDF extraction with pdfplumber for: %s", pdf_path.name)
     metadata = StatementMetadata(source=pdf_path.name)
     transactions: List[RawTransaction] = []
 
-    table_settings = {
-        "vertical_strategy": "lines",
-        "horizontal_strategy": "lines",
-        "snap_tolerance": 3,
-        "join_tolerance": 3,
-        "edge_min_length": 3,
-        "text_tolerance": 3,
-        "text_strategy": "lines",
-        "intersection_tolerance": 3,
-        "intersection_x_tolerance": 3,
-        "intersection_y_tolerance": 3,
-    }
+    # Try multiple table extraction strategies
+    table_strategies = [
+        {
+            "name": "lines (strict)",
+            "settings": {
+                "vertical_strategy": "lines",
+                "horizontal_strategy": "lines",
+                "snap_tolerance": 3,
+                "join_tolerance": 3,
+                "edge_min_length": 3,
+                "text_tolerance": 3,
+                "text_strategy": "lines",
+                "intersection_tolerance": 3,
+                "intersection_x_tolerance": 3,
+                "intersection_y_tolerance": 3,
+            }
+        },
+        {
+            "name": "lines (relaxed)",
+            "settings": {
+                "vertical_strategy": "lines",
+                "horizontal_strategy": "lines",
+                "snap_tolerance": 5,
+                "join_tolerance": 5,
+                "edge_min_length": 1,
+                "text_tolerance": 5,
+                "text_strategy": "lines",
+                "intersection_tolerance": 5,
+                "intersection_x_tolerance": 5,
+                "intersection_y_tolerance": 5,
+            }
+        },
+        {
+            "name": "text (explicit)",
+            "settings": {
+                "vertical_strategy": "text",
+                "horizontal_strategy": "text",
+                "snap_tolerance": 3,
+                "join_tolerance": 3,
+            }
+        },
+        {
+            "name": "lines_strict + explicit",
+            "settings": {
+                "vertical_strategy": "lines_strict",
+                "horizontal_strategy": "lines_strict",
+                "snap_tolerance": 3,
+                "join_tolerance": 3,
+            }
+        },
+    ]
 
     try:  # pragma: no cover - requires runtime dependency
         with pdfplumber.open(pdf_path) as pdf:
             logger.info("Opened %s with %d pages", pdf_path.name, len(pdf.pages))
+            
+            # First, get some diagnostic info about the PDF
+            if len(pdf.pages) > 0:
+                first_page = pdf.pages[0]
+                text_sample = first_page.extract_text()
+                if text_sample:
+                    # Show first 200 chars to understand PDF structure
+                    preview = text_sample[:200].replace('\n', ' ').strip()
+                    logger.info("Page 1 text preview: %s...", preview)
+                else:
+                    logger.warning("Page 1: No text extracted - PDF might be image-based or encrypted")
+            
             for page_index, page in enumerate(pdf.pages, start=1):
-                tables = page.extract_tables(table_settings=table_settings)
-                logger.info("Page %d: extracted %d tables", page_index, len(tables))
-                for table_index, table in enumerate(tables, start=1):
-                    if not table or len(table) <= 1:
+                tables_found = False
+                
+                # Try each extraction strategy
+                for strategy in table_strategies:
+                    try:
+                        tables = page.extract_tables(table_settings=strategy["settings"])
+                        logger.info("Page %d: strategy '%s' extracted %d tables", page_index, strategy["name"], len(tables))
+                        
+                        if tables and len(tables) > 0:
+                            tables_found = True
+                            # Process tables with this strategy
+                            for table_index, table in enumerate(tables, start=1):
+                                if not table or len(table) <= 1:
+                                    continue
+                                
+                                # Log table structure for debugging
+                                logger.info("Page %d table %d (strategy: %s): %d rows, %d columns", 
+                                          page_index, table_index, strategy["name"], len(table), len(table[0]) if table else 0)
+                                
+                                # Show header row if available
+                                if table and len(table) > 0:
+                                    header_preview = " | ".join(str(cell)[:20] if cell else "" for cell in table[0][:5])
+                                    logger.info("Page %d table %d header: %s", page_index, table_index, header_preview)
+                                
+                                # Process this table
+                                processed = _process_table(table, page_index, table_index, transactions)
+                                if processed > 0:
+                                    logger.info("Page %d table %d: successfully processed %d transaction rows", 
+                                              page_index, table_index, processed)
+                            
+                            # If we found and processed tables, no need to try other strategies
+                            if tables_found and len(transactions) > 0:
+                                break
+                    except Exception as e:
+                        logger.debug("Page %d: strategy '%s' failed: %s", page_index, strategy["name"], str(e))
                         continue
-
-                    body = table[1:]
-                    logger.debug(
-                        "Page %d table %d: processing %d rows", page_index, table_index, len(body)
-                    )
-
-                    for row in body:
-                        cells = [cell.strip() if cell else "" for cell in row]
-                        if not any(cells):
-                            continue
-
-                        date_value = parse_date(cells[0]) if len(cells) > 0 else None
-                        if not date_value:
-                            continue
-
-                        operation_text = cells[1].replace("\n", " ") if len(cells) > 1 else ""
-                        debit_text = cells[2].replace("\n", " ") if len(cells) > 2 else ""
-                        credit_text = cells[3].replace("\n", " ") if len(cells) > 3 else ""
-                        description_text = cells[5].replace("\n", " ") if len(cells) > 5 else ""
-                        beneficiary_text = cells[6].replace("\n", " ") if len(cells) > 6 else ""
-
-                        debit_amount = parse_amount([debit_text]) if debit_text else None
-                        credit_amount = parse_amount([credit_text]) if credit_text else None
-                        amount_value: Optional[float] = None
-
-                        if debit_amount is not None and debit_amount != 0:
-                            amount_value = -abs(debit_amount)
-                        elif credit_amount is not None and credit_amount != 0:
-                            amount_value = abs(credit_amount)
-                        else:
-                            amount_value = parse_amount([description_text])
-
-                        if amount_value is None:
-                            continue
-
-                        description_segments = [
-                            operation_text,
-                            description_text,
-                            beneficiary_text,
-                        ]
-                        description = " ".join(segment for segment in description_segments if segment).strip() or "Imported transaction"
-
-                        transactions.append(
-                            RawTransaction(
-                                date=date_value,
-                                description=description,
-                                amount=amount_value,
-                            )
-                        )
-    except Exception:  # pragma: no cover
+                
+                if not tables_found:
+                    logger.warning("Page %d: No tables found with any extraction strategy", page_index)
+                    # Try to extract text and see if we can find transaction-like patterns
+                    page_text = page.extract_text()
+                    if page_text:
+                        # Look for date patterns in the text
+                        date_patterns = re.findall(r'\d{1,2}[./-]\d{1,2}[./-]\d{2,4}', page_text)
+                        if date_patterns:
+                            logger.info("Page %d: Found %d date-like patterns in text (but no tables extracted)", 
+                                      page_index, len(date_patterns))
+                            logger.debug("Sample dates found: %s", ", ".join(date_patterns[:5]))
+                    
+    except Exception as e:  # pragma: no cover
+        logger.error("Exception during PDF extraction: %s", str(e))
         traceback.print_exc()
         return [], metadata
 
+    logger.info("PDF extraction completed: found %d transactions across %d pages", len(transactions), len(pdf.pages) if 'pdf' in locals() else 0)
     return transactions, metadata
+
+
+def _process_table(table: List[List], page_index: int, table_index: int, transactions: List[RawTransaction]) -> int:
+    """Process a single table and extract transactions. Returns number of transactions extracted."""
+    if not table or len(table) <= 1:
+        return 0
+    
+    body = table[1:]
+    rows_processed = 0
+
+    # Try to detect column structure from header row if available
+    header = table[0] if table and len(table) > 0 else None
+    date_col_idx = None
+    debit_col_idx = None
+    credit_col_idx = None
+    desc_col_idx = None
+    
+    # Try to find column indices from header
+    if header:
+        header_lower = [str(cell).lower().strip() if cell else "" for cell in header]
+        for idx, header_cell in enumerate(header_lower):
+            if any(keyword in header_cell for keyword in ['date', 'дата', 'თარიღი']):
+                date_col_idx = idx
+            if any(keyword in header_cell for keyword in ['debit', 'дебет', 'დებეტი', 'out', 'გასავალი']):
+                debit_col_idx = idx
+            if any(keyword in header_cell for keyword in ['credit', 'кредит', 'კრედიტი', 'in', 'შემოსავალი']):
+                credit_col_idx = idx
+            if any(keyword in header_cell for keyword in ['description', 'описание', 'აღწერა', 'operation', 'операция', 'ოპერაცია', 'details', 'დეტალები']):
+                desc_col_idx = idx
+    
+    # Fallback to default positions if not found in header
+    if date_col_idx is None:
+        date_col_idx = 0
+    if debit_col_idx is None:
+        debit_col_idx = 2
+    if credit_col_idx is None:
+        credit_col_idx = 3
+    if desc_col_idx is None:
+        desc_col_idx = 5
+    
+    for row in body:
+        cells = [cell.strip() if cell else "" for cell in row]
+        if not any(cells):
+            continue
+
+        # Try to find date in any column if first column doesn't have it
+        date_value = None
+        if date_col_idx < len(cells):
+            date_value = parse_date(cells[date_col_idx])
+        
+        # If date not found in expected column, try all columns
+        if not date_value:
+            for cell in cells:
+                date_value = parse_date(cell)
+                if date_value:
+                    break
+        
+        if not date_value:
+            continue
+
+        # Extract amounts
+        debit_amount = None
+        credit_amount = None
+        if debit_col_idx < len(cells):
+            debit_text = cells[debit_col_idx].replace("\n", " ")
+            debit_amount = parse_amount([debit_text]) if debit_text else None
+        if credit_col_idx < len(cells):
+            credit_text = cells[credit_col_idx].replace("\n", " ")
+            credit_amount = parse_amount([credit_text]) if credit_text else None
+        
+        # If amounts not found in expected columns, try to find in any column
+        if debit_amount is None and credit_amount is None:
+            for cell in cells:
+                if cell:
+                    amount = parse_amount([cell])
+                    if amount and amount != 0:
+                        # Assume negative if it looks like a debit/expense
+                        debit_amount = abs(amount)
+                        break
+        
+        amount_value: Optional[float] = None
+        if debit_amount is not None and debit_amount != 0:
+            amount_value = -abs(debit_amount)
+        elif credit_amount is not None and credit_amount != 0:
+            amount_value = abs(credit_amount)
+        
+        if amount_value is None:
+            continue
+
+        # Extract description
+        description_segments = []
+        if desc_col_idx < len(cells):
+            description_segments.append(cells[desc_col_idx].replace("\n", " "))
+        # Also try adjacent columns for description
+        for idx in range(max(0, desc_col_idx - 1), min(len(cells), desc_col_idx + 2)):
+            if idx != desc_col_idx and cells[idx]:
+                text = cells[idx].replace("\n", " ")
+                # Skip if it looks like a date or amount
+                if not parse_date(text) and not parse_amount([text]):
+                    description_segments.append(text)
+        
+        description = " ".join(segment for segment in description_segments if segment).strip() or "Imported transaction"
+
+        transactions.append(
+            RawTransaction(
+                date=date_value,
+                description=description,
+                amount=amount_value,
+            )
+        )
+        rows_processed += 1
+    
+    return rows_processed
 
 
 def extract_transactions_with_mineru(pdf_path: Path) -> List[RawTransaction]:
@@ -498,6 +662,10 @@ def predict_category(description_en: str, model) -> Tuple[Optional[str], float]:
 
     # Improved confidence calculation based on score
     # Higher scores = higher confidence, but cap at 0.95
+    # Require minimum score of 1.0 to avoid wild guesses (e.g., "education" -> "entertainment")
+    if best_score < 1.0:
+        return None, 0.35  # Don't categorize if confidence is too low
+    
     confidence = min(0.35 + best_score * 0.15, 0.95)
     return best_category, confidence
 
@@ -526,8 +694,21 @@ def main() -> int:
 
     if extracted_transactions:
         logger.info("Extracted %d transactions from PDF", len(extracted_transactions))
+        # Check if we got sample data (indicates extraction failed)
+        if len(extracted_transactions) == 3:
+            sample_descriptions = ['Sample Subscription', 'Coffee Shop', 'Salary']
+            is_sample = all(
+                any(sample in tx.description for sample in sample_descriptions)
+                for tx in extracted_transactions
+            )
+            if is_sample:
+                logger.error("PDF extraction failed - received sample transaction data. The PDF structure may not match the expected format.")
+                logger.error("Expected table structure: Date | Operation | Debit | Credit | ... | Description | Beneficiary")
+                logger.error("Please check the PDF format and ensure it contains a transaction table.")
+                # Return empty list instead of sample data
+                extracted_transactions = []
     else:
-        logger.warning("No transactions extracted with pdfplumber; falling back to mineru stub")
+        logger.warning("No transactions extracted from PDF. The PDF structure may not match the expected format.")
 
     model = load_classifier(model_path)
 

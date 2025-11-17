@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: pdf-processor
+    env: python
+    buildCommand: pip install -r python-service/requirements.txt && pip install -r python/requirements.txt
+    startCommand: python python-service/app.py
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: CATEGORIES_MODEL_PATH
+        value: python/models/categories.ftz
+      - key: PYTHONUNBUFFERED
+        value: 1
+

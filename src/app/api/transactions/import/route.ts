@@ -147,12 +147,19 @@ export async function POST(request: NextRequest) {
           return null; // Return null to filter out this transaction
         }
         
-        // Only run matching logic if user didn't provide a category
-        if (!categoryId) {
+        // Skip auto-categorization for income transactions (amount >= 0)
+        // Income transactions should remain uncategorized unless explicitly set by user
+        if (type === 'income' && !categoryId) {
+          console.log(`[merchant-match] ⊘ Skipping auto-categorization for income transaction: "${item.description.substring(0, 50)}..."`);
+          // Keep categoryId as null (uncategorized)
+        }
+        // Only run matching logic if user didn't provide a category and it's not an income transaction
+        else if (!categoryId) {
           let skipMerchantMatching = false;
           
           if (specialType && specialType !== 'EXCLUDE') {
-            // Special type that should be categorized (e.g., commissions -> other, ATM -> other)
+            // Special type that should be categorized (e.g., commissions -> other)
+            // But ATM withdrawals should be uncategorized (handled by EXCLUDE)
             const specialCategoryId = categoryMap.get(specialType.toLowerCase());
             if (specialCategoryId) {
               categoryId = specialCategoryId;
