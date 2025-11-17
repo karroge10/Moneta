@@ -28,7 +28,8 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
   }, []);
 
   const selectedCategoryObj = categories.find(cat => cat.name === selectedCategory);
-  const displayValue = selectedCategory || 'All Categories';
+  const isUncategorized = selectedCategory === '__uncategorized__';
+  const displayValue = isUncategorized ? 'Uncategorized' : (selectedCategory || 'All Categories');
   const textColor = isHovered ? '#AC66DA' : '#E7E4E4';
   const DisplayIcon = selectedCategoryObj ? getIcon(selectedCategoryObj.icon) : null;
 
@@ -67,6 +68,19 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
               }}
             >
               <span>All Categories</span>
+            </button>
+            <button
+              onClick={() => {
+                onSelect('__uncategorized__');
+                setIsOpen(false);
+              }}
+              className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer group"
+              style={{ 
+                backgroundColor: 'transparent',
+                color: isUncategorized ? 'var(--accent-purple)' : 'var(--text-primary)' 
+              }}
+            >
+              <span>Uncategorized</span>
             </button>
             {categories.map((category) => {
               const Icon = getIcon(category.icon);
