@@ -28,7 +28,7 @@ async function main() {
     });
 
     console.log('👥 Users in database:');
-    users.forEach((u) => {
+    users.forEach((u: { id: number; clerkUserId: string | null }) => {
       console.log(`  User ID: ${u.id}, Clerk ID: ${u.clerkUserId || 'none'}`);
     });
     console.log();
