@@ -18,6 +18,7 @@ import {
   NavArrowRight,
   NavArrowLeft,
 } from "iconoir-react";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 
 interface SidebarProps {
@@ -36,7 +37,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
       return null;
     }
     
-    if (pathname === "/") return "dashboard";
+    if (pathname === "/dashboard") return "dashboard";
     if (pathname === "/income") return "income";
     if (pathname === "/expenses") return "expenses";
     if (pathname === "/transactions") return "transactions";
@@ -70,7 +71,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
     } catch {}
   };
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: HomeSimpleDoor, href: "/", comingSoon: false },
+    { id: "dashboard", label: "Dashboard", icon: HomeSimpleDoor, href: "/dashboard", comingSoon: false },
     { id: "income", label: "Income", icon: Wallet, href: "/income", comingSoon: false },
     { id: "expenses", label: "Expenses", icon: ShoppingBag, href: "/expenses", comingSoon: false },
     { id: "transactions", label: "Transactions", icon: LotOfCash, href: "/transactions", comingSoon: false },
@@ -122,12 +123,36 @@ export default function Sidebar({ activeSection }: SidebarProps) {
         </nav>
       </div>
 
-      {/* Footer with Log Out and Theme Toggle */}
+      {/* Footer with Auth and Theme Toggle */}
       <div className="sidebar-footer">
-        <button type="button" className="sidebar-logout">
-          <LogOut width={20} height={20} strokeWidth={1.5} />
-          <span className="text-sidebar-button">Log Out</span>
-        </button>
+        <SignedIn>
+          <div className="sidebar-logout">
+            <UserButton 
+              appearance={{
+                elements: {
+                  avatarBox: "w-5 h-5",
+                  userButtonPopoverCard: "bg-[#282828] border border-[#3a3a3a]",
+                  userButtonPopoverActionButton: "text-[#E7E4E4] hover:bg-[#3a3a3a]",
+                  userButtonPopoverActionButtonText: "text-[#E7E4E4]",
+                  userButtonPopoverFooter: "hidden",
+                },
+              }}
+            />
+            {!isCollapsed && (
+              <span className="text-sidebar-button">Account</span>
+            )}
+          </div>
+        </SignedIn>
+        <SignedOut>
+          <SignInButton mode="modal">
+            <button type="button" className="sidebar-logout">
+              <LogOut width={20} height={20} strokeWidth={1.5} />
+              {!isCollapsed && (
+                <span className="text-sidebar-button">Sign In</span>
+              )}
+            </button>
+          </SignInButton>
+        </SignedOut>
 
         {isCollapsed ? (
           <button

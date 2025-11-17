@@ -1,8 +1,11 @@
+'use client';
+
 import Card from '@/components/ui/Card';
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import { Investment } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { getTrendColor, formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 import { StatUp, StatDown } from 'iconoir-react';
 import { NavArrowRight } from 'iconoir-react';
 
@@ -36,6 +39,8 @@ function MiniTrendGraph({ isPositive }: { isPositive: boolean }) {
 }
 
 export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
+  const { currency } = useCurrency();
+  
   if (investments.length === 0) {
     return (
       <Card 
@@ -100,7 +105,7 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
                 </div>
                 <div className="text-right shrink-0 ml-auto">
                   <div className="text-body font-semibold whitespace-nowrap">
-                    ${formatNumber(investment.currentValue)}
+                    {currency.symbol}{formatNumber(investment.currentValue)}
                   </div>
                   <div className="flex items-center gap-1 text-sm whitespace-nowrap" style={{ color: trendColor }}>
                     <TrendIcon width={14} height={14} strokeWidth={2} />

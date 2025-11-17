@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Card from '@/components/ui/Card';
 import { NavArrowRight } from 'iconoir-react';
 import { formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 import Link from 'next/link';
 
 interface EstimatedTaxCardProps {
@@ -13,6 +14,7 @@ interface EstimatedTaxCardProps {
 }
 
 export default function EstimatedTaxCard({ amount, isEnabled, onToggle }: EstimatedTaxCardProps) {
+  const { currency } = useCurrency();
   const [enabled, setEnabled] = useState(isEnabled);
 
   const handleToggle = () => {
@@ -45,7 +47,7 @@ export default function EstimatedTaxCard({ amount, isEnabled, onToggle }: Estima
     >
       <div className="flex flex-col flex-1 min-h-0">
         <div className="flex items-baseline gap-2 flex-1 min-w-0 flex-wrap mb-4">
-          <span className="text-card-currency flex-shrink-0">$</span>
+          <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
           <span className="text-card-value break-all min-w-0">{formatNumber(amount)}</span>
         </div>
         <Link href="/settings" className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap">

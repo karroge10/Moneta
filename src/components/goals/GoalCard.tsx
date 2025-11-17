@@ -4,6 +4,7 @@ import { Goal } from '@/types/dashboard';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { MoreHoriz } from 'iconoir-react';
 import { getEncouragingMessage } from '@/lib/goalUtils';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface GoalCardProps {
   goal: Goal;
@@ -11,6 +12,7 @@ interface GoalCardProps {
 }
 
 export default function GoalCard({ goal, onOptionsClick }: GoalCardProps) {
+  const { currency } = useCurrency();
   const encouragingMessage = getEncouragingMessage(goal);
 
   return (
@@ -47,14 +49,14 @@ export default function GoalCard({ goal, onOptionsClick }: GoalCardProps) {
           }}
         >
           <span className="text-body font-semibold" style={{ color: 'var(--accent-purple)' }}>
-            ${goal.targetAmount.toLocaleString('en-US')}
+            {currency.symbol}{goal.targetAmount.toLocaleString('en-US')}
           </span>
         </div>
       </div>
 
       {/* Third row: Large current amount */}
       <div className="flex items-baseline gap-2 mb-4 min-w-0 flex-wrap">
-        <span className="text-card-currency flex-shrink-0">$</span>
+        <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
         <span className="text-card-value break-all min-w-0">
           {goal.currentAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
