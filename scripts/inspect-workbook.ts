@@ -129,13 +129,13 @@ async function main() {
 
     console.log('📊 EXPENSE COLUMNS (Categories):');
     console.log('─'.repeat(60));
-    info.expenseColumns.forEach((col, idx) => {
+    info.expenseColumns.forEach((col: string, idx: number) => {
       console.log(`  ${idx + 1}. ${col}`);
     });
 
     console.log('\n💰 INCOME COLUMNS:');
     console.log('─'.repeat(60));
-    info.incomeColumns.forEach((col, idx) => {
+    info.incomeColumns.forEach((col: string, idx: number) => {
       console.log(`  ${idx + 1}. ${col}`);
     });
 
