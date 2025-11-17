@@ -15,8 +15,10 @@ import TrendIndicator from '@/components/ui/TrendIndicator';
 import { mockIncomePage } from '@/lib/mockData';
 import { TimePeriod } from '@/types/dashboard';
 import { formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 
 export default function IncomePage() {
+  const { currency } = useCurrency();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Year');
   
   const data = mockIncomePage;
@@ -58,7 +60,7 @@ export default function IncomePage() {
         <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3">
           <h2 className="text-card-header">Total</h2>
           <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-            <span className="text-card-currency flex-shrink-0">$</span>
+            <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
             <span className="text-card-value break-all min-w-0">{formatNumber(data.total.amount)}</span>
           </div>
           <TrendIndicator value={data.total.trend} label="from last year" />
@@ -101,7 +103,7 @@ export default function IncomePage() {
         <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3">
           <h2 className="text-card-header">Total</h2>
           <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-            <span className="text-card-currency flex-shrink-0">$</span>
+            <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
             <span className="text-card-value break-all min-w-0">{formatNumber(data.total.amount)}</span>
           </div>
           <TrendIndicator value={data.total.trend} label="from last year" />
@@ -151,7 +153,7 @@ export default function IncomePage() {
               <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 h-full">
                 <h2 className="text-card-header">Total</h2>
                 <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-                  <span className="text-card-currency flex-shrink-0">$</span>
+                  <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
                   <span className="text-card-value break-all min-w-0">{formatNumber(data.total.amount)}</span>
                 </div>
                 <TrendIndicator value={data.total.trend} label="from last year" />

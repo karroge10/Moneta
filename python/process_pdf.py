@@ -88,6 +88,11 @@ CATEGORY_KEYWORDS: Dict[str, Dict[str, float]] = {
         "carrefour": 1.0,
         "food": 0.6,
         "mart": 0.6,
+        "store": 0.7,
+        "shop": 0.7,
+        "walmart": 1.0,
+        "target": 1.0,
+        "costco": 1.0,
     },
     "Restaurants": {
         "restaurant": 1.0,
@@ -95,8 +100,14 @@ CATEGORY_KEYWORDS: Dict[str, Dict[str, float]] = {
         "bar": 0.7,
         "coffee": 0.6,
         "burger": 0.6,
+        "pizza": 0.9,
+        "mcdonald": 1.0,
+        "starbucks": 1.0,
+        "kfc": 1.0,
+        "dining": 0.9,
+        "bistro": 0.8,
     },
-    "Transport": {
+    "Transportation": {
         "taxi": 1.0,
         "uber": 1.0,
         "bolt": 1.0,
@@ -104,6 +115,113 @@ CATEGORY_KEYWORDS: Dict[str, Dict[str, float]] = {
         "fuel": 0.6,
         "gas": 0.6,
         "metro": 0.6,
+        "transport": 1.0,
+        "tram": 0.7,
+        "subway": 0.7,
+        "train": 0.7,
+        "parking": 0.8,
+        "toll": 0.8,
+    },
+    "Rent": {
+        "rent": 1.0,
+        "housing": 0.9,
+        "apartment": 0.8,
+        "lease": 0.8,
+        "landlord": 0.9,
+    },
+    "Utilities": {
+        "utility": 1.0,
+        "electric": 0.9,
+        "electricity": 1.0,
+        "water": 0.9,
+        "gas bill": 1.0,
+        "heating": 0.9,
+        "internet": 0.9,
+        "wifi": 0.9,
+        "phone": 0.8,
+        "mobile": 0.8,
+        "cable": 0.8,
+        "tv": 0.7,
+        "cleaning": 0.9,
+        "elevator": 0.8,
+        "maintenance": 0.7,
+        "telmiko": 1.0,
+        "tbilservice": 0.9,
+        "tbilisi servis": 0.9,
+        "tbilisi energ": 0.9,
+        "tnet": 0.9,
+        "magti": 0.8,
+    },
+    "Entertainment": {
+        "entertainment": 1.0,
+        "movie": 0.9,
+        "cinema": 1.0,
+        "theater": 0.9,
+        "netflix": 1.0,
+        "spotify": 1.0,
+        "streaming": 0.9,
+        "game": 0.8,
+        "gaming": 0.8,
+        "concert": 0.9,
+    },
+    "Fitness": {
+        "gym": 1.0,
+        "fitness": 1.0,
+        "workout": 0.9,
+        "exercise": 0.8,
+        "sport": 0.8,
+        "yoga": 0.9,
+        "pilates": 0.9,
+    },
+    "Clothes": {
+        "clothes": 1.0,
+        "clothing": 1.0,
+        "shirt": 0.9,
+        "pants": 0.8,
+        "shoes": 0.9,
+        "h&m": 1.0,
+        "zara": 1.0,
+        "nike": 1.0,
+        "adidas": 1.0,
+        "fashion": 0.8,
+    },
+    "Food": {
+        "food": 0.9,
+        "meal": 0.8,
+        "lunch": 0.7,
+        "dinner": 0.7,
+        "breakfast": 0.7,
+    },
+    "Technology": {
+        "technology": 1.0,
+        "tech": 1.0,
+        "computer": 0.9,
+        "laptop": 0.9,
+        "phone": 0.8,
+        "software": 0.9,
+        "app": 0.7,
+        "apple": 0.8,
+        "samsung": 0.8,
+    },
+    "Furniture": {
+        "furniture": 1.0,
+        "ikea": 1.0,
+        "sofa": 0.9,
+        "chair": 0.8,
+        "table": 0.8,
+        "bed": 0.8,
+    },
+    "Gifts": {
+        "gift": 1.0,
+        "present": 0.9,
+        "donation": 0.7,
+    },
+    "Fees": {
+        "fee": 1.0,
+        "commission": 1.0,
+        "charge": 0.6,
+        "service fee": 1.0,
+        "transaction fee": 1.0,
     },
     "Cash Withdrawal": {
         "cash withdrawal": 1.0,
@@ -112,21 +230,14 @@ CATEGORY_KEYWORDS: Dict[str, Dict[str, float]] = {
         "cash-out": 0.9,
         "cash in": 0.6,
     },
-    "Currency Exchange": {
-        "conversion": 1.0,
-        "exchange": 0.9,
-        "convert": 0.9,
-    },
-    "Fees": {
-        "fee": 1.0,
-        "commission": 1.0,
-        "charge": 0.6,
-    },
+    # Currency Exchange removed - these transactions should be excluded entirely
     "Deposit": {
         "deposit": 1.0,
         "top up": 0.9,
         "cash-in": 0.9,
         "credit": 0.6,
+        "salary": 0.8,
+        "income": 0.7,
     },
 }
 
@@ -349,14 +460,35 @@ def predict_category(description_en: str, model) -> Tuple[Optional[str], float]:
         except Exception:  # pragma: no cover
             traceback.print_exc()
 
+    # Improved keyword matching with word boundaries and better scoring
     lowered = text.lower()
+    # Normalize text: remove punctuation, extra spaces
+    normalized = re.sub(r'[^\w\s]', ' ', lowered)
+    normalized = ' '.join(normalized.split())
+    
     best_category: Optional[str] = None
     best_score = 0.0
+    
     for category, keywords in CATEGORY_KEYWORDS.items():
         score = 0.0
+        matched_keywords = []
+        
         for keyword, weight in keywords.items():
-            if keyword in lowered:
+            # Use word boundaries for better matching (avoid partial matches)
+            # Check for whole word match or exact phrase match
+            pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+            if re.search(pattern, normalized):
                 score += weight
+                matched_keywords.append(keyword)
+            # Also check for exact substring match (for multi-word phrases)
+            elif keyword.lower() in normalized:
+                score += weight * 0.8  # Slightly lower weight for substring matches
+                matched_keywords.append(keyword)
+        
+        # Bonus for multiple keyword matches (indicates stronger confidence)
+        if len(matched_keywords) > 1:
+            score *= 1.1
+        
         if score > best_score:
             best_category = category
             best_score = score
@@ -364,7 +496,9 @@ def predict_category(description_en: str, model) -> Tuple[Optional[str], float]:
     if best_category is None or best_score == 0:
         return None, 0.35
 
-    confidence = min(0.35 + best_score * 0.2, 0.95)
+    # Improved confidence calculation based on score
+    # Higher scores = higher confidence, but cap at 0.95
+    confidence = min(0.35 + best_score * 0.15, 0.95)
     return best_category, confidence
 
 

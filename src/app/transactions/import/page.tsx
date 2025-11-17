@@ -5,44 +5,52 @@ import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import Card from '@/components/ui/Card';
 import ProgressBar from '@/components/ui/ProgressBar';
-import { mockCategories } from '@/lib/mockData';
+import SearchBar from '@/components/transactions/shared/SearchBar';
+import CategoryFilter from '@/components/transactions/shared/CategoryFilter';
+import CategoryPicker from '@/components/transactions/shared/CategoryPicker';
+import TypeFilter from '@/components/transactions/shared/TypeFilter';
+import CategoryStatsModal from '@/components/transactions/CategoryStatsModal';
 import { getIcon } from '@/lib/iconMapping';
 import { TransactionUploadResponse, UploadedTransaction, type Category } from '@/types/dashboard';
-import { CheckCircle, Upload, WarningTriangle } from 'iconoir-react';
+import { CheckCircle, Upload, WarningTriangle, Reports, Language, Trash } from 'iconoir-react';
+import { formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 
 type UploadState = 'idle' | 'queued' | 'uploading' | 'processing' | 'categorizing' | 'ready' | 'error';
 
 type TableRow = UploadedTransaction & {
   id: string;
+  suggestedCategory?: string | null;
 };
 
-interface PaginatedResponse {
-  transactions: UploadedTransaction[];
-  total: number;
-}
-
-const PAGE_SIZE = 12;
 const REVIEW_PAGE_SIZE = 12;
 
 export default function ImportTransactionsPage() {
-  const [timePeriod, setTimePeriod] = useState<'This Month' | 'This Quarter' | 'This Year' | 'All Time'>('This Year');
+  const { currency } = useCurrency();
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [progressValue, setProgressValue] = useState(0);
   const [statusNote, setStatusNote] = useState<string | null>(null);
   const [parsedRows, setParsedRows] = useState<TableRow[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
   const [reviewPage, setReviewPage] = useState(1);
+  const [reviewPageInput, setReviewPageInput] = useState('1');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string>(''); // 'expense' | 'income' | ''
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isConfirming, setIsConfirming] = useState(false);
-  const [isFetchingConfirmed, setIsFetchingConfirmed] = useState(false);
-  const [confirmedTransactions, setConfirmedTransactions] = useState<TableRow[]>([]);
-  const [confirmedTotal, setConfirmedTotal] = useState(0);
+  const [isCategoryStatsOpen, setIsCategoryStatsOpen] = useState(false);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [totalTimeSeconds, setTotalTimeSeconds] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dropZoneRef = useRef<HTMLDivElement | null>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const currentProgressRef = useRef<number>(0);
 
   const filteredRows = useMemo(() => {
-    const query = searchQuery.toLowerCase();
+    const query = debouncedSearchQuery.toLowerCase();
     return parsedRows.filter(row => {
       const matchesQuery =
         !query ||
@@ -51,12 +59,40 @@ export default function ImportTransactionsPage() {
         row.category?.toLowerCase().includes(query) ||
         row.date.toLowerCase().includes(query);
       const matchesCategory = !categoryFilter || row.category === categoryFilter;
-      return matchesQuery && matchesCategory;
+      const matchesType = !typeFilter || 
+        (typeFilter === 'expense' && row.amount < 0) ||
+        (typeFilter === 'income' && row.amount >= 0);
+      return matchesQuery && matchesCategory && matchesType;
     });
-  }, [parsedRows, searchQuery, categoryFilter]);
+  }, [parsedRows, debouncedSearchQuery, categoryFilter, typeFilter]);
+
+  // Calculate category statistics for imported transactions
+  const categoryStats = useMemo(() => {
+    const stats = new Map<string, { category: Category; total: number; count: number }>();
+    
+    parsedRows.forEach(row => {
+      if (!row.category) return;
+      
+      const category = categories.find(c => c.name === row.category);
+      if (!category) return;
+      
+      const existing = stats.get(category.id) || { category, total: 0, count: 0 };
+      existing.total += Math.abs(row.amount);
+      existing.count += 1;
+      stats.set(category.id, existing);
+    });
+    
+    return Array.from(stats.values())
+      .sort((a, b) => b.total - a.total);
+  }, [parsedRows, categories]);
+
+  const totalAmount = useMemo(() => {
+    return categoryStats.reduce((sum, stat) => sum + stat.total, 0);
+  }, [categoryStats]);
 
   useEffect(() => {
     setReviewPage(1);
+    setReviewPageInput('1');
   }, [filteredRows.length]);
 
   const reviewTotalPages = filteredRows.length
@@ -66,8 +102,26 @@ export default function ImportTransactionsPage() {
   useEffect(() => {
     if (reviewPage > reviewTotalPages) {
       setReviewPage(reviewTotalPages);
+      setReviewPageInput(reviewTotalPages.toString());
     }
   }, [reviewPage, reviewTotalPages]);
+
+  useEffect(() => {
+    setReviewPageInput(reviewPage.toString());
+  }, [reviewPage]);
+
+  const handleReviewPageInputChange = (value: string) => {
+    setReviewPageInput(value);
+  };
+
+  const handleReviewPageInputSubmit = () => {
+    const page = parseInt(reviewPageInput, 10);
+    if (!isNaN(page) && page >= 1 && page <= reviewTotalPages) {
+      setReviewPage(page);
+    } else {
+      setReviewPageInput(reviewPage.toString());
+    }
+  };
 
   const paginatedReviewRows = useMemo(() => {
     const start = (reviewPage - 1) * REVIEW_PAGE_SIZE;
@@ -86,19 +140,96 @@ export default function ImportTransactionsPage() {
     [],
   );
 
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data.categories || []);
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   const categoryLookup = useMemo(() => {
     const map = new Map<string, Category>();
-    mockCategories.forEach(category => {
+    categories.forEach(category => {
       map.set(category.name, category);
     });
     return map;
-  }, []);
+  }, [categories]);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const resetUploadState = () => {
     setUploadState('idle');
     setProgressValue(0);
     setStatusNote(null);
+    setStartTime(null);
+    setElapsedSeconds(0);
+    setTotalTimeSeconds(null);
+    currentProgressRef.current = 0;
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
   };
+
+  // Format time in seconds to human-readable string
+  const formatTime = (seconds: number): string => {
+    if (seconds < 60) {
+      return `${Math.floor(seconds)}s`;
+    }
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}m ${secs}s`;
+  };
+
+  // Start timer interval
+  useEffect(() => {
+    if (uploadState !== 'idle' && startTime !== null) {
+      timerIntervalRef.current = setInterval(() => {
+        setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
+      }, 100);
+    } else {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, [uploadState, startTime]);
+
+  // Cleanup intervals on unmount
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, []);
 
   const handleFileUpload = useCallback(
     async (file: File) => {
@@ -108,35 +239,81 @@ export default function ImportTransactionsPage() {
         return;
       }
 
+      // Reset and start timer
+      const now = Date.now();
+      setStartTime(now);
+      setElapsedSeconds(0);
+      setTotalTimeSeconds(null);
+      setProgressValue(0);
+
+      // Clear any existing progress intervals
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+
+      // Start incremental progress simulation
+      currentProgressRef.current = 0;
+      const simulateProgress = (targetProgress: number) => {
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+        }
+        currentProgressRef.current = targetProgress;
+        setProgressValue(targetProgress);
+        
+        progressIntervalRef.current = setInterval(() => {
+          if (currentProgressRef.current < 95) {
+            // Gradually increase progress, slowing down as we approach target
+            const remaining = 95 - currentProgressRef.current;
+            const increment = Math.max(0.1, remaining * 0.02);
+            currentProgressRef.current = Math.min(95, currentProgressRef.current + increment);
+            setProgressValue(Math.floor(currentProgressRef.current));
+          } else {
+            // Stop interval when we reach 95%
+            if (progressIntervalRef.current) {
+              clearInterval(progressIntervalRef.current);
+              progressIntervalRef.current = null;
+            }
+          }
+        }, 200);
+      };
+
       setUploadState('queued');
-      setStatusNote(`Preparing to upload “${file.name}”`);
-      setProgressValue(10);
+      setStatusNote(`Preparing to upload "${file.name}"`);
+      simulateProgress(5);
 
       const formData = new FormData();
       formData.append('file', file);
 
       try {
+        // Upload phase
         setUploadState('uploading');
-        setStatusNote(`Uploading “${file.name}”`);
-        setProgressValue(35);
+        simulateProgress(10);
+
         const response = await fetch('/api/transactions/upload-bank-statement', {
           method: 'POST',
           body: formData,
         });
 
+        // Processing phase
         setUploadState('processing');
-        setStatusNote('Processing PDF…');
-        setProgressValue(60);
+        simulateProgress(40);
 
         if (!response.ok) {
           throw new Error(`Upload failed with status ${response.status}`);
         }
 
+        // Categorizing phase
+        setUploadState('categorizing');
+        simulateProgress(70);
+
         const data = (await response.json()) as TransactionUploadResponse;
 
-        setUploadState('categorizing');
-        setStatusNote('Categorizing transactions…');
-        setProgressValue(85);
+        // Stop progress simulation
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
 
         const normalized: TableRow[] = (data.transactions ?? []).map(item => ({
           id: crypto.randomUUID(),
@@ -144,26 +321,43 @@ export default function ImportTransactionsPage() {
           description: item.description,
           translatedDescription: item.translatedDescription,
           amount: item.amount,
-          category: item.category,
+          // Set category to null if it's "Currency Exchange", otherwise use the suggested category
+          category: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null,
           confidence: item.confidence,
+          suggestedCategory: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null, // Store initial category as suggestion (excluding Currency Exchange)
         }));
 
         if (!normalized.length) {
           setUploadState('error');
           setProgressValue(0);
           setStatusNote('No transactions were detected in that PDF.');
+          setStartTime(null);
+          setElapsedSeconds(0);
           return;
         }
+
+        // Calculate total time
+        const totalTime = Math.floor((Date.now() - now) / 1000);
+        setTotalTimeSeconds(totalTime);
+        setElapsedSeconds(totalTime);
 
         setParsedRows(normalized);
         setUploadState('ready');
         setProgressValue(100);
-        setStatusNote(`${normalized.length} transactions parsed successfully.`);
+        setStatusNote(
+          `${normalized.length} transactions parsed successfully in ${formatTime(totalTime)}.`,
+        );
       } catch (error) {
         console.error('[import/upload]', error);
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
         setUploadState('error');
         setProgressValue(0);
         setStatusNote('We could not parse that PDF. Double-check the file and try again.');
+        setStartTime(null);
+        setElapsedSeconds(0);
       }
     },
     [],
@@ -210,7 +404,7 @@ export default function ImportTransactionsPage() {
     event.target.value = '';
   };
 
-  const handleRowUpdate = (id: string, key: keyof UploadedTransaction, value: string) => {
+  const handleRowUpdate = async (id: string, key: keyof UploadedTransaction, value: string) => {
     setParsedRows(prev =>
       prev.map(row => {
         if (row.id !== id) return row;
@@ -228,12 +422,38 @@ export default function ImportTransactionsPage() {
         }
 
         if (key === 'category') {
+          // Learn from user correction: if user selects a category, save merchant mapping
+          if (value) {
+            const category = categories.find(cat => cat.name === value);
+            if (category) {
+              // Fire-and-forget: learn merchant mapping in background
+              // Convert string ID to number for database
+              const categoryId = Number.parseInt(category.id, 10);
+              if (!Number.isNaN(categoryId)) {
+                fetch('/api/merchants/learn', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    description: row.description,
+                    categoryId,
+                  }),
+                }).catch(err => {
+                  // Silently fail - learning is optional
+                  console.debug('[merchant/learn] failed', err);
+                });
+              }
+            }
+          }
           return { ...row, category: value || null };
         }
 
         return { ...row, [key]: value };
       }),
     );
+  };
+
+  const handleRowDelete = (id: string) => {
+    setParsedRows(prev => prev.filter(row => row.id !== id));
   };
 
   const handleConfirmImport = async () => {
@@ -260,7 +480,6 @@ export default function ImportTransactionsPage() {
         throw new Error(`Import failed with status ${response.status}`);
       }
 
-      await fetchConfirmedTransactions(1, searchQuery, categoryFilter);
       setParsedRows([]);
       resetUploadState();
     } catch (error) {
@@ -277,46 +496,6 @@ export default function ImportTransactionsPage() {
       prev.map(row => (row.id === id ? { ...row, amount: row.amount * -1 } : row)),
     );
   };
-
-  const fetchConfirmedTransactions = useCallback(
-    async (page: number, query: string, category: string | null) => {
-      setIsFetchingConfirmed(true);
-      try {
-        const params = new URLSearchParams({
-          page: page.toString(),
-          pageSize: PAGE_SIZE.toString(),
-        });
-        if (query) params.set('search', query);
-        if (category) params.set('category', category);
-
-        const response = await fetch(`/api/transactions/import?${params.toString()}`);
-        if (!response.ok) {
-          throw new Error(`Failed to load confirmed transactions (${response.status})`);
-        }
-
-        const data = (await response.json()) as PaginatedResponse;
-        setConfirmedTransactions(
-          data.transactions.map(item => ({
-            id: crypto.randomUUID(),
-            ...item,
-          })),
-        );
-        setConfirmedTotal(data.total);
-        setCurrentPage(page);
-      } catch (error) {
-        console.error('[import/fetchConfirmed]', error);
-      } finally {
-        setIsFetchingConfirmed(false);
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    fetchConfirmedTransactions(1, searchQuery, categoryFilter);
-  }, [fetchConfirmedTransactions, searchQuery, categoryFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(confirmedTotal / PAGE_SIZE));
 
   const renderStatusBadge = () => {
     if (uploadState === 'idle') return null;
@@ -351,13 +530,11 @@ export default function ImportTransactionsPage() {
   return (
     <main className="min-h-screen bg-[#202020]">
       <div className="hidden md:block">
-        <DashboardHeader pageName="Import Transactions" timePeriod={timePeriod} onTimePeriodChange={setTimePeriod} />
+        <DashboardHeader pageName="Import Transactions" />
       </div>
       <div className="md:hidden">
         <MobileNavbar
           pageName="Import Transactions"
-          timePeriod={timePeriod}
-          onTimePeriodChange={setTimePeriod}
           activeSection="transactions"
         />
       </div>
@@ -367,7 +544,7 @@ export default function ImportTransactionsPage() {
           <div
             ref={dropZoneRef}
             className="border-2 border-dashed border-[#3a3a3a] rounded-3xl px-6 py-10 flex flex-col items-center justify-center gap-4 text-center transition-colors hover:border-[#AC66DA]"
-            style={{ backgroundColor: '#181818' }}
+            style={{ backgroundColor: '#282828' }}
           >
             <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
               Drag & drop your PDF here
@@ -375,11 +552,11 @@ export default function ImportTransactionsPage() {
             <p className="text-sm max-w-xl" style={{ color: 'var(--text-secondary)' }}>
               We accept bank statements in PDF format. Transactions will be parsed automatically so you can review and save them in seconds.
             </p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col items-center gap-3">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 rounded-full px-4 py-2 font-semibold transition-colors cursor-pointer hover:opacity-90"
+                className="flex items-center gap-2 rounded-full px-6 py-3 font-semibold transition-all cursor-pointer hover:opacity-90 active:scale-95"
                 style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
               >
                 Select PDF
@@ -391,208 +568,299 @@ export default function ImportTransactionsPage() {
             </div>
 
             {uploadState !== 'idle' && (
-              <div className="w-full max-w-xl space-y-3 rounded-2xl border border-[#3a3a3a] px-5 py-4 mt-6" style={{ backgroundColor: '#202020' }}>
+              <div
+                className="w-full max-w-xl space-y-3 rounded-[30px] border border-[#3a3a3a] px-6 py-5 mt-6"
+                style={{ backgroundColor: '#282828' }}
+              >
                 {renderStatusBadge()}
                 <ProgressBar value={progressValue} showLabel={false} />
-                {statusNote && (
-                  <p className="text-xs" style={{ color: uploadState === 'error' ? '#F87171' : 'var(--text-secondary)' }}>
-                    {statusNote}
-                  </p>
-                )}
+                <div className="space-y-1.5">
+                  {statusNote && (
+                    <p
+                      className="text-xs leading-relaxed"
+                      style={{ color: uploadState === 'error' ? '#D93F3F' : 'var(--text-secondary)' }}
+                    >
+                      {statusNote}
+                    </p>
+                  )}
+                  {uploadState !== 'ready' && uploadState !== 'error' && startTime !== null && (
+                    <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      <span>Elapsed: {formatTime(elapsedSeconds)}</span>
+                      {progressValue > 5 && progressValue < 95 && (
+                        <>
+                          <span>·</span>
+                          <span>
+                            Estimated remaining:{' '}
+                            {progressValue > 0
+                              ? formatTime(Math.floor((elapsedSeconds / progressValue) * (100 - progressValue)))
+                              : '—'}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {uploadState === 'ready' && totalTimeSeconds !== null && (
+                    <p className="text-xs font-medium" style={{ color: 'var(--accent-green)' }}>
+                      Completed in {formatTime(totalTimeSeconds)}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>
         </Card>
 
         {parsedRows.length > 0 && (
-          <Card title="Review Transactions" showActions={false}>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col md:flex-row md:items-center gap-3">
-                <input
-                  type="text"
-                  placeholder="Search description, category, or date"
-                  value={searchQuery}
-                  onChange={event => setSearchQuery(event.target.value)}
-                  className="w-full md:flex-1 rounded-2xl border border-[#3a3a3a] bg-[#181818] px-4 py-2 text-sm"
-                  style={{ color: 'var(--text-primary)' }}
-                />
-                <select
-                  value={categoryFilter ?? ''}
-                  onChange={event => setCategoryFilter(event.target.value || null)}
-                  className="w-full md:w-60 rounded-2xl border border-[#3a3a3a] bg-[#181818] px-4 py-2 text-sm"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  <option value="">All categories</option>
-                  {mockCategories.map(category => (
-                    <option key={category.id} value={category.name}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="overflow-x-auto rounded-3xl border border-[#3a3a3a]">
-                <table className="min-w-full" style={{ backgroundColor: '#161616' }}>
-                  <thead>
-                    <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                      <th className="px-5 py-3">Date</th>
-                      <th className="px-5 py-3">Description</th>
-                      <th className="px-5 py-3">Amount (GEL)</th>
-                      <th className="px-5 py-3">Category</th>
-                      <th className="px-5 py-3">Confidence</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedReviewRows.map(row => {
-                      const matchedCategory = row.category ? categoryLookup.get(row.category) : undefined;
-                      const suggestionLabel = row.category ?? null;
-                      const suggestionColor = matchedCategory?.color ?? '#9CA3AF';
-                      const CategoryIcon = getIcon(matchedCategory?.icon ?? 'HelpCircle');
-                      return (
-                        <tr key={row.id} className="border-t border-[#2A2A2A]">
-                          <td className="px-5 py-4 align-top">
-                            <input
-                              type="date"
-                              value={row.date}
-                              onChange={event => handleRowUpdate(row.id, 'date', event.target.value)}
-                              className="w-full rounded-xl border border-[#3a3a3a] bg-[#202020] px-3 py-2 text-sm"
-                              style={{ color: 'var(--text-primary)' }}
-                            />
-                          </td>
-                          <td className="px-5 py-4 align-top">
-                            <div className="space-y-2">
-                              <textarea
-                                value={row.description}
-                                onChange={event => handleRowUpdate(row.id, 'description', event.target.value)}
-                                className="w-full rounded-xl border border-[#3a3a3a] bg-[#202020] px-3 py-2 text-sm resize-none"
-                                style={{ color: 'var(--text-primary)', minHeight: '48px' }}
-                              />
-                              <textarea
-                                value={row.translatedDescription}
-                                onChange={event => handleRowUpdate(row.id, 'translatedDescription', event.target.value)}
-                                className="w-full rounded-xl border border-[#3a3a3a] bg-[#1a1a1a] px-3 py-2 text-xs resize-none"
-                                style={{ color: 'var(--text-primary)', minHeight: '40px' }}
-                                placeholder="English translation"
-                              />
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 align-top">
-                            <div className="space-y-1.5">
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                pattern="^-?\\d*(?:[\\.,]\\d{0,2})?$"
-                                value={Number.isFinite(row.amount) ? Math.abs(row.amount).toFixed(2) : ''}
-                                onChange={event => handleRowUpdate(row.id, 'amount', event.target.value)}
-                                className="w-full rounded-xl border border-[#3a3a3a] bg-[#202020] px-3 py-2 text-sm"
-                                style={{ color: 'var(--text-primary)' }}
-                              />
-                              <div className="flex items-center justify-between text-xs font-medium">
-                                <span
-                                  style={{
-                                    color: row.amount >= 0 ? '#2ECC71' : '#E74C3C',
-                                  }}
-                                >
-                                  {currencyFormatter.format(Math.abs(row.amount || 0))}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleDirection(row.id)}
-                                  className="rounded-full px-3 py-1 transition-colors"
-                                  style={{ backgroundColor: '#282828', color: '#9CA3AF' }}
-                                >
-                                  {row.amount >= 0 ? 'Incoming' : 'Outgoing'}
-                                </button>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 align-top">
-                            <div className="space-y-1.5">
-                              <select
-                                value={row.category ?? ''}
-                                onChange={event => handleRowUpdate(row.id, 'category', event.target.value)}
-                                className="w-full rounded-xl border border-[#3a3a3a] bg-[#202020] px-3 py-2 text-sm"
-                                style={{ color: 'var(--text-primary)' }}
-                              >
-                                <option value="">Uncategorized</option>
-                                {mockCategories.map(category => (
-                                  <option key={category.id} value={category.name}>
-                                    {category.name}
-                                  </option>
-                                ))}
-                              </select>
-                              <div className="inline-flex items-center gap-2 text-xs font-medium">
-                                {suggestionLabel ? (
-                                  <>
-                                    <span
-                                      className="inline-flex h-6 w-6 items-center justify-center rounded-full"
-                                      style={{ backgroundColor: `${suggestionColor}1a` }}
-                                    >
-                                      <CategoryIcon
-                                        width={14}
-                                        height={14}
-                                        strokeWidth={1.5}
-                                        style={{ color: suggestionColor }}
-                                      />
-                                    </span>
-                                    <span style={{ color: suggestionColor }}>
-                                      Suggested: {suggestionLabel}
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span style={{ color: '#9CA3AF' }}>No category suggested</span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 align-top">
-                            <span
-                              className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
-                              style={{
-                                backgroundColor: '#202020',
-                                color: row.confidence >= 0.85 ? '#2ECC71' : row.confidence >= 0.65 ? '#F1C40F' : '#E74C3C',
-                              }}
+          <>
+            {/* Category Statistics Card */}
+            {categoryStats.length > 0 && (
+              <Card title="Category Breakdown" showActions={false}>
+                <div className="space-y-3">
+                  {categoryStats.slice(0, 5).map(stat => {
+                    const Icon = getIcon(stat.category.icon);
+                    const percentage = totalAmount > 0 ? (stat.total / totalAmount) * 100 : 0;
+                    
+                    return (
+                      <div
+                        key={stat.category.id}
+                        className="rounded-2xl p-4 border border-[#3a3a3a]"
+                        style={{ backgroundColor: '#181818' }}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                              style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
                             >
-                              {(row.confidence * 100).toFixed(0)}%
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {paginatedReviewRows.length === 0 && (
+                              <Icon width={20} height={20} strokeWidth={1.5} style={{ color: stat.category.color || '#E7E4E4' }} />
+                            </div>
+                            <div>
+                              <div className="text-body font-semibold">{stat.category.name}</div>
+                              <div className="text-helper text-xs">{stat.count} transactions</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-body font-semibold">{currency.symbol}{formatNumber(stat.total)}</div>
+                            <div className="text-helper text-xs">{percentage.toFixed(1)}%</div>
+                          </div>
+                        </div>
+                        <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#2A2A2A' }}>
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              backgroundColor: stat.category.color || '#AC66DA',
+                              width: `${percentage}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {categoryStats.length > 5 && (
+                    <div className="text-center text-sm pt-2" style={{ color: 'var(--text-secondary)' }}>
+                      + {categoryStats.length - 5} more categories
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            <Card 
+              title="Review Transactions" 
+              showActions={false}
+              customHeader={
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-card-header">Review Transactions</h2>
+                  {categoryStats.length > 0 && (
+                    <button
+                      onClick={() => setIsCategoryStatsOpen(true)}
+                      className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors cursor-pointer hover:opacity-90"
+                      style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                    >
+                      <Reports width={18} height={18} strokeWidth={1.5} />
+                      View All Stats
+                    </button>
+                  )}
+                </div>
+              }
+            >
+              <div className="flex flex-col gap-4">
+                {/* Filters */}
+                <div className={`flex flex-col md:flex-row md:items-center gap-3`}>
+                  <div className="flex-[0.6]">
+                    <SearchBar
+                      placeholder="Search transactions..."
+                      value={searchQuery}
+                      onChange={setSearchQuery}
+                    />
+                  </div>
+                  <div className="flex-[0.4]">
+                    <CategoryFilter
+                      categories={categories}
+                      selectedCategory={categoryFilter}
+                      onSelect={setCategoryFilter}
+                    />
+                  </div>
+                  <div className="w-full md:w-40">
+                    <TypeFilter
+                      value={typeFilter}
+                      onChange={setTypeFilter}
+                    />
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="overflow-x-auto rounded-3xl border border-[#3a3a3a]" style={{ backgroundColor: '#202020' }}>
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+                        <th className="px-5 py-3 align-top">Date</th>
+                        <th className="px-5 py-3 align-top">Description</th>
+                        <th className="px-5 py-3 align-top">Type</th>
+                        <th className="px-5 py-3 align-top">Category</th>
+                        <th className="px-5 py-3 align-top w-16"></th>
+                      </tr>
+                    </thead>
+                  <tbody>
+                    {paginatedReviewRows.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
                           No transactions match your filters.
                         </td>
                       </tr>
+                    ) : (
+                      paginatedReviewRows.map(row => {
+                        const isExpense = row.amount < 0;
+                        const absoluteAmount = Math.abs(row.amount);
+                        const matchedCategory = row.category ? categoryLookup.get(row.category) : undefined;
+                        const CategoryIcon = matchedCategory ? getIcon(matchedCategory.icon) : null;
+                        
+                        return (
+                          <tr key={row.id} className="border-t border-[#2A2A2A]">
+                            <td className="px-5 py-4 align-top">
+                              <input
+                                type="date"
+                                value={row.date}
+                                onChange={event => handleRowUpdate(row.id, 'date', event.target.value)}
+                                className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-3 py-2 text-sm"
+                                style={{ color: 'var(--text-primary)' }}
+                              />
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <div className="space-y-1.5">
+                                <input
+                                  type="text"
+                                  value={row.description}
+                                  onChange={event => handleRowUpdate(row.id, 'description', event.target.value)}
+                                  className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-3 py-2 text-sm"
+                                  style={{ color: 'var(--text-primary)' }}
+                                  placeholder="Description"
+                                />
+                                <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                  <Language width={14} height={14} strokeWidth={1.5} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+                                  <span>{row.translatedDescription || 'No translation'}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <div className="space-y-1.5">
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                    {currency.symbol}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    pattern="^-?\\d*(?:[\\.,]\\d{0,2})?$"
+                                    value={Number.isFinite(row.amount) ? Math.abs(row.amount).toFixed(2) : ''}
+                                    onChange={event => handleRowUpdate(row.id, 'amount', event.target.value)}
+                                    className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] pl-8 pr-3 py-2 text-sm"
+                                    style={{ color: 'var(--text-primary)' }}
+                                  />
+                                </div>
+                                <span className="text-sm font-semibold" style={{ color: isExpense ? '#D93F3F' : '#74C648' }}>
+                                  {isExpense ? 'Expense' : 'Income'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <CategoryPicker
+                                categories={categories}
+                                selectedCategory={row.category ?? null}
+                                onSelect={(category) => handleRowUpdate(row.id, 'category', category ?? '')}
+                                suggestedCategory={row.suggestedCategory ?? null}
+                              />
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <button
+                                type="button"
+                                onClick={() => handleRowDelete(row.id)}
+                                className="p-2 rounded-full transition-colors hover:opacity-80 cursor-pointer"
+                                style={{ backgroundColor: '#202020', color: '#D93F3F' }}
+                                title="Delete transaction"
+                              >
+                                <Trash width={16} height={16} strokeWidth={1.5} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
               </div>
 
+              {/* Pagination */}
               {reviewTotalPages > 1 && filteredRows.length > 0 && (
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setReviewPage(prev => Math.max(1, prev - 1))}
-                    disabled={reviewPage === 1}
-                    className="rounded-full px-3 py-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: '#282828', color: 'var(--text-primary)' }}
-                  >
-                    Previous
-                  </button>
-                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    Page {reviewPage} of {reviewTotalPages}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setReviewPage(prev => Math.min(reviewTotalPages, prev + 1))}
-                    disabled={reviewPage === reviewTotalPages}
-                    className="rounded-full px-3 py-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: '#282828', color: 'var(--text-primary)' }}
-                  >
-                    Next
-                  </button>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      Showing {paginatedReviewRows.length} of {filteredRows.length} transactions
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReviewPage(prev => Math.max(1, prev - 1))}
+                      disabled={reviewPage === 1}
+                      className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
+                      style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                    >
+                      Prev
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
+                        Page
+                      </span>
+                      <input
+                        type="number"
+                        min="1"
+                        max={reviewTotalPages || 1}
+                        value={reviewPageInput}
+                        onChange={e => handleReviewPageInputChange(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            handleReviewPageInputSubmit();
+                          }
+                        }}
+                        onBlur={handleReviewPageInputSubmit}
+                        className="w-16 rounded-full border-none px-3 py-1 text-xs font-semibold text-center"
+                        style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                      />
+                      <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
+                        of {reviewTotalPages || 1}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReviewPage(prev => Math.min(reviewTotalPages, prev + 1))}
+                      disabled={reviewPage >= reviewTotalPages}
+                      className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
+                      style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -609,120 +877,25 @@ export default function ImportTransactionsPage() {
               </div>
             </div>
           </Card>
+          </>
         )}
 
-        <Card title="Imported History" showActions={false}>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col md:flex-row md:items-center gap-3">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={event => setSearchQuery(event.target.value)}
-                placeholder="Search imported transactions"
-                className="w-full md:flex-1 rounded-2xl border border-[#3a3a3a] bg-[#181818] px-4 py-2 text-sm"
-                style={{ color: 'var(--text-primary)' }}
-              />
-              <select
-                value={categoryFilter ?? ''}
-                onChange={event => setCategoryFilter(event.target.value || null)}
-                className="w-full md:w-60 rounded-2xl border border-[#3a3a3a] bg-[#181818] px-4 py-2 text-sm"
-                style={{ color: 'var(--text-primary)' }}
-              >
-                <option value="">All categories</option>
-                {mockCategories.map(category => (
-                  <option key={category.id} value={category.name}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="overflow-x-auto rounded-3xl border border-[#3a3a3a]" style={{ backgroundColor: '#161616' }}>
-              <table className="min-w-full">
-                <thead>
-                  <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                    <th className="px-5 py-3">Date</th>
-                    <th className="px-5 py-3">Description</th>
-                    <th className="px-5 py-3">Amount (GEL)</th>
-                    <th className="px-5 py-3">Category</th>
-                    <th className="px-5 py-3">Confidence</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isFetchingConfirmed ? (
-                    <tr>
-                      <td colSpan={5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        Loading confirmed transactions…
-                      </td>
-                    </tr>
-                  ) : confirmedTransactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        No imported transactions yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    confirmedTransactions.map(row => (
-                      <tr key={row.id} className="border-t border-[#2A2A2A]">
-                        <td className="px-5 py-4">{row.date}</td>
-                        <td className="px-5 py-4">
-                          <div className="space-y-1">
-                            <div>{row.description}</div>
-                            <div className="text-xs italic" style={{ color: 'var(--text-secondary)' }}>
-                              {row.translatedDescription}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">{row.amount.toFixed(2)}</td>
-                        <td className="px-5 py-4">{row.category ?? 'Uncategorized'}</td>
-                        <td className="px-5 py-4">
-                          <span
-                            className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
-                            style={{
-                              backgroundColor: '#202020',
-                              color: row.confidence >= 0.85 ? '#2ECC71' : row.confidence >= 0.65 ? '#F1C40F' : '#E74C3C',
-                            }}
-                          >
-                            {(row.confidence * 100).toFixed(0)}%
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Showing {confirmedTransactions.length} of {confirmedTotal} transactions
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => fetchConfirmedTransactions(Math.max(1, currentPage - 1), searchQuery, categoryFilter)}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50"
-                  style={{ backgroundColor: '#181818', color: 'var(--text-primary)' }}
-                >
-                  Prev
-                </button>
-                <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => fetchConfirmedTransactions(Math.min(totalPages, currentPage + 1), searchQuery, categoryFilter)}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50"
-                  style={{ backgroundColor: '#181818', color: 'var(--text-primary)' }}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
-        </Card>
+        {/* Category Stats Modal */}
+        {isCategoryStatsOpen && parsedRows.length > 0 && (
+          <CategoryStatsModal
+            categories={categories}
+            transactions={parsedRows.map(row => ({
+              id: row.id,
+              name: row.description,
+              date: row.date,
+              amount: row.amount,
+              category: row.category,
+              icon: row.category ? (categoryLookup.get(row.category)?.icon || 'HelpCircle') : 'HelpCircle',
+            }))}
+            timePeriod="Import Preview"
+            onClose={() => setIsCategoryStatsOpen(false)}
+          />
+        )}
       </div>
     </main>
   );

@@ -1,7 +1,10 @@
+'use client';
+
 import Card from '@/components/ui/Card';
 import { Investment } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { getTrendColor, formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 import { StatUp, StatDown } from 'iconoir-react';
 
 interface PortfolioCardProps {
@@ -34,6 +37,8 @@ function MiniTrendGraph({ isPositive }: { isPositive: boolean }) {
 }
 
 export default function PortfolioCard({ investments }: PortfolioCardProps) {
+  const { currency } = useCurrency();
+  
   if (investments.length === 0) {
     return (
       <Card title="Portfolio">
@@ -74,7 +79,7 @@ export default function PortfolioCard({ investments }: PortfolioCardProps) {
                 </div>
                 <div className="text-right shrink-0 ml-auto">
                   <div className="text-body font-semibold whitespace-nowrap">
-                    ${formatNumber(investment.currentValue)}
+                    {currency.symbol}{formatNumber(investment.currentValue)}
                   </div>
                   <div className="flex items-center gap-1 text-sm whitespace-nowrap" style={{ color: trendColor }}>
                     <TrendIcon width={14} height={14} strokeWidth={2} />

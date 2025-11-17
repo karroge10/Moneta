@@ -1,0 +1,276 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User table - Updated for Clerk-only authentication
+model User {
+  id          Int      @id @default(autoincrement())
+  clerkUserId String?  @unique // Primary identifier for Clerk authentication
+  firstName   String?
+  lastName    String?
+  userName    String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // User preferences (stored directly in User table)
+  languageId    Int?
+  currencyId   Int?
+  defaultPage  String?
+  plan         String? @default("basic") // basic, premium, ultimate
+
+  // Relations
+  language    Language?    @relation(fields: [languageId], references: [id])
+  currency    Currency?    @relation(fields: [currencyId], references: [id])
+  transactions Transaction[]
+  goals       Goal[]
+  investments Investment[]
+  bills       Bill[]
+  categories  CategoriesCustom[]
+  notifications Notification[]
+  merchants   Merchant[]
+  Expense          Expense[]
+  Income           Income[]
+  Trip             Trip[]
+}
+
+// Unified Transaction table replacing Expense and Income
+model Transaction {
+  id                   Int       @id @default(autoincrement())
+  userId               Int
+  type                 String    // 'income' | 'expense'
+  amount               Float
+  description          String
+  source               String?   // For analytics - where transaction came from (e.g., "pdf_import", "manual")
+  date                 DateTime
+  categoryId           Int?
+  currencyId           Int
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Relations
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category?    @relation(fields: [categoryId], references: [id])
+  currency Currency     @relation(fields: [currencyId], references: [id])
+
+  @@index([userId])
+  @@index([date])
+  @@index([type])
+}
+
+// Goal table
+model Goal {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  name         String
+  targetDate   DateTime
+  targetAmount Float
+  currentAmount Float   @default(0)
+  progress     Float    @default(0) // Calculated field: (currentAmount / targetAmount) * 100
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Investment table
+model Investment {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  name         String
+  subtitle     String?  // e.g., "0.341491 BTC", "18 NVDA"
+  currentValue Float
+  changePercent Float   @default(0)
+  icon         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Bill table - Recurring bills/subscriptions
+model Bill {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  name       String
+  date       DateTime
+  amount     Float
+  categoryId Int?
+  icon       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  @@index([userId])
+  @@index([date])
+}
+
+// Category table - Standard categories with icon/color mappings
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  icon      String
+  color     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  transactions Transaction[]
+  bills         Bill[]
+  customCategories CategoriesCustom[]
+  merchants     Merchant[]
+  merchantsGlobal MerchantGlobal[]
+}
+
+// CategoriesCustom table - User-specific custom categories (extended with icon/color)
+model CategoriesCustom {
+  id          Int           @id @default(autoincrement())
+  name        String
+  userId      Int
+  icon        String?       // New field to be added
+  color       String?       // New field to be added
+  categoryId  Int?          // New field - Link to standard category if applicable
+  createdAt   DateTime?     // New field to be added
+  updatedAt   DateTime?    // New field to be added
+  User        User          @relation(fields: [userId], references: [id])
+  Expense     Expense[]
+  TripExpense TripExpense[]
+  category    Category?     @relation(fields: [categoryId], references: [id])
+
+  @@index([userId])
+}
+
+// Notification table
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String   // 'Upcoming Bills', 'Goal Update', 'Upcoming Income', 'Investments', 'Goals', 'AI Insights'
+  text      String
+  date      DateTime
+  time      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+}
+
+// MerchantGlobal table - Global merchant-to-category mappings (shared by all users)
+model MerchantGlobal {
+  id          Int      @id @default(autoincrement())
+  namePattern String   @unique // Normalized merchant name pattern (e.g., "starbucks", "uber")
+  categoryId  Int      // The category this merchant maps to
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([namePattern])
+  @@index([categoryId])
+}
+
+// Merchant table - User-specific merchant-to-category mappings (overrides global)
+model Merchant {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  namePattern String   // Normalized merchant name pattern (e.g., "starbucks", "uber")
+  categoryId  Int      // The category this merchant maps to
+  matchCount  Int      @default(1) // How many times this mapping was confirmed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, namePattern])
+  @@index([userId])
+  @@index([namePattern])
+}
+
+// Currency table - Preserved from existing schema
+model Currency {
+  id      Int       @id @default(autoincrement())
+  name    String
+  symbol  String
+  alias   String
+  Expense Expense[]
+  Income  Income[]
+  User    User[]
+  transactions Transaction[]
+}
+
+// Language table - Preserved from existing schema
+model Language {
+  id    Int    @id @default(autoincrement())
+  name  String
+  alias String
+  User  User[]
+}
+
+// Trip and TripExpense tables - Preserved from existing schema (may not be used but keeping for compatibility)
+model Trip {
+  id          Int           @id @default(autoincrement())
+  startDate   DateTime
+  endDate     DateTime
+  userId      Int
+  User        User          @relation(fields: [userId], references: [id])
+  TripExpense TripExpense[]
+}
+
+model TripExpense {
+  id               Int              @id @default(autoincrement())
+  amount           Float
+  tripId           Int
+  categoryId       Int
+  createdAt        DateTime         @default(now())
+  CategoriesCustom CategoriesCustom @relation(fields: [categoryId], references: [id])
+  Trip             Trip             @relation(fields: [tripId], references: [id])
+}
+
+// Legacy tables - Keep for reference but not used in new schema
+model Expense {
+  id               Int              @id @default(autoincrement())
+  amount           Float
+  categoryId       Int
+  currencyId       Int
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime
+  userId           Int
+  date             DateTime         @default(now())
+  description      String
+  CategoriesCustom CategoriesCustom @relation(fields: [categoryId], references: [id])
+  Currency         Currency         @relation(fields: [currencyId], references: [id])
+  User             User             @relation(fields: [userId], references: [id])
+}
+
+model Income {
+  id         Int      @id @default(autoincrement())
+  amount     Float
+  source     String
+  currencyId Int
+  userId     Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+  date       DateTime @default(now())
+  Currency   Currency @relation(fields: [currencyId], references: [id])
+  User       User     @relation(fields: [userId], references: [id])
+}
