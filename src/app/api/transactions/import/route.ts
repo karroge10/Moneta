@@ -376,18 +376,18 @@ export async function POST(request: NextRequest) {
       console.log(`█  [UNCATEGORIZED TRANSACTIONS - ${unmatchedTransactions.length} total]`);
       console.log('█'.repeat(80));
       console.log('█'.repeat(80));
-      unmatchedTransactions.forEach((tx, index) => {
+      unmatchedTransactions.forEach((tx: { original: string; extracted: string; normalized: string; reasons: string[]; checkedPatterns: Array<{ pattern: string; similarity: number; type: string }> }, index: number) => {
         console.log(`\n█  ┌─ Transaction #${index + 1} ────────────────────────────────────────────────────────────`);
         console.log(`█  │ Original: "${tx.original}"`);
         console.log(`█  │ Extracted: "${tx.extracted}"`);
         console.log(`█  │ Normalized: "${tx.normalized}"`);
         console.log(`█  │ Reasons why it didn't match:`);
-        tx.reasons.forEach(reason => {
+        tx.reasons.forEach((reason: string) => {
           console.log(`█  │   • ${reason}`);
         });
         if (tx.checkedPatterns.length > 0) {
           console.log(`█  │ Top checked patterns (similarity > 0):`);
-          tx.checkedPatterns.slice(0, 5).forEach(pattern => {
+          tx.checkedPatterns.slice(0, 5).forEach((pattern: { pattern: string; similarity: number; type: string }) => {
             console.log(`█  │   • "${pattern.pattern}" (${pattern.type}): ${pattern.similarity.toFixed(3)}`);
           });
         }
