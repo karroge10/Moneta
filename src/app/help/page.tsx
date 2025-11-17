@@ -18,8 +18,6 @@ export default function HelpPage() {
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Help Center"
-          timePeriod={timePeriod} 
-          onTimePeriodChange={setTimePeriod}
         />
       </div>
 

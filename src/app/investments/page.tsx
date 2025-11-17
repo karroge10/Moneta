@@ -22,8 +22,6 @@ export default function InvestmentsPage() {
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Investments"
-          timePeriod={timePeriod} 
-          onTimePeriodChange={setTimePeriod}
           actionButton={{
             label: 'Add Investment',
             onClick: () => console.log('Add investment'),

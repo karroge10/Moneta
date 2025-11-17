@@ -30,8 +30,6 @@ export default function ExpensesPage() {
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Expenses"
-          timePeriod={timePeriod} 
-          onTimePeriodChange={setTimePeriod}
           actionButton={{
             label: 'Add Expense',
             onClick: () => console.log('Add expense'),

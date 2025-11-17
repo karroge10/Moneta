@@ -24,8 +24,6 @@ export default function PricingPage() {
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Pricing"
-          timePeriod={timePeriod} 
-          onTimePeriodChange={setTimePeriod}
         />
       </div>
 

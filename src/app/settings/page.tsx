@@ -49,8 +49,6 @@ export default function SettingsPage() {
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Settings"
-          timePeriod={timePeriod} 
-          onTimePeriodChange={setTimePeriod}
         />
       </div>
 
