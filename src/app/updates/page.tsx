@@ -40,8 +40,6 @@ export default function UpdatesPage() {
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Updates"
-          timePeriod={timePeriod} 
-          onTimePeriodChange={setTimePeriod}
         />
       </div>
 

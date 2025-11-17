@@ -29,8 +29,6 @@ export default function IncomePage() {
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Income"
-          timePeriod={timePeriod} 
-          onTimePeriodChange={setTimePeriod}
           actionButton={{
             label: 'Add Income',
             onClick: () => console.log('Add income'),
