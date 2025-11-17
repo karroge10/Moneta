@@ -107,9 +107,13 @@ export function detectSpecialTransactionType(description: string): string | null
   }
   
   // ATM withdrawals - exclude from categorization (should be uncategorized)
+  // Check for various withdrawal patterns (all checks on translated English text):
+  // - "atm" anywhere
+  // - "withdrawal" with "account" or "from account"
+  // - "cash withdrawal", "money withdrawal", or "withdrawal of money" with account-related terms
   if (desc.includes('atm') ||
-      ((desc.includes('cash withdrawal') || desc.includes('withdrawal')) && 
-       (desc.includes('atm') || desc.includes('cash') || desc.includes('card operation')))) {
+      (desc.includes('withdrawal') && (desc.includes('account') || desc.includes('from account'))) ||
+      (desc.includes('cash withdrawal') || desc.includes('money withdrawal') || desc.includes('withdrawal of money'))) {
     return 'EXCLUDE'; // ATM withdrawals should be uncategorized
   }
   
@@ -148,7 +152,8 @@ export function extractMerchantFromDescription(description: string): string {
   
   // Strategy 2: Extract merchant from payment processor patterns
   // Patterns: "TpayLLC*TPAYLLCWendysD", "Vip Pay*YANDEX.GO", "Tpay*Wendys", etc.
-  // Look for patterns like "PaymentProcessor*MerchantName" or "PaymentProcessor MerchantName"
+  // Also handle patterns like "AIRBNB * HMN33C3ENR" where merchant is before the asterisk
+  // Look for patterns like "PaymentProcessor*MerchantName" or "MerchantName*Code"
   const paymentProcessorMatch = cleaned.match(/(?:vip\s*pay|tpay|pay)\w*\s*\*\s*([^*]+)/i);
   if (paymentProcessorMatch && paymentProcessorMatch[1]) {
     // Extract merchant name from after the asterisk
@@ -162,6 +167,17 @@ export function extractMerchantFromDescription(description: string): string {
     // If we have something meaningful left, use it
     if (merchantPart.length > 2) {
       cleaned = merchantPart;
+    }
+  } else {
+    // Handle patterns like "AIRBNB * HMN33C3ENR" where merchant is before asterisk
+    // Extract merchant name from before the asterisk (if it looks like a merchant name)
+    const merchantBeforeAsterisk = cleaned.match(/^([A-Z][A-Z0-9\s]+?)\s*\*\s*/i);
+    if (merchantBeforeAsterisk && merchantBeforeAsterisk[1]) {
+      const merchantName = merchantBeforeAsterisk[1].trim();
+      // Only use if it looks like a merchant name (not just numbers, at least 3 chars)
+      if (merchantName.length >= 3 && !/^\d+$/.test(merchantName)) {
+        cleaned = merchantName;
+      }
     }
   }
   

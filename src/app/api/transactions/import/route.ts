@@ -138,6 +138,7 @@ export async function POST(request: NextRequest) {
         
         // Check for special transaction types that should be completely excluded (roundup, currency exchange)
         // Do this BEFORE checking user-selected category, so we can filter them out entirely
+        // Always use translated description for checks (categories are in English)
         const descriptionForMatching = item.translatedDescription || item.description;
         const specialType = detectSpecialTransactionType(descriptionForMatching);
         
