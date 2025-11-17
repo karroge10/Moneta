@@ -269,6 +269,10 @@ INSERT INTO "MerchantGlobal" ("namePattern", "categoryId", "createdAt", "updated
 ('property management', 2, NOW(), NOW()),
 ('real estate', 2, NOW(), NOW()),
 ('landlord', 2, NOW(), NOW()),
+('airbnb', 2, NOW(), NOW()),
+('booking.com', 2, NOW(), NOW()),
+('vrbo', 2, NOW(), NOW()),
+('expedia', 2, NOW(), NOW()),
 
 -- TAXES IN GEORGIA (categoryId: 17)
 ('revenue service', 17, NOW(), NOW()),
