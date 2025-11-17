@@ -58,23 +58,51 @@ async function runPythonPipeline(pdfPath: string) {
     });
 
     child.stderr.on('data', data => {
-      stderr += data.toString();
+      const logLine = data.toString();
+      stderr += logLine;
+      // Log Python script output to console for debugging
+      console.log('[Python PDF Processor]', logLine.trim());
     });
 
     child.on('error', error => {
+      console.error('[Python PDF Processor] Spawn error:', error);
       reject(error);
     });
 
     child.on('close', code => {
       if (code !== 0) {
+        console.error('[Python PDF Processor] Exit code:', code);
+        console.error('[Python PDF Processor] stderr:', stderr);
         reject(new Error(stderr || `Python process exited with code ${code}`));
         return;
       }
 
       try {
         const parsed = JSON.parse(stdout) as TransactionUploadResponse;
+        
+        // Warn if we got suspiciously few transactions (likely sample data fallback)
+        if (parsed.transactions && parsed.transactions.length === 3) {
+          const sampleDescriptions = ['Sample Subscription', 'Coffee Shop', 'Salary'];
+          const isSampleData = parsed.transactions.every(tx => 
+            sampleDescriptions.some(sample => tx.description.includes(sample))
+          );
+          
+          if (isSampleData) {
+            console.warn('[Python PDF Processor] ⚠️  WARNING: Received sample transaction data. PDF extraction likely failed.');
+            console.warn('[Python PDF Processor] This usually means the PDF structure doesn\'t match the expected format.');
+            console.warn('[Python PDF Processor] Check Python logs above for extraction details.');
+          }
+        }
+        
+        // Log summary
+        if (parsed.transactions) {
+          console.log(`[Python PDF Processor] ✓ Extracted ${parsed.transactions.length} transactions`);
+        }
+        
         resolve(parsed);
       } catch (error) {
+        console.error('[Python PDF Processor] JSON parse error:', error);
+        console.error('[Python PDF Processor] stdout:', stdout.substring(0, 500));
         reject(new Error(`Failed to parse worker output: ${(error as Error).message}`));
       }
     });
@@ -133,6 +161,15 @@ async function analyzeCategorization(transactions: UploadedTransaction[]): Promi
 
     // Process and update transactions with matched categories
     const updatedTransactions = transactions.map((item: UploadedTransaction) => {
+      // Skip auto-categorization for income transactions (amount >= 0)
+      // Income transactions should remain uncategorized unless explicitly set by user
+      if (item.amount >= 0) {
+        return {
+          ...item,
+          category: null, // Don't auto-categorize income transactions
+        };
+      }
+
       let categoryId = null;
       let matchedMerchant: string | null = null;
       const unmatchedReasons: string[] = [];
@@ -152,6 +189,14 @@ async function analyzeCategorization(transactions: UploadedTransaction[]): Promi
         };
       } else if (specialType && specialType !== 'EXCLUDE') {
         // Special type that should be categorized (e.g., commissions -> utilities)
+        // But ATM withdrawals should be uncategorized, not "Other"
+        if (specialType === 'other' && (descriptionForMatching.toLowerCase().includes('atm') || 
+            descriptionForMatching.toLowerCase().includes('cash withdrawal'))) {
+          return {
+            ...item,
+            category: null, // ATM withdrawals should be uncategorized
+          };
+        }
         const specialCategoryId = categoryMap.get(specialType.toLowerCase());
         if (specialCategoryId) {
           const specialCategoryName = categoryByIdMap.get(specialCategoryId);
@@ -371,6 +416,29 @@ async function analyzeCategorization(transactions: UploadedTransaction[]): Promi
   }
 }
 
+async function callExternalPythonService(file: File): Promise<TransactionUploadResponse> {
+  const serviceUrl = process.env.PYTHON_SERVICE_URL;
+  
+  if (!serviceUrl) {
+    throw new Error('PYTHON_SERVICE_URL environment variable is not set');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${serviceUrl}/process-pdf`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Service returned status ${response.status}`);
+  }
+
+  return response.json() as Promise<TransactionUploadResponse>;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -380,22 +448,51 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'A PDF file is required.' }, { status: 400 });
     }
 
-    const tempFilePath = await saveTempFile(file);
+    let result: TransactionUploadResponse;
 
-    try {
-      const result = await runPythonPipeline(tempFilePath);
-      
-      // Analyze categorization after parsing and apply matched categories
-      if (result.transactions && result.transactions.length > 0) {
-        const updatedTransactions = await analyzeCategorization(result.transactions);
-        // Update the result with transactions that have categories applied
-        result.transactions = updatedTransactions;
+    // Check if external Python service URL is set (for production/Vercel)
+    if (process.env.PYTHON_SERVICE_URL) {
+      console.log('[upload-bank-statement] Using external Python service:', process.env.PYTHON_SERVICE_URL);
+      result = await callExternalPythonService(file as File);
+    } else {
+      // Use local Python (for development)
+      console.log('[upload-bank-statement] Using local Python process');
+      const tempFilePath = await saveTempFile(file as File);
+      try {
+        result = await runPythonPipeline(tempFilePath);
+      } finally {
+        await fs.unlink(tempFilePath).catch(() => {});
       }
-      
-      return NextResponse.json(result);
-    } finally {
-      await fs.unlink(tempFilePath).catch(() => {});
     }
+
+    // Check if we got sample data (indicates PDF extraction failed)
+        if (result.transactions && result.transactions.length === 3) {
+          const sampleDescriptions = ['Sample Subscription', 'Coffee Shop', 'Salary'];
+          const isSampleData = result.transactions.every(tx => 
+            sampleDescriptions.some(sample => tx.description.includes(sample))
+          );
+          
+          if (isSampleData) {
+            console.error('[upload-bank-statement] PDF extraction failed - received sample data');
+            return NextResponse.json(
+              { 
+                error: 'Failed to extract transactions from PDF. The PDF structure may not match the expected format. Please check the server logs for details.',
+                transactions: [],
+                metadata: result.metadata || {},
+              },
+              { status: 400 }
+            );
+          }
+        }
+        
+        // Analyze categorization after parsing and apply matched categories
+        if (result.transactions && result.transactions.length > 0) {
+          const updatedTransactions = await analyzeCategorization(result.transactions);
+          // Update the result with transactions that have categories applied
+          result.transactions = updatedTransactions;
+        }
+        
+        return NextResponse.json(result);
   } catch (error) {
     console.error('[upload-bank-statement] error', error);
     return NextResponse.json(

@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
-    "seed:merchants": "tsx prisma/seed-merchants.ts"
+    "seed:merchants": "tsx prisma/seed-merchants.ts",
+    "setup": "npm install && node scripts/setup-python.js",
+    "postinstall": "node scripts/setup-python.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
