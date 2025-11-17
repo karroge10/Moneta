@@ -1,8 +1,11 @@
+'use client';
+
 import Card from '@/components/ui/Card';
 import { Transaction } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { NavArrowRight } from 'iconoir-react';
 import { formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 import Link from 'next/link';
 
 interface UpcomingIncomesCardProps {
@@ -10,6 +13,7 @@ interface UpcomingIncomesCardProps {
 }
 
 export default function UpcomingIncomesCard({ incomes }: UpcomingIncomesCardProps) {
+  const { currency } = useCurrency();
   if (incomes.length === 0) {
     return (
       <Card title="Upcoming Incomes">
@@ -42,7 +46,7 @@ export default function UpcomingIncomesCard({ incomes }: UpcomingIncomesCardProp
                   <div className="text-helper">{income.date}</div>
                 </div>
                 <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
-                  ${formatNumber(income.amount)}
+                  {currency.symbol}{formatNumber(income.amount)}
                 </div>
               </div>
             );

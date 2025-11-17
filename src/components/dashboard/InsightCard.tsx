@@ -3,6 +3,7 @@
 import Card from '@/components/ui/Card';
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import { formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface InsightCardProps {
   title: string;
@@ -15,6 +16,7 @@ interface InsightCardProps {
 }
 
 export default function InsightCard({ title, amount, message, investmentAmount, trend, shortRow = false, minimal = false }: InsightCardProps) {
+  const { currency } = useCurrency();
   // Empty state when amount is 0
   const isEmpty = amount === 0;
 
@@ -57,7 +59,7 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
       >
         <div className="flex flex-col flex-1 min-h-0">
           <div className="flex items-center gap-2 flex-1">
-            <span className="text-card-currency">$</span>
+            <span className="text-card-currency">{currency.symbol}</span>
             <span className="text-card-value">{formatNumber(amount)}</span>
           </div>
           <div className="text-helper mt-2">
@@ -97,11 +99,11 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
           </div>
           <div className="flex-shrink-0 text-right">
             <div className="flex items-baseline gap-1 justify-end">
-              <span className="text-card-currency">$</span>
+              <span className="text-card-currency">{currency.symbol}</span>
               <span className="text-card-value">{formatNumber(amount)}</span>
             </div>
             <div style={{ color: 'var(--accent-green)', fontSize: 'clamp(12px, 1.2vw, 14px)', fontWeight: 600 }}>
-              +${formatNumber(investmentAmount, false)}
+              +{currency.symbol}{formatNumber(investmentAmount, false)}
             </div>
           </div>
         </div>
@@ -148,13 +150,13 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
       <div className="mt-2 flex flex-col flex-1 min-h-0">
         <div className="text-helper mb-4 text-wrap-safe break-words">{title}</div>
         <div className="flex items-baseline gap-2 mb-4 min-w-0 flex-wrap">
-          <span className="text-card-currency flex-shrink-0">$</span>
+          <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
           <span className="text-card-value break-all min-w-0">{formatNumber(amount)}</span>
         </div>
         <div className="mt-auto text-wrap-safe break-words">
           <span className="text-helper">{message}</span>
           <span className="font-semibold ml-1 whitespace-nowrap" style={{ color: 'var(--accent-green)', fontSize: 'clamp(12px, 1.2vw, 14px)' }}>
-            ${formatNumber(investmentAmount, false)}
+            {currency.symbol}{formatNumber(investmentAmount, false)}
           </span>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { NavArrowRight } from 'iconoir-react';
 import { Transaction } from '@/types/dashboard';
 import { formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface TransactionMonthGroupProps {
   month: string;
@@ -21,6 +22,7 @@ export default function TransactionMonthGroup({
   onToggle,
   maxRows = 6
 }: TransactionMonthGroupProps) {
+  const { currency } = useCurrency();
   const monthTotal = transactions.reduce((sum, t) => sum + t.amount, 0);
   const displayedTransactions = transactions.slice(0, maxRows);
 
@@ -32,7 +34,7 @@ export default function TransactionMonthGroup({
       >
         <span>{month}</span>
         <div className="flex items-center gap-2">
-          <span className="text-helper">${formatNumber(monthTotal)}</span>
+          <span className="text-helper">{currency.symbol}{formatNumber(monthTotal)}</span>
           <NavArrowRight 
             width={14} 
             height={14} 

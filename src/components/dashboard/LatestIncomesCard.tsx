@@ -6,6 +6,7 @@ import { LatestIncome } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { NavArrowRight } from 'iconoir-react';
 import { formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 import Link from 'next/link';
 
 interface LatestIncomesCardProps {
@@ -13,6 +14,7 @@ interface LatestIncomesCardProps {
 }
 
 export default function LatestIncomesCard({ incomes }: LatestIncomesCardProps) {
+  const { currency } = useCurrency();
   // Group incomes by month
   const groupedByMonth: Record<string, LatestIncome[]> = {};
   incomes.forEach(inc => {
@@ -64,7 +66,7 @@ export default function LatestIncomesCard({ incomes }: LatestIncomesCardProps) {
                 >
                   <span>{month}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-helper">${formatNumber(monthTotal)}</span>
+                    <span className="text-helper">{currency.symbol}{formatNumber(monthTotal)}</span>
                     <NavArrowRight 
                       width={14} 
                       height={14} 
@@ -95,7 +97,7 @@ export default function LatestIncomesCard({ incomes }: LatestIncomesCardProps) {
                             <div className="text-helper">{income.date}</div>
                           </div>
                           <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
-                            ${formatNumber(income.amount)}
+                            {currency.symbol}{formatNumber(income.amount)}
                           </div>
                         </div>
                       );

@@ -1,10 +1,28 @@
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
+// Import only the formatting function, not server-side utilities
+function formatCurrencyWithCode(
+  amount: number,
+  currencyCode: string = 'USD',
+  locale: string = 'en-US'
+): string {
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch (error) {
+    // Fallback if currency code is invalid
+    const formatted = amount.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+    return `$${formatted}`;
+  }
+}
+
+export function formatCurrency(amount: number, currencyCode: string = 'USD'): string {
+  return formatCurrencyWithCode(amount, currencyCode);
 }
 
 export function formatNumber(amount: number, withDecimals = true): string {
@@ -12,6 +30,21 @@ export function formatNumber(amount: number, withDecimals = true): string {
     minimumFractionDigits: withDecimals ? 2 : 0,
     maximumFractionDigits: withDecimals ? 2 : 0,
   });
+}
+
+/**
+ * Format amount with currency symbol (for use when you have the symbol directly)
+ * @param amount - The amount to format
+ * @param symbol - The currency symbol (e.g., '$', '₾', '€')
+ * @param withDecimals - Whether to include decimal places
+ */
+export function formatAmountWithSymbol(
+  amount: number,
+  symbol: string = '$',
+  withDecimals = true
+): string {
+  const formatted = formatNumber(amount, withDecimals);
+  return `${symbol}${formatted}`;
 }
 
 export function getHealthColor(score: number): string {

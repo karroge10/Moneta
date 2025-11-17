@@ -6,12 +6,14 @@ import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { Goal } from '@/types/dashboard';
 import { InfoCircle } from 'iconoir-react';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface GoalsCardProps {
   goals: Goal[];
 }
 
 export default function GoalsCard({ goals }: GoalsCardProps) {
+  const { currency } = useCurrency();
   const [activeIndex, setActiveIndex] = useState(0);
   
   if (goals.length === 0) {
@@ -60,10 +62,10 @@ export default function GoalsCard({ goals }: GoalsCardProps) {
           <div className="text-helper mb-2">{goal.targetDate}</div>
           <div className="flex items-center justify-between mb-2 gap-2 min-w-0">
             <div className="text-body font-medium text-wrap-safe break-words min-w-0 flex-1">{goal.name}</div>
-            <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">${goal.targetAmount.toLocaleString('en-US')}</div>
+            <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">{currency.symbol}{goal.targetAmount.toLocaleString('en-US')}</div>
           </div>
           <div className="flex items-baseline gap-2 mb-4 min-w-0 flex-wrap">
-            <span className="text-card-currency flex-shrink-0">$</span>
+            <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
             <span className="text-card-value break-all min-w-0">{goal.currentAmount.toLocaleString('en-US')}</span>
           </div>
           <ProgressBar value={goal.progress} />

@@ -122,7 +122,7 @@ export const mockTransactions: Transaction[] = [
     name: 'Starbucks',
     date: 'Jan 14th 2024',
     amount: 5.50,
-    category: 'Food',
+    category: 'Restaurants',
     icon: 'CoffeeCup',
   },
   {
@@ -210,7 +210,6 @@ export const mockCategories: Category[] = [
   { id: '16', name: 'Taxes in Georgia', icon: 'Cash', color: '#74C648' },
   { id: '17', name: 'Mobile Data', icon: 'SmartphoneDevice', color: '#D93F3F' },
   { id: '18', name: 'Taxes in USA', icon: 'Cash', color: '#74C648' },
-  { id: '19', name: 'Food', icon: 'CoffeeCup', color: '#AC66DA' },
   { id: '20', name: 'Utilities', icon: 'Flash', color: '#AC66DA' },
 ];
 
@@ -444,7 +443,7 @@ export const minimalTransactions: Transaction[] = [
     name: 'Coffee Shop',
     date: 'Dec 30th 2024',
     amount: 4.50,
-    category: 'Food',
+    category: 'Restaurants',
     icon: 'CoffeeCup',
   },
   {
@@ -488,7 +487,7 @@ export const minimalTopExpenses: ExpenseCategory[] = [
   },
   {
     id: '2',
-    name: 'Food',
+    name: 'Restaurants',
     amount: 4.50,
     percentage: 5,
     icon: 'CoffeeCup',
@@ -527,7 +526,7 @@ export const mockExpensesPage = {
       name: 'Groceries',
       date: 'Jan 4th 2025',
       amount: 551.92,
-      category: 'Food',
+      category: 'Restaurants',
       icon: 'Cart',
       month: 'January 2024',
     },
@@ -536,7 +535,7 @@ export const mockExpensesPage = {
       name: 'Restaurants',
       date: 'Jan 3rd 2025',
       amount: 4000.00,
-      category: 'Food',
+      category: 'Restaurants',
       icon: 'PizzaSlice',
       month: 'January 2024',
     },
@@ -563,7 +562,7 @@ export const mockExpensesPage = {
       name: 'Groceries',
       date: 'Dec 28th 2024',
       amount: 450.00,
-      category: 'Food',
+      category: 'Restaurants',
       icon: 'Cart',
       month: 'April 2025',
     },
