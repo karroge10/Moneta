@@ -109,11 +109,18 @@ export function detectSpecialTransactionType(description: string): string | null
   // ATM withdrawals - exclude from categorization (should be uncategorized)
   // Check for various withdrawal patterns (all checks on translated English text):
   // - "atm" anywhere
-  // - "withdrawal" with "account" or "from account"
-  // - "cash withdrawal", "money withdrawal", or "withdrawal of money" with account-related terms
+  // - "withdrawal" with "account" or "from account" 
+  // - "cash withdrawal", "money withdrawal", or "withdrawal of money"
+  // - "withdraw" (verb form) with "account"
+  // - "take out" or "takeout" with "account" or "money"
   if (desc.includes('atm') ||
+      desc.includes('cash withdrawal') ||
+      desc.includes('money withdrawal') ||
+      desc.includes('withdrawal of money') ||
       (desc.includes('withdrawal') && (desc.includes('account') || desc.includes('from account'))) ||
-      (desc.includes('cash withdrawal') || desc.includes('money withdrawal') || desc.includes('withdrawal of money'))) {
+      (desc.includes('withdraw') && desc.includes('account')) ||
+      (desc.includes('take out') && (desc.includes('account') || desc.includes('money'))) ||
+      (desc.includes('takeout') && (desc.includes('account') || desc.includes('money')))) {
     return 'EXCLUDE'; // ATM withdrawals should be uncategorized
   }
   
