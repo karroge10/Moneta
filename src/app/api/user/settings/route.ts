@@ -64,8 +64,8 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
 
     const updateData: {
-      languageId?: number;
-      currencyId?: number;
+      languageId?: number | null;
+      currencyId?: number | null;
       defaultPage?: string;
     } = {};
 

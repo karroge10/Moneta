@@ -24,8 +24,6 @@ export default function GoalsPage() {
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Goals"
-          timePeriod={timePeriod} 
-          onTimePeriodChange={setTimePeriod}
           actionButton={{
             label: 'Add Goal',
             onClick: () => console.log('Add goal'),

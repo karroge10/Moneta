@@ -20,8 +20,6 @@ export default function StatisticsPage() {
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Statistics"
-          timePeriod={timePeriod} 
-          onTimePeriodChange={setTimePeriod}
         />
       </div>
 

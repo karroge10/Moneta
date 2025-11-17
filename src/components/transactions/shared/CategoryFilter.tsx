@@ -102,7 +102,6 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
                     width={20} 
                     height={20} 
                     strokeWidth={1.5} 
-                    className="transition-colors duration-150"
                     style={{ 
                       color: 'currentColor'
                     }}
