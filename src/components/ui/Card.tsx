@@ -1,6 +1,5 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
-import { Plus, MoreHoriz } from 'iconoir-react';
 
 interface CardProps {
   title: string;
@@ -31,22 +30,6 @@ export default function Card({
             </Link>
           ) : (
             <h2 className="text-card-header">{title}</h2>
-          )}
-          {showActions && (
-            <div className="flex items-center gap-2">
-              <button
-                className="hover-text-purple transition-colors cursor-pointer group disabled:opacity-40 disabled:cursor-not-allowed"
-                aria-label="Add"
-                type="button"
-                onClick={onAdd}
-                disabled={!onAdd}
-              >
-                <Plus width={20} height={20} strokeWidth={1.5} className="stroke-current" />
-              </button>
-              <button className="hover-text-purple transition-colors cursor-pointer group" aria-label="More options">
-                <MoreHoriz width={20} height={20} strokeWidth={1.5} className="stroke-current" />
-              </button>
-            </div>
           )}
         </div>
       )}

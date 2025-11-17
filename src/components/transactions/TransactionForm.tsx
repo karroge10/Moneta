@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef, CSSProperties } from 'react';
-import { NavArrowDown, NavArrowLeft, NavArrowRight, Trash } from 'iconoir-react';
+import { NavArrowDown, NavArrowLeft, NavArrowRight, Trash, ShoppingBag, Wallet } from 'iconoir-react';
 import { Transaction } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { mockCategories } from '@/lib/mockData';
 import { useCurrency } from '@/hooks/useCurrency';
 import { formatNumber } from '@/lib/utils';
+import Spinner from '@/components/ui/Spinner';
 
 interface TransactionFormProps {
   transaction: Transaction;
@@ -15,6 +16,7 @@ interface TransactionFormProps {
   onCancel: () => void;
   onDelete?: () => void;
   onFloatingPanelToggle?: (isOpen: boolean) => void;
+  isSaving?: boolean;
 }
 
 interface CalendarPanelProps {
@@ -32,6 +34,7 @@ export default function TransactionForm({
   onCancel,
   onDelete,
   onFloatingPanelToggle,
+  isSaving = false,
 }: TransactionFormProps) {
   const { currency } = useCurrency();
   const [formData, setFormData] = useState<Transaction>(transaction);
@@ -52,11 +55,12 @@ export default function TransactionForm({
   });
 
   useEffect(() => {
-    // Use fullName if available (for transaction modal), otherwise use name
+    // Sync transaction prop to form state - necessary for controlled component
     const transactionToUse = {
       ...transaction,
       name: transaction.fullName || transaction.name,
     };
+    // This is intentional - we need to sync props to state for controlled form
     setFormData(transactionToUse);
     setTransactionType(transaction.amount < 0 ? 'expense' : 'income');
     setAmountInput(transaction.amount ? Math.abs(transaction.amount).toString() : '');
@@ -103,7 +107,10 @@ export default function TransactionForm({
     ? mockCategories.find(category => category.name === formData.category) ?? null
     : null;
 
-  const SelectedIcon = selectedCategory ? getIcon(selectedCategory.icon) : null;
+  // Get icon component from static map (not creating new component, just getting reference)
+  const selectedIconName = selectedCategory?.icon;
+  // getIcon returns a component from a static map, not creating a new one
+  const SelectedIcon = selectedIconName ? getIcon(selectedIconName) : null;
 
   const handleCategorySelect = (categoryId: string | null) => {
     if (!categoryId) {
@@ -150,7 +157,8 @@ export default function TransactionForm({
           type="text"
           value={formData.name}
           onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-          className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C]"
+          disabled={isSaving}
+          className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ color: 'var(--text-primary)' }}
           placeholder="Enter a name"
         />
@@ -179,7 +187,8 @@ export default function TransactionForm({
             <button
               type="button"
               onClick={() => setIsCategoryOpen(prev => !prev)}
-              className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2"
+              disabled={isSaving}
+              className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: 'var(--text-primary)' }}
             >
               <span
@@ -247,7 +256,8 @@ export default function TransactionForm({
             <button
               type="button"
               onClick={() => setIsDateOpen(prev => !prev)}
-              className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2"
+              disabled={isSaving}
+              className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: 'var(--text-primary)' }}
             >
               <span
@@ -277,105 +287,138 @@ export default function TransactionForm({
         </div>
       </div>
 
-      <div>
-        <label className="block text-body font-medium mb-2">Type</label>
-        <div className="flex gap-3 mb-4">
-          <button
-            type="button"
-            onClick={() => setTransactionType('expense')}
-            className={`flex-1 px-4 py-2 rounded-xl text-body font-semibold transition-colors ${
-              transactionType === 'expense'
-                ? 'text-white'
-                : 'border border-[#3a3a3a]'
-            }`}
-            style={{
-              backgroundColor: transactionType === 'expense' ? '#D93F3F' : 'transparent',
-              color: transactionType === 'expense' ? 'var(--text-primary)' : 'var(--text-primary)',
-            }}
-          >
-            Expense
-          </button>
-          <button
-            type="button"
-            onClick={() => setTransactionType('income')}
-            className={`flex-1 px-4 py-2 rounded-xl text-body font-semibold transition-colors ${
-              transactionType === 'income'
-                ? 'text-white'
-                : 'border border-[#3a3a3a]'
-            }`}
-            style={{
-              backgroundColor: transactionType === 'income' ? '#74C648' : 'transparent',
-              color: transactionType === 'income' ? 'var(--text-primary)' : 'var(--text-primary)',
-            }}
-          >
-            Income
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-body font-medium mb-2">Amount</label>
-        <div className="relative">
-          <span 
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-body font-semibold"
-            style={{ color: 'var(--text-primary)' }}
-          >
-            {currency.symbol}
-          </span>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={amountInput}
-            onChange={(e) => {
-              const sanitized = e.target.value.replace(/[^0-9.,]/g, '');
-              setAmountInput(sanitized);
-              const numericValue = parseFloat(sanitized.replace(/,/g, '.'));
-              setFormData(prev => ({
-                ...prev,
-                amount: Number.isNaN(numericValue) ? 0 : numericValue,
-              }));
-            }}
-            className="w-full pl-8 pr-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C]"
-            style={{ color: 'var(--text-primary)' }}
-            placeholder="0.00"
-          />
-        </div>
-        {amountInput && !isNaN(parseFloat(amountInput.replace(/,/g, '.'))) && (
-          <div className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {transactionType === 'expense' ? 'Expense' : 'Income'}: {currency.symbol}{formatNumber(parseFloat(amountInput.replace(/,/g, '.')) || 0)}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-body font-medium mb-2">Type</label>
+          <div className="relative bg-[#202020] border border-[#3a3a3a] rounded-xl p-0.5 flex gap-0.5 h-[42px]">
+            <button
+              type="button"
+              onClick={() => setTransactionType('expense')}
+              disabled={isSaving}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 ${
+                transactionType === 'expense'
+                  ? 'bg-[#D93F3F] text-white shadow-sm'
+                  : 'bg-transparent text-[#8C8C8C] hover:text-[#E7E4E4]'
+              }`}
+            >
+              <ShoppingBag width={14} height={14} strokeWidth={1.5} />
+              <span>Expense</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTransactionType('income')}
+              disabled={isSaving}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 ${
+                transactionType === 'income'
+                  ? 'bg-[#74C648] text-white shadow-sm'
+                  : 'bg-transparent text-[#8C8C8C] hover:text-[#E7E4E4]'
+              }`}
+            >
+              <Wallet width={14} height={14} strokeWidth={1.5} />
+              <span>Income</span>
+            </button>
           </div>
-        )}
+        </div>
+
+        <div>
+          <label className="block text-body font-medium mb-2">Amount</label>
+          <div className="relative">
+            <span 
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-body font-semibold"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              {currency.symbol}
+            </span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amountInput}
+              onChange={(e) => {
+                const sanitized = e.target.value.replace(/[^0-9.,]/g, '');
+                setAmountInput(sanitized);
+                const numericValue = parseFloat(sanitized.replace(/,/g, '.'));
+                setFormData(prev => ({
+                  ...prev,
+                  amount: Number.isNaN(numericValue) ? 0 : numericValue,
+                }));
+              }}
+              disabled={isSaving}
+              className="w-full pl-8 pr-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: 'var(--text-primary)' }}
+              placeholder="0.00"
+            />
+          </div>
+          {amountInput && !isNaN(parseFloat(amountInput.replace(/,/g, '.'))) && (
+            <div className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {transactionType === 'expense' ? 'Expense' : 'Income'}: {currency.symbol}{formatNumber(parseFloat(amountInput.replace(/,/g, '.')) || 0)}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 pt-4">
-        <div className="flex gap-4">
+        <div className="flex gap-3 items-center justify-end">
           {mode === 'edit' && onDelete && (
             <button
               type="button"
               onClick={handleDelete}
-              className="px-6 py-3 rounded-full text-body font-semibold transition-colors cursor-pointer hover:opacity-90 flex items-center justify-center gap-2"
+              disabled={isSaving}
+              className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer hover:bg-[#B82E2E] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#D93F3F]"
               style={{ backgroundColor: '#D93F3F', color: 'var(--text-primary)' }}
             >
-              <Trash width={18} height={18} strokeWidth={1.5} />
-              Delete
+              <Trash width={16} height={16} strokeWidth={1.5} />
+              <span>Delete</span>
             </button>
           )}
           <button
             type="button"
             onClick={onCancel}
-            className={`px-6 py-3 rounded-full text-body font-semibold transition-colors cursor-pointer hover:opacity-80 ${
-              mode === 'edit' && onDelete ? 'flex-1' : 'flex-1'
-            }`}
-            style={{ backgroundColor: '#3a3a3a' }}
+            disabled={isSaving}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#4a4a4a]"
+            style={{ 
+              backgroundColor: '#282828', 
+              color: 'var(--text-primary)', 
+              border: '1px solid #3a3a3a',
+            }}
+            onMouseEnter={(e) => {
+              if (!isSaving) {
+                e.currentTarget.style.backgroundColor = '#323232';
+                e.currentTarget.style.borderColor = '#4a4a4a';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isSaving) {
+                e.currentTarget.style.backgroundColor = '#282828';
+                e.currentTarget.style.borderColor = '#3a3a3a';
+              }
+            }}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="flex-1 px-6 py-3 rounded-full text-body font-semibold transition-colors cursor-pointer hover:opacity-90"
+            disabled={isSaving}
+            className="px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+            onMouseEnter={(e) => {
+              if (!isSaving) {
+                e.currentTarget.style.backgroundColor = '#9A4FB8';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isSaving) {
+                e.currentTarget.style.backgroundColor = 'var(--accent-purple)';
+              }
+            }}
           >
-            {mode === 'add' ? 'Add Transaction' : 'Save Changes'}
+            {isSaving ? (
+              <>
+                <Spinner size={16} color="var(--text-primary)" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <span>{mode === 'add' ? 'Add Transaction' : 'Save Changes'}</span>
+            )}
           </button>
         </div>
       </div>
@@ -419,7 +462,6 @@ function formatDateToInput(value: string) {
 function CalendarPanel({ selectedDate, currentMonth, onChange, onMonthChange, controlAlignment = 'center' }: CalendarPanelProps) {
   const today = new Date();
   const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-  const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
 
   const startWeekDay = startOfMonth.getDay(); // 0 (Sun) - 6 (Sat)
   const days: Date[] = [];
