@@ -178,22 +178,12 @@ async function analyzeCategorization(transactions: UploadedTransaction[]): Promi
       // Use translated description for all matching operations (fallback to original if not available)
       const descriptionForMatching = item.translatedDescription || item.description;
 
-      // Check for utility payment patterns that should be categorized as Utilities
+      // Check for utility payment patterns that should be left uncategorized
       // These patterns indicate utility payments and should not be matched to Groceries
+      // Since we have separate categories for each utility type, leave these uncategorized
       const descLower = descriptionForMatching.toLowerCase();
       if (descLower.includes('cleaning') && (descLower.includes('tbilservi') || descLower.includes('tbilisi servis') || descLower.includes('service group'))) {
-        // This is a cleaning/utility payment - should be Utilities category, not Groceries
-        const utilitiesCategoryId = categoryMap.get('utilities');
-        if (utilitiesCategoryId) {
-          const utilitiesCategoryName = categoryByIdMap.get(utilitiesCategoryId);
-          if (utilitiesCategoryName) {
-            return {
-              ...item,
-              category: utilitiesCategoryName,
-            };
-          }
-        }
-        // If Utilities category not found, leave uncategorized rather than matching to Groceries
+        // This is a cleaning/utility payment - leave uncategorized (user can assign to specific utility category)
         return {
           ...item,
           category: null,
@@ -202,18 +192,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[]): Promi
       
       // Check for "Various - All Service Group" or similar utility service patterns
       if ((descLower.includes('various') || descLower.includes('სხვადასხვა')) && descLower.includes('service group')) {
-        // This is a utility service payment - should be uncategorized or Utilities, not Groceries
-        const utilitiesCategoryId = categoryMap.get('utilities');
-        if (utilitiesCategoryId) {
-          const utilitiesCategoryName = categoryByIdMap.get(utilitiesCategoryId);
-          if (utilitiesCategoryName) {
-            return {
-              ...item,
-              category: utilitiesCategoryName,
-            };
-          }
-        }
-        // If Utilities category not found, leave uncategorized rather than matching to Groceries
+        // This is a utility service payment - leave uncategorized (user can assign to specific utility category)
         return {
           ...item,
           category: null,
@@ -230,7 +209,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[]): Promi
           category: null, // Explicitly set to null to exclude from categorization
         };
       } else if (specialType && specialType !== 'EXCLUDE') {
-        // Special type that should be categorized (e.g., commissions -> utilities)
+        // Special type that should be categorized (e.g., commissions -> other)
         // But ATM withdrawals should be uncategorized, not "Other"
         if (specialType === 'other' && (descriptionForMatching.toLowerCase().includes('atm') || 
             descriptionForMatching.toLowerCase().includes('cash withdrawal'))) {

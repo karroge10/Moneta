@@ -23,7 +23,7 @@ export const mockBills: Bill[] = [
     name: 'Gas (Home)',
     date: 'Jan 5th 2025',
     amount: 55.2,
-    category: 'Utilities',
+    category: 'Heating Bill',
     icon: 'FireFlame',
   },
   {
@@ -39,7 +39,7 @@ export const mockBills: Bill[] = [
     name: 'Internet (Home)',
     date: 'Jan 25th 2025',
     amount: 20.0,
-    category: 'Utilities',
+    category: 'Home Internet',
     icon: 'Wifi',
   },
 ];
@@ -106,7 +106,7 @@ export const mockTransactions: Transaction[] = [
     name: 'Silknet LLC',
     date: 'Dec 2nd 2024',
     amount: 45.00,
-    category: 'Utilities',
+    category: 'Home Internet',
     icon: 'Wifi',
   },
   {
@@ -138,7 +138,7 @@ export const mockTransactions: Transaction[] = [
     name: 'Electricity Bill',
     date: 'Jan 3rd 2024',
     amount: 85.20,
-    category: 'Utilities',
+    category: 'Electricity Bill',
     icon: 'Flash',
   },
   {
@@ -178,7 +178,7 @@ export const mockTransactions: Transaction[] = [
     name: 'Water Bill',
     date: 'Mar 15th 2024',
     amount: 35.00,
-    category: 'Utilities',
+    category: 'Water Bill',
     icon: 'Droplet',
   },
   {
@@ -186,7 +186,7 @@ export const mockTransactions: Transaction[] = [
     name: 'Heating',
     date: 'Mar 10th 2024',
     amount: 120.00,
-    category: 'Utilities',
+    category: 'Heating Bill',
     icon: 'FireFlame',
   },
 ];
@@ -210,7 +210,6 @@ export const mockCategories: Category[] = [
   { id: '16', name: 'Taxes in Georgia', icon: 'Cash', color: '#74C648' },
   { id: '17', name: 'Mobile Data', icon: 'SmartphoneDevice', color: '#D93F3F' },
   { id: '18', name: 'Taxes in USA', icon: 'Cash', color: '#74C648' },
-  { id: '20', name: 'Utilities', icon: 'Flash', color: '#AC66DA' },
 ];
 
 export const mockGoals: Goal[] = [
@@ -1084,7 +1083,7 @@ export const mockStatisticsPage = {
     { id: '5', name: 'Health & Fitness', amount: 4000.00, icon: 'Gym', color: '#D93F3F' },
     { id: '6', name: 'Technology', amount: 4000.00, icon: 'Tv', color: '#AC66DA' },
     { id: '7', name: 'Transportation', amount: 320.50, icon: 'Tram', color: '#74C648' },
-    { id: '8', name: 'Utilities', amount: 285.75, icon: 'Flash', color: '#AC66DA' },
+    { id: '8', name: 'Electricity Bill', amount: 285.75, icon: 'Flash', color: '#AC66DA' },
     { id: '9', name: 'Clothing', amount: 450.00, icon: 'Shirt', color: '#D93F3F' },
     { id: '10', name: 'Insurance', amount: 650.00, icon: 'HelpCircle', color: '#74C648' },
     { id: '11', name: 'Education', amount: 1200.00, icon: 'Page', color: '#AC66DA' },
