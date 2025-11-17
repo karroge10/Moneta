@@ -586,6 +586,17 @@ def load_classifier(model_path: Path):
 
 def predict_category(description_en: str, model) -> Tuple[Optional[str], float]:
     text = description_en or ""
+    
+    # Check for withdrawal patterns first - these should not be categorized
+    # (They'll be excluded in the import route, but we shouldn't suggest a category)
+    # All checks are on translated English text - translation happens before this function is called
+    lowered = text.lower()
+    if ('atm' in lowered or 
+        'cash withdrawal' in lowered or
+        'money withdrawal' in lowered or
+        ('withdrawal' in lowered and ('account' in lowered or 'from account' in lowered))):
+        return None, 0.35  # Return uncategorized for withdrawals
+    
     if model is not None:
         try:  # pragma: no cover
             if hasattr(model, "predict_proba") and hasattr(model, "classes_"):
@@ -602,7 +613,6 @@ def predict_category(description_en: str, model) -> Tuple[Optional[str], float]:
             traceback.print_exc()
 
     # Improved keyword matching with word boundaries and better scoring
-    lowered = text.lower()
     # Normalize text: remove punctuation, extra spaces
     normalized = re.sub(r'[^\w\s]', ' ', lowered)
     normalized = ' '.join(normalized.split())
