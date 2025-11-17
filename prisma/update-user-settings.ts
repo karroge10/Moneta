@@ -95,7 +95,7 @@ async function main() {
       const allUsers = await prisma.user.findMany({
         select: { id: true, clerkUserId: true },
       });
-      allUsers.forEach((u) => {
+      allUsers.forEach((u: { id: number; clerkUserId: string | null }) => {
         console.log(`      - ID: ${u.id}, Clerk ID: ${u.clerkUserId || 'none'}`);
       });
     } else {
