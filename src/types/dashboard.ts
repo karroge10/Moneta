@@ -143,3 +143,51 @@ export interface TransactionUploadResponse {
   metadata?: TransactionUploadMetadata;
 }
 
+export interface UserSettings {
+  name: string;
+  username: string;
+  email: string;
+  jobPosition: string;
+  age: number;
+  city: string;
+  country: string;
+  language: string;
+  currency: string;
+  dateOfBirth: string;
+  profession: string;
+  defaultPage: string;
+  plan: string;
+}
+
+export interface LoginHistoryEntry {
+  date: string;
+  time: string;
+  device: string;
+  location: string;
+}
+
+export interface Achievement {
+  id: string;
+  name: string;
+  unlocked: boolean;
+  icon: string;
+}
+
+export interface NotificationEntry {
+  id: string;
+  date: string;
+  time: string;
+  type: string;
+  text: string;
+}
+
+export interface NotificationSettings {
+  pushNotifications: boolean;
+  upcomingBills: boolean;
+  upcomingIncome: boolean;
+  investments: boolean;
+  goals: boolean;
+  promotionalEmail: boolean;
+  aiInsights: boolean;
+}
+

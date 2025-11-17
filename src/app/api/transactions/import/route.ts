@@ -141,11 +141,19 @@ export async function POST(request: NextRequest) {
         const descriptionForMatching = item.translatedDescription || item.description;
         const specialType = detectSpecialTransactionType(descriptionForMatching);
         
+        // Extract and normalize merchant name (needed for matching and logging)
+        const merchantName = extractMerchantFromDescription(descriptionForMatching);
+        const normalizedMerchant = normalizeMerchantName(merchantName);
+        
         // If transaction should be completely excluded (roundup, currency exchange), skip it entirely
         if (specialType === 'EXCLUDE') {
           console.log(`[merchant-match] ⊘ Excluding transaction: "${item.description.substring(0, 50)}..." (${specialType})`);
           return null; // Return null to filter out this transaction
         }
+        
+        // Track why this transaction didn't match (for unmatched transactions)
+        const unmatchedReasons: string[] = [];
+        const checkedPatterns: Array<{ pattern: string; similarity: number; type: string }> = [];
         
         // Skip auto-categorization for income transactions (amount >= 0)
         // Income transactions should remain uncategorized unless explicitly set by user
@@ -167,14 +175,6 @@ export async function POST(request: NextRequest) {
               skipMerchantMatching = true; // Already categorized, skip merchant matching
             }
           }
-          
-          // Track why this transaction didn't match (for unmatched transactions)
-          const unmatchedReasons: string[] = [];
-          const checkedPatterns: Array<{ pattern: string; similarity: number; type: string }> = [];
-          
-          // Extract and normalize merchant name (only if not already categorized by special type)
-          const merchantName = extractMerchantFromDescription(descriptionForMatching);
-          const normalizedMerchant = normalizeMerchantName(merchantName);
           
           // Get all merchant patterns for substring matching (use original patterns, not normalized)
           const allUserPatterns = userMerchantPatterns;
@@ -351,7 +351,9 @@ export async function POST(request: NextRequest) {
           currencyId,
         };
       })
-      .filter(item => item !== null && Boolean(item?.description) && !isNaN(item?.date.getTime()));
+      .filter((item): item is NonNullable<typeof item> => 
+        item !== null && Boolean(item?.description) && !isNaN(item?.date.getTime())
+      );
 
     // Log comprehensive summary - VERY VISIBLE
     console.log('\n\n');

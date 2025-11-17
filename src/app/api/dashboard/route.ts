@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     });
     
     // Filter out excluded transactions
-    const validTransactions = allTransactions.filter(t => {
+    const validTransactions = allTransactions.filter((t: typeof allTransactions[0]) => {
       const specialType = detectSpecialTransactionType(t.description);
       if (specialType === 'EXCLUDE') return false;
       if (t.category?.name && t.category.name.toLowerCase() === 'currency exchange') return false;
@@ -88,24 +88,24 @@ export async function GET(request: NextRequest) {
     });
     
     // Calculate current month income and expenses
-    const currentMonthTransactions = validTransactions.filter(t => t.date >= currentMonthStart);
+    const currentMonthTransactions = validTransactions.filter((t: typeof validTransactions[0]) => t.date >= currentMonthStart);
     const currentMonthIncome = currentMonthTransactions
-      .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + t.amount, 0);
+      .filter((t: typeof currentMonthTransactions[0]) => t.type === 'income')
+      .reduce((sum: number, t: typeof currentMonthTransactions[0]) => sum + t.amount, 0);
     const currentMonthExpenses = currentMonthTransactions
-      .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
+      .filter((t: typeof currentMonthTransactions[0]) => t.type === 'expense')
+      .reduce((sum: number, t: typeof currentMonthTransactions[0]) => sum + t.amount, 0);
     
     // Calculate last month income and expenses
-    const lastMonthTransactions = validTransactions.filter(t => 
+    const lastMonthTransactions = validTransactions.filter((t: typeof validTransactions[0]) => 
       t.date >= lastMonthStart && t.date <= lastMonthEnd
     );
     const lastMonthIncome = lastMonthTransactions
-      .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + t.amount, 0);
+      .filter((t: typeof lastMonthTransactions[0]) => t.type === 'income')
+      .reduce((sum: number, t: typeof lastMonthTransactions[0]) => sum + t.amount, 0);
     const lastMonthExpenses = lastMonthTransactions
-      .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
+      .filter((t: typeof lastMonthTransactions[0]) => t.type === 'expense')
+      .reduce((sum: number, t: typeof lastMonthTransactions[0]) => sum + t.amount, 0);
     
     // Calculate trends
     const incomeTrend = lastMonthIncome > 0 
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
     // Get latest transactions (limit to 6)
     const latestTransactions: TransactionType[] = validTransactions
       .slice(0, 6)
-      .map(t => {
+      .map((t: typeof validTransactions[0]) => {
         // Format transaction name (cleaned and translated if needed)
         const displayName = formatTransactionName(t.description, userLanguageAlias, false);
         // Full name for modal (translated if needed, but not cleaned)
@@ -139,10 +139,10 @@ export async function GET(request: NextRequest) {
       });
     
     // Calculate top expense categories (current month)
-    const expenseTransactions = currentMonthTransactions.filter(t => t.type === 'expense');
+    const expenseTransactions = currentMonthTransactions.filter((t: typeof currentMonthTransactions[0]) => t.type === 'expense');
     const categoryTotals = new Map<string, { amount: number; categoryId: number; categoryName: string }>();
     
-    expenseTransactions.forEach(t => {
+    expenseTransactions.forEach((t: typeof expenseTransactions[0]) => {
       const categoryName = t.category?.name || 'Uncategorized';
       const categoryId = t.categoryId || 0;
       
@@ -167,7 +167,7 @@ export async function GET(request: NextRequest) {
     const totalExpenses = currentMonthExpenses;
     
     // Format top expenses with percentages and colors
-    const topExpenses: ExpenseCategory[] = topCategoriesArray.map((cat, index) => {
+    const topExpenses: ExpenseCategory[] = topCategoriesArray.map((cat: typeof topCategoriesArray[0], index: number) => {
       const percentage = totalExpenses > 0 
         ? Math.round((cat.amount / totalExpenses) * 100)
         : 0;
