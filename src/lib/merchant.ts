@@ -66,23 +66,26 @@ export function detectSpecialTransactionType(description: string): string | null
   }
   
   // Currency exchange - money staying on account but changing currency
-  // Patterns: "currency exchange", "conversion", "convert", "cashless conversion"
+  // Patterns: "currency exchange", "conversion", "convert", "cashless conversion", "exchange amount"
   // Note: All descriptions should already be translated to English before this function is called
   if (desc.includes('currency exchange') ||
       desc.includes('currency conversion') ||
       desc.includes('cashless conversion') ||
+      (desc.includes('exchange amount') || (desc.includes('exchange') && desc.includes('amount'))) ||
       (desc.includes('conversion') && !desc.includes('payment')) ||
       (desc.includes('convert') && (desc.includes('currency') || desc.includes('cashless'))) ||
       (desc.includes('exchange') && desc.includes('currency'))) {
     return 'EXCLUDE'; // Exclude from categorization
   }
   
-  // Private transfers / Money transfers - exclude from categorization
+  // Private transfers / Money transfers / Personal transfers - exclude from categorization
   if (desc.includes('private transfer') ||
+      desc.includes('personal transfer') ||
       desc.includes('money transfer') ||
       desc.includes('transfer from') ||
       desc.includes('transfer to') ||
       (desc.includes('transfer') && desc.includes('private')) ||
+      (desc.includes('transfer') && desc.includes('personal')) ||
       (desc.includes('transfer') && desc.includes('bank'))) {
     return 'EXCLUDE'; // Exclude from categorization
   }
@@ -103,11 +106,11 @@ export function detectSpecialTransactionType(description: string): string | null
     return 'other'; // Map commissions to "Other" category
   }
   
-  // ATM withdrawals - map to "Other" category
+  // ATM withdrawals - exclude from categorization (should be uncategorized)
   if (desc.includes('atm') ||
       ((desc.includes('cash withdrawal') || desc.includes('withdrawal')) && 
        (desc.includes('atm') || desc.includes('cash') || desc.includes('card operation')))) {
-    return 'other'; // Map ATM withdrawals to "Other" category
+    return 'EXCLUDE'; // ATM withdrawals should be uncategorized
   }
   
   return null; // No special handling, proceed with normal merchant matching

@@ -58,7 +58,8 @@ export default function ImportTransactionsPage() {
         row.translatedDescription.toLowerCase().includes(query) ||
         row.category?.toLowerCase().includes(query) ||
         row.date.toLowerCase().includes(query);
-      const matchesCategory = !categoryFilter || row.category === categoryFilter;
+      const matchesCategory = !categoryFilter || 
+        (categoryFilter === '__uncategorized__' ? row.category === null : row.category === categoryFilter);
       const matchesType = !typeFilter || 
         (typeFilter === 'expense' && row.amount < 0) ||
         (typeFilter === 'income' && row.amount >= 0);
@@ -299,15 +300,40 @@ export default function ImportTransactionsPage() {
         setUploadState('processing');
         simulateProgress(40);
 
-        if (!response.ok) {
-          throw new Error(`Upload failed with status ${response.status}`);
-        }
-
         // Categorizing phase
         setUploadState('categorizing');
         simulateProgress(70);
 
-        const data = (await response.json()) as TransactionUploadResponse;
+        const data = (await response.json()) as TransactionUploadResponse & { error?: string };
+
+        // Check for error in response
+        if (!response.ok) {
+          const errorMessage = data.error || `Upload failed with status ${response.status}`;
+          setUploadState('error');
+          setProgressValue(0);
+          setStatusNote(errorMessage);
+          setStartTime(null);
+          setElapsedSeconds(0);
+          if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current);
+            progressIntervalRef.current = null;
+          }
+          return;
+        }
+
+        // Check for error message in successful response (e.g., sample data detected)
+        if (data.error) {
+          setUploadState('error');
+          setProgressValue(0);
+          setStatusNote(data.error);
+          setStartTime(null);
+          setElapsedSeconds(0);
+          if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current);
+            progressIntervalRef.current = null;
+          }
+          return;
+        }
 
         // Stop progress simulation
         if (progressIntervalRef.current) {
