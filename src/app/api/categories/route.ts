@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     });
     
     // Transform standard categories
-    const categories: Category[] = standardCategories.map(cat => ({
+    const categories: Category[] = standardCategories.map((cat: { id: number; name: string; icon: string; color: string }) => ({
       id: cat.id.toString(),
       name: cat.name,
       icon: cat.icon,
@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
     }));
     
     // Add custom categories (use standard category icon/color if linked, otherwise use custom)
-    customCategories.forEach(customCat => {
-      const existingIndex = categories.findIndex(c => c.name === customCat.name);
+    customCategories.forEach((customCat: { id: number; name: string; icon: string | null; color: string | null; category: { icon: string; color: string } | null }) => {
+      const existingIndex = categories.findIndex((c: Category) => c.name === customCat.name);
       if (existingIndex >= 0) {
         // Update existing category with custom icon/color if provided
         if (customCat.icon) categories[existingIndex].icon = customCat.icon;
