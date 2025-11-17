@@ -44,7 +44,6 @@ function getIconForCategory(categoryName: string | null): string {
     'Home Internet': 'Wifi',
     'Taxes': 'Cash',
     'Mobile Data': 'SmartphoneDevice',
-    'Utilities': 'Flash',
   };
   
   return iconMap[categoryName] || 'HelpCircle';
