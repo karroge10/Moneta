@@ -3,16 +3,6 @@ import { TransactionUploadResponse, UploadedTransaction } from '@/types/dashboar
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch } from '@/lib/merchant';
-import type { PrismaClient } from '@prisma/client';
-
-// Type extension for Prisma client to include PdfProcessingJob model
-type PrismaClientWithPdfJob = PrismaClient & {
-  pdfProcessingJob: {
-    create: (args: { data: { userId: number; status: string; progress: number; fileName: string }; select: { id: true } }) => Promise<{ id: string; createdAt?: Date }>;
-    count: (args: { where: { status: string; createdAt: { lt: Date } } }) => Promise<number>;
-    update: (args: { where: { id: string }; data: { status?: string; progress?: number; completedAt?: Date; error?: string } }) => Promise<unknown>;
-  };
-};
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -117,33 +107,32 @@ export async function POST(request: NextRequest) {
     // Track this processing request in database for queue estimation
     const requestStartTime = Date.now();
     try {
-      // Use Prisma Client to create tracking entry (more reliable than raw SQL)
-      const trackingEntry = await (db as PrismaClientWithPdfJob).pdfProcessingJob.create({
-        data: {
-          userId: user.id,
-          status: 'processing',
-          progress: 0,
-          fileName: file.name,
-        },
-        select: { id: true },
-      });
+      // Use raw SQL to create tracking entry (works even if Prisma client not regenerated)
+      const trackingResult = await db.$queryRaw<Array<{ id: string; createdAt: Date }>>`
+        INSERT INTO "PdfProcessingJob" ("id", "userId", "status", "progress", "fileName", "createdAt", "updatedAt")
+        VALUES (gen_random_uuid(), ${user.id}, 'processing', 0, ${file.name}, NOW(), NOW())
+        RETURNING "id", "createdAt"
+      `;
       
-      processingRequestId = trackingEntry.id;
-      
-      // Get queue position (how many requests started before this one)
-      if (processingRequestId) {
-        const earlierJobs = await (db as PrismaClientWithPdfJob).pdfProcessingJob.count({
-          where: {
-            status: 'processing',
-            createdAt: {
-              lt: trackingEntry.createdAt || new Date(),
-            },
-          },
-        });
+      if (trackingResult && trackingResult.length > 0) {
+        processingRequestId = trackingResult[0].id;
+        const createdAt = trackingResult[0].createdAt;
+        
+        // Get queue position (how many requests started before this one)
+        const queueResult = await db.$queryRaw<Array<{ count: bigint }>>`
+          SELECT COUNT(*)::bigint as count
+          FROM "PdfProcessingJob"
+          WHERE status = 'processing'
+            AND "createdAt" < ${createdAt}
+        `;
+        
+        const earlierJobs = queueResult && queueResult.length > 0 ? Number(queueResult[0].count) : 0;
         
         // Estimate: if more than 4 are processing, some are queued (4 = max concurrent)
         // -3 because current request + 3 others can process simultaneously
         estimatedQueuePosition = Math.max(0, earlierJobs - 3);
+        
+        console.log(`[upload-bank-statement] Created tracking entry ${processingRequestId}, queue position: ${estimatedQueuePosition}`);
       }
     } catch (trackingError) {
       console.error('[upload-bank-statement] Failed to create tracking entry:', trackingError);
@@ -155,46 +144,46 @@ export async function POST(request: NextRequest) {
       // Call external Python service (Render)
       const result = await callPythonService(file as File);
       
-      // Clean up tracking entry on success (after a short delay to allow visibility)
+      // Mark tracking entry as completed (don't delete - let it persist for visibility)
       if (processingRequestId) {
-        // Don't delete immediately - let it persist for a bit so users can see it
-        // A cron job will clean up stale entries later
         try {
-          await (db as PrismaClientWithPdfJob).pdfProcessingJob.update({
-            where: { id: processingRequestId },
-            data: { status: 'completed', progress: 100, completedAt: new Date() },
-          });
+          await db.$executeRaw`
+            UPDATE "PdfProcessingJob"
+            SET status = 'completed', progress = 100, "completedAt" = NOW(), "updatedAt" = NOW()
+            WHERE id = ${processingRequestId}
+          `;
+          console.log(`[upload-bank-statement] Marked tracking entry ${processingRequestId} as completed`);
         } catch (cleanupError) {
           console.warn('[upload-bank-statement] Failed to update tracking entry:', cleanupError);
         }
       }
-      
-      // Check if we got sample data (indicates PDF extraction failed)
-      if (result.transactions && result.transactions.length === 3) {
-        const sampleDescriptions = ['Sample Subscription', 'Coffee Shop', 'Salary'];
-        const isSampleData = result.transactions.every(tx => 
-          sampleDescriptions.some(sample => tx.description.includes(sample))
-        );
-        
-        if (isSampleData) {
-          console.error('[upload-bank-statement] PDF extraction failed - received sample data');
-          return NextResponse.json(
-            { 
-              error: 'Failed to extract transactions from PDF. The PDF structure may not match the expected format.',
-              transactions: [],
-              metadata: result.metadata || {},
-            },
-            { status: 400 }
+
+    // Check if we got sample data (indicates PDF extraction failed)
+        if (result.transactions && result.transactions.length === 3) {
+          const sampleDescriptions = ['Sample Subscription', 'Coffee Shop', 'Salary'];
+          const isSampleData = result.transactions.every(tx => 
+            sampleDescriptions.some(sample => tx.description.includes(sample))
           );
+          
+          if (isSampleData) {
+            console.error('[upload-bank-statement] PDF extraction failed - received sample data');
+            return NextResponse.json(
+              { 
+              error: 'Failed to extract transactions from PDF. The PDF structure may not match the expected format.',
+                transactions: [],
+                metadata: result.metadata || {},
+              },
+              { status: 400 }
+            );
+          }
         }
-      }
-      
-      // Analyze categorization after parsing and apply matched categories
-      if (result.transactions && result.transactions.length > 0) {
-        const updatedTransactions = await analyzeCategorization(result.transactions);
-        result.transactions = updatedTransactions;
-      }
-      
+        
+        // Analyze categorization after parsing and apply matched categories
+        if (result.transactions && result.transactions.length > 0) {
+          const updatedTransactions = await analyzeCategorization(result.transactions);
+          result.transactions = updatedTransactions;
+        }
+        
       const processingTimeMs = Date.now() - requestStartTime;
       
       return NextResponse.json({
@@ -206,13 +195,13 @@ export async function POST(request: NextRequest) {
       // Mark tracking entry as failed on error
       if (processingRequestId) {
         try {
-          await (db as PrismaClientWithPdfJob).pdfProcessingJob.update({
-            where: { id: processingRequestId },
-            data: { 
-              status: 'failed', 
-              error: error instanceof Error ? error.message : String(error),
-            },
-          });
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          await db.$executeRaw`
+            UPDATE "PdfProcessingJob"
+            SET status = 'failed', error = ${errorMessage}, "updatedAt" = NOW()
+            WHERE id = ${processingRequestId}
+          `;
+          console.log(`[upload-bank-statement] Marked tracking entry ${processingRequestId} as failed: ${errorMessage}`);
         } catch (cleanupError) {
           console.warn('[upload-bank-statement] Failed to update tracking entry:', cleanupError);
         }
