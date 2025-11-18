@@ -36,6 +36,7 @@ model User {
   Expense          Expense[]
   Income           Income[]
   Trip             Trip[]
+  pdfProcessingJobs PdfProcessingJob[]
 }
 
 // Unified Transaction table replacing Expense and Income
@@ -157,7 +158,7 @@ model CategoriesCustom {
 model Notification {
   id        Int      @id @default(autoincrement())
   userId    Int
-  type      String   // 'Upcoming Bills', 'Goal Update', 'Upcoming Income', 'Investments', 'Goals', 'AI Insights'
+  type      String   // 'Upcoming Bills', 'Goal Update', 'Upcoming Income', 'Investments', 'Goals', 'AI Insights', 'PDF Processing'
   text      String
   date      DateTime
   time      String
@@ -170,6 +171,27 @@ model Notification {
 
   @@index([userId])
   @@index([read])
+}
+
+// PDF Processing Job table - Tracks async PDF processing jobs
+model PdfProcessingJob {
+  id          String   @id @default(uuid())
+  userId      Int
+  status      String   // 'queued', 'processing', 'completed', 'failed'
+  progress    Int      @default(0) // 0-100
+  filePath    String   // Temporary file path
+  result      Json?    // Transactions stored here when done
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completedAt DateTime?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 // MerchantGlobal table - Global merchant-to-category mappings (shared by all users)
