@@ -171,6 +171,17 @@ def process_job(conn, job_id, file_content, file_name, user_id):
         # Mark as completed
         update_job_status(conn, job_id, 'completed', progress=100, result=result)
         
+        # Delete PDF content to save database storage (we only need the extracted transactions)
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE "PdfProcessingJob"
+            SET "fileContent" = NULL
+            WHERE id = %s
+        """, (job_id,))
+        conn.commit()
+        cursor.close()
+        print(f'[worker] Deleted PDF content from database for job {job_id}', flush=True)
+        
         # Create notification
         create_notification(
             conn,
