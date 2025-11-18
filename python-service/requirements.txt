@@ -4,3 +4,4 @@ pdfplumber==0.11.4
 scikit-learn==1.6.1
 deep-translator==1.11.4
 gunicorn==21.2.0
+psycopg2-binary==2.9.9

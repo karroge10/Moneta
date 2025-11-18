@@ -43,10 +43,12 @@ export default function ImportTransactionsPage() {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [totalTimeSeconds, setTotalTimeSeconds] = useState<number | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dropZoneRef = useRef<HTMLDivElement | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentProgressRef = useRef<number>(0);
 
   const filteredRows = useMemo(() => {
@@ -229,6 +231,9 @@ export default function ImportTransactionsPage() {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
     };
   }, []);
 
@@ -246,42 +251,21 @@ export default function ImportTransactionsPage() {
       setElapsedSeconds(0);
       setTotalTimeSeconds(null);
       setProgressValue(0);
+      setJobId(null);
 
-      // Clear any existing progress intervals
+      // Clear any existing intervals
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
         progressIntervalRef.current = null;
       }
-
-      // Start incremental progress simulation
-      currentProgressRef.current = 0;
-      const simulateProgress = (targetProgress: number) => {
-        if (progressIntervalRef.current) {
-          clearInterval(progressIntervalRef.current);
-        }
-        currentProgressRef.current = targetProgress;
-        setProgressValue(targetProgress);
-        
-        progressIntervalRef.current = setInterval(() => {
-          if (currentProgressRef.current < 95) {
-            // Gradually increase progress, slowing down as we approach target
-            const remaining = 95 - currentProgressRef.current;
-            const increment = Math.max(0.1, remaining * 0.02);
-            currentProgressRef.current = Math.min(95, currentProgressRef.current + increment);
-            setProgressValue(Math.floor(currentProgressRef.current));
-          } else {
-            // Stop interval when we reach 95%
-            if (progressIntervalRef.current) {
-              clearInterval(progressIntervalRef.current);
-              progressIntervalRef.current = null;
-            }
-          }
-        }, 200);
-      };
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
 
       setUploadState('queued');
       setStatusNote(`Preparing to upload "${file.name}"`);
-      simulateProgress(5);
+      setProgressValue(5);
 
       const formData = new FormData();
       formData.append('file', file);
@@ -289,99 +273,134 @@ export default function ImportTransactionsPage() {
       try {
         // Upload phase
         setUploadState('uploading');
-        simulateProgress(10);
+        setProgressValue(10);
 
         const response = await fetch('/api/transactions/upload-bank-statement', {
           method: 'POST',
           body: formData,
         });
 
-        // Processing phase
-        setUploadState('processing');
-        simulateProgress(40);
-
-        // Categorizing phase
-        setUploadState('categorizing');
-        simulateProgress(70);
-
-        const data = (await response.json()) as TransactionUploadResponse & { error?: string };
-
-        // Check for error in response
         if (!response.ok) {
-          const errorMessage = data.error || `Upload failed with status ${response.status}`;
+          const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
           setUploadState('error');
           setProgressValue(0);
-          setStatusNote(errorMessage);
+          setStatusNote(errorData.error || `Upload failed with status ${response.status}`);
           setStartTime(null);
           setElapsedSeconds(0);
-          if (progressIntervalRef.current) {
-            clearInterval(progressIntervalRef.current);
-            progressIntervalRef.current = null;
+          return;
+        }
+
+        const uploadData = await response.json() as { jobId: string; status: string };
+        
+        if (!uploadData.jobId) {
+          setUploadState('error');
+          setProgressValue(0);
+          setStatusNote('Failed to create processing job.');
+          return;
+        }
+
+        setJobId(uploadData.jobId);
+        setUploadState('processing');
+        setProgressValue(15);
+        setStatusNote('Processing PDF...');
+
+        // Start polling for job status
+        const pollJobStatus = async () => {
+          try {
+            const statusResponse = await fetch(`/api/jobs/${uploadData.jobId}/status`);
+            
+            if (!statusResponse.ok) {
+              throw new Error('Failed to fetch job status');
+            }
+
+            const statusData = await statusResponse.json() as {
+              status: string;
+              progress: number;
+              transactions?: UploadedTransaction[];
+              error?: string;
+            };
+
+            // Update progress from server
+            setProgressValue(statusData.progress);
+
+            if (statusData.status === 'completed') {
+              // Stop polling
+              if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+              }
+
+              if (!statusData.transactions || statusData.transactions.length === 0) {
+                setUploadState('error');
+                setProgressValue(0);
+                setStatusNote('No transactions were detected in that PDF.');
+                setStartTime(null);
+                setElapsedSeconds(0);
+                return;
+              }
+
+              // Normalize transactions
+              const normalized: TableRow[] = statusData.transactions.map(item => ({
+                id: crypto.randomUUID(),
+                date: item.date,
+                description: item.description,
+                translatedDescription: item.translatedDescription,
+                amount: item.amount,
+                category: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null,
+                confidence: item.confidence,
+                suggestedCategory: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null,
+              }));
+
+              // Calculate total time
+              const totalTime = Math.floor((Date.now() - now) / 1000);
+              setTotalTimeSeconds(totalTime);
+              setElapsedSeconds(totalTime);
+
+              setParsedRows(normalized);
+              setUploadState('ready');
+              setProgressValue(100);
+              setStatusNote(
+                `${normalized.length} transactions parsed successfully in ${formatTime(totalTime)}.`,
+              );
+            } else if (statusData.status === 'failed') {
+              // Stop polling
+              if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+              }
+
+              setUploadState('error');
+              setProgressValue(0);
+              setStatusNote(statusData.error || 'PDF processing failed. Please try again.');
+              setStartTime(null);
+              setElapsedSeconds(0);
+            } else {
+              // Still processing, update status note
+              if (statusData.status === 'queued') {
+                setStatusNote('Waiting for processing to start...');
+              } else if (statusData.status === 'processing') {
+                setStatusNote(`Processing PDF... ${statusData.progress}%`);
+              }
+            }
+          } catch (error) {
+            console.error('[import/poll]', error);
+            // Don't stop polling on transient errors, but log them
           }
-          return;
-        }
+        };
 
-        // Check for error message in successful response (e.g., sample data detected)
-        if (data.error) {
-          setUploadState('error');
-          setProgressValue(0);
-          setStatusNote(data.error);
-          setStartTime(null);
-          setElapsedSeconds(0);
-          if (progressIntervalRef.current) {
-            clearInterval(progressIntervalRef.current);
-            progressIntervalRef.current = null;
-          }
-          return;
-        }
+        // Poll immediately, then every 2 seconds
+        await pollJobStatus();
+        pollIntervalRef.current = setInterval(pollJobStatus, 2000);
 
-        // Stop progress simulation
-        if (progressIntervalRef.current) {
-          clearInterval(progressIntervalRef.current);
-          progressIntervalRef.current = null;
-        }
-
-        const normalized: TableRow[] = (data.transactions ?? []).map(item => ({
-          id: crypto.randomUUID(),
-          date: item.date,
-          description: item.description,
-          translatedDescription: item.translatedDescription,
-          amount: item.amount,
-          // Set category to null if it's "Currency Exchange", otherwise use the suggested category
-          category: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null,
-          confidence: item.confidence,
-          suggestedCategory: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null, // Store initial category as suggestion (excluding Currency Exchange)
-        }));
-
-        if (!normalized.length) {
-          setUploadState('error');
-          setProgressValue(0);
-          setStatusNote('No transactions were detected in that PDF.');
-          setStartTime(null);
-          setElapsedSeconds(0);
-          return;
-        }
-
-        // Calculate total time
-        const totalTime = Math.floor((Date.now() - now) / 1000);
-        setTotalTimeSeconds(totalTime);
-        setElapsedSeconds(totalTime);
-
-        setParsedRows(normalized);
-        setUploadState('ready');
-        setProgressValue(100);
-        setStatusNote(
-          `${normalized.length} transactions parsed successfully in ${formatTime(totalTime)}.`,
-        );
       } catch (error) {
         console.error('[import/upload]', error);
-        if (progressIntervalRef.current) {
-          clearInterval(progressIntervalRef.current);
-          progressIntervalRef.current = null;
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
         }
         setUploadState('error');
         setProgressValue(0);
-        setStatusNote('We could not parse that PDF. Double-check the file and try again.');
+        setStatusNote('We could not upload that PDF. Double-check the file and try again.');
         setStartTime(null);
         setElapsedSeconds(0);
       }
