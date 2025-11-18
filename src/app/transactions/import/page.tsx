@@ -129,17 +129,6 @@ export default function ImportTransactionsPage() {
     return filteredRows.slice(start, start + REVIEW_PAGE_SIZE);
   }, [filteredRows, reviewPage]);
 
-  const currencyFormatter = useMemo(
-    () =>
-      new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'GEL',
-        currencyDisplay: 'code',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }),
-    [],
-  );
 
   // Fetch categories from API
   useEffect(() => {
@@ -470,11 +459,6 @@ export default function ImportTransactionsPage() {
     }
   };
 
-  const handleToggleDirection = (id: string) => {
-    setParsedRows(prev =>
-      prev.map(row => (row.id === id ? { ...row, amount: row.amount * -1 } : row)),
-    );
-  };
 
   const renderStatusBadge = () => {
     if (uploadState === 'idle') return null;
@@ -608,7 +592,7 @@ export default function ImportTransactionsPage() {
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-3">
                             <div
-                              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                               style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
                             >
                               <Icon width={20} height={20} strokeWidth={1.5} style={{ color: stat.category.color || '#E7E4E4' }} />
@@ -710,9 +694,6 @@ export default function ImportTransactionsPage() {
                     ) : (
                       paginatedReviewRows.map(row => {
                         const isExpense = row.amount < 0;
-                        const absoluteAmount = Math.abs(row.amount);
-                        const matchedCategory = row.category ? categoryLookup.get(row.category) : undefined;
-                        const CategoryIcon = matchedCategory ? getIcon(matchedCategory.icon) : null;
                         
                         return (
                           <tr key={row.id} className="border-t border-[#2A2A2A]">
