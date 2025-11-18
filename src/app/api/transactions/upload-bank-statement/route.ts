@@ -3,6 +3,16 @@ import { TransactionUploadResponse, UploadedTransaction } from '@/types/dashboar
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch } from '@/lib/merchant';
+import type { PrismaClient } from '@prisma/client';
+
+// Type extension for Prisma client to include PdfProcessingJob model
+type PrismaClientWithPdfJob = PrismaClient & {
+  pdfProcessingJob: {
+    create: (args: { data: { userId: number; status: string; progress: number; fileName: string }; select: { id: true } }) => Promise<{ id: string; createdAt?: Date }>;
+    count: (args: { where: { status: string; createdAt: { lt: Date } } }) => Promise<number>;
+    update: (args: { where: { id: string }; data: { status?: string; progress?: number; completedAt?: Date; error?: string } }) => Promise<unknown>;
+  };
+};
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -105,32 +115,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Track this processing request in database for queue estimation
+    const requestStartTime = Date.now();
     try {
-      const trackingEntry = await db.$queryRawUnsafe<Array<{ id: string }>>(`
-        INSERT INTO "PdfProcessingJob" ("id", "userId", "status", "progress", "fileName", "createdAt", "updatedAt")
-        VALUES (gen_random_uuid(), $1, 'processing', 0, $2, NOW(), NOW())
-        RETURNING "id"
-      `, user.id, file.name);
+      // Use Prisma Client to create tracking entry (more reliable than raw SQL)
+      const trackingEntry = await (db as PrismaClientWithPdfJob).pdfProcessingJob.create({
+        data: {
+          userId: user.id,
+          status: 'processing',
+          progress: 0,
+          fileName: file.name,
+        },
+        select: { id: true },
+      });
       
-      processingRequestId = trackingEntry[0]?.id || null;
+      processingRequestId = trackingEntry.id;
       
       // Get queue position (how many requests started before this one)
       if (processingRequestId) {
-        const queueData = await db.$queryRawUnsafe<Array<{ position: bigint }>>(`
-          SELECT COUNT(*)::bigint as position
-          FROM "PdfProcessingJob"
-          WHERE status = 'processing'
-            AND "createdAt" < (SELECT "createdAt" FROM "PdfProcessingJob" WHERE id = $1)
-        `, processingRequestId);
-        
-        const queuePosition = Number(queueData[0]?.position || 0);
+        const earlierJobs = await (db as PrismaClientWithPdfJob).pdfProcessingJob.count({
+          where: {
+            status: 'processing',
+            createdAt: {
+              lt: trackingEntry.createdAt || new Date(),
+            },
+          },
+        });
         
         // Estimate: if more than 4 are processing, some are queued (4 = max concurrent)
         // -3 because current request + 3 others can process simultaneously
-        estimatedQueuePosition = Math.max(0, queuePosition - 3);
+        estimatedQueuePosition = Math.max(0, earlierJobs - 3);
       }
     } catch (trackingError) {
-      console.warn('[upload-bank-statement] Failed to create tracking entry:', trackingError);
+      console.error('[upload-bank-statement] Failed to create tracking entry:', trackingError);
       // Continue anyway - tracking is optional
       estimatedQueuePosition = 0;
     }
@@ -139,12 +155,18 @@ export async function POST(request: NextRequest) {
       // Call external Python service (Render)
       const result = await callPythonService(file as File);
       
-      // Clean up tracking entry on success
+      // Clean up tracking entry on success (after a short delay to allow visibility)
       if (processingRequestId) {
-        await db.$queryRawUnsafe(`
-          DELETE FROM "PdfProcessingJob"
-          WHERE id = $1
-        `, processingRequestId);
+        // Don't delete immediately - let it persist for a bit so users can see it
+        // A cron job will clean up stale entries later
+        try {
+          await (db as PrismaClientWithPdfJob).pdfProcessingJob.update({
+            where: { id: processingRequestId },
+            data: { status: 'completed', progress: 100, completedAt: new Date() },
+          });
+        } catch (cleanupError) {
+          console.warn('[upload-bank-statement] Failed to update tracking entry:', cleanupError);
+        }
       }
       
       // Check if we got sample data (indicates PDF extraction failed)
@@ -173,20 +195,26 @@ export async function POST(request: NextRequest) {
         result.transactions = updatedTransactions;
       }
       
+      const processingTimeMs = Date.now() - requestStartTime;
+      
       return NextResponse.json({
         ...result,
-        queuePosition: estimatedQueuePosition, // Include queue info for reference
+        queuePosition: estimatedQueuePosition, // Initial queue position when request started
+        processingTimeMs, // Include processing time for frontend estimation
       });
     } catch (error) {
-      // Clean up tracking entry on error
+      // Mark tracking entry as failed on error
       if (processingRequestId) {
         try {
-          await db.$queryRawUnsafe(`
-            DELETE FROM "PdfProcessingJob"
-            WHERE id = $1
-          `, processingRequestId);
+          await (db as PrismaClientWithPdfJob).pdfProcessingJob.update({
+            where: { id: processingRequestId },
+            data: { 
+              status: 'failed', 
+              error: error instanceof Error ? error.message : String(error),
+            },
+          });
         } catch (cleanupError) {
-          console.warn('[upload-bank-statement] Failed to cleanup tracking entry:', cleanupError);
+          console.warn('[upload-bank-statement] Failed to update tracking entry:', cleanupError);
         }
       }
       
