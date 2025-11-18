@@ -4,14 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit --pretty",
     "seed": "tsx prisma/seed.ts",
     "seed:merchants": "tsx prisma/seed-merchants.ts",
     "setup": "npm install && node scripts/setup-python.js",
-    "postinstall": "node scripts/setup-python.js"
+    "postinstall": "prisma generate && node scripts/setup-python.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

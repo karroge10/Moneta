@@ -261,7 +261,7 @@ export default function ImportTransactionsPage() {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
-      }
+            }
 
       setUploadState('queued');
       setStatusNote(`Preparing to upload "${file.name}"`);
@@ -331,37 +331,37 @@ export default function ImportTransactionsPage() {
               }
 
               if (!statusData.transactions || statusData.transactions.length === 0) {
-                setUploadState('error');
-                setProgressValue(0);
+          setUploadState('error');
+          setProgressValue(0);
                 setStatusNote('No transactions were detected in that PDF.');
-                setStartTime(null);
-                setElapsedSeconds(0);
-                return;
-              }
+          setStartTime(null);
+          setElapsedSeconds(0);
+          return;
+        }
 
               // Normalize transactions
               const normalized: TableRow[] = statusData.transactions.map(item => ({
-                id: crypto.randomUUID(),
-                date: item.date,
-                description: item.description,
-                translatedDescription: item.translatedDescription,
-                amount: item.amount,
-                category: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null,
-                confidence: item.confidence,
+          id: crypto.randomUUID(),
+          date: item.date,
+          description: item.description,
+          translatedDescription: item.translatedDescription,
+          amount: item.amount,
+          category: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null,
+          confidence: item.confidence,
                 suggestedCategory: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null,
-              }));
+        }));
 
-              // Calculate total time
-              const totalTime = Math.floor((Date.now() - now) / 1000);
-              setTotalTimeSeconds(totalTime);
-              setElapsedSeconds(totalTime);
+        // Calculate total time
+        const totalTime = Math.floor((Date.now() - now) / 1000);
+        setTotalTimeSeconds(totalTime);
+        setElapsedSeconds(totalTime);
 
-              setParsedRows(normalized);
-              setUploadState('ready');
-              setProgressValue(100);
-              setStatusNote(
-                `${normalized.length} transactions parsed successfully in ${formatTime(totalTime)}.`,
-              );
+        setParsedRows(normalized);
+        setUploadState('ready');
+        setProgressValue(100);
+        setStatusNote(
+          `${normalized.length} transactions parsed successfully in ${formatTime(totalTime)}.`,
+        );
             } else if (statusData.status === 'failed') {
               // Stop polling
               if (pollIntervalRef.current) {
