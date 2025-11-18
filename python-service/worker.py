@@ -6,6 +6,7 @@ import os
 import sys
 import json
 import time
+import tempfile
 from pathlib import Path
 from datetime import datetime
 
@@ -101,17 +102,26 @@ def create_notification(conn, user_id, message):
     conn.commit()
     cursor.close()
 
-def process_job(conn, job_id, file_path, user_id):
+def process_job(conn, job_id, file_content, file_name, user_id):
     """Process a single PDF job."""
+    temp_file_path = None
     try:
         print(f'[worker] Processing job {job_id}...', flush=True)
         
         # Update status to processing
         update_job_status(conn, job_id, 'processing', progress=0)
         
+        # Write file content to temporary file on Render's filesystem
+        temp_dir = Path(tempfile.gettempdir())
+        temp_file_path = temp_dir / f'pdf_{job_id}_{file_name}'
+        
+        print(f'[worker] Writing PDF content to temp file: {temp_file_path}...', flush=True)
+        with open(temp_file_path, 'wb') as f:
+            f.write(file_content)
+        
         # Extract transactions
-        print(f'[worker] Extracting transactions from {file_path}...', flush=True)
-        transactions, metadata = extract_transactions_with_pdfplumber(Path(file_path))
+        print(f'[worker] Extracting transactions from {file_name}...', flush=True)
+        transactions, metadata = extract_transactions_with_pdfplumber(temp_file_path)
         
         if not transactions:
             raise ValueError('No transactions found in PDF')
@@ -170,13 +180,6 @@ def process_job(conn, job_id, file_path, user_id):
         
         print(f'[worker] Job {job_id} completed successfully', flush=True)
         
-        # Clean up temp file
-        try:
-            Path(file_path).unlink()
-            print(f'[worker] Cleaned up temp file: {file_path}', flush=True)
-        except Exception as e:
-            print(f'[worker] Warning: Could not delete temp file {file_path}: {e}', flush=True)
-        
     except Exception as e:
         error_msg = str(e)
         print(f'[worker] Error processing job {job_id}: {error_msg}', flush=True)
@@ -191,6 +194,14 @@ def process_job(conn, job_id, file_path, user_id):
             )
         except:
             pass  # Don't fail if notification creation fails
+    finally:
+        # Always clean up temp file
+        if temp_file_path and temp_file_path.exists():
+            try:
+                temp_file_path.unlink()
+                print(f'[worker] Cleaned up temp file: {temp_file_path}', flush=True)
+            except Exception as e:
+                print(f'[worker] Warning: Could not delete temp file {temp_file_path}: {e}', flush=True)
 
 def main():
     """Main worker loop - polls for jobs and processes them."""
@@ -212,7 +223,7 @@ def main():
             
             # Find next queued job (FOR UPDATE SKIP LOCKED prevents multiple workers from picking same job)
             cursor.execute("""
-                SELECT id, "filePath", "userId"
+                SELECT id, "fileContent", "fileName", "userId"
                 FROM "PdfProcessingJob"
                 WHERE status = 'queued'
                 ORDER BY "createdAt" ASC
@@ -225,10 +236,11 @@ def main():
             
             if job:
                 job_id = job['id']
-                file_path = job['filePath']
+                file_content = job['fileContent']  # Bytes from database
+                file_name = job['fileName']
                 user_id = job['userId']
                 
-                process_job(conn, job_id, file_path, user_id)
+                process_job(conn, job_id, file_content, file_name, user_id)
             else:
                 # No jobs, wait before checking again
                 time.sleep(2)  # Check every 2 seconds
