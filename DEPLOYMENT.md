@@ -23,8 +23,8 @@ The system uses **async processing** with two services:
 3. **Set Environment Variables in Render Dashboard:**
    - For **both services**:
      - `DATABASE_URL`: Your Neon PostgreSQL connection string
-     - `CATEGORIES_MODEL_PATH`: `python/models/categories.ftz` (optional)
-     - `PYTHONUNBUFFERED`: `1` (for better logging)
+   - `CATEGORIES_MODEL_PATH`: `python/models/categories.ftz` (optional)
+   - `PYTHONUNBUFFERED`: `1` (for better logging)
    - For **web service only**:
      - `PORT`: `5000` (Render sets this automatically)
 
