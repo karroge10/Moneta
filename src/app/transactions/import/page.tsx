@@ -253,8 +253,21 @@ export default function ImportTransactionsPage() {
       const formData = new FormData();
       formData.append('file', file);
 
+      // Start processing state immediately (before fetch completes)
+      // This ensures UI shows "processing" while Render is working
+      const processingTimeout = setTimeout(() => {
+        setUploadState(prev => {
+          if (prev === 'uploading') {
+            setProgressValue(20);
+            setStatusNote('Processing PDF... This may take a minute.');
+            return 'processing';
+          }
+          return prev;
+        });
+      }, 500); // Switch to processing after 500ms
+
       try {
-        // Upload phase
+        // Upload phase - show immediately
         setUploadState('uploading');
         setProgressValue(10);
         setStatusNote(`Uploading "${file.name}"...`);
@@ -263,6 +276,10 @@ export default function ImportTransactionsPage() {
           method: 'POST',
           body: formData,
         });
+
+        // Update to processing state if not already
+        setUploadState('processing');
+        setProgressValue(30);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
@@ -274,16 +291,23 @@ export default function ImportTransactionsPage() {
           return;
         }
 
-        // Processing phase - show progress
-        setUploadState('processing');
-        setProgressValue(30);
+        // Keep showing processing while waiting for response body
         setStatusNote('Processing PDF... This may take a minute.');
 
-        const result = await response.json() as TransactionUploadResponse & { queuePosition?: number };
+        const result = await response.json() as TransactionUploadResponse & { 
+          queuePosition?: number;
+          processingTimeMs?: number;
+        };
         
-        // Show queue info if available
-        if (result.queuePosition !== undefined && result.queuePosition > 0) {
-          setStatusNote(`Processing PDF... (${result.queuePosition} users ahead in queue)`);
+        // Show queue info if available (this is the initial queue position when request started)
+        if (result.queuePosition !== undefined) {
+          if (result.queuePosition > 0) {
+            setStatusNote(`Processing PDF... (Started with ${result.queuePosition} users ahead in queue)`);
+          } else {
+            setStatusNote('Processing PDF... (No queue - processing immediately)');
+          }
+        } else {
+          setStatusNote('Processing PDF... This may take a minute.');
         }
 
         if (!result.transactions || result.transactions.length === 0) {
@@ -326,6 +350,9 @@ export default function ImportTransactionsPage() {
         setStatusNote('We could not upload that PDF. Double-check the file and try again.');
         setStartTime(null);
         setElapsedSeconds(0);
+      } finally {
+        // Clear the timeout if it hasn't fired yet
+        clearTimeout(processingTimeout);
       }
     },
     [],
@@ -549,13 +576,13 @@ export default function ImportTransactionsPage() {
                   {uploadState !== 'ready' && uploadState !== 'error' && startTime !== null && (
                     <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
                       <span>Elapsed: {formatTime(elapsedSeconds)}</span>
-                      {progressValue > 5 && progressValue < 95 && (
+                      {uploadState === 'processing' && elapsedSeconds > 5 && (
                         <>
                           <span>·</span>
                           <span>
                             Estimated remaining:{' '}
-                            {progressValue > 0
-                              ? formatTime(Math.floor((elapsedSeconds / progressValue) * (100 - progressValue)))
+                            {elapsedSeconds > 0
+                              ? formatTime(Math.floor(elapsedSeconds * 2)) // Simple heuristic: assume 2x elapsed time remaining
                               : '—'}
                           </span>
                         </>
