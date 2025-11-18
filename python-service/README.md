@@ -82,8 +82,55 @@ This is recommended for production as it handles large PDFs (500+ transactions) 
    curl http://localhost:5000/health
    ```
 
+## Async Processing Architecture
+
+The PDF processing now uses an **async/queue pattern**:
+
+1. **Upload Endpoint** (`/api/transactions/upload-bank-statement`):
+   - Accepts PDF file
+   - Creates job in PostgreSQL database
+   - Returns job ID immediately (<1 second)
+
+2. **Background Worker** (`python-service/worker.py`):
+   - Polls PostgreSQL for queued jobs
+   - Processes PDFs (extraction, translation, categorization)
+   - Updates progress in database (0-100%)
+   - Creates notification when complete
+
+3. **Status Endpoint** (`/api/jobs/[jobId]/status`):
+   - Frontend polls this every 2 seconds
+   - Returns job status, progress, and transactions when ready
+
+4. **Frontend**:
+   - Polls status endpoint
+   - Updates progress bar in real-time
+   - Shows notification when processing completes
+
+### Benefits
+
+- ✅ **No timeout issues** - Processing happens in background
+- ✅ **Better UX** - Immediate response, progress updates
+- ✅ **Resilient** - Jobs can be retried if they fail
+- ✅ **Scalable** - Workers can scale independently
+
+### Worker Setup
+
+The worker is configured in `render.yaml` as a separate service:
+
+```yaml
+- type: worker
+  name: pdf-worker
+  startCommand: cd python-service && PYTHONPATH=.. python worker.py
+  envVars:
+    - DATABASE_URL: ${DATABASE_URL}
+```
+
+**Required Environment Variables:**
+- `DATABASE_URL` - PostgreSQL connection string (same as main app)
+- `CATEGORIES_MODEL_PATH` - Path to category model (optional)
+
 ## API Endpoints
 
 - `GET /health` - Health check
-- `POST /process-pdf` - Process PDF file (multipart/form-data with 'file' field)
+- `POST /process-pdf` - Process PDF file (multipart/form-data with 'file' field) - **Legacy, now uses async processing**
 
