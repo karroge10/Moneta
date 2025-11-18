@@ -7,11 +7,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { jobId: string } }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
     const user = await requireCurrentUser();
-    const jobId = params.jobId;
+    const { jobId } = await params;
 
     const job = await db.pdfProcessingJob.findFirst({
       where: {
