@@ -179,7 +179,8 @@ model PdfProcessingJob {
   userId      Int
   status      String   // 'queued', 'processing', 'completed', 'failed'
   progress    Int      @default(0) // 0-100
-  filePath    String   // Temporary file path
+  fileContent Bytes    // PDF file content stored in database (accessible from Render worker)
+  fileName    String    // Original filename for reference
   result      Json?    // Transactions stored here when done
   error       String?
   createdAt   DateTime @default(now())

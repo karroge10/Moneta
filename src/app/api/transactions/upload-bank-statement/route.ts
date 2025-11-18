@@ -1,29 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import type { PrismaClient } from '@prisma/client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-async function ensureDirectory(dir: string) {
-  await fs.mkdir(dir, { recursive: true });
-}
-
-async function saveTempFile(file: File) {
-  const uploadRoot = path.join(process.cwd(), 'tmp', 'uploads');
-  await ensureDirectory(uploadRoot);
-
-  const uniqueName = `${Date.now()}-${randomUUID()}.pdf`;
-  const filePath = path.join(uploadRoot, uniqueName);
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(filePath, buffer);
-
-  return filePath;
-}
 
 // Processing now happens in background worker - see python-service/worker.py
 
@@ -37,10 +18,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'A PDF file is required.' }, { status: 400 });
     }
 
-    // Save file temporarily
-    const tempFilePath = await saveTempFile(file as File);
+    // Read file content into buffer
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
 
-    // Create job in database
+    // Create job in database with file content stored directly
     // Type assertion needed until Prisma client is regenerated to include PdfProcessingJob model
     const job = await (db as PrismaClient & {
       pdfProcessingJob: {
@@ -49,7 +30,8 @@ export async function POST(request: NextRequest) {
             userId: number;
             status: string;
             progress: number;
-            filePath: string;
+            fileContent: Buffer;
+            fileName: string;
           };
         }) => Promise<{
           id: string;
@@ -62,7 +44,8 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         status: 'queued',
         progress: 0,
-        filePath: tempFilePath,
+        fileContent: fileBuffer,
+        fileName: file.name,
       },
     });
 
