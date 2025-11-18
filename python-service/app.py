@@ -79,8 +79,12 @@ def process_pdf():
                 }), 400
             
             # Process transactions: translate and categorize
+            # Add progress logging for large batches
+            total = len(transactions)
+            print(f'[process_pdf] Starting translation + categorization for {total} transactions', flush=True)
+            
             result_transactions = []
-            for tx in transactions:
+            for index, tx in enumerate(transactions, start=1):
                 translated = translate_to_english(tx.description)
                 category, confidence = predict_category(translated, classifier_model)
                 
@@ -92,6 +96,12 @@ def process_pdf():
                     'category': category,
                     'confidence': round(float(confidence), 2),
                 })
+                
+                # Log progress every 25 transactions or at the end
+                if index % 25 == 0 or index == total:
+                    print(f'[process_pdf] Progress: processed {index}/{total} transactions', flush=True)
+            
+            print(f'[process_pdf] Completed processing {total} transactions', flush=True)
             
             return jsonify({
                 'transactions': result_transactions,
