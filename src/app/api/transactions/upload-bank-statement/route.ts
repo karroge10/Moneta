@@ -4,6 +4,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import type { PrismaClient } from '@prisma/client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,7 +41,23 @@ export async function POST(request: NextRequest) {
     const tempFilePath = await saveTempFile(file as File);
 
     // Create job in database
-    const job = await db.pdfProcessingJob.create({
+    // Type assertion needed until Prisma client is regenerated to include PdfProcessingJob model
+    const job = await (db as PrismaClient & {
+      pdfProcessingJob: {
+        create: (args: {
+          data: {
+            userId: number;
+            status: string;
+            progress: number;
+            filePath: string;
+          };
+        }) => Promise<{
+          id: string;
+          status: string;
+          progress: number;
+        }>;
+      };
+    }).pdfProcessingJob.create({
       data: {
         userId: user.id,
         status: 'queued',
