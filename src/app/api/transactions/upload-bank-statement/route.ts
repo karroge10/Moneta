@@ -1,13 +1,100 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { TransactionUploadResponse, UploadedTransaction } from '@/types/dashboard';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch } from '@/lib/merchant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Processing now happens in background worker - see python-service/worker.py
+async function callPythonService(file: File): Promise<TransactionUploadResponse> {
+  const serviceUrl = process.env.PYTHON_SERVICE_URL;
+  
+  if (!serviceUrl) {
+    throw new Error('PYTHON_SERVICE_URL environment variable is not set');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${serviceUrl}/process-pdf`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Service returned status ${response.status}`);
+  }
+
+  return response.json() as Promise<TransactionUploadResponse>;
+}
+
+async function analyzeCategorization(transactions: UploadedTransaction[]): Promise<UploadedTransaction[]> {
+  // This function matches merchants and applies categories from database
+  // Similar logic to what's in import route, but simplified for upload response
+  
+  // Pre-fetch categories and merchants (simplified - could be optimized with caching)
+  const allCategories = await db.category.findMany();
+  const categoryMap = new Map<string, number>();
+  allCategories.forEach((cat: { name: string; id: number }) => {
+    categoryMap.set(cat.name.toLowerCase(), cat.id);
+  });
+
+  const globalMerchants = await db.merchantGlobal.findMany();
+  const globalMerchantMap = new Map<string, number>();
+  globalMerchants.forEach((merchant: { namePattern: string; categoryId: number }) => {
+    const normalizedPattern = normalizeMerchantName(merchant.namePattern);
+    globalMerchantMap.set(normalizedPattern, merchant.categoryId);
+  });
+
+  // Apply merchant matching to transactions
+  return transactions.map((tx) => {
+    const description = tx.description || '';
+    const merchantName = extractMerchantFromDescription(description);
+    const normalizedMerchant = normalizeMerchantName(merchantName);
+    
+    // Check user merchants first (if we had user context, but for now just use global)
+    // In production, you'd pass user context here
+    
+    // Try to match merchant
+    let matchedCategoryId: number | null = null;
+    
+    if (normalizedMerchant) {
+      // Check global merchants
+      if (globalMerchantMap.has(normalizedMerchant)) {
+        matchedCategoryId = globalMerchantMap.get(normalizedMerchant)!;
+      } else {
+        // Try fuzzy matching
+        for (const [pattern, categoryId] of globalMerchantMap.entries()) {
+          const similarity = fuzzyMatch(normalizedMerchant, pattern);
+          if (similarity > 0.7) {
+            matchedCategoryId = categoryId;
+            break;
+          }
+        }
+      }
+    }
+    
+    // If matched, update category
+    if (matchedCategoryId) {
+      const matchedCategory = allCategories.find(c => c.id === matchedCategoryId);
+      if (matchedCategory) {
+        return {
+          ...tx,
+          category: matchedCategory.name,
+        };
+      }
+    }
+    
+    return tx;
+  });
+}
 
 export async function POST(request: NextRequest) {
+  let processingRequestId: string | null = null;
+  let estimatedQueuePosition = 0;
+  
   try {
     const user = await requireCurrentUser();
     const formData = await request.formData();
@@ -17,81 +104,104 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'A PDF file is required.' }, { status: 400 });
     }
 
-    // Read file content into buffer
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
-    
-    console.log(`[upload-bank-statement] File size: ${fileBuffer.length} bytes, name: ${file.name}`);
-
-    // Create job in database with file content stored directly
-    // Use raw SQL as fallback since Prisma client might not be regenerated on Vercel yet
-    let jobId: string;
-    
+    // Track this processing request in database for queue estimation
     try {
-      // Try Prisma client first (if regenerated)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prismaClient = db as any;
-      if (prismaClient.pdfProcessingJob) {
-        const job = await prismaClient.pdfProcessingJob.create({
-          data: {
-            userId: user.id,
-            status: 'queued',
-            progress: 0,
-            fileContent: fileBuffer,
-            fileName: file.name,
-          },
-        });
-        jobId = job.id;
-      } else {
-        // Fallback to raw SQL if Prisma client not regenerated
-        throw new Error('Prisma client not regenerated, using raw SQL');
+      const trackingEntry = await db.$queryRawUnsafe<Array<{ id: string }>>(`
+        INSERT INTO "PdfProcessingJob" ("id", "userId", "status", "progress", "fileName", "createdAt", "updatedAt")
+        VALUES (gen_random_uuid(), $1, 'processing', 0, $2, NOW(), NOW())
+        RETURNING "id"
+      `, user.id, file.name);
+      
+      processingRequestId = trackingEntry[0]?.id || null;
+      
+      // Get queue position (how many requests started before this one)
+      if (processingRequestId) {
+        const queueData = await db.$queryRawUnsafe<Array<{ position: bigint }>>(`
+          SELECT COUNT(*)::bigint as position
+          FROM "PdfProcessingJob"
+          WHERE status = 'processing'
+            AND "createdAt" < (SELECT "createdAt" FROM "PdfProcessingJob" WHERE id = $1)
+        `, processingRequestId);
+        
+        const queuePosition = Number(queueData[0]?.position || 0);
+        
+        // Estimate: if more than 4 are processing, some are queued (4 = max concurrent)
+        // -3 because current request + 3 others can process simultaneously
+        estimatedQueuePosition = Math.max(0, queuePosition - 3);
       }
-    } catch {
-      // Fallback to raw SQL query using Prisma's unsafe method for binary data
-      console.log('[upload-bank-statement] Using raw SQL fallback');
-      
-      // Use $queryRawUnsafe to insert with RETURNING
-      const insertedJob = await db.$queryRawUnsafe<Array<{ id: string }>>(
-        `INSERT INTO "PdfProcessingJob" ("id", "userId", "status", "progress", "fileContent", "fileName", "createdAt", "updatedAt")
-         VALUES (gen_random_uuid(), $1, 'queued', 0, $2::bytea, $3, NOW(), NOW())
-         RETURNING "id"`,
-        user.id,
-        fileBuffer,
-        file.name
-      );
-      
-      if (!insertedJob || insertedJob.length === 0) {
-        throw new Error('Failed to create job in database');
-      }
-      
-      jobId = insertedJob[0].id;
+    } catch (trackingError) {
+      console.warn('[upload-bank-statement] Failed to create tracking entry:', trackingError);
+      // Continue anyway - tracking is optional
+      estimatedQueuePosition = 0;
     }
-    
-    console.log(`[upload-bank-statement] Created job ${jobId} for user ${user.id}`);
-    
-    // Return immediately with job ID (don't wait for processing)
-    return NextResponse.json({
-      jobId,
-      status: 'queued',
-    });
+
+    try {
+      // Call external Python service (Render)
+      const result = await callPythonService(file as File);
+      
+      // Clean up tracking entry on success
+      if (processingRequestId) {
+        await db.$queryRawUnsafe(`
+          DELETE FROM "PdfProcessingJob"
+          WHERE id = $1
+        `, processingRequestId);
+      }
+      
+      // Check if we got sample data (indicates PDF extraction failed)
+      if (result.transactions && result.transactions.length === 3) {
+        const sampleDescriptions = ['Sample Subscription', 'Coffee Shop', 'Salary'];
+        const isSampleData = result.transactions.every(tx => 
+          sampleDescriptions.some(sample => tx.description.includes(sample))
+        );
+        
+        if (isSampleData) {
+          console.error('[upload-bank-statement] PDF extraction failed - received sample data');
+          return NextResponse.json(
+            { 
+              error: 'Failed to extract transactions from PDF. The PDF structure may not match the expected format.',
+              transactions: [],
+              metadata: result.metadata || {},
+            },
+            { status: 400 }
+          );
+        }
+      }
+      
+      // Analyze categorization after parsing and apply matched categories
+      if (result.transactions && result.transactions.length > 0) {
+        const updatedTransactions = await analyzeCategorization(result.transactions);
+        result.transactions = updatedTransactions;
+      }
+      
+      return NextResponse.json({
+        ...result,
+        queuePosition: estimatedQueuePosition, // Include queue info for reference
+      });
+    } catch (error) {
+      // Clean up tracking entry on error
+      if (processingRequestId) {
+        try {
+          await db.$queryRawUnsafe(`
+            DELETE FROM "PdfProcessingJob"
+            WHERE id = $1
+          `, processingRequestId);
+        } catch (cleanupError) {
+          console.warn('[upload-bank-statement] Failed to cleanup tracking entry:', cleanupError);
+        }
+      }
+      
+      throw error; // Re-throw to be caught by outer catch
+    }
   } catch (error) {
     console.error('[upload-bank-statement] error', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    
-    console.error('[upload-bank-statement] Error details:', {
-      message: errorMessage,
-      stack: errorStack,
-      name: error instanceof Error ? error.name : 'Unknown',
-    });
     
     return NextResponse.json(
       { 
-        error: 'Failed to upload bank statement. Please try again.',
+        error: 'Failed to process bank statement. Please try again.',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
       { status: 500 },
     );
   }
 }
-
-
