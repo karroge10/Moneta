@@ -45,9 +45,9 @@ export default function ImportTransactionsPage() {
   const [totalTimeSeconds, setTotalTimeSeconds] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dropZoneRef = useRef<HTMLDivElement | null>(null);
-      const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
-      const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-      const currentProgressRef = useRef<number>(0);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const currentProgressRef = useRef<number>(0);
 
   const filteredRows = useMemo(() => {
     const query = debouncedSearchQuery.toLowerCase();
