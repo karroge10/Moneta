@@ -11,4 +11,17 @@ services:
         value: python/models/categories.ftz
       - key: PYTHONUNBUFFERED
         value: 1
+  
+  - type: worker
+    name: pdf-worker
+    env: python
+    buildCommand: pip install -r python-service/requirements.txt && pip install -r python/requirements.txt
+    startCommand: cd python-service && PYTHONPATH=.. python worker.py
+    envVars:
+      - key: DATABASE_URL
+        value: ${DATABASE_URL}
+      - key: CATEGORIES_MODEL_PATH
+        value: python/models/categories.ftz
+      - key: PYTHONUNBUFFERED
+        value: 1
 

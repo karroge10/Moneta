@@ -4,67 +4,55 @@
 
 This is the recommended approach for best performance and cost efficiency.
 
-### Step 1: Deploy Python Service to Render
+### Step 1: Deploy Python Services to Render
 
 **⚠️ Important**: Make sure all files in `python-service/` are committed to git before deploying!
 
-1. **Commit the Python service files:**
-   ```bash
-   git add python-service/
-   git commit -m "Add Python PDF processing service"
-   git push
-   ```
+The system uses **async processing** with two services:
 
-2. **Create a new Web Service on Render**
-   - Go to https://render.com
-   - Click "New +" → "Web Service"
-   - Connect your GitHub repository
-   - Select the repository and branch (usually `main`)
+1. **Web Service** (`pdf-processor`) - Handles HTTP requests (legacy endpoint, not used in async flow)
+2. **Worker Service** (`pdf-worker`) - Processes PDFs in background
 
-3. **Configure the service:**
-   - **Name**: `pdf-processor` (or your choice)
-   - **Environment**: `Python 3`
-   - **Build Command**: 
-     ```bash
-     pip install -r python-service/requirements.txt && pip install -r python/requirements.txt
-     ```
-   - **Start Command**: 
-     ```bash
-     python python-service/app.py
-     ```
-   - **Root Directory**: Leave empty (uses repo root)
-   
-   **Note**: If you get "file not found" errors, make sure:
-   - All files are committed to git
-   - The paths in build/start commands are correct
-   - Root Directory is empty (not set to `python-service`)
+#### Option A: Using render.yaml (Recommended)
 
-3. **Set Environment Variables:**
-   - `PORT`: `5000` (Render sets this automatically, but good to have)
-   - `CATEGORIES_MODEL_PATH`: `python/models/categories.ftz` (optional)
-   - `PYTHONUNBUFFERED`: `1` (for better logging)
+1. **Ensure `render.yaml` is in repository root**
+2. **Render will automatically detect and create both services:**
+   - Web service: `pdf-processor`
+   - Worker service: `pdf-worker`
 
-4. **Deploy**
-   - Render will automatically deploy when you push to your main branch
-   - Note the service URL (e.g., `https://pdf-processor-xyz.onrender.com`)
+3. **Set Environment Variables in Render Dashboard:**
+   - For **both services**:
+     - `DATABASE_URL`: Your Neon PostgreSQL connection string
+     - `CATEGORIES_MODEL_PATH`: `python/models/categories.ftz` (optional)
+     - `PYTHONUNBUFFERED`: `1` (for better logging)
+   - For **web service only**:
+     - `PORT`: `5000` (Render sets this automatically)
+
+#### Option B: Manual Setup
+
+1. **Create Web Service:**
+   - Name: `pdf-processor`
+   - Environment: `Python 3`
+   - Build Command: `pip install -r python-service/requirements.txt && pip install -r python/requirements.txt`
+   - Start Command: `cd python-service && PYTHONPATH=.. gunicorn --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 900 --worker-class gthread --log-level info wsgi:application`
+   - Environment Variables: `PORT=5000`, `CATEGORIES_MODEL_PATH=python/models/categories.ftz`, `PYTHONUNBUFFERED=1`
+
+2. **Create Worker Service:**
+   - Name: `pdf-worker`
+   - Type: `Background Worker`
+   - Environment: `Python 3`
+   - Build Command: `pip install -r python-service/requirements.txt && pip install -r python/requirements.txt`
+   - Start Command: `cd python-service && PYTHONPATH=.. python worker.py`
+   - Environment Variables: `DATABASE_URL=<your-database-url>`, `CATEGORIES_MODEL_PATH=python/models/categories.ftz`, `PYTHONUNBUFFERED=1`
 
 ### Step 2: Update Vercel Deployment
 
-1. **Set Environment Variable in Vercel:**
-   - Go to your Vercel project settings
-   - Add environment variable:
-     - **Key**: `PYTHON_SERVICE_URL`
-     - **Value**: `https://your-pdf-processor.onrender.com` (from Step 1)
+1. **Set Environment Variables in Vercel:**
+   - `DATABASE_URL`: Your Neon PostgreSQL connection string (same as Render)
+   - No need for `PYTHON_SERVICE_URL` anymore (processing is async)
 
-2. **Update the API Route:**
-   - Option A: Use the external service version
-     - Rename `src/app/api/transactions/upload-bank-statement/route.external-service.ts.example` 
-     - To: `src/app/api/transactions/upload-bank-statement/route.ts`
-     - (Backup the original first!)
-   
-   - Option B: Make it work with both (recommended)
-     - Update the existing route to check for `PYTHON_SERVICE_URL`
-     - If set, use external service; otherwise, use local Python
+2. **Deploy Database Migration:**
+   - Run `npx prisma db push` or `npx prisma migrate deploy` to create `PdfProcessingJob` table
 
 3. **Redeploy on Vercel**
    - Push your changes
@@ -73,8 +61,13 @@ This is the recommended approach for best performance and cost efficiency.
 ### Step 3: Test
 
 1. Upload a PDF through your app
-2. Check that transactions are extracted correctly
-3. Monitor logs on both Vercel and Render
+2. You should see:
+   - Immediate response (<1 second)
+   - Progress bar updating in real-time
+   - Notification when processing completes
+3. Check logs:
+   - Vercel logs: Upload endpoint, status polling
+   - Render worker logs: PDF processing progress
 
 ---
 
