@@ -292,6 +292,7 @@ export default function ImportTransactionsPage() {
         }
 
         // Keep showing processing while waiting for response body
+        // Note: Queue position will be shown after response, but we show processing state immediately
         setStatusNote('Processing PDF... This may take a minute.');
 
         const result = await response.json() as TransactionUploadResponse & { 
@@ -300,14 +301,13 @@ export default function ImportTransactionsPage() {
         };
         
         // Show queue info if available (this is the initial queue position when request started)
+        // Note: This shows AFTER processing completes, but it's informational
         if (result.queuePosition !== undefined) {
           if (result.queuePosition > 0) {
             setStatusNote(`Processing PDF... (Started with ${result.queuePosition} users ahead in queue)`);
           } else {
             setStatusNote('Processing PDF... (No queue - processing immediately)');
           }
-        } else {
-          setStatusNote('Processing PDF... This may take a minute.');
         }
 
         if (!result.transactions || result.transactions.length === 0) {
@@ -339,9 +339,17 @@ export default function ImportTransactionsPage() {
         setParsedRows(normalized);
         setUploadState('ready');
         setProgressValue(100);
-        setStatusNote(
-          `${normalized.length} transactions parsed successfully in ${formatTime(totalTime)}.`,
-        );
+        
+        // Build status message with queue info if available
+        let successMessage = `${normalized.length} transactions parsed successfully in ${formatTime(totalTime)}.`;
+        if (result.queuePosition !== undefined) {
+          if (result.queuePosition > 0) {
+            successMessage += ` (Started with ${result.queuePosition} users ahead in queue)`;
+          } else {
+            successMessage += ` (No queue - processed immediately)`;
+          }
+        }
+        setStatusNote(successMessage);
 
       } catch (error) {
         console.error('[import/upload]', error);
