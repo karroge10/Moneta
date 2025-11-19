@@ -10,11 +10,9 @@ import CategoryFilter from '@/components/transactions/shared/CategoryFilter';
 import CategoryPicker from '@/components/transactions/shared/CategoryPicker';
 import TypeFilter from '@/components/transactions/shared/TypeFilter';
 import CategoryStatsModal from '@/components/transactions/CategoryStatsModal';
-import RecentJobsList from '@/components/transactions/import/RecentJobsList';
-import { getIcon } from '@/lib/iconMapping';
+import RecentJobsList, { type JobStatus } from '@/components/transactions/import/RecentJobsList';
 import { TransactionUploadResponse, UploadedTransaction, type Category } from '@/types/dashboard';
 import { CheckCircle, Upload, WarningTriangle, Reports, Language, Trash } from 'iconoir-react';
-import { formatNumber } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 
 type UploadState = 'idle' | 'queued' | 'uploading' | 'processing' | 'categorizing' | 'ready' | 'error';
@@ -73,29 +71,6 @@ export default function ImportTransactionsPage() {
     });
   }, [parsedRows, debouncedSearchQuery, categoryFilter, typeFilter]);
 
-  // Calculate category statistics for imported transactions
-  const categoryStats = useMemo(() => {
-    const stats = new Map<string, { category: Category; total: number; count: number }>();
-    
-    parsedRows.forEach(row => {
-      if (!row.category) return;
-      
-      const category = categories.find(c => c.name === row.category);
-      if (!category) return;
-      
-      const existing = stats.get(category.id) || { category, total: 0, count: 0 };
-      existing.total += Math.abs(row.amount);
-      existing.count += 1;
-      stats.set(category.id, existing);
-    });
-    
-    return Array.from(stats.values())
-      .sort((a, b) => b.total - a.total);
-  }, [parsedRows, categories]);
-
-  const totalAmount = useMemo(() => {
-    return categoryStats.reduce((sum, stat) => sum + stat.total, 0);
-  }, [categoryStats]);
 
   useEffect(() => {
     setReviewPage(1);
@@ -439,7 +414,7 @@ export default function ImportTransactionsPage() {
     [startPolling],
   );
 
-  const handleResumeJob = useCallback((jobId: string) => {
+  const handleResumeJob = useCallback((jobId: string, jobStatus: JobStatus) => {
     // Reset relevant state
     setParsedRows([]);
     setProgressValue(0);
@@ -447,14 +422,26 @@ export default function ImportTransactionsPage() {
     setProcessedCount(null);
     setTotalCount(null);
     
-    // For resuming, we don't have exact start time, so we start timer from now for feedback
-    const now = Date.now();
-    setStartTime(now);
-    setElapsedSeconds(0);
+    const isCompletedJob = jobStatus === 'completed';
+    
+    if (!isCompletedJob) {
+      // For resuming, we don't have exact start time, so we start timer from now for feedback
+      const now = Date.now();
+      setStartTime(now);
+      setElapsedSeconds(0);
+    } else {
+      setStartTime(null);
+      setElapsedSeconds(0);
+    }
     
     setCurrentJobId(jobId);
-    setUploadState('queued'); // Will be updated by first poll
-    setStatusNote('Resuming job...');
+    if (!isCompletedJob) {
+      setUploadState('queued'); // Will be updated by first poll
+      setStatusNote('Resuming job...');
+    } else {
+      setUploadState('idle');
+      setStatusNote(null);
+    }
     
     // Clear existing intervals
     if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
@@ -663,7 +650,7 @@ export default function ImportTransactionsPage() {
               </span>
             </div>
 
-            {uploadState !== 'idle' && (
+            {uploadState !== 'idle' && uploadState !== 'ready' && (
               <div
                 className="w-full max-w-xl space-y-3 rounded-[30px] border border-[#3a3a3a] px-6 py-5 mt-6"
                 style={{ backgroundColor: '#282828' }}
@@ -721,75 +708,20 @@ export default function ImportTransactionsPage() {
 
         {parsedRows.length > 0 && (
           <>
-            {/* Category Statistics Card */}
-            {categoryStats.length > 0 && (
-              <Card title="Category Breakdown" showActions={false}>
-                <div className="space-y-3">
-                  {categoryStats.slice(0, 5).map(stat => {
-                    const Icon = getIcon(stat.category.icon);
-                    const percentage = totalAmount > 0 ? (stat.total / totalAmount) * 100 : 0;
-                    
-                    return (
-                      <div
-                        key={stat.category.id}
-                        className="rounded-2xl p-4 border border-[#3a3a3a]"
-                        style={{ backgroundColor: '#181818' }}
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                              style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
-                            >
-                              <Icon width={20} height={20} strokeWidth={1.5} style={{ color: stat.category.color || '#E7E4E4' }} />
-                            </div>
-                            <div>
-                              <div className="text-body font-semibold">{stat.category.name}</div>
-                              <div className="text-helper text-xs">{stat.count} transactions</div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-body font-semibold">{currency.symbol}{formatNumber(stat.total)}</div>
-                            <div className="text-helper text-xs">{percentage.toFixed(1)}%</div>
-                          </div>
-                        </div>
-                        <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#2A2A2A' }}>
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{
-                              backgroundColor: stat.category.color || '#AC66DA',
-                              width: `${percentage}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {categoryStats.length > 5 && (
-                    <div className="text-center text-sm pt-2" style={{ color: 'var(--text-secondary)' }}>
-                      + {categoryStats.length - 5} more categories
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
-
             <Card 
               title="Review Transactions" 
               showActions={false}
               customHeader={
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-card-header">Review Transactions</h2>
-                  {categoryStats.length > 0 && (
-                    <button
-                      onClick={() => setIsCategoryStatsOpen(true)}
-                      className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors cursor-pointer hover:opacity-90"
-                      style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
-                    >
-                      <Reports width={18} height={18} strokeWidth={1.5} />
-                      View All Stats
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setIsCategoryStatsOpen(true)}
+                    className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors cursor-pointer hover:opacity-90"
+                    style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                  >
+                    <Reports width={18} height={18} strokeWidth={1.5} />
+                    View All Stats
+                  </button>
                 </div>
               }
             >
