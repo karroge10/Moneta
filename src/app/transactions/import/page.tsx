@@ -47,6 +47,7 @@ export default function ImportTransactionsPage() {
   const dropZoneRef = useRef<HTMLDivElement | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentProgressRef = useRef<number>(0);
 
   const filteredRows = useMemo(() => {
@@ -178,6 +179,10 @@ export default function ImportTransactionsPage() {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
   };
 
   // Format time in seconds to human-readable string
@@ -218,8 +223,89 @@ export default function ImportTransactionsPage() {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
     };
   }, []);
+
+  // Helper to start polling for status
+  const startPolling = useCallback((jobId: string) => {
+    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/transactions/upload-bank-statement/${jobId}/status`);
+        if (!res.ok) {
+           // If 404 or 500, maybe stop? For now just retry next tick
+           return;
+        }
+        const data = await res.json();
+        
+        if (data.status === 'failed') {
+          if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+          setUploadState('error');
+          setStatusNote(data.error || 'Processing failed');
+          return;
+        }
+        
+        if (data.status === 'completed') {
+          if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+          
+          // Process results similar to original flow
+          const result = data.result as TransactionUploadResponse;
+          
+          if (!result || !result.transactions || result.transactions.length === 0) {
+            setUploadState('error');
+            setStatusNote('No transactions were detected in that PDF.');
+            return;
+          }
+          
+          // Normalize transactions
+          const normalized: TableRow[] = result.transactions.map(item => ({
+            id: crypto.randomUUID(),
+            date: item.date,
+            description: item.description,
+            translatedDescription: item.translatedDescription,
+            amount: item.amount,
+            category: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null,
+            confidence: item.confidence,
+            suggestedCategory: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null,
+          }));
+          
+          const totalTime = Math.floor((Date.now() - (startTime || Date.now())) / 1000);
+          setTotalTimeSeconds(totalTime);
+          setElapsedSeconds(totalTime); // freeze elapsed
+          
+          setParsedRows(normalized);
+          setUploadState('ready');
+          setProgressValue(100);
+          setStatusNote(`${normalized.length} transactions parsed successfully.`);
+          return;
+        }
+        
+        // Still processing/queued
+        if (typeof data.progress === 'number') {
+          setProgressValue(Math.max(5, data.progress));
+        }
+        
+        if (data.queuePosition > 0) {
+          setStatusNote(`Queued: ${data.queuePosition} users ahead of you.`);
+          setUploadState('queued');
+        } else if (data.status === 'processing') {
+          setStatusNote('Processing PDF...');
+          setUploadState('processing');
+        }
+        
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+    };
+    
+    // Poll every 1.5 seconds
+    pollingIntervalRef.current = setInterval(poll, 1500);
+    poll(); // initial call
+  }, [startTime]);
 
   const handleFileUpload = useCallback(
     async (file: File) => {
@@ -245,6 +331,10 @@ export default function ImportTransactionsPage() {
         clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = null;
       }
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
 
       setUploadState('queued');
       setStatusNote(`Preparing to upload "${file.name}"`);
@@ -252,19 +342,6 @@ export default function ImportTransactionsPage() {
 
       const formData = new FormData();
       formData.append('file', file);
-
-      // Start processing state immediately (before fetch completes)
-      // This ensures UI shows "processing" while Render is working
-      const processingTimeout = setTimeout(() => {
-        setUploadState(prev => {
-          if (prev === 'uploading') {
-            setProgressValue(20);
-            setStatusNote('Processing PDF... This may take a minute.');
-            return 'processing';
-          }
-          return prev;
-        });
-      }, 500); // Switch to processing after 500ms
 
       try {
         // Upload phase - show immediately
@@ -277,10 +354,6 @@ export default function ImportTransactionsPage() {
           body: formData,
         });
 
-        // Update to processing state if not already
-        setUploadState('processing');
-        setProgressValue(30);
-
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
           setUploadState('error');
@@ -291,65 +364,32 @@ export default function ImportTransactionsPage() {
           return;
         }
 
-        // Keep showing processing while waiting for response body
-        // Note: Queue position will be shown after response, but we show processing state immediately
-        setStatusNote('Processing PDF... This may take a minute.');
-
-        const result = await response.json() as TransactionUploadResponse & { 
+        // New Async Flow: Get Job ID and start polling
+        const result = await response.json() as { 
+          jobId: string;
+          status: string;
           queuePosition?: number;
-          processingTimeMs?: number;
+          message?: string;
         };
+        
+        if (!result.jobId) {
+             throw new Error('No job ID received from server');
+        }
+        
+        // Start polling with the returned Job ID
+        startPolling(result.jobId);
         
         // Show queue info if available (this is the initial queue position when request started)
         // Note: This shows AFTER processing completes, but it's informational
         if (result.queuePosition !== undefined) {
           if (result.queuePosition > 0) {
-            setStatusNote(`Processing PDF... (Started with ${result.queuePosition} users ahead in queue)`);
+            setStatusNote(`Queued: ${result.queuePosition} users ahead in queue`);
+            setUploadState('queued');
           } else {
             setStatusNote('Processing PDF... (No queue - processing immediately)');
+            setUploadState('processing');
           }
         }
-
-        if (!result.transactions || result.transactions.length === 0) {
-          setUploadState('error');
-          setProgressValue(0);
-          setStatusNote('No transactions were detected in that PDF.');
-          setStartTime(null);
-          setElapsedSeconds(0);
-          return;
-        }
-
-        // Normalize transactions
-        const normalized: TableRow[] = result.transactions.map(item => ({
-          id: crypto.randomUUID(),
-          date: item.date,
-          description: item.description,
-          translatedDescription: item.translatedDescription,
-          amount: item.amount,
-          category: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null,
-          confidence: item.confidence,
-          suggestedCategory: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null,
-        }));
-
-        // Calculate total time
-        const totalTime = Math.floor((Date.now() - now) / 1000);
-        setTotalTimeSeconds(totalTime);
-        setElapsedSeconds(totalTime);
-
-        setParsedRows(normalized);
-        setUploadState('ready');
-        setProgressValue(100);
-        
-        // Build status message with queue info if available
-        let successMessage = `${normalized.length} transactions parsed successfully in ${formatTime(totalTime)}.`;
-        if (result.queuePosition !== undefined) {
-          if (result.queuePosition > 0) {
-            successMessage += ` (Started with ${result.queuePosition} users ahead in queue)`;
-          } else {
-            successMessage += ` (No queue - processed immediately)`;
-          }
-        }
-        setStatusNote(successMessage);
 
       } catch (error) {
         console.error('[import/upload]', error);
@@ -359,11 +399,10 @@ export default function ImportTransactionsPage() {
         setStartTime(null);
         setElapsedSeconds(0);
       } finally {
-        // Clear the timeout if it hasn't fired yet
-        clearTimeout(processingTimeout);
+        // Clean up
       }
     },
-    [],
+    [startPolling, startTime],
   );
 
   const handleDrop = useCallback(
@@ -895,4 +934,3 @@ export default function ImportTransactionsPage() {
     </main>
   );
 }
-

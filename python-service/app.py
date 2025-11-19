@@ -8,6 +8,8 @@ import os
 import tempfile
 from pathlib import Path
 import sys
+import requests
+import threading
 
 # Add parent directory to path to import process_pdf
 # The process_pdf module is in the python/ directory
@@ -37,6 +39,28 @@ default_model_path = project_root / 'python' / 'models' / 'categories.ftz'
 model_path = Path(os.getenv('CATEGORIES_MODEL_PATH', str(default_model_path)))
 classifier_model = load_classifier(model_path)
 
+def report_progress(job_id, callback_url, progress, status="processing"):
+    """
+    Send progress update to the callback URL.
+    Fire and forget - don't block processing if callback fails.
+    """
+    if not job_id or not callback_url:
+        return
+        
+    def _send_request():
+        try:
+            # Add internal secret header if needed in future
+            requests.post(
+                callback_url, 
+                json={'progress': progress, 'status': status},
+                timeout=5
+            )
+        except Exception as e:
+            print(f'[process_pdf] Failed to report progress for {job_id}: {e}', flush=True)
+            
+    # Run in thread to not block processing loop
+    threading.Thread(target=_send_request).start()
+
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
@@ -47,10 +71,15 @@ def process_pdf():
     """
     Process PDF file and return transactions
     Expects multipart/form-data with 'file' field
+    Optional fields: 'jobId', 'callbackUrl'
     """
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
+        
+        # Get job tracking info
+        job_id = request.form.get('jobId')
+        callback_url = request.form.get('callbackUrl')
         
         file = request.files['file']
         if file.filename == '':
@@ -62,11 +91,15 @@ def process_pdf():
             pdf_path = Path(tmp_file.name)
         
         try:
+            # Initial progress: File received
+            report_progress(job_id, callback_url, 10, "processing")
+            
             # Extract transactions
             transactions, metadata = extract_transactions_with_pdfplumber(pdf_path)
             
             # If no transactions found, return error (don't fall back to sample data)
             if not transactions:
+                report_progress(job_id, callback_url, 0, "failed")
                 return jsonify({
                     'error': 'No transactions found in PDF',
                     'transactions': [],
@@ -82,6 +115,9 @@ def process_pdf():
             # Add progress logging for large batches
             total = len(transactions)
             print(f'[process_pdf] Starting translation + categorization for {total} transactions', flush=True)
+            
+            # Progress after extraction: 30%
+            report_progress(job_id, callback_url, 30, "processing")
             
             result_transactions = []
             for index, tx in enumerate(transactions, start=1):
@@ -100,8 +136,15 @@ def process_pdf():
                 # Log progress every 25 transactions or at the end
                 if index % 25 == 0 or index == total:
                     print(f'[process_pdf] Progress: processed {index}/{total} transactions', flush=True)
+                    
+                    # Calculate progress between 30% and 90%
+                    current_progress = 30 + int((index / total) * 60)
+                    report_progress(job_id, callback_url, current_progress, "processing")
             
             print(f'[process_pdf] Completed processing {total} transactions', flush=True)
+            
+            # Final progress before response: 95% (Next.js will mark 100% when received)
+            report_progress(job_id, callback_url, 95, "processing")
             
             return jsonify({
                 'transactions': result_transactions,
@@ -121,9 +164,18 @@ def process_pdf():
                 pass
     
     except Exception as e:
+        # Report failure if possible
+        # We don't know job_id/callback_url if they weren't parsed yet, 
+        # but if they were, try to report.
+        # Wrap in try/except to avoid double exception
+        try:
+            if 'job_id' in locals() and 'callback_url' in locals():
+                report_progress(job_id, callback_url, 0, "failed")
+        except:
+            pass
+            
         return jsonify({'error': f'Processing failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
-
