@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle, WarningTriangle, RefreshDouble, Page } from 'iconoir-react';
+import { CheckCircle, WarningTriangle, RefreshDouble, Page, Trash } from 'iconoir-react';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { APP_CONFIG } from '@/lib/config';
 
@@ -40,6 +40,7 @@ function formatTimestamp(dateString: string): string {
 export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobsListProps) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
 
   const fetchJobs = async () => {
     try {
@@ -52,6 +53,34 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
       console.error('Failed to fetch recent jobs', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, jobId: string) => {
+    e.stopPropagation(); // Prevent triggering the onClick for resuming job
+    
+    if (!confirm('Are you sure you want to delete this import job? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeletingJobId(jobId);
+    try {
+      const res = await fetch(`/api/jobs/${jobId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        // Remove the job from the list immediately
+        setJobs(jobs.filter(job => job.id !== jobId));
+      } else {
+        const error = await res.json().catch(() => ({ error: 'Failed to delete job' }));
+        alert(error.error || 'Failed to delete job');
+      }
+    } catch (error) {
+      console.error('Failed to delete job', error);
+      alert('Failed to delete job. Please try again.');
+    } finally {
+      setDeletingJobId(null);
     }
   };
 
@@ -151,11 +180,34 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
                   </div>
                 </div>
 
-                {isCurrent && (
-                  <span className="text-xs font-medium text-[#AC66DA] bg-[rgba(172,102,218,0.1)] px-2 py-1 rounded-full shrink-0">
-                    Active
-                  </span>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                  {isCurrent && (
+                    <span className="text-xs font-medium text-[#AC66DA] bg-[rgba(172,102,218,0.1)] px-2 py-1 rounded-full">
+                      Active
+                    </span>
+                  )}
+                  
+                  <button
+                    onClick={(e) => handleDelete(e, job.id)}
+                    disabled={deletingJobId === job.id}
+                    className={`
+                      p-2 rounded-full transition-all
+                      ${deletingJobId === job.id 
+                        ? 'opacity-50 cursor-not-allowed' 
+                        : 'hover:bg-[rgba(217,63,63,0.1)] hover:text-[#D93F3F] active:scale-95'
+                      }
+                      text-[var(--text-secondary)]
+                    `}
+                    title="Delete job"
+                  >
+                    <Trash 
+                      width={16} 
+                      height={16} 
+                      strokeWidth={1.5}
+                      className={deletingJobId === job.id ? 'animate-pulse' : ''}
+                    />
+                  </button>
+                </div>
               </div>
             </div>
           );

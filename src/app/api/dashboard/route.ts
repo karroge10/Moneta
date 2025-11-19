@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
     
-    // Fetch all transactions for the user (excluding special types)
+    // Fetch all transactions for the user - no filtering, all transactions are included
     const allTransactions = await db.transaction.findMany({
       where: {
         userId: user.id,
@@ -79,16 +79,8 @@ export async function GET(request: NextRequest) {
       },
     });
     
-    // Filter out excluded transactions
-    const validTransactions = allTransactions.filter((t: typeof allTransactions[0]) => {
-      const specialType = detectSpecialTransactionType(t.description);
-      if (specialType === 'EXCLUDE') return false;
-      if (t.category?.name && t.category.name.toLowerCase() === 'currency exchange') return false;
-      return true;
-    });
-    
-    // Calculate current month income and expenses
-    const currentMonthTransactions = validTransactions.filter((t: typeof validTransactions[0]) => t.date >= currentMonthStart);
+    // Calculate current month income and expenses - all transactions included
+    const currentMonthTransactions = allTransactions.filter((t: typeof allTransactions[0]) => t.date >= currentMonthStart);
     const currentMonthIncome = currentMonthTransactions
       .filter((t: typeof currentMonthTransactions[0]) => t.type === 'income')
       .reduce((sum: number, t: typeof currentMonthTransactions[0]) => sum + t.amount, 0);
@@ -96,8 +88,8 @@ export async function GET(request: NextRequest) {
       .filter((t: typeof currentMonthTransactions[0]) => t.type === 'expense')
       .reduce((sum: number, t: typeof currentMonthTransactions[0]) => sum + t.amount, 0);
     
-    // Calculate last month income and expenses
-    const lastMonthTransactions = validTransactions.filter((t: typeof validTransactions[0]) => 
+    // Calculate last month income and expenses - all transactions included
+    const lastMonthTransactions = allTransactions.filter((t: typeof allTransactions[0]) => 
       t.date >= lastMonthStart && t.date <= lastMonthEnd
     );
     const lastMonthIncome = lastMonthTransactions
@@ -116,10 +108,10 @@ export async function GET(request: NextRequest) {
       ? Math.round(((currentMonthExpenses - lastMonthExpenses) / lastMonthExpenses) * 100)
       : currentMonthExpenses > 0 ? 100 : 0;
     
-    // Get latest transactions (limit to 6)
-    const latestTransactions: TransactionType[] = validTransactions
+    // Get latest transactions (limit to 6) - all transactions included
+    const latestTransactions: TransactionType[] = allTransactions
       .slice(0, 6)
-      .map((t: typeof validTransactions[0]) => {
+      .map((t: typeof allTransactions[0]) => {
         // Format transaction name (cleaned and translated if needed)
         const displayName = formatTransactionName(t.description, userLanguageAlias, false);
         // Full name for modal (translated if needed, but not cleaned)

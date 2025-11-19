@@ -11,11 +11,14 @@ export const dynamic = 'force-dynamic';
  * This replicates the EXACT logic from the import route to ensure consistency
  * 
  * Matching priority:
- * 1. Special transaction types (withdrawals → EXCLUDE, commissions → "Other")
+ * 1. Special transaction types (commissions → "Other", others → null/uncategorized)
  * 2. Income transactions → remain uncategorized (null)
  * 3. User-specific merchant overrides (from MerchantUser table)
  * 4. Global merchant database (from MerchantGlobal table)
  * 5. Python processor suggestion (fallback)
+ * 
+ * Note: All transactions are saved - no transactions are filtered out completely.
+ * Roundup, currency exchange, transfers, deposits, and ATM withdrawals are saved but remain uncategorized.
  * 
  * Matching strategies (in order):
  * - Exact match (normalized merchant name)
@@ -73,11 +76,9 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
       // Check for special transaction types FIRST
       const specialType = detectSpecialTransactionType(descriptionForMatching);
       
-      // If transaction should be excluded (withdrawal, exchange, deposit, transfer), filter it out
-      if (specialType === 'EXCLUDE') {
-        console.log(`[categorization] ⊘ Excluding: "${tx.description.substring(0, 50)}..."`);
-        return null; // Will be filtered out
-      }
+      // Note: All transactions are saved - no transactions are filtered out completely
+      // Special types like roundup, currency exchange, transfers, deposits, and ATM withdrawals
+      // return null to be saved but remain uncategorized (no merchant matching)
       
       // Determine transaction type based on amount
       const type = tx.amount >= 0 ? 'income' : 'expense';

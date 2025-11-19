@@ -114,16 +114,13 @@ export async function POST(request: NextRequest) {
         let matchMethod: string | null = null;
         
         // Check for special transaction types FIRST (before user selection or Python suggestions)
-        // This ensures withdrawals are excluded even if Python categorized them incorrectly
         // Always use translated description for checks (categories are in English)
         const descriptionForMatching = item.translatedDescription || item.description;
         const specialType = detectSpecialTransactionType(descriptionForMatching);
         
-        // If transaction should be completely excluded (roundup, currency exchange, withdrawals), skip it entirely
-        if (specialType === 'EXCLUDE') {
-          console.log(`[merchant-match] ⊘ Excluding transaction: "${item.description.substring(0, 50)}..." (${specialType})`);
-          return null; // Return null to filter out this transaction
-        }
+        // Note: All transactions are saved - no transactions are filtered out completely
+        // Special types like roundup, currency exchange, transfers, deposits, and ATM withdrawals
+        // return null to be saved but remain uncategorized (no merchant matching)
         
         // Priority 0: If user provided a category in the UI, use it directly (skip all matching)
         // If user explicitly set category to null/empty, also skip matching (save as uncategorized)
@@ -168,7 +165,7 @@ export async function POST(request: NextRequest) {
           
           if (specialType && specialType !== 'EXCLUDE') {
             // Special type that should be categorized (e.g., commissions -> other)
-            // But ATM withdrawals should be uncategorized (handled by EXCLUDE)
+            // Note: All transactions are saved - withdrawals, transfers, etc. return null and remain uncategorized
             const specialCategoryId = categoryMap.get(specialType.toLowerCase());
             if (specialCategoryId) {
               categoryId = specialCategoryId;
