@@ -1,8 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch } from '@/lib/merchant';
+import { UploadedTransaction } from '@/types/dashboard';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+async function analyzeCategorization(transactions: UploadedTransaction[]): Promise<UploadedTransaction[]> {
+  // This function matches merchants and applies categories from database
+  
+  // Pre-fetch categories and merchants
+  const allCategories = await db.category.findMany();
+  const categoryMap = new Map<string, number>();
+  allCategories.forEach((cat: { name: string; id: number }) => {
+    categoryMap.set(cat.name.toLowerCase(), cat.id);
+  });
+
+  const globalMerchants = await db.merchantGlobal.findMany();
+  const globalMerchantMap = new Map<string, number>();
+  globalMerchants.forEach((merchant: { namePattern: string; categoryId: number }) => {
+    const normalizedPattern = normalizeMerchantName(merchant.namePattern);
+    globalMerchantMap.set(normalizedPattern, merchant.categoryId);
+  });
+
+  // Apply merchant matching to transactions
+  return transactions.map((tx) => {
+    const description = tx.description || '';
+    const merchantName = extractMerchantFromDescription(description);
+    const normalizedMerchant = normalizeMerchantName(merchantName);
+    
+    // Try to match merchant
+    let matchedCategoryId: number | null = null;
+    
+    if (normalizedMerchant) {
+      // Check global merchants
+      if (globalMerchantMap.has(normalizedMerchant)) {
+        matchedCategoryId = globalMerchantMap.get(normalizedMerchant)!;
+      } else {
+        // Try fuzzy matching
+        for (const [pattern, categoryId] of globalMerchantMap.entries()) {
+          const similarity = fuzzyMatch(normalizedMerchant, pattern);
+          if (similarity > 0.7) {
+            matchedCategoryId = categoryId;
+            break;
+          }
+        }
+      }
+    }
+    
+    // If matched, update category
+    if (matchedCategoryId) {
+      const matchedCategory = allCategories.find(c => c.id === matchedCategoryId);
+      if (matchedCategory) {
+        return {
+          ...tx,
+          category: matchedCategory.name,
+        };
+      }
+    }
+    
+    return tx;
+  });
+}
 
 export async function POST(
   request: NextRequest,
@@ -48,7 +107,16 @@ export async function POST(
     }
 
     // Store final result if provided (when marking as completed)
-    if (result !== undefined) {
+    // Apply merchant categorization before storing
+    if (result !== undefined && status === 'completed') {
+      // Run categorization on the transactions
+      if (result.transactions && Array.isArray(result.transactions) && result.transactions.length > 0) {
+        console.log(`[job-progress] Running categorization for ${result.transactions.length} transactions`);
+        result.transactions = await analyzeCategorization(result.transactions);
+        console.log(`[job-progress] Categorization complete`);
+      }
+      updateData.result = result;
+    } else if (result !== undefined) {
       updateData.result = result;
     }
 
