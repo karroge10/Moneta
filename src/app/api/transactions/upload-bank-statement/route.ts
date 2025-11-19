@@ -106,11 +106,14 @@ export async function POST(request: NextRequest) {
 
     // Track this processing request in database for queue estimation
     const requestStartTime = Date.now();
+    const fileArrayBuffer = await (file as File).arrayBuffer();
+    const fileContentBuffer = Buffer.from(fileArrayBuffer);
+
     try {
       // Use raw SQL to create tracking entry (works even if Prisma client not regenerated)
       const trackingResult = await db.$queryRaw<Array<{ id: string; createdAt: Date }>>`
-        INSERT INTO "PdfProcessingJob" ("id", "userId", "status", "progress", "fileName", "createdAt", "updatedAt")
-        VALUES (gen_random_uuid(), ${user.id}, 'processing', 0, ${file.name}, NOW(), NOW())
+        INSERT INTO "PdfProcessingJob" ("id", "userId", "status", "progress", "fileContent", "fileName", "createdAt", "updatedAt")
+        VALUES (gen_random_uuid(), ${user.id}, 'processing', 0, ${fileContentBuffer}, ${file.name}, NOW(), NOW())
         RETURNING "id", "createdAt"
       `;
       

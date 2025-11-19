@@ -16,7 +16,7 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The dev runner automatically picks the first available port, preferring 3000. Check the terminal output if `3000` is busy to see which port it settled on and open that URL in your browser.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
