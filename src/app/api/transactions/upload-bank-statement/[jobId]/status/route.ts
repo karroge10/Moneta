@@ -27,6 +27,8 @@ export async function GET(
         id: true,
         status: true,
         progress: true,
+        processedCount: true,
+        totalCount: true,
         result: true,
         error: true,
         createdAt: true,
@@ -60,6 +62,8 @@ export async function GET(
     return NextResponse.json({
       status: job.status,
       progress: job.progress,
+      processedCount: job.processedCount,
+      totalCount: job.totalCount,
       queuePosition,
       // Only return result when completed to save bandwidth
       result: job.status === 'completed' ? job.result : undefined,
