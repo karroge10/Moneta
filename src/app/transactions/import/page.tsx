@@ -10,6 +10,7 @@ import CategoryFilter from '@/components/transactions/shared/CategoryFilter';
 import CategoryPicker from '@/components/transactions/shared/CategoryPicker';
 import TypeFilter from '@/components/transactions/shared/TypeFilter';
 import CategoryStatsModal from '@/components/transactions/CategoryStatsModal';
+import RecentJobsList from '@/components/transactions/import/RecentJobsList';
 import { getIcon } from '@/lib/iconMapping';
 import { TransactionUploadResponse, UploadedTransaction, type Category } from '@/types/dashboard';
 import { CheckCircle, Upload, WarningTriangle, Reports, Language, Trash } from 'iconoir-react';
@@ -45,6 +46,8 @@ export default function ImportTransactionsPage() {
   const [totalTimeSeconds, setTotalTimeSeconds] = useState<number | null>(null);
   const [processedCount, setProcessedCount] = useState<number | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dropZoneRef = useRef<HTMLDivElement | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -174,6 +177,7 @@ export default function ImportTransactionsPage() {
     setTotalTimeSeconds(null);
     setProcessedCount(null);
     setTotalCount(null);
+    setCurrentJobId(null);
     currentProgressRef.current = 0;
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
@@ -277,7 +281,12 @@ export default function ImportTransactionsPage() {
             suggestedCategory: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null,
           }));
           
-          const totalTime = Math.floor((Date.now() - (startTime || Date.now())) / 1000);
+          // Only set total time if we had a valid start time, otherwise use 0 or don't show it
+          // For resumed jobs, startTime might be the resumption time, not original start
+          const totalTime = startTime 
+            ? Math.floor((Date.now() - startTime) / 1000)
+            : 0;
+            
           setTotalTimeSeconds(totalTime);
           setElapsedSeconds(totalTime); // freeze elapsed
           
@@ -399,6 +408,8 @@ export default function ImportTransactionsPage() {
              throw new Error('No job ID received from server');
         }
         
+        setCurrentJobId(result.jobId);
+
         // Start polling with the returned Job ID
         startPolling(result.jobId);
         
@@ -425,8 +436,33 @@ export default function ImportTransactionsPage() {
         // Clean up
       }
     },
-    [startPolling, startTime],
+    [startPolling],
   );
+
+  const handleResumeJob = useCallback((jobId: string) => {
+    // Reset relevant state
+    setParsedRows([]);
+    setProgressValue(0);
+    setTotalTimeSeconds(null);
+    setProcessedCount(null);
+    setTotalCount(null);
+    
+    // For resuming, we don't have exact start time, so we start timer from now for feedback
+    const now = Date.now();
+    setStartTime(now);
+    setElapsedSeconds(0);
+    
+    setCurrentJobId(jobId);
+    setUploadState('queued'); // Will be updated by first poll
+    setStatusNote('Resuming job...');
+    
+    // Clear existing intervals
+    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    
+    // Start polling immediately
+    startPolling(jobId);
+  }, [startPolling]);
 
   const handleDrop = useCallback(
     (event: DragEvent) => {
@@ -676,6 +712,11 @@ export default function ImportTransactionsPage() {
               </div>
             )}
           </div>
+          
+          <RecentJobsList 
+            onResumeJob={handleResumeJob} 
+            currentJobId={currentJobId} 
+          />
         </Card>
 
         {parsedRows.length > 0 && (
@@ -789,159 +830,159 @@ export default function ImportTransactionsPage() {
                         <th className="px-5 py-3 align-top w-16"></th>
                       </tr>
                     </thead>
-                  <tbody>
-                    {paginatedReviewRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-                          No transactions match your filters.
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedReviewRows.map(row => {
-                        const isExpense = row.amount < 0;
-                        
-                        return (
-                          <tr key={row.id} className="border-t border-[#2A2A2A]">
-                            <td className="px-5 py-4 align-top">
-                              <input
-                                type="date"
-                                value={row.date}
-                                onChange={event => handleRowUpdate(row.id, 'date', event.target.value)}
-                                className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-3 py-2 text-sm"
-                                style={{ color: 'var(--text-primary)' }}
-                              />
-                            </td>
-                            <td className="px-5 py-4 align-top">
-                              <div className="space-y-1.5">
+                    <tbody>
+                      {paginatedReviewRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+                            No transactions match your filters.
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedReviewRows.map(row => {
+                          const isExpense = row.amount < 0;
+                          
+                          return (
+                            <tr key={row.id} className="border-t border-[#2A2A2A]">
+                              <td className="px-5 py-4 align-top">
                                 <input
-                                  type="text"
-                                  value={row.description}
-                                  onChange={event => handleRowUpdate(row.id, 'description', event.target.value)}
+                                  type="date"
+                                  value={row.date}
+                                  onChange={event => handleRowUpdate(row.id, 'date', event.target.value)}
                                   className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-3 py-2 text-sm"
                                   style={{ color: 'var(--text-primary)' }}
-                                  placeholder="Description"
                                 />
-                                <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                  <Language width={14} height={14} strokeWidth={1.5} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
-                                  <span>{row.translatedDescription || 'No translation'}</span>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-5 py-4 align-top">
-                              <div className="space-y-1.5">
-                                <div className="relative">
-                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                                    {currency.symbol}
-                                  </span>
+                              </td>
+                              <td className="px-5 py-4 align-top">
+                                <div className="space-y-1.5">
                                   <input
                                     type="text"
-                                    inputMode="decimal"
-                                    pattern="^-?\\d*(?:[\\.,]\\d{0,2})?$"
-                                    value={Number.isFinite(row.amount) ? Math.abs(row.amount).toFixed(2) : ''}
-                                    onChange={event => handleRowUpdate(row.id, 'amount', event.target.value)}
-                                    className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] pl-8 pr-3 py-2 text-sm"
+                                    value={row.description}
+                                    onChange={event => handleRowUpdate(row.id, 'description', event.target.value)}
+                                    className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-3 py-2 text-sm"
                                     style={{ color: 'var(--text-primary)' }}
+                                    placeholder="Description"
                                   />
+                                  <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                    <Language width={14} height={14} strokeWidth={1.5} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+                                    <span>{row.translatedDescription || 'No translation'}</span>
+                                  </div>
                                 </div>
-                                <span className="text-sm font-semibold" style={{ color: isExpense ? '#D93F3F' : '#74C648' }}>
-                                  {isExpense ? 'Expense' : 'Income'}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-5 py-4 align-top">
-                              <CategoryPicker
-                                categories={categories}
-                                selectedCategory={row.category ?? null}
-                                onSelect={(category) => handleRowUpdate(row.id, 'category', category ?? '')}
-                                suggestedCategory={row.suggestedCategory ?? null}
-                              />
-                            </td>
-                            <td className="px-5 py-4 align-top">
-                              <button
-                                type="button"
-                                onClick={() => handleRowDelete(row.id)}
-                                className="p-2 rounded-full transition-colors hover:opacity-80 cursor-pointer"
-                                style={{ backgroundColor: '#202020', color: '#D93F3F' }}
-                                title="Delete transaction"
-                              >
-                                <Trash width={16} height={16} strokeWidth={1.5} />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                              </td>
+                              <td className="px-5 py-4 align-top">
+                                <div className="space-y-1.5">
+                                  <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                      {currency.symbol}
+                                    </span>
+                                    <input
+                                      type="text"
+                                      inputMode="decimal"
+                                      pattern="^-?\\d*(?:[\\.,]\\d{0,2})?$"
+                                      value={Number.isFinite(row.amount) ? Math.abs(row.amount).toFixed(2) : ''}
+                                      onChange={event => handleRowUpdate(row.id, 'amount', event.target.value)}
+                                      className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] pl-8 pr-3 py-2 text-sm"
+                                      style={{ color: 'var(--text-primary)' }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-semibold" style={{ color: isExpense ? '#D93F3F' : '#74C648' }}>
+                                    {isExpense ? 'Expense' : 'Income'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-5 py-4 align-top">
+                                <CategoryPicker
+                                  categories={categories}
+                                  selectedCategory={row.category ?? null}
+                                  onSelect={(category) => handleRowUpdate(row.id, 'category', category ?? '')}
+                                  suggestedCategory={row.suggestedCategory ?? null}
+                                />
+                              </td>
+                              <td className="px-5 py-4 align-top">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRowDelete(row.id)}
+                                  className="p-2 rounded-full transition-colors hover:opacity-80 cursor-pointer"
+                                  style={{ backgroundColor: '#202020', color: '#D93F3F' }}
+                                  title="Delete transaction"
+                                >
+                                  <Trash width={16} height={16} strokeWidth={1.5} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
 
-              {/* Pagination */}
-              {reviewTotalPages > 1 && filteredRows.length > 0 && (
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      Showing {paginatedReviewRows.length} of {filteredRows.length} transactions
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setReviewPage(prev => Math.max(1, prev - 1))}
-                      disabled={reviewPage === 1}
-                      className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
-                      style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
-                    >
-                      Prev
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
-                        Page
-                      </span>
-                      <input
-                        type="number"
-                        min="1"
-                        max={reviewTotalPages || 1}
-                        value={reviewPageInput}
-                        onChange={e => handleReviewPageInputChange(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') {
-                            handleReviewPageInputSubmit();
-                          }
-                        }}
-                        onBlur={handleReviewPageInputSubmit}
-                        className="w-16 rounded-full border-none px-3 py-1 text-xs font-semibold text-center"
-                        style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
-                      />
-                      <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
-                        of {reviewTotalPages || 1}
+                {/* Pagination */}
+                {reviewTotalPages > 1 && filteredRows.length > 0 && (
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        Showing {paginatedReviewRows.length} of {filteredRows.length} transactions
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setReviewPage(prev => Math.min(reviewTotalPages, prev + 1))}
-                      disabled={reviewPage >= reviewTotalPages}
-                      className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
-                      style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
-                    >
-                      Next
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setReviewPage(prev => Math.max(1, prev - 1))}
+                        disabled={reviewPage === 1}
+                        className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
+                        style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                      >
+                        Prev
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
+                          Page
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          max={reviewTotalPages || 1}
+                          value={reviewPageInput}
+                          onChange={e => handleReviewPageInputChange(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              handleReviewPageInputSubmit();
+                            }
+                          }}
+                          onBlur={handleReviewPageInputSubmit}
+                          className="w-16 rounded-full border-none px-3 py-1 text-xs font-semibold text-center"
+                          style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                        />
+                        <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
+                          of {reviewTotalPages || 1}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setReviewPage(prev => Math.min(reviewTotalPages, prev + 1))}
+                        disabled={reviewPage >= reviewTotalPages}
+                        className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
+                        style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                      >
+                        Next
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  disabled={isConfirming}
-                  onClick={handleConfirmImport}
-                  className="rounded-full px-5 py-2 font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
-                >
-                  {isConfirming ? 'Saving…' : 'Confirm Import'}
-                </button>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    disabled={isConfirming}
+                    onClick={handleConfirmImport}
+                    className="rounded-full px-5 py-2 font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                  >
+                    {isConfirming ? 'Saving…' : 'Confirm Import'}
+                  </button>
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
           </>
         )}
 
