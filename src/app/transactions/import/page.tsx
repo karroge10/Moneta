@@ -650,13 +650,13 @@ export default function ImportTransactionsPage() {
               </span>
             </div>
 
-            {uploadState !== 'idle' && uploadState !== 'ready' && (
+            {uploadState !== 'idle' && (
               <div
                 className="w-full max-w-xl space-y-3 rounded-[30px] border border-[#3a3a3a] px-6 py-5 mt-6"
                 style={{ backgroundColor: '#282828' }}
               >
                 {renderStatusBadge()}
-                <ProgressBar value={progressValue} showLabel={false} />
+                {uploadState !== 'ready' && <ProgressBar value={progressValue} showLabel={false} />}
                 <div className="space-y-1.5">
                   {statusNote && (
                     <p
@@ -666,7 +666,12 @@ export default function ImportTransactionsPage() {
                       {statusNote}
                     </p>
                   )}
-                  {uploadState !== 'error' && startTime !== null && (
+                  {uploadState === 'ready' && totalTimeSeconds !== null && (
+                    <p className="text-xs font-medium" style={{ color: 'var(--accent-green)' }}>
+                      Completed in {formatTime(totalTimeSeconds)}
+                    </p>
+                  )}
+                  {uploadState !== 'error' && uploadState !== 'ready' && startTime !== null && (
                     <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
                       <span>Elapsed: {formatTime(elapsedSeconds)}</span>
                       {uploadState === 'processing' && elapsedSeconds > 5 && (
@@ -689,11 +694,6 @@ export default function ImportTransactionsPage() {
                         </>
                       )}
                     </div>
-                  )}
-                  {uploadState === 'ready' && totalTimeSeconds !== null && (
-                    <p className="text-xs font-medium" style={{ color: 'var(--accent-green)' }}>
-                      Completed in {formatTime(totalTimeSeconds)}
-                    </p>
                   )}
                 </div>
               </div>
