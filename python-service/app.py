@@ -50,11 +50,13 @@ def report_progress(job_id, callback_url, progress, status="processing"):
     def _send_request():
         try:
             # Add internal secret header if needed in future
-            requests.post(
+            resp = requests.post(
                 callback_url, 
                 json={'progress': progress, 'status': status},
                 timeout=5
             )
+            if not resp.ok:
+                print(f'[process_pdf] Progress update failed for {job_id}: status {resp.status_code}, response: {resp.text[:100]}', flush=True)
         except Exception as e:
             print(f'[process_pdf] Failed to report progress for {job_id}: {e}', flush=True)
             
@@ -80,6 +82,7 @@ def process_pdf():
         # Get job tracking info
         job_id = request.form.get('jobId')
         callback_url = request.form.get('callbackUrl')
+        print(f'[process_pdf] Received request for job {job_id} with callback {callback_url}', flush=True)
         
         file = request.files['file']
         if file.filename == '':
