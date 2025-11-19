@@ -49,10 +49,17 @@ def report_progress(job_id, callback_url, progress, status="processing"):
         
     def _send_request():
         try:
+            # Get secret from environment variable
+            internal_secret = os.getenv('INTERNAL_API_SECRET')
+            headers = {}
+            if internal_secret:
+                headers['x-internal-secret'] = internal_secret
+            
             # Add internal secret header if needed in future
             resp = requests.post(
                 callback_url, 
                 json={'progress': progress, 'status': status},
+                headers=headers,
                 timeout=5
             )
             if not resp.ok:
