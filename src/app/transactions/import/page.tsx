@@ -666,7 +666,7 @@ export default function ImportTransactionsPage() {
                       {statusNote}
                     </p>
                   )}
-                  {uploadState !== 'ready' && uploadState !== 'error' && startTime !== null && (
+                  {uploadState !== 'error' && startTime !== null && (
                     <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
                       <span>Elapsed: {formatTime(elapsedSeconds)}</span>
                       {uploadState === 'processing' && elapsedSeconds > 5 && (
