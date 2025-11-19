@@ -134,31 +134,15 @@ export async function GET(request: NextRequest) {
       };
     }
     
-    // Get total count (excluding currency exchange and other excluded transactions)
-    // We need to count all transactions and then filter, or use a more efficient approach
-    // For now, fetch all and filter to get accurate count
-    const allTransactions = await db.transaction.findMany({
-      where,
-      include: {
-        category: true,
-      },
-    });
-    
-    const filteredAll = allTransactions.filter((t: typeof allTransactions[0]) => {
-      const specialType = detectSpecialTransactionType(t.description);
-      if (specialType === 'EXCLUDE') return false;
-      if (t.category?.name && t.category.name.toLowerCase() === 'currency exchange') return false;
-      return true;
-    });
-    
-    const total = filteredAll.length;
+    // Get total count - all transactions are included (no filtering)
+    const total = await db.transaction.count({ where });
     const totalPages = Math.ceil(total / pageSize);
     
-    // Fetch paginated transactions
-    const dbTransactions = await db.transaction.findMany({
+    // Fetch paginated transactions - all transactions are included (no filtering)
+    const filteredTransactions = await db.transaction.findMany({
       where,
       skip: (page - 1) * pageSize,
-      take: pageSize * 2, // Fetch more to account for filtering
+      take: pageSize,
       include: {
         category: true,
       },
@@ -166,22 +150,6 @@ export async function GET(request: NextRequest) {
         date: 'desc',
       },
     });
-    
-    // Filter out excluded transactions (currency exchange, roundup, etc.)
-    const filteredTransactions = dbTransactions.filter((t: typeof dbTransactions[0]) => {
-      // Check if transaction should be excluded based on description
-      const specialType = detectSpecialTransactionType(t.description);
-      if (specialType === 'EXCLUDE') {
-        return false;
-      }
-      
-      // Also exclude if category name is "Currency Exchange" (shouldn't exist, but filter just in case)
-      if (t.category?.name && t.category.name.toLowerCase() === 'currency exchange') {
-        return false;
-      }
-      
-      return true;
-    }).slice(0, pageSize); // Take only the requested page size
     
     // Transform to frontend format
     const transactions: TransactionType[] = filteredTransactions.map((t: typeof filteredTransactions[0]) => {
