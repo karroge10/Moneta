@@ -4,7 +4,19 @@ import { NextResponse } from "next/server";
 // Public routes that don't require authentication
 const isPublicRoute = createRouteMatcher(["/", "/unauthorized"]);
 
+// Internal API routes that use secret header instead of auth
+const isInternalRoute = createRouteMatcher(["/api/internal(.*)"]);
+
 export default clerkMiddleware(async (auth, request) => {
+  // Check for internal API secret header (for Python service callbacks)
+  const internalSecret = request.headers.get("x-internal-secret");
+  const expectedSecret = process.env.INTERNAL_API_SECRET;
+  
+  if (isInternalRoute(request) && internalSecret === expectedSecret && expectedSecret) {
+    // Allow internal routes with correct secret header
+    return NextResponse.next();
+  }
+  
   // Protect all non-public routes
   if (!isPublicRoute(request)) {
     const { userId } = await auth();
