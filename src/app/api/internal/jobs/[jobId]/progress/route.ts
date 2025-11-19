@@ -232,6 +232,12 @@ export async function POST(
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
+    const expectedSecret = process.env.INTERNAL_API_SECRET;
+    const providedSecret = request.headers.get('x-internal-secret');
+    if (expectedSecret && providedSecret !== expectedSecret) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { jobId } = await params;
     const body = await request.json();
     const { progress, status, processedCount, totalCount, result } = body;
