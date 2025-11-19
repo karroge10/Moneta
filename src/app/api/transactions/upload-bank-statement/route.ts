@@ -202,7 +202,15 @@ export async function POST(request: NextRequest) {
 
     // 3. Trigger Background Processing (Fire & Forget)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
-    const callbackUrl = `${appUrl}/api/internal/jobs/${jobId}/progress`;
+    let callbackUrl = `${appUrl}/api/internal/jobs/${jobId}/progress`;
+    
+    // In development, if running in Docker (implied by PYTHON_SERVICE_URL containing localhost),
+    // we need to tell Python to call back to the host machine instead of its own localhost.
+    // This is a heuristic: if appUrl is localhost, and we are calling a local python service,
+    // replace localhost with host.docker.internal for the callback.
+    if (process.env.NODE_ENV === 'development' && (callbackUrl.includes('localhost') || callbackUrl.includes('127.0.0.1'))) {
+       callbackUrl = callbackUrl.replace(/localhost|127\.0\.0\.1/, 'host.docker.internal');
+    }
     
     // Don't await this! Let it run in background
     processPdfInBackground(file, jobId, callbackUrl);
