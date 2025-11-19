@@ -39,7 +39,7 @@ default_model_path = project_root / 'python' / 'models' / 'categories.ftz'
 model_path = Path(os.getenv('CATEGORIES_MODEL_PATH', str(default_model_path)))
 classifier_model = load_classifier(model_path)
 
-def report_progress(job_id, callback_url, progress, status="processing"):
+def report_progress(job_id, callback_url, progress, status="processing", processed_count=None, total_count=None):
     """
     Send progress update to the callback URL.
     Fire and forget - don't block processing if callback fails.
@@ -55,10 +55,15 @@ def report_progress(job_id, callback_url, progress, status="processing"):
             if internal_secret:
                 headers['x-internal-secret'] = internal_secret
             
-            # Add internal secret header if needed in future
+            payload = {'progress': progress, 'status': status}
+            if processed_count is not None:
+                payload['processedCount'] = processed_count
+            if total_count is not None:
+                payload['totalCount'] = total_count
+            
             resp = requests.post(
                 callback_url, 
-                json={'progress': progress, 'status': status},
+                json=payload,
                 headers=headers,
                 timeout=5
             )
@@ -126,8 +131,8 @@ def process_pdf():
             total = len(transactions)
             print(f'[process_pdf] Starting translation + categorization for {total} transactions', flush=True)
             
-            # Progress after extraction: 30%
-            report_progress(job_id, callback_url, 30, "processing")
+            # Progress after extraction: 30% (we know total now, but haven't processed any yet)
+            report_progress(job_id, callback_url, 30, "processing", processed_count=0, total_count=total)
             
             result_transactions = []
             for index, tx in enumerate(transactions, start=1):
@@ -149,12 +154,12 @@ def process_pdf():
                     
                     # Calculate progress between 30% and 90%
                     current_progress = 30 + int((index / total) * 60)
-                    report_progress(job_id, callback_url, current_progress, "processing")
+                    report_progress(job_id, callback_url, current_progress, "processing", processed_count=index, total_count=total)
             
             print(f'[process_pdf] Completed processing {total} transactions', flush=True)
             
             # Final progress before response: 95% (Next.js will mark 100% when received)
-            report_progress(job_id, callback_url, 95, "processing")
+            report_progress(job_id, callback_url, 95, "processing", processed_count=total, total_count=total)
             
             return jsonify({
                 'transactions': result_transactions,
