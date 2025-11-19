@@ -45,9 +45,10 @@ export function normalizeMerchantName(name: string): string {
 /**
  * Check if transaction should be excluded from merchant matching or has special type
  * Returns:
- * - 'EXCLUDE' for transactions that should be completely excluded (roundup, currency exchange) - don't save at all
- * - category name string for special types that should be categorized (e.g., 'other' for commissions, ATM withdrawals)
+ * - category name string for special types that should be categorized (e.g., 'other' for commissions)
  * - null if no special handling needed (proceed with normal merchant matching)
+ *   Note: All transactions are saved - roundup, currency exchange, transfers, deposits, and ATM withdrawals
+ *   return null to be saved but remain uncategorized (no merchant matching)
  */
 export function detectSpecialTransactionType(description: string): string | null {
   if (!description) return null;
@@ -56,18 +57,20 @@ export function detectSpecialTransactionType(description: string): string | null
   
   // Roundup feature - electronic roundup service
   // Patterns: "roundup", "round up", "electronic roundup", "adding money to account", "account balance"
+  // Note: Return null to save but leave uncategorized (no merchant matching)
   if (desc.includes('roundup') ||
       desc.includes('round up') ||
       desc.includes('electronic roundup') ||
       (desc.includes('adding money') && desc.includes('account')) ||
       (desc.includes('account') && desc.includes('balance') && (desc.includes('add') || desc.includes('round'))) ||
       (desc.includes('electronic') && desc.includes('service') && (desc.includes('account') || desc.includes('balance')))) {
-    return 'EXCLUDE'; // Exclude from categorization - it's just money movement
+    return null; // Save but leave uncategorized - it's just money movement
   }
   
   // Currency exchange - money staying on account but changing currency
   // Patterns: "currency exchange", "conversion", "convert", "cashless conversion", "exchange amount"
   // Note: All descriptions should already be translated to English before this function is called
+  // Return null to save but leave uncategorized (no merchant matching)
   if (desc.includes('currency exchange') ||
       desc.includes('currency conversion') ||
       desc.includes('cashless conversion') ||
@@ -75,10 +78,10 @@ export function detectSpecialTransactionType(description: string): string | null
       (desc.includes('conversion') && !desc.includes('payment')) ||
       (desc.includes('convert') && (desc.includes('currency') || desc.includes('cashless'))) ||
       (desc.includes('exchange') && desc.includes('currency'))) {
-    return 'EXCLUDE'; // Exclude from categorization
+    return null; // Save but leave uncategorized
   }
   
-  // Private transfers / Money transfers / Personal transfers - exclude from categorization
+  // Private transfers / Money transfers / Personal transfers - save but leave uncategorized
   if (desc.includes('private transfer') ||
       desc.includes('personal transfer') ||
       desc.includes('money transfer') ||
@@ -87,16 +90,16 @@ export function detectSpecialTransactionType(description: string): string | null
       (desc.includes('transfer') && desc.includes('private')) ||
       (desc.includes('transfer') && desc.includes('personal')) ||
       (desc.includes('transfer') && desc.includes('bank'))) {
-    return 'EXCLUDE'; // Exclude from categorization
+    return null; // Save but leave uncategorized
   }
   
-  // Card deposits - money being added to card (exclude from categorization)
+  // Card deposits - money being added to card (save but leave uncategorized)
   if (desc.includes('card deposit') ||
       desc.includes('deposit to card') ||
       desc.includes('top up card') ||
       desc.includes('card top up') ||
       (desc.includes('deposit') && desc.includes('card'))) {
-    return 'EXCLUDE'; // Exclude from categorization - it's money movement, not spending
+    return null; // Save but leave uncategorized - it's money movement, not spending
   }
   
   // Commissions/fees - map to "Other" category
@@ -106,13 +109,15 @@ export function detectSpecialTransactionType(description: string): string | null
     return 'other'; // Map commissions to "Other" category
   }
   
-  // ATM withdrawals - exclude from categorization (should be uncategorized)
+  // ATM withdrawals - keep but leave uncategorized (don't exclude completely)
   // Check for various withdrawal patterns (all checks on translated English text):
   // - "atm" anywhere
   // - "withdrawal" with "account" or "from account" 
   // - "cash withdrawal", "money withdrawal", or "withdrawal of money"
   // - "withdraw" (verb form) with "account"
   // - "take out" or "takeout" with "account" or "money"
+  // Note: Return null to allow transaction to be saved but remain uncategorized
+  // (They won't match merchants, so they'll stay uncategorized)
   if (desc.includes('atm') ||
       desc.includes('cash withdrawal') ||
       desc.includes('money withdrawal') ||
@@ -121,7 +126,7 @@ export function detectSpecialTransactionType(description: string): string | null
       (desc.includes('withdraw') && desc.includes('account')) ||
       (desc.includes('take out') && (desc.includes('account') || desc.includes('money'))) ||
       (desc.includes('takeout') && (desc.includes('account') || desc.includes('money')))) {
-    return 'EXCLUDE'; // ATM withdrawals should be uncategorized
+    return null; // ATM withdrawals should be saved but remain uncategorized
   }
   
   return null; // No special handling, proceed with normal merchant matching
