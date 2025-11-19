@@ -7,27 +7,94 @@ import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch } fro
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-async function callPythonService(file: File): Promise<TransactionUploadResponse> {
+// Helper: Call Python service (async/background)
+async function processPdfInBackground(
+  file: File, 
+  jobId: string, 
+  callbackUrl: string
+): Promise<void> {
   const serviceUrl = process.env.PYTHON_SERVICE_URL;
   
   if (!serviceUrl) {
-    throw new Error('PYTHON_SERVICE_URL environment variable is not set');
+    console.error('[background-process] PYTHON_SERVICE_URL environment variable is not set');
+    await updateJobStatus(jobId, 'failed', 0, undefined, 'Configuration error: Service URL missing');
+    return;
   }
 
-  const formData = new FormData();
-  formData.append('file', file);
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('jobId', jobId);
+    formData.append('callbackUrl', callbackUrl);
 
-  const response = await fetch(`${serviceUrl}/process-pdf`, {
-    method: 'POST',
-    body: formData,
-  });
+    const response = await fetch(`${serviceUrl}/process-pdf`, {
+      method: 'POST',
+      body: formData,
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `Service returned status ${response.status}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `Service returned status ${response.status}`);
+    }
+
+    const result = await response.json() as TransactionUploadResponse;
+    
+    // Check for sample data (failure)
+    if (result.transactions && result.transactions.length === 3) {
+      const sampleDescriptions = ['Sample Subscription', 'Coffee Shop', 'Salary'];
+      const isSampleData = result.transactions.every(tx => 
+        sampleDescriptions.some(sample => tx.description.includes(sample))
+      );
+      
+      if (isSampleData) {
+        await updateJobStatus(jobId, 'failed', 0, undefined, 'Failed to extract transactions from PDF. Structure mismatch.');
+        return;
+      }
+    }
+
+    // Analyze & Categorize
+    let finalTransactions = result.transactions || [];
+    if (finalTransactions.length > 0) {
+      finalTransactions = await analyzeCategorization(finalTransactions);
+    }
+
+    // Mark complete
+    await updateJobStatus(jobId, 'completed', 100, {
+      transactions: finalTransactions,
+      metadata: result.metadata
+    });
+
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error(`[background-process] Job ${jobId} failed:`, error);
+    await updateJobStatus(jobId, 'failed', 0, undefined, msg);
   }
+}
 
-  return response.json() as Promise<TransactionUploadResponse>;
+// Helper: Update job status in DB
+async function updateJobStatus(
+  jobId: string, 
+  status: string, 
+  progress?: number, 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  result?: any, 
+  error?: string
+) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = { status, updatedAt: new Date() };
+    if (progress !== undefined) data.progress = progress;
+    if (result !== undefined) data.result = result;
+    if (error !== undefined) data.error = error;
+    if (status === 'completed') data.completedAt = new Date();
+
+    await db.pdfProcessingJob.update({
+      where: { id: jobId },
+      data
+    });
+  } catch (e) {
+    console.error(`[background-process] Failed to update job ${jobId}:`, e);
+  }
 }
 
 async function analyzeCategorization(transactions: UploadedTransaction[]): Promise<UploadedTransaction[]> {
@@ -92,9 +159,6 @@ async function analyzeCategorization(transactions: UploadedTransaction[]): Promi
 }
 
 export async function POST(request: NextRequest) {
-  let processingRequestId: string | null = null;
-  let estimatedQueuePosition = 0;
-  
   try {
     const user = await requireCurrentUser();
     const formData = await request.formData();
@@ -104,121 +168,61 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'A PDF file is required.' }, { status: 400 });
     }
 
-    // Track this processing request in database for queue estimation
-    const requestStartTime = Date.now();
-    const fileArrayBuffer = await (file as File).arrayBuffer();
+    // 1. Create Job Entry Immediately
+    const fileArrayBuffer = await file.arrayBuffer();
     const fileContentBuffer = Buffer.from(fileArrayBuffer);
+    const fileName = file.name;
 
-    try {
-      // Use raw SQL to create tracking entry (works even if Prisma client not regenerated)
-      const trackingResult = await db.$queryRaw<Array<{ id: string; createdAt: Date }>>`
-        INSERT INTO "PdfProcessingJob" ("id", "userId", "status", "progress", "fileContent", "fileName", "createdAt", "updatedAt")
-        VALUES (gen_random_uuid(), ${user.id}, 'processing', 0, ${fileContentBuffer}, ${file.name}, NOW(), NOW())
-        RETURNING "id", "createdAt"
-      `;
-      
-      if (trackingResult && trackingResult.length > 0) {
-        processingRequestId = trackingResult[0].id;
-        const createdAt = trackingResult[0].createdAt;
-        
-        // Get queue position (how many requests started before this one)
-        const queueResult = await db.$queryRaw<Array<{ count: bigint }>>`
-          SELECT COUNT(*)::bigint as count
-          FROM "PdfProcessingJob"
-          WHERE status = 'processing'
-            AND "createdAt" < ${createdAt}
-        `;
-        
-        const earlierJobs = queueResult && queueResult.length > 0 ? Number(queueResult[0].count) : 0;
-        
-        // Estimate: if more than 4 are processing, some are queued (4 = max concurrent)
-        // -3 because current request + 3 others can process simultaneously
-        estimatedQueuePosition = Math.max(0, earlierJobs - 3);
-        
-        console.log(`[upload-bank-statement] Created tracking entry ${processingRequestId}, queue position: ${estimatedQueuePosition}`);
-      }
-    } catch (trackingError) {
-      console.error('[upload-bank-statement] Failed to create tracking entry:', trackingError);
-      // Continue anyway - tracking is optional
-      estimatedQueuePosition = 0;
-    }
+    // Use Prisma (or raw if preferred) to create initial job
+    // Switching to Prisma for cleaner syntax, but ensuring buffer is handled
+    const job = await db.pdfProcessingJob.create({
+      data: {
+        userId: user.id,
+        status: 'queued',
+        progress: 0,
+        fileName: fileName,
+        fileContent: fileContentBuffer
+      },
+      select: { id: true, createdAt: true }
+    });
 
-    try {
-      // Call external Python service (Render)
-      const result = await callPythonService(file as File);
-      
-      // Mark tracking entry as completed (don't delete - let it persist for visibility)
-      if (processingRequestId) {
-        try {
-          await db.$executeRaw`
-            UPDATE "PdfProcessingJob"
-            SET status = 'completed', progress = 100, "completedAt" = NOW(), "updatedAt" = NOW()
-            WHERE id = ${processingRequestId}
-          `;
-          console.log(`[upload-bank-statement] Marked tracking entry ${processingRequestId} as completed`);
-        } catch (cleanupError) {
-          console.warn('[upload-bank-statement] Failed to update tracking entry:', cleanupError);
-        }
-      }
+    const jobId = job.id;
 
-    // Check if we got sample data (indicates PDF extraction failed)
-        if (result.transactions && result.transactions.length === 3) {
-          const sampleDescriptions = ['Sample Subscription', 'Coffee Shop', 'Salary'];
-          const isSampleData = result.transactions.every(tx => 
-            sampleDescriptions.some(sample => tx.description.includes(sample))
-          );
-          
-          if (isSampleData) {
-            console.error('[upload-bank-statement] PDF extraction failed - received sample data');
-            return NextResponse.json(
-              { 
-              error: 'Failed to extract transactions from PDF. The PDF structure may not match the expected format.',
-                transactions: [],
-                metadata: result.metadata || {},
-              },
-              { status: 400 }
-            );
-          }
-        }
-        
-        // Analyze categorization after parsing and apply matched categories
-        if (result.transactions && result.transactions.length > 0) {
-          const updatedTransactions = await analyzeCategorization(result.transactions);
-          result.transactions = updatedTransactions;
-        }
-        
-      const processingTimeMs = Date.now() - requestStartTime;
-      
-      return NextResponse.json({
-        ...result,
-        queuePosition: estimatedQueuePosition, // Initial queue position when request started
-        processingTimeMs, // Include processing time for frontend estimation
-      });
-    } catch (error) {
-      // Mark tracking entry as failed on error
-      if (processingRequestId) {
-        try {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          await db.$executeRaw`
-            UPDATE "PdfProcessingJob"
-            SET status = 'failed', error = ${errorMessage}, "updatedAt" = NOW()
-            WHERE id = ${processingRequestId}
-          `;
-          console.log(`[upload-bank-statement] Marked tracking entry ${processingRequestId} as failed: ${errorMessage}`);
-        } catch (cleanupError) {
-          console.warn('[upload-bank-statement] Failed to update tracking entry:', cleanupError);
-        }
+    // 2. Calculate Queue Position (Fix for completed/failed exclusion)
+    // Count active jobs created before this one
+    const earlierJobsCount = await db.pdfProcessingJob.count({
+      where: {
+        status: { in: ['queued', 'processing'] },
+        createdAt: { lt: job.createdAt }
       }
-      
-      throw error; // Re-throw to be caught by outer catch
-    }
+    });
+    
+    // Assuming 1 concurrent worker limit for now
+    const queuePosition = Math.max(0, earlierJobsCount);
+
+    // 3. Trigger Background Processing (Fire & Forget)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+    const callbackUrl = `${appUrl}/api/internal/jobs/${jobId}/progress`;
+    
+    // Don't await this! Let it run in background
+    processPdfInBackground(file, jobId, callbackUrl);
+
+    // 4. Return Immediate Response
+    return NextResponse.json({
+      jobId,
+      status: 'queued',
+      progress: 0,
+      queuePosition,
+      message: 'Upload accepted. Processing in background.'
+    });
+
   } catch (error) {
     console.error('[upload-bank-statement] error', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     
     return NextResponse.json(
       { 
-        error: 'Failed to process bank statement. Please try again.',
+        error: 'Failed to initiate processing.',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
       { status: 500 },
