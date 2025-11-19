@@ -175,17 +175,19 @@ model Notification {
 
 // PDF Processing Job table - Tracks async PDF processing jobs
 model PdfProcessingJob {
-  id          String   @id @default(uuid())
-  userId      Int
-  status      String   // 'queued', 'processing', 'completed', 'failed'
-  progress    Int      @default(0) // 0-100
-  fileContent Bytes    // PDF file content stored in database (accessible from Render worker)
-  fileName    String    // Original filename for reference
-  result      Json?    // Transactions stored here when done
-  error       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  completedAt DateTime?
+  id            String   @id @default(uuid())
+  userId        Int
+  status        String   // 'queued', 'processing', 'completed', 'failed'
+  progress      Int      @default(0) // 0-100
+  processedCount Int?    // Current number of transactions processed (e.g., 125)
+  totalCount    Int?     // Total number of transactions to process (e.g., 326)
+  fileContent   Bytes    // PDF file content stored in database (accessible from Render worker)
+  fileName      String    // Original filename for reference
+  result        Json?    // Transactions stored here when done
+  error         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  completedAt   DateTime?
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
