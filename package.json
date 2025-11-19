@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev.js",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
@@ -19,6 +19,7 @@
   "dependencies": {
     "@clerk/nextjs": "^6.35.0",
     "@prisma/client": "^6.19.0",
+    "detect-port": "^1.6.1",
     "iconoir-react": "^7.11.0",
     "next": "16.0.1",
     "prisma": "^6.19.0",
