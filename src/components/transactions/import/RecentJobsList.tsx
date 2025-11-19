@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle, WarningTriangle, RefreshDouble, Page } from 'iconoir-react';
 import ProgressBar from '@/components/ui/ProgressBar';
+import { APP_CONFIG } from '@/lib/config';
 
-type JobStatus = 'queued' | 'processing' | 'completed' | 'failed';
+export type JobStatus = 'queued' | 'processing' | 'completed' | 'failed';
 
 interface Job {
   id: string;
@@ -19,22 +20,21 @@ interface Job {
 }
 
 interface RecentJobsListProps {
-  onResumeJob: (jobId: string) => void;
+  onResumeJob: (jobId: string, status: JobStatus) => void;
   currentJobId?: string | null;
 }
 
-function formatTimeAgo(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
 
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+function formatTimestamp(dateString: string): string {
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) {
+    return 'Unknown date';
+  }
+  return dateTimeFormatter.format(date);
 }
 
 export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobsListProps) {
@@ -55,11 +55,24 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
     }
   };
 
+  // Adaptive polling:
+  // - If there are active jobs (queued/processing), poll frequently (5s)
+  // - If all jobs are done, poll slowly (30s) to catch new uploads from other tabs/devices
+  // - If no jobs exist yet, start with frequent polling then back off
+  const activeJobsCount = jobs.filter(j => j.status === 'queued' || j.status === 'processing').length;
+  const pollInterval = activeJobsCount > 0 
+    ? APP_CONFIG.polling.recentJobs.activeInterval 
+    : APP_CONFIG.polling.recentJobs.idleInterval;
+
   useEffect(() => {
+    // Initial fetch
     fetchJobs();
-    const interval = setInterval(fetchJobs, 3000);
-    return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(fetchJobs, pollInterval);
+    return () => clearInterval(interval);
+  }, [pollInterval]);
 
   if (isLoading && jobs.length === 0) {
     return null;
@@ -82,9 +95,13 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
           return (
             <div
               key={job.id}
+              onClick={() => !isCurrent && onResumeJob(job.id, job.status)}
               className={`
                 rounded-2xl p-4 border transition-all
-                ${isCurrent ? 'border-[#AC66DA] bg-[#2A2A2A]' : 'border-[#3a3a3a] bg-[#282828] hover:border-[#555]'}
+                ${isCurrent 
+                  ? 'border-[#AC66DA] bg-[#2A2A2A] cursor-default' 
+                  : 'border-[#3a3a3a] bg-[#282828] hover:border-[#555] hover:bg-[#2A2A2A] cursor-pointer active:scale-[0.98]'
+                }
               `}
             >
               <div className="flex items-start justify-between gap-3">
@@ -109,7 +126,7 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
                     </div>
                     
                     <div className="text-xs text-[var(--text-secondary)] flex items-center gap-2">
-                      <span>{formatTimeAgo(job.createdAt)}</span>
+                      <span>{formatTimestamp(job.createdAt)}</span>
                       
                       {isProcessing && (
                         <>
@@ -121,7 +138,7 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
                       {isCompleted && job.processedCount && (
                         <>
                           <span>•</span>
-                          <span>{job.processedCount} txns</span>
+                          <span>{job.processedCount} transactions</span>
                         </>
                       )}
                     </div>
@@ -134,21 +151,8 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
                   </div>
                 </div>
 
-                {!isCurrent && (
-                  <button
-                    onClick={() => onResumeJob(job.id)}
-                    className={`
-                      px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer
-                      ${isCompleted ? 'bg-[rgba(116,198,72,0.1)] text-[#74C648] hover:bg-[rgba(116,198,72,0.2)]' : ''}
-                      ${isFailed ? 'bg-[rgba(217,63,63,0.1)] text-[#D93F3F] hover:bg-[rgba(217,63,63,0.2)]' : ''}
-                      ${isProcessing ? 'bg-[rgba(172,102,218,0.1)] text-[#AC66DA] hover:bg-[rgba(172,102,218,0.2)]' : ''}
-                    `}
-                  >
-                    {isCompleted ? 'View' : isFailed ? 'Retry' : 'Monitor'}
-                  </button>
-                )}
                 {isCurrent && (
-                  <span className="text-xs font-medium text-[#AC66DA] bg-[rgba(172,102,218,0.1)] px-2 py-1 rounded-full">
+                  <span className="text-xs font-medium text-[#AC66DA] bg-[rgba(172,102,218,0.1)] px-2 py-1 rounded-full shrink-0">
                     Active
                   </span>
                 )}
