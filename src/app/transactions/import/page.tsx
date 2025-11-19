@@ -289,9 +289,13 @@ export default function ImportTransactionsPage() {
           setProgressValue(Math.max(5, data.progress));
         }
         
-        if (data.queuePosition > 0) {
-          setStatusNote(`Queued: ${data.queuePosition} users ahead of you.`);
-          setUploadState('queued');
+        if (data.status === 'queued') {
+           if (data.queuePosition > 0) {
+             setStatusNote(`Queued: ${data.queuePosition} users ahead of you.`);
+           } else {
+             setStatusNote('Queued: Waiting for worker...');
+           }
+           setUploadState('queued');
         } else if (data.status === 'processing') {
           setStatusNote('Processing PDF...');
           setUploadState('processing');
