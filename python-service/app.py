@@ -75,6 +75,40 @@ def report_progress(job_id, callback_url, progress, status="processing", process
     # Run in thread to not block processing loop
     threading.Thread(target=_send_request).start()
 
+def report_progress_with_result(job_id, callback_url, result):
+    """
+    Mark job as completed with final result.
+    This is blocking to ensure completion is recorded before function exits.
+    """
+    if not job_id or not callback_url:
+        return
+        
+    try:
+        # Get secret from environment variable
+        internal_secret = os.getenv('INTERNAL_API_SECRET')
+        headers = {}
+        if internal_secret:
+            headers['x-internal-secret'] = internal_secret
+        
+        payload = {
+            'progress': 100,
+            'status': 'completed',
+            'result': result
+        }
+        
+        resp = requests.post(
+            callback_url, 
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        if not resp.ok:
+            print(f'[process_pdf] Completion update failed for {job_id}: status {resp.status_code}, response: {resp.text[:200]}', flush=True)
+        else:
+            print(f'[process_pdf] Successfully marked job {job_id} as completed', flush=True)
+    except Exception as e:
+        print(f'[process_pdf] Failed to report completion for {job_id}: {e}', flush=True)
+
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
@@ -158,10 +192,8 @@ def process_pdf():
             
             print(f'[process_pdf] Completed processing {total} transactions', flush=True)
             
-            # Final progress before response: 95% (Next.js will mark 100% when received)
-            report_progress(job_id, callback_url, 95, "processing", processed_count=total, total_count=total)
-            
-            return jsonify({
+            # Build final result payload
+            final_result = {
                 'transactions': result_transactions,
                 'metadata': {
                     'currency': metadata.currency,
@@ -169,7 +201,13 @@ def process_pdf():
                     'periodStart': metadata.period_start,
                     'periodEnd': metadata.period_end,
                 }
-            })
+            }
+            
+            # Mark job as completed with final result (can't rely on Next.js background handler in serverless)
+            report_progress_with_result(job_id, callback_url, final_result)
+            
+            # Also return result for backward compatibility
+            return jsonify(final_result)
         
         finally:
             # Clean up temp file

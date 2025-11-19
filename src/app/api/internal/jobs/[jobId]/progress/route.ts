@@ -11,7 +11,7 @@ export async function POST(
   try {
     const { jobId } = await params;
     const body = await request.json();
-    const { progress, status, processedCount, totalCount } = body;
+    const { progress, status, processedCount, totalCount, result } = body;
 
     if (!jobId) {
       return NextResponse.json({ error: 'Missing jobId' }, { status: 400 });
@@ -45,6 +45,11 @@ export async function POST(
     }
     if (typeof totalCount === 'number') {
       updateData.totalCount = totalCount;
+    }
+
+    // Store final result if provided (when marking as completed)
+    if (result !== undefined) {
+      updateData.result = result;
     }
 
     // Use prisma update instead of raw SQL for simplicity unless there's a specific reason
