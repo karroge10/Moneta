@@ -43,6 +43,8 @@ export default function ImportTransactionsPage() {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [totalTimeSeconds, setTotalTimeSeconds] = useState<number | null>(null);
+  const [processedCount, setProcessedCount] = useState<number | null>(null);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dropZoneRef = useRef<HTMLDivElement | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -170,6 +172,8 @@ export default function ImportTransactionsPage() {
     setStartTime(null);
     setElapsedSeconds(0);
     setTotalTimeSeconds(null);
+    setProcessedCount(null);
+    setTotalCount(null);
     currentProgressRef.current = 0;
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
@@ -289,6 +293,14 @@ export default function ImportTransactionsPage() {
           setProgressValue(Math.max(5, data.progress));
         }
         
+        // Update transaction counts if available
+        if (typeof data.processedCount === 'number') {
+          setProcessedCount(data.processedCount);
+        }
+        if (typeof data.totalCount === 'number') {
+          setTotalCount(data.totalCount);
+        }
+        
         if (data.status === 'queued') {
            if (data.queuePosition > 0) {
              setStatusNote(`Queued: ${data.queuePosition} users ahead of you.`);
@@ -297,7 +309,12 @@ export default function ImportTransactionsPage() {
            }
            setUploadState('queued');
         } else if (data.status === 'processing') {
-          setStatusNote('Processing PDF...');
+          // Show transaction count if available
+          if (data.processedCount !== null && data.totalCount !== null) {
+            setStatusNote(`Processing transaction ${data.processedCount} of ${data.totalCount}...`);
+          } else {
+            setStatusNote('Processing PDF...');
+          }
           setUploadState('processing');
         }
         
@@ -325,6 +342,8 @@ export default function ImportTransactionsPage() {
       setElapsedSeconds(0);
       setTotalTimeSeconds(null);
       setProgressValue(0);
+      setProcessedCount(null);
+      setTotalCount(null);
 
       // Clear any existing intervals
       if (progressIntervalRef.current) {
@@ -632,9 +651,17 @@ export default function ImportTransactionsPage() {
                           <span>·</span>
                           <span>
                             Estimated remaining:{' '}
-                            {elapsedSeconds > 0
-                              ? formatTime(Math.floor(elapsedSeconds * 2)) // Simple heuristic: assume 2x elapsed time remaining
-                              : '—'}
+                            {(() => {
+                              // Use transaction counts for accurate estimate if available
+                              if (processedCount !== null && totalCount !== null && processedCount > 0 && totalCount > processedCount) {
+                                const remaining = totalCount - processedCount;
+                                const rate = processedCount / elapsedSeconds; // transactions per second
+                                const estimatedSeconds = Math.ceil(remaining / rate);
+                                return formatTime(estimatedSeconds);
+                              }
+                              // Fallback to simple heuristic
+                              return elapsedSeconds > 0 ? formatTime(Math.floor(elapsedSeconds * 2)) : '—';
+                            })()}
                           </span>
                         </>
                       )}

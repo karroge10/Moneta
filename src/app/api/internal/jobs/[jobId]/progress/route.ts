@@ -11,7 +11,7 @@ export async function POST(
   try {
     const { jobId } = await params;
     const body = await request.json();
-    const { progress, status } = body;
+    const { progress, status, processedCount, totalCount } = body;
 
     if (!jobId) {
       return NextResponse.json({ error: 'Missing jobId' }, { status: 400 });
@@ -22,6 +22,7 @@ export async function POST(
       return NextResponse.json({ error: 'Missing progress or status' }, { status: 400 });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {
       updatedAt: new Date(),
     };
@@ -36,6 +37,14 @@ export async function POST(
         updateData.completedAt = new Date();
         updateData.progress = 100;
       }
+    }
+
+    // Store transaction counts for better time estimation
+    if (typeof processedCount === 'number') {
+      updateData.processedCount = processedCount;
+    }
+    if (typeof totalCount === 'number') {
+      updateData.totalCount = totalCount;
     }
 
     // Use prisma update instead of raw SQL for simplicity unless there's a specific reason
