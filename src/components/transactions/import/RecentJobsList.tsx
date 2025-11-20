@@ -37,6 +37,38 @@ function formatTimestamp(dateString: string): string {
   return dateTimeFormatter.format(date);
 }
 
+function formatDuration(createdAt: string, completedAt: string | null): string | null {
+  if (!completedAt) return null;
+  
+  const start = new Date(createdAt);
+  const end = new Date(completedAt);
+  
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return null;
+  }
+  
+  const totalSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
+  
+  if (totalSeconds < 0) return null;
+  
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  
+  const parts: string[] = [];
+  if (hours > 0) {
+    parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
+  }
+  if (minutes > 0) {
+    parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
+  }
+  if (seconds > 0 || parts.length === 0) {
+    parts.push(`${seconds} second${seconds !== 1 ? 's' : ''}`);
+  }
+  
+  return parts.join(' ');
+}
+
 export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobsListProps) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -120,6 +152,7 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
           const isCompleted = job.status === 'completed';
           const isFailed = job.status === 'failed';
           const isProcessing = job.status === 'processing' || job.status === 'queued';
+          const completionDuration = isCompleted ? formatDuration(job.createdAt, job.completedAt) : null;
 
           return (
             <div
@@ -154,7 +187,7 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
                       </p>
                     </div>
                     
-                    <div className="text-xs text-[var(--text-secondary)] flex items-center gap-2">
+                    <div className="text-xs text-[var(--text-secondary)] flex items-center gap-2 flex-wrap">
                       <span>{formatTimestamp(job.createdAt)}</span>
                       
                       {isProcessing && (
@@ -168,6 +201,13 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
                         <>
                           <span>•</span>
                           <span>{job.processedCount} transactions</span>
+                        </>
+                      )}
+                      
+                      {isCompleted && completionDuration && (
+                        <>
+                          <span>•</span>
+                          <span>{completionDuration}</span>
                         </>
                       )}
                     </div>
