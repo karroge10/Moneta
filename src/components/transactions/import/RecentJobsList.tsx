@@ -131,23 +131,39 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
   }, []);
 
   useEffect(() => {
+    if (APP_CONFIG.polling.recentJobs.temporarilyDisabled) {
+      return;
+    }
     const interval = setInterval(fetchJobs, pollInterval);
     return () => clearInterval(interval);
   }, [pollInterval]);
 
-  if (isLoading && jobs.length === 0) {
-    return null;
-  }
-
-  if (jobs.length === 0) {
-    return null;
-  }
+  const showSkeleton = isLoading;
+  const hasJobs = jobs.length > 0;
 
   return (
     <div className="space-y-3 mt-6">
       <h3 className="text-sm font-semibold text-[#E7E4E4] px-1">Recent Imports</h3>
       <div className="space-y-2">
-        {jobs.map((job) => {
+        {showSkeleton && (
+          Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={`job-skeleton-${index}`}
+              className="rounded-2xl p-4 border border-[#3a3a3a] bg-[#282828] animate-pulse"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#343434]" />
+                <div className="flex-1 space-y-3">
+                  <div className="h-4 bg-[#343434] rounded w-3/5" />
+                  <div className="h-3 bg-[#343434] rounded w-4/5" />
+                  <div className="h-2 bg-[#343434] rounded w-full" />
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+
+        {!showSkeleton && hasJobs && jobs.map((job) => {
           const isCurrent = job.id === currentJobId;
           const isCompleted = job.status === 'completed';
           const isFailed = job.status === 'failed';
@@ -179,10 +195,10 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
                     {isProcessing && <RefreshDouble width={20} height={20} strokeWidth={1.5} className="animate-spin" />}
                   </div>
                   
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="flex-1 min-w-0 max-w-full">
+                    <div className="flex items-center gap-2 mb-1 min-w-0">
                       <Page width={14} height={14} strokeWidth={1.5} className="text-[var(--text-secondary)] shrink-0" />
-                      <p className="text-sm font-medium text-[#E7E4E4] truncate" title={job.fileName}>
+                      <p className="text-sm font-medium text-[#E7E4E4] truncate min-w-0 flex-1" title={job.fileName}>
                         {job.fileName}
                       </p>
                     </div>
@@ -252,6 +268,12 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
             </div>
           );
         })}
+
+        {!showSkeleton && !hasJobs && (
+          <div className="rounded-2xl border border-dashed border-[#3a3a3a] bg-[#252525] p-6 text-center text-xs text-[var(--text-secondary)]">
+            No imports yet. Start by uploading a CSV to see history here.
+          </div>
+        )}
       </div>
     </div>
   );
