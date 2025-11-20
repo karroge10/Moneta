@@ -581,14 +581,14 @@ export default function ImportTransactionsPage() {
 
 
   const renderStatusBadge = () => {
-    if (uploadState === 'idle') return null;
+    if (uploadState === 'idle' || uploadState === 'ready') return null;
     const iconMap: Record<UploadState, JSX.Element | null> = {
       idle: null,
       queued: null,
       uploading: <Upload width={16} height={16} strokeWidth={1.5} />,
       processing: <Upload width={16} height={16} strokeWidth={1.5} />,
       categorizing: <Upload width={16} height={16} strokeWidth={1.5} />,
-      ready: <CheckCircle width={16} height={16} strokeWidth={1.5} />,
+      ready: null,
       error: <WarningTriangle width={16} height={16} strokeWidth={1.5} />,
     };
     const labelMap: Record<UploadState, string> = {
@@ -597,7 +597,7 @@ export default function ImportTransactionsPage() {
       uploading: 'Uploading',
       processing: 'Processing',
       categorizing: 'Categorizing',
-      ready: 'Parsing complete',
+      ready: '',
       error: 'Import failed',
     };
 
