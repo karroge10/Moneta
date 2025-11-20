@@ -4,16 +4,19 @@ import { NextResponse } from "next/server";
 // Public routes that don't require authentication
 const isPublicRoute = createRouteMatcher(["/", "/unauthorized"]);
 
-// Internal API routes that use secret header instead of auth
+// Internal API routes that should be accessible via shared secret
 const isInternalRoute = createRouteMatcher(["/api/internal(.*)"]);
 
 export default clerkMiddleware(async (auth, request) => {
-  // Check for internal API secret header (for Python service callbacks)
-  const internalSecret = request.headers.get("x-internal-secret");
+  const internalSecretHeader = request.headers.get("x-internal-secret");
   const expectedSecret = process.env.INTERNAL_API_SECRET;
-  
-  if (isInternalRoute(request) && internalSecret === expectedSecret && expectedSecret) {
-    // Allow internal routes with correct secret header
+
+  if (isInternalRoute(request)) {
+    // When a secret is configured, enforce it strictly. Otherwise, allow the request
+    // so environments without INTERNAL_API_SECRET (e.g., local dev) keep working.
+    if (expectedSecret && internalSecretHeader !== expectedSecret) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
     return NextResponse.next();
   }
   
