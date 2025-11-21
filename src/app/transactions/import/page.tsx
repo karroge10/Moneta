@@ -622,8 +622,9 @@ export default function ImportTransactionsPage() {
         />
       </div>
 
-      <div className="px-4 md:px-6 pb-10 space-y-6">
-        <Card title="Bank Statement Upload" showActions={false}>
+      <div className="px-4 md:px-6 pb-10">
+        <div className="mx-auto w-full max-w-6xl space-y-6">
+          <Card title="Bank Statement Upload" showActions={false}>
           <div
             ref={dropZoneRef}
             className="border-2 border-dashed border-[#3a3a3a] rounded-3xl px-6 py-10 flex flex-col items-center justify-center gap-4 text-center transition-colors hover:border-[#AC66DA]"
@@ -751,14 +752,14 @@ export default function ImportTransactionsPage() {
                 </div>
 
                 {/* Table */}
-                <div className="overflow-x-auto rounded-3xl border border-[#3a3a3a]" style={{ backgroundColor: '#202020' }}>
-                  <table className="min-w-full">
+                <div className="w-full overflow-x-auto rounded-3xl border border-[#3a3a3a]" style={{ backgroundColor: '#202020' }}>
+                  <table className="min-w-full table-fixed">
                     <thead>
                       <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                        <th className="px-5 py-3 align-top">Date</th>
-                        <th className="px-5 py-3 align-top">Description</th>
-                        <th className="px-5 py-3 align-top">Type</th>
-                        <th className="px-5 py-3 align-top">Category</th>
+                        <th className="px-5 py-3 align-top w-32">Date</th>
+                        <th className="px-5 py-3 align-top w-[40%]">Description</th>
+                        <th className="px-5 py-3 align-top w-32">Type</th>
+                        <th className="px-5 py-3 align-top w-48">Category</th>
                         <th className="px-5 py-3 align-top w-16"></th>
                       </tr>
                     </thead>
@@ -784,19 +785,22 @@ export default function ImportTransactionsPage() {
                                   style={{ color: 'var(--text-primary)' }}
                                 />
                               </td>
-                              <td className="px-5 py-4 align-top">
-                                <div className="space-y-1.5">
+                              <td className="px-5 py-4 align-top max-w-0">
+                                <div className="space-y-1.5 max-w-full">
                                   <input
                                     type="text"
                                     value={row.description}
                                     onChange={event => handleRowUpdate(row.id, 'description', event.target.value)}
-                                    className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-3 py-2 text-sm"
+                                    className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-3 py-2 text-sm truncate"
                                     style={{ color: 'var(--text-primary)' }}
                                     placeholder="Description"
+                                    title={row.description}
                                   />
-                                  <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                    <Language width={14} height={14} strokeWidth={1.5} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
-                                    <span>{row.translatedDescription || 'No translation'}</span>
+                                  <div className="flex items-center gap-1.5 text-xs min-w-0" style={{ color: 'var(--text-secondary)' }}>
+                                    <Language width={14} height={14} strokeWidth={1.5} className="flex-shrink-0" style={{ color: 'var(--text-secondary)' }} />
+                                    <span className="truncate" title={row.translatedDescription || 'No translation'}>
+                                      {row.translatedDescription || 'No translation'}
+                                    </span>
                                   </div>
                                 </div>
                               </td>
@@ -935,6 +939,7 @@ export default function ImportTransactionsPage() {
           />
         )}
       </div>
-    </main>
+    </div>
+  </main>
   );
 }
