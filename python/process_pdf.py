@@ -74,6 +74,9 @@ class StatementMetadata:
 _translation_cache: Dict[str, str] = {}
 _translator: Optional[GoogleTranslator] = None
 
+# Temporary flag to turn off ML/category suggestions and rely on DB matching only
+DISABLE_CATEGORY_PREDICTION = True
+
 if GoogleTranslator is not None:
     try:  # pragma: no cover
         _translator = GoogleTranslator(source="auto", target="en")
@@ -585,6 +588,10 @@ def load_classifier(model_path: Path):
 
 
 def predict_category(description_en: str, model) -> Tuple[Optional[str], float]:
+    if DISABLE_CATEGORY_PREDICTION:
+        # Leave categorization to the Next.js import pipeline
+        return None, 0.0
+
     text = description_en or ""
     
     # Check for withdrawal patterns first - these should not be categorized
