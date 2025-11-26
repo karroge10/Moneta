@@ -19,6 +19,9 @@ export function normalizeMerchantName(name: string): string {
   normalized = normalized.replace(/\bh\s*&\s*m\b/gi, 'hm');
   normalized = normalized.replace(/\bhennes\s+and\s+mauritz\b/gi, 'hm');
   
+  // Special handling for zoommer (common typo/variant)
+  normalized = normalized.replace(/\bzoommer\b/gi, 'zoomer');
+
   // Remove common business suffixes (including textile, limited, etc.)
   normalized = normalized.replace(/\b(llc|inc|corp|corporation|ltd|limited|co|company|textile)\b/g, '');
   
