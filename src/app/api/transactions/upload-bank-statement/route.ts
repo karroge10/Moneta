@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TransactionUploadResponse, UploadedTransaction } from '@/types/dashboard';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch } from '@/lib/merchant';
+import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, findMerchantByBaseWords, detectSpecialTransactionType } from '@/lib/merchant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic';
 async function processPdfInBackground(
   file: File, 
   jobId: string, 
-  callbackUrl: string
+  callbackUrl: string,
+  userId: number
 ): Promise<void> {
   const serviceUrl = process.env.PYTHON_SERVICE_URL;
   
@@ -55,7 +56,7 @@ async function processPdfInBackground(
     // Analyze & Categorize
     let finalTransactions = result.transactions || [];
     if (finalTransactions.length > 0) {
-      finalTransactions = await analyzeCategorization(finalTransactions);
+      finalTransactions = await analyzeCategorization(finalTransactions, userId);
     }
 
     // Mark complete
@@ -97,55 +98,138 @@ async function updateJobStatus(
   }
 }
 
-async function analyzeCategorization(transactions: UploadedTransaction[]): Promise<UploadedTransaction[]> {
+async function analyzeCategorization(transactions: UploadedTransaction[], userId: number): Promise<UploadedTransaction[]> {
   // This function matches merchants and applies categories from database
   // Similar logic to what's in import route, but simplified for upload response
   
-  // Pre-fetch categories and merchants (simplified - could be optimized with caching)
+  // Pre-fetch categories
   const allCategories = await db.category.findMany();
   const categoryMap = new Map<string, number>();
   allCategories.forEach((cat: { name: string; id: number }) => {
     categoryMap.set(cat.name.toLowerCase(), cat.id);
   });
 
+  // Pre-fetch global merchants
   const globalMerchants = await db.merchantGlobal.findMany();
   const globalMerchantMap = new Map<string, number>();
+  const globalMerchantPatterns: string[] = [];
   globalMerchants.forEach((merchant: { namePattern: string; categoryId: number }) => {
     const normalizedPattern = normalizeMerchantName(merchant.namePattern);
     globalMerchantMap.set(normalizedPattern, merchant.categoryId);
+    globalMerchantPatterns.push(merchant.namePattern);
+  });
+
+  // Pre-fetch user merchants (overrides global)
+  const userMerchants = await db.merchant.findMany({
+    where: { userId },
+    include: { category: true },
+  });
+  const userMerchantMap = new Map<string, number>();
+  const userMerchantPatterns: string[] = [];
+  userMerchants.forEach((merchant: { namePattern: string; categoryId: number }) => {
+    const normalizedPattern = normalizeMerchantName(merchant.namePattern);
+    userMerchantMap.set(normalizedPattern, merchant.categoryId);
+    userMerchantPatterns.push(merchant.namePattern);
   });
 
   // Apply merchant matching to transactions
   return transactions.map((tx) => {
-    const description = tx.description || '';
-    const merchantName = extractMerchantFromDescription(description);
+    // Always use translated description for checks (categories are in English)
+    const descriptionForMatching = tx.translatedDescription || tx.description;
+    
+    // Check for special transaction types FIRST
+    const specialType = detectSpecialTransactionType(descriptionForMatching);
+    
+    // Determine type: positive = income, negative = expense
+    const type = tx.amount >= 0 ? 'income' : 'expense';
+    
+    let categoryId: number | null = null;
+    let matchedCategoryName: string | null = null;
+    let skipMerchantMatching = false;
+
+    // Skip auto-categorization for income transactions (amount >= 0)
+    // Income transactions should remain uncategorized unless explicitly set by user
+    if (type === 'income') {
+      // Keep categoryId as null (uncategorized)
+      return { ...tx, category: null };
+    }
+
+    // Handle special transaction types that should be categorized (e.g., commissions → "Other")
+    if (specialType && specialType !== 'EXCLUDE') {
+        // Note: All transactions are saved. 'EXCLUDE' isn't returned by detectSpecialTransactionType anymore in practice,
+        // but if it returns a category string (like 'other'), we map it.
+        // If it returns null (for withdrawals, transfers), we leave it uncategorized.
+        const specialCategoryId = categoryMap.get(specialType.toLowerCase());
+        if (specialCategoryId) {
+            categoryId = specialCategoryId;
+            skipMerchantMatching = true;
+        }
+    } else if (specialType === 'EXCLUDE') {
+        // Should technically not happen given current logic, but if so, leave uncategorized
+        skipMerchantMatching = true;
+    }
+
+    // Extract merchant name
+    const merchantName = extractMerchantFromDescription(descriptionForMatching);
     const normalizedMerchant = normalizeMerchantName(merchantName);
     
-    // Check user merchants first (if we had user context, but for now just use global)
-    // In production, you'd pass user context here
-    
-    // Try to match merchant
-    let matchedCategoryId: number | null = null;
-    
-    if (normalizedMerchant) {
-      // Check global merchants
-      if (globalMerchantMap.has(normalizedMerchant)) {
-        matchedCategoryId = globalMerchantMap.get(normalizedMerchant)!;
-      } else {
-        // Try fuzzy matching
-        for (const [pattern, categoryId] of globalMerchantMap.entries()) {
-          const similarity = fuzzyMatch(normalizedMerchant, pattern);
-          if (similarity > 0.7) {
-            matchedCategoryId = categoryId;
-            break;
-          }
+    if (!categoryId && !skipMerchantMatching) {
+        // 1. User Override
+        if (userMerchantMap.has(normalizedMerchant)) {
+            categoryId = userMerchantMap.get(normalizedMerchant)!;
+        } else {
+            // User word match
+            const foundUserMerchant = findMerchantByBaseWords(descriptionForMatching, userMerchantPatterns);
+            if (foundUserMerchant) {
+                const norm = normalizeMerchantName(foundUserMerchant);
+                if (userMerchantMap.has(norm)) {
+                    categoryId = userMerchantMap.get(norm)!;
+                }
+            }
         }
-      }
+
+        // 2. Global Merchant
+        if (!categoryId) {
+            if (globalMerchantMap.has(normalizedMerchant)) {
+                categoryId = globalMerchantMap.get(normalizedMerchant)!;
+            } else {
+                // Global word match
+                const foundGlobalMerchant = findMerchantByBaseWords(descriptionForMatching, globalMerchantPatterns);
+                if (foundGlobalMerchant) {
+                    const norm = normalizeMerchantName(foundGlobalMerchant);
+                    if (globalMerchantMap.has(norm)) {
+                        categoryId = globalMerchantMap.get(norm)!;
+                    }
+                }
+            }
+        }
+
+        // 3. Fuzzy Match (Fallback)
+        if (!categoryId) {
+            // Check user merchants fuzzy
+            for (const [pattern, catId] of userMerchantMap.entries()) {
+                const similarity = fuzzyMatch(normalizedMerchant, pattern);
+                if (similarity > 0.7) {
+                    categoryId = catId;
+                    break;
+                }
+            }
+            // Check global merchants fuzzy
+            if (!categoryId) {
+                for (const [pattern, catId] of globalMerchantMap.entries()) {
+                    const similarity = fuzzyMatch(normalizedMerchant, pattern);
+                    if (similarity > 0.7) {
+                        categoryId = catId;
+                        break;
+                    }
+                }
+            }
+        }
     }
     
     // If matched, update category
-    if (matchedCategoryId) {
-      const matchedCategory = allCategories.find(c => c.id === matchedCategoryId);
+    if (categoryId) {
+      const matchedCategory = allCategories.find(c => c.id === categoryId);
       if (matchedCategory) {
         return {
           ...tx,
@@ -154,7 +238,11 @@ async function analyzeCategorization(transactions: UploadedTransaction[]): Promi
       }
     }
     
-    return tx;
+    // If no match, return with null category (ensure we don't pass through hallucinated category strings from Python if any remain)
+    return {
+        ...tx,
+        category: null
+    };
   });
 }
 
