@@ -21,6 +21,10 @@ export function normalizeMerchantName(name: string): string {
   
   // Special handling for zoommer (common typo/variant)
   normalized = normalized.replace(/\bzoommer\b/gi, 'zoomer');
+  normalized = normalized.replace(/\bcashless conversion\b/gi, 'currency exchange');
+  normalized = normalized.replace(/\bexchange amount\b/gi, 'currency exchange');
+  normalized = normalized.replace(/\bpersonal transfer\b/gi, 'personal transfer');
+  normalized = normalized.replace(/\blari transfer fee\b/gi, 'transfer fee');
 
   // Remove common business suffixes (including textile, limited, etc.)
   normalized = normalized.replace(/\b(llc|inc|corp|corporation|ltd|limited|co|company|textile)\b/g, '');
@@ -105,11 +109,16 @@ export function detectSpecialTransactionType(description: string): string | null
     return null; // Save but leave uncategorized - it's money movement, not spending
   }
   
-  // Commissions/fees - map to "Other" category
-  if ((desc.includes('commission') && !desc.includes('payment')) ||
-      (desc.includes('service fee') && !desc.includes('payment')) ||
-      (desc.includes('transaction fee') && !desc.includes('payment'))) {
-    return 'other'; // Map commissions to "Other" category
+  // Transfer fees - leave uncategorized
+  if (desc.includes('transfer fee') || desc.includes('ქარიქას გადასახადი')) {
+    return null;
+  }
+
+  // Commissions/fees - map to "Other" category (but avoid transfer/bank fees)
+  if ((desc.includes('commission') && !desc.includes('payment') && !desc.includes('transfer')) ||
+      (desc.includes('service fee') && !desc.includes('payment') && !desc.includes('transfer')) ||
+      (desc.includes('transaction fee') && !desc.includes('payment') && !desc.includes('transfer'))) {
+    return 'other'; // Map general commissions to "Other" category
   }
   
   // ATM withdrawals - keep but leave uncategorized (don't exclude completely)
@@ -289,10 +298,10 @@ export function fuzzyMatch(str1: string, str2: string): number {
   // For short strings, require higher similarity to avoid false positives
   // If either string is short (< 6 chars), require at least 0.6 similarity
   if (s1.length < 6 || s2.length < 6) {
-    return charSimilarity >= 0.6 ? charSimilarity : 0;
+    return charSimilarity >= 0.75 ? charSimilarity : 0;
   }
   
-  return charSimilarity;
+  return charSimilarity >= 0.75 ? charSimilarity : 0;
 }
 
 /**
