@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle, WarningTriangle, RefreshDouble, Page, Trash } from 'iconoir-react';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { APP_CONFIG } from '@/lib/config';
@@ -81,7 +81,7 @@ export default function RecentJobsList({
   const [isLoading, setIsLoading] = useState(true);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
 
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     try {
       const res = await fetch('/api/jobs');
       if (res.ok) {
@@ -93,7 +93,7 @@ export default function RecentJobsList({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const handleDelete = async (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation(); // Prevent triggering the onClick for resuming job
@@ -133,9 +133,13 @@ export default function RecentJobsList({
     : APP_CONFIG.polling.recentJobs.idleInterval;
 
   useEffect(() => {
-    // Initial fetch
     fetchJobs();
-  }, []);
+  }, [fetchJobs]);
+
+  useEffect(() => {
+    if (currentJobId === undefined) return;
+    fetchJobs();
+  }, [currentJobId, fetchJobs]);
 
   useEffect(() => {
     if (APP_CONFIG.polling.recentJobs.temporarilyDisabled) {
@@ -143,7 +147,7 @@ export default function RecentJobsList({
     }
     const interval = setInterval(fetchJobs, pollInterval);
     return () => clearInterval(interval);
-  }, [pollInterval]);
+  }, [pollInterval, fetchJobs]);
 
   const showSkeleton = isLoading;
   const hasJobs = jobs.length > 0;
