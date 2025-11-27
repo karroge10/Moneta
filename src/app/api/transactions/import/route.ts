@@ -7,6 +7,24 @@ import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, find
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const DEBUG_PATTERNS = [
+  'განათლება - საქართველოს ეროვნული უნივერსიტეტი',
+  'Exchange amount',
+  'ZATER DONERI',
+  'SNEAKERHUB',
+  'MANO',
+  'ლარის გადარიცხვის საკომისიო',
+  'უნაღდო კონვერტაცია',
+  'Personal Transfer',
+];
+
+const debugPatternSet = DEBUG_PATTERNS.map(pattern => pattern.toLowerCase());
+
+function shouldDebugTransaction(description: string): boolean {
+  const lowered = description.toLowerCase();
+  return debugPatternSet.some(pattern => lowered.includes(pattern));
+}
+
 export async function POST(request: NextRequest) {
   console.log('\n\n' + '='.repeat(80));
   console.log('[TRANSACTION IMPORT] Starting import process...');
@@ -205,7 +223,7 @@ export async function POST(request: NextRequest) {
               unmatchedReasons.push(`User word match: no base words found in description`);
             }
             
-            // Fuzzy user merchant match (lower threshold: 0.5 similarity) - fallback
+            // Fuzzy user merchant match - fallback with stricter threshold
             if (!categoryId) {
               let bestMatch: { pattern: string; catId: number; similarity: number } | null = null;
               for (const [pattern, catId] of userMerchantMap.entries()) {
@@ -214,8 +232,8 @@ export async function POST(request: NextRequest) {
                 const descSimilarity = fuzzyMatch(descriptionForMatching.toLowerCase(), pattern);
                 const maxSimilarity = Math.max(similarity, descSimilarity);
               checkedPatterns.push({ pattern, similarity: maxSimilarity, type: 'user-fuzzy' });
-              // Increased threshold from 0.5 to 0.65 to reduce false positives
-              if (maxSimilarity >= 0.65) {
+              const threshold = 0.85;
+              if (maxSimilarity >= threshold) {
                 if (!bestMatch || maxSimilarity > bestMatch.similarity) {
                   bestMatch = { pattern, catId, similarity: maxSimilarity };
                 }
@@ -260,7 +278,7 @@ export async function POST(request: NextRequest) {
               unmatchedReasons.push(`Global word match: no base words found in description`);
             }
             
-            // Fuzzy global merchant match (lower threshold: 0.5 similarity) - fallback
+            // Fuzzy global merchant match - fallback with stricter threshold
             if (!categoryId) {
               let bestMatch: { pattern: string; catId: number; similarity: number } | null = null;
               // Only check top candidates to avoid too much logging
@@ -272,8 +290,8 @@ export async function POST(request: NextRequest) {
                 const maxSimilarity = Math.max(similarity, descSimilarity);
               checkedPatterns.push({ pattern, similarity: maxSimilarity, type: 'global-fuzzy' });
               topCandidates.push({ pattern, catId, similarity: maxSimilarity });
-              // Increased threshold from 0.5 to 0.65 to reduce false positives
-              if (maxSimilarity >= 0.65) {
+              const threshold = 0.85;
+              if (maxSimilarity >= threshold) {
                 if (!bestMatch || maxSimilarity > bestMatch.similarity) {
                   bestMatch = { pattern, catId, similarity: maxSimilarity };
                 }
@@ -318,6 +336,22 @@ export async function POST(request: NextRequest) {
           }
         } // End of if (!categoryId) block - only run matching if user didn't select a category
         
+        if (shouldDebugTransaction(item.description)) {
+          const matchedCategoryName = categoryId ? [...categoryMap.entries()].find(([name, id]) => id === categoryId)?.[0] ?? null : null;
+          console.log('[import-debug]', {
+            description: item.description,
+            type,
+            specialType,
+            merchantName,
+            normalizedMerchant,
+            categoryId,
+            matchedCategoryName,
+            matchMethod,
+            userExact: userMerchantMap.has(normalizedMerchant),
+            globalExact: globalMerchantMap.has(normalizedMerchant),
+          });
+        }
+
         // Log if no match found
         if (!categoryId) {
           unmatchedCount++;

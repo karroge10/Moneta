@@ -74,7 +74,7 @@ class StatementMetadata:
 _translation_cache: Dict[str, str] = {}
 _translator: Optional[GoogleTranslator] = None
 
-# Temporary flag to turn off ML/category suggestions and rely on DB matching only
+# Temporary flag to keep categorization on the Node.js side only
 DISABLE_CATEGORY_PREDICTION = True
 
 if GoogleTranslator is not None:
@@ -589,7 +589,7 @@ def load_classifier(model_path: Path):
 
 def predict_category(description_en: str, model) -> Tuple[Optional[str], float]:
     if DISABLE_CATEGORY_PREDICTION:
-        # Leave categorization to the Next.js import pipeline
+        # Leave categorization to merchant matching in Next.js
         return None, 0.0
 
     text = description_en or ""
