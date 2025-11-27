@@ -850,9 +850,7 @@ export default function ImportTransactionsPage() {
 
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-2">
                 <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  {parsedRows.length > 0
-                    ? `Showing ${paginatedReviewRows.length} of ${filteredRows.length} transactions`
-                    : 'Select an import job to preview transactions'}
+                  {parsedRows.length > 0 &&`Showing ${paginatedReviewRows.length} of ${filteredRows.length} transactions`}
                 </div>
                 {reviewTotalPages > 1 && filteredRows.length > 0 && (
                   <div className="flex items-center gap-2">
