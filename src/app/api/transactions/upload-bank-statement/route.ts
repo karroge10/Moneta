@@ -7,15 +7,32 @@ import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, find
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const DEBUG_PATTERNS = [
+  'განათლება - საქართველოს ეროვნული უნივერსიტეტი',
+  'Exchange amount',
+  'ZATER DONERI',
+  'SNEAKERHUB',
+  'MANO',
+  'ლარის გადარიცხვის საკომისიო',
+  'უნაღდო კონვერტაცია',
+  'Personal Transfer',
+];
+
+const DEBUG_PATTERN_SET = DEBUG_PATTERNS.map(pattern => pattern.toLowerCase());
+
+function shouldDebugTransaction(description: string): boolean {
+  const lowered = description.toLowerCase();
+  return DEBUG_PATTERN_SET.some(pattern => lowered.includes(pattern));
+}
+
 // Helper: Call Python service (async/background)
 async function processPdfInBackground(
   file: File, 
   jobId: string, 
   callbackUrl: string,
-  userId: number
+  userId: number,
+  serviceUrl: string
 ): Promise<void> {
-  const serviceUrl = process.env.PYTHON_SERVICE_URL;
-  
   if (!serviceUrl) {
     console.error('[background-process] PYTHON_SERVICE_URL environment variable is not set');
     await updateJobStatus(jobId, 'failed', 0, undefined, 'Configuration error: Service URL missing');
@@ -146,6 +163,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
     let categoryId: number | null = null;
     let matchedCategoryName: string | null = null;
     let skipMerchantMatching = false;
+    let matchSource: string | null = null;
 
     // Skip auto-categorization for income transactions (amount >= 0)
     // Income transactions should remain uncategorized unless explicitly set by user
@@ -162,6 +180,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
         const specialCategoryId = categoryMap.get(specialType.toLowerCase());
         if (specialCategoryId) {
             categoryId = specialCategoryId;
+            matchSource = `special:${specialType}`;
             skipMerchantMatching = true;
         }
     } else if (specialType === 'EXCLUDE') {
@@ -177,6 +196,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
         // 1. User Override
         if (userMerchantMap.has(normalizedMerchant)) {
             categoryId = userMerchantMap.get(normalizedMerchant)!;
+            matchSource = 'user-exact';
         } else {
             // User word match
             const foundUserMerchant = findMerchantByBaseWords(descriptionForMatching, userMerchantPatterns);
@@ -184,6 +204,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
                 const norm = normalizeMerchantName(foundUserMerchant);
                 if (userMerchantMap.has(norm)) {
                     categoryId = userMerchantMap.get(norm)!;
+                    matchSource = 'user-word';
                 }
             }
         }
@@ -192,6 +213,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
         if (!categoryId) {
             if (globalMerchantMap.has(normalizedMerchant)) {
                 categoryId = globalMerchantMap.get(normalizedMerchant)!;
+                matchSource = 'global-exact';
             } else {
                 // Global word match
                 const foundGlobalMerchant = findMerchantByBaseWords(descriptionForMatching, globalMerchantPatterns);
@@ -199,6 +221,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
                     const norm = normalizeMerchantName(foundGlobalMerchant);
                     if (globalMerchantMap.has(norm)) {
                         categoryId = globalMerchantMap.get(norm)!;
+                        matchSource = 'global-word';
                     }
                 }
             }
@@ -209,8 +232,9 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
             // Check user merchants fuzzy
             for (const [pattern, catId] of userMerchantMap.entries()) {
                 const similarity = fuzzyMatch(normalizedMerchant, pattern);
-                if (similarity > 0.7) {
+                if (similarity > 0.85) {
                     categoryId = catId;
+                    matchSource = `user-fuzzy:${similarity.toFixed(2)}`;
                     break;
                 }
             }
@@ -218,8 +242,9 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
             if (!categoryId) {
                 for (const [pattern, catId] of globalMerchantMap.entries()) {
                     const similarity = fuzzyMatch(normalizedMerchant, pattern);
-                    if (similarity > 0.7) {
+                    if (similarity > 0.85) {
                         categoryId = catId;
+                        matchSource = `global-fuzzy:${similarity.toFixed(2)}`;
                         break;
                     }
                 }
@@ -231,11 +256,34 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
     if (categoryId) {
       const matchedCategory = allCategories.find(c => c.id === categoryId);
       if (matchedCategory) {
+        if (shouldDebugTransaction(tx.description)) {
+          console.log('[upload-debug]', {
+            description: tx.description,
+            type,
+            specialType,
+            merchantName,
+            normalizedMerchant,
+            category: matchedCategory.name,
+            matchSource,
+          });
+        }
         return {
           ...tx,
           category: matchedCategory.name,
         };
       }
+    }
+
+    if (shouldDebugTransaction(tx.description)) {
+      console.log('[upload-debug]', {
+        description: tx.description,
+        type,
+        specialType,
+        merchantName,
+        normalizedMerchant,
+        category: null,
+        matchSource,
+      });
     }
     
     // If no match, return with null category (ensure we don't pass through hallucinated category strings from Python if any remain)
@@ -263,10 +311,12 @@ export async function POST(request: NextRequest) {
 
     // Use Prisma (or raw if preferred) to create initial job
     // Switching to Prisma for cleaner syntax, but ensuring buffer is handled
+    const serviceUrl = process.env.PYTHON_SERVICE_URL;
+
     const job = await db.pdfProcessingJob.create({
       data: {
         userId: user.id,
-        status: 'queued',
+        status: serviceUrl ? 'processing' : 'queued',
         progress: 0,
         fileName: fileName,
         fileContent: fileContentBuffer
@@ -291,17 +341,24 @@ export async function POST(request: NextRequest) {
     // 3. Trigger Background Processing (Fire & Forget)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
     let callbackUrl = `${appUrl}/api/internal/jobs/${jobId}/progress`;
-    
-    // In development, if running in Docker (implied by PYTHON_SERVICE_URL containing localhost),
-    // we need to tell Python to call back to the host machine instead of its own localhost.
-    // This is a heuristic: if appUrl is localhost, and we are calling a local python service,
-    // replace localhost with host.docker.internal for the callback.
-    if (process.env.NODE_ENV === 'development' && (callbackUrl.includes('localhost') || callbackUrl.includes('127.0.0.1'))) {
-       callbackUrl = callbackUrl.replace(/localhost|127\.0\.0\.1/, 'host.docker.internal');
+
+    const callbackHostOverride = process.env.PYTHON_SERVICE_CALLBACK_HOST;
+    if (callbackHostOverride) {
+      try {
+        const callbackUrlObj = new URL(callbackUrl);
+        callbackUrlObj.hostname = callbackHostOverride;
+        callbackUrl = callbackUrlObj.toString();
+      } catch (err) {
+        console.error('[background-process] Invalid PYTHON_SERVICE_CALLBACK_HOST value:', err);
+      }
     }
     
-    // Don't await this! Let it run in background
-    processPdfInBackground(file, jobId, callbackUrl);
+    if (serviceUrl) {
+      // Mark job as processing so background workers do not pick it up
+      await updateJobStatus(jobId, 'processing', 0);
+      // Don't await this! Let it run in background
+      processPdfInBackground(file, jobId, callbackUrl, user.id, serviceUrl);
+    }
 
     // 4. Return Immediate Response
     return NextResponse.json({
