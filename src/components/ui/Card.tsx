@@ -21,7 +21,7 @@ export default function Card({
   onAdd,
 }: CardProps) {
   return (
-    <div className={`card-surface flex flex-col ${className}`}>
+    <div className={`card-surface flex flex-col min-h-0 ${className}`}>
       {customHeader || (
         <div className="mb-4 flex items-center justify-between">
           {href ? (
@@ -33,7 +33,7 @@ export default function Card({
           )}
         </div>
       )}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {children}
       </div>
     </div>
