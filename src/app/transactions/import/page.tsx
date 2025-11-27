@@ -44,6 +44,7 @@ export default function ImportTransactionsPage() {
   const [processedCount, setProcessedCount] = useState<number | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [isReviewLoading, setIsReviewLoading] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dropZoneRef = useRef<HTMLDivElement | null>(null);
@@ -109,9 +110,7 @@ export default function ImportTransactionsPage() {
     return filteredRows.slice(start, start + REVIEW_PAGE_SIZE);
   }, [filteredRows, reviewPage]);
 
-  const shouldShowProgressStatus =
-    Boolean(statusNote) &&
-    ['queued', 'uploading', 'processing', 'categorizing'].includes(uploadState);
+  const isUploadBusy = ['queued', 'uploading', 'processing', 'categorizing'].includes(uploadState);
 
 
   // Fetch categories from API
@@ -155,6 +154,7 @@ export default function ImportTransactionsPage() {
     setProcessedCount(null);
     setTotalCount(null);
     setCurrentJobId(null);
+    setIsReviewLoading(false);
     currentProgressRef.current = 0;
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
@@ -231,6 +231,7 @@ export default function ImportTransactionsPage() {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setUploadState('error');
           setStatusNote(null);
+          setIsReviewLoading(false);
           return;
         }
         
@@ -243,6 +244,7 @@ export default function ImportTransactionsPage() {
           if (!result || !result.transactions || result.transactions.length === 0) {
             setUploadState('error');
             setStatusNote(null);
+            setIsReviewLoading(false);
             return;
           }
           
@@ -270,6 +272,7 @@ export default function ImportTransactionsPage() {
           setUploadState('ready');
           setProgressValue(100);
           setStatusNote(null);
+          setIsReviewLoading(false);
           return;
         }
         
@@ -305,6 +308,7 @@ export default function ImportTransactionsPage() {
         
       } catch (err) {
         console.error('Polling error:', err);
+        setIsReviewLoading(false);
       }
     };
     
@@ -315,9 +319,13 @@ export default function ImportTransactionsPage() {
 
   const handleFileUpload = useCallback(
     async (file: File) => {
+      if (!['idle', 'ready'].includes(uploadState)) {
+        return;
+      }
       if (file.type !== 'application/pdf') {
         setUploadState('error');
         setStatusNote(null);
+        setIsReviewLoading(false);
         return;
       }
 
@@ -328,6 +336,7 @@ export default function ImportTransactionsPage() {
       setProgressValue(0);
       setProcessedCount(null);
       setTotalCount(null);
+      setIsReviewLoading(true);
 
       // Clear any existing intervals
       if (progressIntervalRef.current) {
@@ -368,6 +377,7 @@ export default function ImportTransactionsPage() {
           setStatusNote(null);
           setStartTime(null);
           setElapsedSeconds(0);
+          setIsReviewLoading(false);
           return;
         }
 
@@ -407,24 +417,41 @@ export default function ImportTransactionsPage() {
         setStatusNote(null);
         setStartTime(null);
         setElapsedSeconds(0);
+        setIsReviewLoading(false);
       } finally {
         // Clean up
       }
     },
-    [startPolling],
+    [startPolling, uploadState],
   );
 
   const handleResumeJob = useCallback((jobId: string, jobStatus: JobStatus) => {
-    // Reset relevant state
+    setCurrentJobId(jobId);
+    if (jobStatus === 'failed') {
+      setUploadState('idle');
+      setStatusNote(null);
+      setParsedRows([]);
+      setProgressValue(0);
+      setProcessedCount(null);
+      setTotalCount(null);
+      setStartTime(null);
+      setElapsedSeconds(0);
+      setIsReviewLoading(false);
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      return;
+    }
+
+    setIsReviewLoading(true);
+
     setParsedRows([]);
     setProgressValue(0);
     setProcessedCount(null);
     setTotalCount(null);
-    
+
     const isCompletedJob = jobStatus === 'completed';
-    
+
     if (!isCompletedJob) {
-      // For resuming, we don't have exact start time, so we start timer from now for feedback
       const now = Date.now();
       setStartTime(now);
       setElapsedSeconds(0);
@@ -432,8 +459,7 @@ export default function ImportTransactionsPage() {
       setStartTime(null);
       setElapsedSeconds(0);
     }
-    
-    setCurrentJobId(jobId);
+
     if (!isCompletedJob) {
       setUploadState('queued'); // Will be updated by first poll
       setStatusNote('Resuming job...');
@@ -441,12 +467,10 @@ export default function ImportTransactionsPage() {
       setUploadState('idle');
       setStatusNote(null);
     }
-    
-    // Clear existing intervals
+
     if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    
-    // Start polling immediately
+
     startPolling(jobId);
   }, [startPolling]);
 
@@ -628,72 +652,84 @@ export default function ImportTransactionsPage() {
               <div className="flex flex-col gap-4 w-full flex-1">
                 <div
                   ref={dropZoneRef}
-                  className="border-2 border-dashed border-[#3a3a3a] rounded-3xl px-6 py-10 w-full flex-1 flex flex-col items-center justify-center gap-4 text-center transition-colors hover:border-[#AC66DA]"
+                  className={`border-2 border-dashed border-[#3a3a3a] rounded-3xl px-6 py-10 w-full flex-1 flex flex-col items-center justify-center gap-4 text-center transition-colors ${isUploadBusy ? 'pointer-events-none opacity-100' : 'hover:border-[#AC66DA]'}`}
                   style={{ backgroundColor: '#282828', minHeight: '320px' }}
+                  aria-busy={isUploadBusy}
+                  aria-live="polite"
                 >
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    Drag & drop your PDF here
-                  </h3>
-                  <p className="text-sm max-w-xl" style={{ color: 'var(--text-secondary)' }}>
-                    We accept bank statements in PDF format. Transactions will be parsed automatically so you can review and save them in seconds.
-                  </p>
-                  <div className="flex flex-col items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-2 rounded-full px-6 py-3 font-semibold transition-all cursor-pointer hover:opacity-90 active:scale-95"
-                      style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
-                    >
-                      Select PDF
-                    </button>
-                    <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileInputChange} />
-                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      Only .pdf · Max 15 MB recommended
-                    </span>
-                  </div>
-
-                  {shouldShowProgressStatus && (
-                    <div
-                      className="w-full max-w-xl space-y-3 rounded-[30px] border border-[#3a3a3a] px-6 py-5 mt-6"
-                      style={{ backgroundColor: '#282828' }}
-                    >
-                      {renderStatusBadge()}
-                      {uploadState !== 'ready' && <ProgressBar value={progressValue} showLabel={false} />}
-                      <div className="space-y-1.5">
-                        {statusNote && (
+                  {isUploadBusy ? (
+                    <div className="flex flex-col items-center justify-center gap-5 w-full max-w-xl">
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                          Processing your statement
+                        </h3>
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          Hold tight while we parse your PDF. You can review the progress below.
+                        </p>
+                      </div>
+                      <div
+                        className="w-full space-y-3 rounded-[30px] border border-[#3a3a3a] px-6 py-5"
+                        style={{ backgroundColor: '#282828' }}
+                      >
+                        {renderStatusBadge()}
+                        <ProgressBar value={progressValue} showLabel={false} />
+                        <div className="space-y-1.5">
                           <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                            {statusNote}
+                            {statusNote || 'Processing PDF...'}
                           </p>
-                        )}
-                        {startTime !== null && (
-                          <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                            <span>Elapsed: {formatTime(elapsedSeconds)}</span>
-                            {uploadState === 'processing' && elapsedSeconds > 5 && (
-                              <>
-                                <span>·</span>
-                                <span>
-                                  Estimated remaining:{' '}
-                                  {(() => {
-                                    if (
-                                      processedCount !== null &&
-                                      totalCount !== null &&
-                                      processedCount > 0 &&
-                                      totalCount > processedCount
-                                    ) {
-                                      const remaining = totalCount - processedCount;
-                                      const rate = processedCount / elapsedSeconds;
-                                      const estimatedSeconds = Math.ceil(remaining / rate);
-                                      return formatTime(estimatedSeconds);
-                                    }
-                                    return elapsedSeconds > 0 ? formatTime(Math.floor(elapsedSeconds * 2)) : '—';
-                                  })()}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        )}
+                          {startTime !== null && (
+                            <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                              <span>Elapsed: {formatTime(elapsedSeconds)}</span>
+                              {uploadState === 'processing' && elapsedSeconds > 5 && (
+                                <>
+                                  <span>·</span>
+                                  <span>
+                                    Estimated remaining:{' '}
+                                    {(() => {
+                                      if (
+                                        processedCount !== null &&
+                                        totalCount !== null &&
+                                        processedCount > 0 &&
+                                        totalCount > processedCount
+                                      ) {
+                                        const remaining = totalCount - processedCount;
+                                        const rate = processedCount / elapsedSeconds;
+                                        const estimatedSeconds = Math.ceil(remaining / rate);
+                                        return formatTime(estimatedSeconds);
+                                      }
+                                      return elapsedSeconds > 0 ? formatTime(Math.floor(elapsedSeconds * 2)) : '—';
+                                    })()}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  ) : (
+                    <>
+                      <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        Drag & drop your PDF here
+                      </h3>
+                      <p className="text-sm max-w-xl" style={{ color: 'var(--text-secondary)' }}>
+                        We accept bank statements in PDF format. Transactions will be parsed automatically so you can review and save them in seconds.
+                      </p>
+                      <div className="flex flex-col items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex items-center gap-2 rounded-full px-6 py-3 font-semibold transition-all cursor-pointer hover:opacity-90 active:scale-95"
+                          style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                        >
+                          Select PDF
+                        </button>
+                        <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileInputChange} />
+                        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                          Only .pdf · Max 15 MB recommended
+                        </span>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -749,7 +785,25 @@ export default function ImportTransactionsPage() {
                 </div>
               </div>
 
-              <div className="w-full overflow-x-auto rounded-3xl border border-[#3a3a3a] flex-1" style={{ backgroundColor: '#202020' }}>
+              <div
+                className="relative w-full overflow-x-auto rounded-3xl border border-[#3a3a3a] flex-1"
+                style={{ backgroundColor: '#202020' }}
+                aria-busy={isReviewLoading}
+              >
+                {isReviewLoading && (
+                  <div
+                    className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 px-6 text-center"
+                    style={{ backgroundColor: 'rgba(32, 32, 32, 0.85)', backdropFilter: 'blur(2px)' }}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-full border-2 animate-spin"
+                      style={{ borderColor: 'rgba(172,102,218,0.4)', borderTopColor: 'var(--accent-purple)' }}
+                    />
+                    <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                      Loading transactions…
+                    </p>
+                  </div>
+                )}
                 <table className="min-w-full table-fixed">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
