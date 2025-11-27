@@ -12,7 +12,7 @@ import TypeFilter from '@/components/transactions/shared/TypeFilter';
 import CategoryStatsModal from '@/components/transactions/CategoryStatsModal';
 import RecentJobsList, { type JobStatus } from '@/components/transactions/import/RecentJobsList';
 import { TransactionUploadResponse, UploadedTransaction, type Category } from '@/types/dashboard';
-import { CheckCircle, Upload, WarningTriangle, Reports, Language, Trash } from 'iconoir-react';
+import { Upload, WarningTriangle, Reports, Language, Trash } from 'iconoir-react';
 import { useCurrency } from '@/hooks/useCurrency';
 
 type UploadState = 'idle' | 'queued' | 'uploading' | 'processing' | 'categorizing' | 'ready' | 'error';
@@ -22,7 +22,7 @@ type TableRow = UploadedTransaction & {
   suggestedCategory?: string | null;
 };
 
-const REVIEW_PAGE_SIZE = 12;
+const REVIEW_PAGE_SIZE = 10;
 
 export default function ImportTransactionsPage() {
   const { currency } = useCurrency();
@@ -41,7 +41,6 @@ export default function ImportTransactionsPage() {
   const [isCategoryStatsOpen, setIsCategoryStatsOpen] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [totalTimeSeconds, setTotalTimeSeconds] = useState<number | null>(null);
   const [processedCount, setProcessedCount] = useState<number | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -110,6 +109,10 @@ export default function ImportTransactionsPage() {
     return filteredRows.slice(start, start + REVIEW_PAGE_SIZE);
   }, [filteredRows, reviewPage]);
 
+  const shouldShowProgressStatus =
+    Boolean(statusNote) &&
+    ['queued', 'uploading', 'processing', 'categorizing'].includes(uploadState);
+
 
   // Fetch categories from API
   useEffect(() => {
@@ -149,7 +152,6 @@ export default function ImportTransactionsPage() {
     setStatusNote(null);
     setStartTime(null);
     setElapsedSeconds(0);
-    setTotalTimeSeconds(null);
     setProcessedCount(null);
     setTotalCount(null);
     setCurrentJobId(null);
@@ -228,7 +230,7 @@ export default function ImportTransactionsPage() {
         if (data.status === 'failed') {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           setUploadState('error');
-          setStatusNote(data.error || 'Processing failed');
+          setStatusNote(null);
           return;
         }
         
@@ -240,7 +242,7 @@ export default function ImportTransactionsPage() {
           
           if (!result || !result.transactions || result.transactions.length === 0) {
             setUploadState('error');
-            setStatusNote('No transactions were detected in that PDF.');
+            setStatusNote(null);
             return;
           }
           
@@ -262,13 +264,12 @@ export default function ImportTransactionsPage() {
             ? Math.floor((Date.now() - startTime) / 1000)
             : 0;
             
-          setTotalTimeSeconds(totalTime);
           setElapsedSeconds(totalTime); // freeze elapsed
           
           setParsedRows(normalized);
           setUploadState('ready');
           setProgressValue(100);
-          setStatusNote(`${normalized.length} transactions parsed successfully.`);
+          setStatusNote(null);
           return;
         }
         
@@ -316,7 +317,7 @@ export default function ImportTransactionsPage() {
     async (file: File) => {
       if (file.type !== 'application/pdf') {
         setUploadState('error');
-        setStatusNote('Only PDF files are supported right now.');
+        setStatusNote(null);
         return;
       }
 
@@ -324,7 +325,6 @@ export default function ImportTransactionsPage() {
       const now = Date.now();
       setStartTime(now);
       setElapsedSeconds(0);
-      setTotalTimeSeconds(null);
       setProgressValue(0);
       setProcessedCount(null);
       setTotalCount(null);
@@ -362,10 +362,10 @@ export default function ImportTransactionsPage() {
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+          await response.json().catch(() => null);
           setUploadState('error');
           setProgressValue(0);
-          setStatusNote(errorData.error || `Upload failed with status ${response.status}`);
+          setStatusNote(null);
           setStartTime(null);
           setElapsedSeconds(0);
           return;
@@ -404,7 +404,7 @@ export default function ImportTransactionsPage() {
         console.error('[import/upload]', error);
         setUploadState('error');
         setProgressValue(0);
-        setStatusNote('We could not upload that PDF. Double-check the file and try again.');
+        setStatusNote(null);
         setStartTime(null);
         setElapsedSeconds(0);
       } finally {
@@ -418,7 +418,6 @@ export default function ImportTransactionsPage() {
     // Reset relevant state
     setParsedRows([]);
     setProgressValue(0);
-    setTotalTimeSeconds(null);
     setProcessedCount(null);
     setTotalCount(null);
     
@@ -573,7 +572,7 @@ export default function ImportTransactionsPage() {
     } catch (error) {
       console.error('[import/confirm]', error);
       setUploadState('error');
-      setStatusNote('Unable to save imported transactions. Please try again.');
+      setStatusNote(null);
     } finally {
       setIsConfirming(false);
     }
@@ -622,305 +621,299 @@ export default function ImportTransactionsPage() {
         />
       </div>
 
-      <div className="px-4 md:px-6 pb-10">
-        <div className="mx-auto w-full max-w-6xl space-y-6">
-          <Card title="Bank Statement Upload" showActions={false}>
-          <div
-            ref={dropZoneRef}
-            className="border-2 border-dashed border-[#3a3a3a] rounded-3xl px-6 py-10 flex flex-col items-center justify-center gap-4 text-center transition-colors hover:border-[#AC66DA]"
-            style={{ backgroundColor: '#282828' }}
-          >
-            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Drag & drop your PDF here
-            </h3>
-            <p className="text-sm max-w-xl" style={{ color: 'var(--text-secondary)' }}>
-              We accept bank statements in PDF format. Transactions will be parsed automatically so you can review and save them in seconds.
-            </p>
-            <div className="flex flex-col items-center gap-3">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 rounded-full px-6 py-3 font-semibold transition-all cursor-pointer hover:opacity-90 active:scale-95"
-                style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
-              >
-                Select PDF
-              </button>
-              <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileInputChange} />
-              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Only .pdf · Max 15 MB recommended
-              </span>
-            </div>
-
-            {uploadState !== 'idle' && (
-              <div
-                className="w-full max-w-xl space-y-3 rounded-[30px] border border-[#3a3a3a] px-6 py-5 mt-6"
-                style={{ backgroundColor: '#282828' }}
-              >
-                {renderStatusBadge()}
-                {uploadState !== 'ready' && <ProgressBar value={progressValue} showLabel={false} />}
-                <div className="space-y-1.5">
-                  {statusNote && (
-                    <p
-                      className="text-xs leading-relaxed"
-                      style={{ color: uploadState === 'error' ? '#D93F3F' : 'var(--text-secondary)' }}
+      <div className="px-4 md:px-6 lg:px-8 pb-6 min-h-[calc(100vh-120px)]">
+        <div className="flex flex-col gap-6 min-h-full">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,0.62fr)_minmax(320px,0.38fr)] items-stretch">
+            <Card title="Bank Statement Upload" showActions={false} className="w-full h-full flex flex-col">
+              <div className="flex flex-col gap-4 w-full flex-1">
+                <div
+                  ref={dropZoneRef}
+                  className="border-2 border-dashed border-[#3a3a3a] rounded-3xl px-6 py-10 w-full flex-1 flex flex-col items-center justify-center gap-4 text-center transition-colors hover:border-[#AC66DA]"
+                  style={{ backgroundColor: '#282828', minHeight: '320px' }}
+                >
+                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Drag & drop your PDF here
+                  </h3>
+                  <p className="text-sm max-w-xl" style={{ color: 'var(--text-secondary)' }}>
+                    We accept bank statements in PDF format. Transactions will be parsed automatically so you can review and save them in seconds.
+                  </p>
+                  <div className="flex flex-col items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2 rounded-full px-6 py-3 font-semibold transition-all cursor-pointer hover:opacity-90 active:scale-95"
+                      style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
                     >
-                      {statusNote}
-                    </p>
-                  )}
-                  {uploadState === 'ready' && totalTimeSeconds !== null && (
-                    <p className="text-xs font-medium" style={{ color: 'var(--accent-green)' }}>
-                      Completed in {formatTime(totalTimeSeconds)}
-                    </p>
-                  )}
-                  {uploadState !== 'error' && uploadState !== 'ready' && startTime !== null && (
-                    <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      <span>Elapsed: {formatTime(elapsedSeconds)}</span>
-                      {uploadState === 'processing' && elapsedSeconds > 5 && (
-                        <>
-                          <span>·</span>
-                          <span>
-                            Estimated remaining:{' '}
-                            {(() => {
-                              // Use transaction counts for accurate estimate if available
-                              if (processedCount !== null && totalCount !== null && processedCount > 0 && totalCount > processedCount) {
-                                const remaining = totalCount - processedCount;
-                                const rate = processedCount / elapsedSeconds; // transactions per second
-                                const estimatedSeconds = Math.ceil(remaining / rate);
-                                return formatTime(estimatedSeconds);
-                              }
-                              // Fallback to simple heuristic
-                              return elapsedSeconds > 0 ? formatTime(Math.floor(elapsedSeconds * 2)) : '—';
-                            })()}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <RecentJobsList 
-            onResumeJob={handleResumeJob} 
-            currentJobId={currentJobId} 
-          />
-        </Card>
-
-        {parsedRows.length > 0 && (
-          <>
-            <Card 
-              title="Review Transactions" 
-              showActions={false}
-              customHeader={
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-card-header">Review Transactions</h2>
-                  <button
-                    onClick={() => setIsCategoryStatsOpen(true)}
-                    className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors cursor-pointer hover:opacity-90"
-                    style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
-                  >
-                    <Reports width={18} height={18} strokeWidth={1.5} />
-                    View All Stats
-                  </button>
-                </div>
-              }
-            >
-              <div className="flex flex-col gap-4">
-                {/* Filters */}
-                <div className={`flex flex-col md:flex-row md:items-center gap-3`}>
-                  <div className="flex-[0.6]">
-                    <SearchBar
-                      placeholder="Search transactions..."
-                      value={searchQuery}
-                      onChange={setSearchQuery}
-                    />
+                      Select PDF
+                    </button>
+                    <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileInputChange} />
+                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      Only .pdf · Max 15 MB recommended
+                    </span>
                   </div>
-                  <div className="flex-[0.4]">
-                    <CategoryFilter
-                      categories={categories}
-                      selectedCategory={categoryFilter}
-                      onSelect={setCategoryFilter}
-                    />
-                  </div>
-                  <div className="w-full md:w-40">
-                    <TypeFilter
-                      value={typeFilter}
-                      onChange={setTypeFilter}
-                    />
-                  </div>
-                </div>
 
-                {/* Table */}
-                <div className="w-full overflow-x-auto rounded-3xl border border-[#3a3a3a]" style={{ backgroundColor: '#202020' }}>
-                  <table className="min-w-full table-fixed">
-                    <thead>
-                      <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                        <th className="px-5 py-3 align-top w-32">Date</th>
-                        <th className="px-5 py-3 align-top w-[40%]">Description</th>
-                        <th className="px-5 py-3 align-top w-32">Type</th>
-                        <th className="px-5 py-3 align-top w-48">Category</th>
-                        <th className="px-5 py-3 align-top w-16"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedReviewRows.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-                            No transactions match your filters.
-                          </td>
-                        </tr>
-                      ) : (
-                        paginatedReviewRows.map(row => {
-                          const isExpense = row.amount < 0;
-                          
-                          return (
-                            <tr key={row.id} className="border-t border-[#2A2A2A]">
-                              <td className="px-5 py-4 align-top">
-                                <input
-                                  type="date"
-                                  value={row.date}
-                                  onChange={event => handleRowUpdate(row.id, 'date', event.target.value)}
-                                  className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-3 py-2 text-sm"
-                                  style={{ color: 'var(--text-primary)' }}
-                                />
-                              </td>
-                              <td className="px-5 py-4 align-top max-w-0">
-                                <div className="space-y-1.5 max-w-full">
-                                  <input
-                                    type="text"
-                                    value={row.description}
-                                    onChange={event => handleRowUpdate(row.id, 'description', event.target.value)}
-                                    className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-3 py-2 text-sm truncate"
-                                    style={{ color: 'var(--text-primary)' }}
-                                    placeholder="Description"
-                                    title={row.description}
-                                  />
-                                  <div className="flex items-center gap-1.5 text-xs min-w-0" style={{ color: 'var(--text-secondary)' }}>
-                                    <Language width={14} height={14} strokeWidth={1.5} className="flex-shrink-0" style={{ color: 'var(--text-secondary)' }} />
-                                    <span className="truncate" title={row.translatedDescription || 'No translation'}>
-                                      {row.translatedDescription || 'No translation'}
-                                    </span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-5 py-4 align-top">
-                                <div className="space-y-1.5">
-                                  <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                                      {currency.symbol}
-                                    </span>
-                                    <input
-                                      type="text"
-                                      inputMode="decimal"
-                                      pattern="^-?\\d*(?:[\\.,]\\d{0,2})?$"
-                                      value={Number.isFinite(row.amount) ? Math.abs(row.amount).toFixed(2) : ''}
-                                      onChange={event => handleRowUpdate(row.id, 'amount', event.target.value)}
-                                      className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] pl-8 pr-3 py-2 text-sm"
-                                      style={{ color: 'var(--text-primary)' }}
-                                    />
-                                  </div>
-                                  <span className="text-sm font-semibold" style={{ color: isExpense ? '#D93F3F' : '#74C648' }}>
-                                    {isExpense ? 'Expense' : 'Income'}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-5 py-4 align-top">
-                                <CategoryPicker
-                                  categories={categories}
-                                  selectedCategory={row.category ?? null}
-                                  onSelect={(category) => handleRowUpdate(row.id, 'category', category ?? '')}
-                                  suggestedCategory={row.suggestedCategory ?? null}
-                                />
-                              </td>
-                              <td className="px-5 py-4 align-top">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRowDelete(row.id)}
-                                  className="p-2 rounded-full transition-colors hover:opacity-80 cursor-pointer"
-                                  style={{ backgroundColor: '#202020', color: '#D93F3F' }}
-                                  title="Delete transaction"
-                                >
-                                  <Trash width={16} height={16} strokeWidth={1.5} />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination */}
-                {reviewTotalPages > 1 && filteredRows.length > 0 && (
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                        Showing {paginatedReviewRows.length} of {filteredRows.length} transactions
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setReviewPage(prev => Math.max(1, prev - 1))}
-                        disabled={reviewPage === 1}
-                        className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
-                        style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
-                      >
-                        Prev
-                      </button>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
-                          Page
-                        </span>
-                        <input
-                          type="number"
-                          min="1"
-                          max={reviewTotalPages || 1}
-                          value={reviewPageInput}
-                          onChange={e => handleReviewPageInputChange(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              handleReviewPageInputSubmit();
-                            }
-                          }}
-                          onBlur={handleReviewPageInputSubmit}
-                          className="w-16 rounded-full border-none px-3 py-1 text-xs font-semibold text-center"
-                          style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
-                        />
-                        <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
-                          of {reviewTotalPages || 1}
-                        </span>
+                  {shouldShowProgressStatus && (
+                    <div
+                      className="w-full max-w-xl space-y-3 rounded-[30px] border border-[#3a3a3a] px-6 py-5 mt-6"
+                      style={{ backgroundColor: '#282828' }}
+                    >
+                      {renderStatusBadge()}
+                      {uploadState !== 'ready' && <ProgressBar value={progressValue} showLabel={false} />}
+                      <div className="space-y-1.5">
+                        {statusNote && (
+                          <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                            {statusNote}
+                          </p>
+                        )}
+                        {startTime !== null && (
+                          <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                            <span>Elapsed: {formatTime(elapsedSeconds)}</span>
+                            {uploadState === 'processing' && elapsedSeconds > 5 && (
+                              <>
+                                <span>·</span>
+                                <span>
+                                  Estimated remaining:{' '}
+                                  {(() => {
+                                    if (
+                                      processedCount !== null &&
+                                      totalCount !== null &&
+                                      processedCount > 0 &&
+                                      totalCount > processedCount
+                                    ) {
+                                      const remaining = totalCount - processedCount;
+                                      const rate = processedCount / elapsedSeconds;
+                                      const estimatedSeconds = Math.ceil(remaining / rate);
+                                      return formatTime(estimatedSeconds);
+                                    }
+                                    return elapsedSeconds > 0 ? formatTime(Math.floor(elapsedSeconds * 2)) : '—';
+                                  })()}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setReviewPage(prev => Math.min(reviewTotalPages, prev + 1))}
-                        disabled={reviewPage >= reviewTotalPages}
-                        className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
-                        style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
-                      >
-                        Next
-                      </button>
                     </div>
-                  </div>
-                )}
-
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    disabled={isConfirming}
-                    onClick={handleConfirmImport}
-                    className="rounded-full px-5 py-2 font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
-                  >
-                    {isConfirming ? 'Saving…' : 'Confirm Import'}
-                  </button>
+                  )}
                 </div>
               </div>
             </Card>
-          </>
-        )}
+
+            <Card
+              title="Recent Imports"
+              showActions={false}
+              className="w-full h-full flex flex-col max-h-[420px]"
+            >
+              <RecentJobsList
+                onResumeJob={handleResumeJob}
+                currentJobId={currentJobId}
+                showTitle={false}
+                className="mt-2 flex-1 overflow-y-auto pr-2 pb-6"
+              />
+            </Card>
+          </div>
+
+          <Card title="Review Transactions" showActions={false} className="flex-1 flex flex-col">
+            <div className="flex flex-col gap-4 flex-1">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+                <div className="flex-[0.6] min-w-0">
+                  <SearchBar
+                    placeholder="Search transactions..."
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                  />
+                </div>
+                <div className="flex-[0.4]">
+                  <CategoryFilter
+                    categories={categories}
+                    selectedCategory={categoryFilter}
+                    onSelect={setCategoryFilter}
+                  />
+                </div>
+                <div className="w-full md:w-40">
+                  <TypeFilter
+                    value={typeFilter}
+                    onChange={setTypeFilter}
+                  />
+                </div>
+                <div className="w-full lg:w-auto lg:ml-auto">
+                  <button
+                    onClick={() => parsedRows.length > 0 && setIsCategoryStatsOpen(true)}
+                    disabled={parsedRows.length === 0}
+                    className="flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                    style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                  >
+                    <Reports width={18} height={18} strokeWidth={1.5} />
+                    Category Breakdown
+                  </button>
+                </div>
+              </div>
+
+              <div className="w-full overflow-x-auto rounded-3xl border border-[#3a3a3a] flex-1" style={{ backgroundColor: '#202020' }}>
+                <table className="min-w-full table-fixed">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+                      <th className="px-5 py-3 align-top w-32">Date</th>
+                      <th className="px-5 py-3 align-top w-[40%]">Description</th>
+                      <th className="px-5 py-3 align-top w-32">Type</th>
+                      <th className="px-5 py-3 align-top w-48">Category</th>
+                      <th className="px-5 py-3 align-top w-16"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedReviewRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          Select a recent import to preview its transactions.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedReviewRows.map(row => {
+                        const isExpense = row.amount < 0;
+                        return (
+                          <tr key={row.id} className="border-t border-[#2A2A2A]">
+                            <td className="px-5 py-4 align-top">
+                              <input
+                                type="date"
+                                value={row.date}
+                                onChange={event => handleRowUpdate(row.id, 'date', event.target.value)}
+                                className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-3 py-2 text-sm"
+                                style={{ color: 'var(--text-primary)' }}
+                              />
+                            </td>
+                            <td className="px-5 py-4 align-top max-w-0">
+                              <div className="space-y-1.5 max-w-full">
+                                <input
+                                  type="text"
+                                  value={row.description}
+                                  onChange={event => handleRowUpdate(row.id, 'description', event.target.value)}
+                                  className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-3 py-2 text-sm truncate"
+                                  style={{ color: 'var(--text-primary)' }}
+                                  placeholder="Description"
+                                  title={row.description}
+                                />
+                                <div className="flex items-center gap-1.5 text-xs min-w-0" style={{ color: 'var(--text-secondary)' }}>
+                                  <Language width={14} height={14} strokeWidth={1.5} className="flex-shrink-0" style={{ color: 'var(--text-secondary)' }} />
+                                  <span className="truncate" title={row.translatedDescription || 'No translation'}>
+                                    {row.translatedDescription || 'No translation'}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <div className="space-y-1.5">
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                    {currency.symbol}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    pattern="^-?\\d*(?:[\\.,]\\d{0,2})?$"
+                                    value={Number.isFinite(row.amount) ? Math.abs(row.amount).toFixed(2) : ''}
+                                    onChange={event => handleRowUpdate(row.id, 'amount', event.target.value)}
+                                    className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] pl-8 pr-3 py-2 text-sm"
+                                    style={{ color: 'var(--text-primary)' }}
+                                  />
+                                </div>
+                                <span className="text-sm font-semibold" style={{ color: isExpense ? '#D93F3F' : '#74C648' }}>
+                                  {isExpense ? 'Expense' : 'Income'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <CategoryPicker
+                                categories={categories}
+                                selectedCategory={row.category ?? null}
+                                onSelect={(category) => handleRowUpdate(row.id, 'category', category ?? '')}
+                                suggestedCategory={row.suggestedCategory ?? null}
+                              />
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <button
+                                type="button"
+                                onClick={() => handleRowDelete(row.id)}
+                                className="p-2 rounded-full transition-colors hover:opacity-80 cursor-pointer"
+                                style={{ backgroundColor: '#202020', color: '#D93F3F' }}
+                                title="Delete transaction"
+                              >
+                                <Trash width={16} height={16} strokeWidth={1.5} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-2">
+                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  {parsedRows.length > 0
+                    ? `Showing ${paginatedReviewRows.length} of ${filteredRows.length} transactions`
+                    : 'Select an import job to preview transactions'}
+                </div>
+                {reviewTotalPages > 1 && filteredRows.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReviewPage(prev => Math.max(1, prev - 1))}
+                      disabled={reviewPage === 1}
+                      className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
+                      style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                    >
+                      Prev
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
+                        Page
+                      </span>
+                      <input
+                        type="number"
+                        min="1"
+                        max={reviewTotalPages || 1}
+                        value={reviewPageInput}
+                        onChange={e => handleReviewPageInputChange(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            handleReviewPageInputSubmit();
+                          }
+                        }}
+                        onBlur={handleReviewPageInputSubmit}
+                        className="w-16 rounded-full border-none px-3 py-1 text-xs font-semibold text-center"
+                        style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                      />
+                      <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
+                        of {reviewTotalPages || 1}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReviewPage(prev => Math.min(reviewTotalPages, prev + 1))}
+                      disabled={reviewPage >= reviewTotalPages}
+                      className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
+                      style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  disabled={isConfirming || parsedRows.length === 0}
+                  onClick={handleConfirmImport}
+                  className="rounded-full px-5 py-2 font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                >
+                  {isConfirming ? 'Saving…' : 'Confirm Import'}
+                </button>
+              </div>
+            </div>
+          </Card>
 
         {/* Category Stats Modal */}
         {isCategoryStatsOpen && parsedRows.length > 0 && (
