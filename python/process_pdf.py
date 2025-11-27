@@ -55,12 +55,51 @@ DATE_FORMATS: Tuple[str, ...] = (
     "%d %B %Y",
 )
 
+CURRENCY_SYMBOL_MAP: Dict[str, str] = {
+    "₾": "GEL",
+    "₽": "RUB",
+    "$": "USD",
+    "€": "EUR",
+    "£": "GBP",
+    "¥": "JPY",
+    "₹": "INR",
+    "₺": "TRY",
+}
+
+COMMON_CURRENCY_CODES = {
+    "USD",
+    "EUR",
+    "GEL",
+    "GBP",
+    "RUB",
+    "JPY",
+    "CAD",
+    "AUD",
+    "CHF",
+    "CNY",
+    "SEK",
+    "NOK",
+    "DKK",
+    "PLN",
+    "TRY",
+    "KZT",
+    "UAH",
+    "INR",
+}
+
 
 @dataclass
 class RawTransaction:
     date: str
     description: str
     amount: float
+
+
+@dataclass
+class _PendingTextTransaction:
+    record: RawTransaction
+    meta_parts: List[str]
+    detail_parts: List[str]
 
 
 @dataclass
@@ -266,11 +305,24 @@ def parse_date(value: str) -> Optional[str]:
     cleaned = value.strip()
     if not cleaned:
         return None
-    for fmt in DATE_FORMATS:
-        try:
-            return datetime.strptime(cleaned, fmt).date().isoformat()
-        except ValueError:
-            continue
+
+    candidates = [cleaned]
+    # Extract obvious date fragments from longer strings like "31.10.2025 20:21"
+    inline_match = re.search(r"(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})", cleaned)
+    iso_match = re.search(r"(\d{4}[./-]\d{1,2}[./-]\d{1,2})", cleaned)
+    if inline_match:
+        candidates.insert(0, inline_match.group(1))
+    if iso_match:
+        candidates.insert(0, iso_match.group(1))
+    if " " in cleaned:
+        candidates.extend(part for part in cleaned.split() if part)
+
+    for candidate in candidates:
+        for fmt in DATE_FORMATS:
+            try:
+                return datetime.strptime(candidate.strip(), fmt).date().isoformat()
+            except ValueError:
+                continue
     # Sometimes date comes as DD/MM/YY without century
     match = re.match(r"^(\d{2})/(\d{2})/(\d{2})$", cleaned)
     if match:
@@ -287,31 +339,63 @@ def parse_amount(candidates: Iterable[str]) -> Optional[float]:
     for candidate in candidates:
         if not candidate:
             continue
-        raw = candidate.strip()
+        raw = candidate.replace("\xa0", " ").strip()
         if not raw:
             continue
-        cleaned = (
-            raw.replace("₾", "")
-            .replace("GEL", "")
-            .replace("lari", "")
-            .replace(" ", "")
-        )
-        cleaned = cleaned.replace("'", "")
-        cleaned = cleaned.replace(",", "")
-        # Replace Georgian decimal comma
-        cleaned = cleaned.replace("·", ".")
-        cleaned = cleaned.replace("–", "-")
-        if cleaned.count('.') > 1:
-            # attempt to fix numbers like 1.234.56 -> 1234.56
-            parts = cleaned.split('.')
-            cleaned = ''.join(parts[:-1]) + '.' + parts[-1]
-        if cleaned.startswith('(') and cleaned.endswith(')'):
-            cleaned = f"-{cleaned[1:-1]}"
+        normalized = raw
+        normalized = normalized.replace("−", "-").replace("–", "-").replace("—", "-")
+        sign = 1
+        if normalized.startswith("(") and normalized.endswith(")"):
+            sign = -1
+            normalized = normalized[1:-1]
+        normalized = normalized.strip()
+        if normalized.startswith("+"):
+            normalized = normalized[1:]
+            sign = 1
+        elif normalized.startswith("-"):
+            normalized = normalized[1:]
+            sign = -1
+        normalized = re.sub(r"[A-Za-zА-Яа-я$€£¥₽₾₴₺₹]", "", normalized)
+        normalized = normalized.replace(" ", "")
+        normalized = normalized.replace("'", "")
+        if not normalized:
+            continue
+        comma_count = normalized.count(",")
+        dot_count = normalized.count(".")
+        if comma_count and not dot_count:
+            normalized = normalized.replace(",", ".")
+        elif comma_count and dot_count:
+            if normalized.rfind(",") > normalized.rfind("."):
+                normalized = normalized.replace(".", "")
+                normalized = normalized.replace(",", ".")
+            else:
+                normalized = normalized.replace(",", "")
         try:
-            value = float(Decimal(cleaned))
-            return value
+            value = float(Decimal(normalized))
         except (InvalidOperation, ValueError):
             continue
+        return sign * value
+    return None
+
+
+def detect_currency_from_text(text: Optional[str]) -> Optional[str]:
+    if not text:
+        return None
+    for symbol, code in CURRENCY_SYMBOL_MAP.items():
+        if symbol in text:
+            return code
+    if re.search(r"\bруб", text, re.IGNORECASE):
+        return "RUB"
+    if re.search(r"\blari\b", text, re.IGNORECASE):
+        return "GEL"
+    currency_match = re.search(r"(?:currency|валюта)\s*[:\-]?\s*([A-Z]{3})", text, re.IGNORECASE)
+    if currency_match:
+        return currency_match.group(1).upper()
+    code_candidates = re.findall(r"\b[A-Z]{3}\b", text)
+    for candidate in code_candidates:
+        upper_candidate = candidate.upper()
+        if upper_candidate in COMMON_CURRENCY_CODES:
+            return upper_candidate
     return None
 
 
@@ -388,6 +472,9 @@ def extract_transactions_with_pdfplumber(pdf_path: Path) -> Tuple[List[RawTransa
                     # Show first 200 chars to understand PDF structure
                     preview = text_sample[:200].replace('\n', ' ').strip()
                     logger.info("Page 1 text preview: %s...", preview)
+                    currency_hint = detect_currency_from_text(text_sample)
+                    if currency_hint:
+                        metadata.currency = currency_hint
                 else:
                     logger.warning("Page 1: No text extracted - PDF might be image-based or encrypted")
             
@@ -446,8 +533,268 @@ def extract_transactions_with_pdfplumber(pdf_path: Path) -> Tuple[List[RawTransa
         traceback.print_exc()
         return [], metadata
 
+    text_based_rows = _extract_transactions_from_text(pdf_path)
+    if text_based_rows:
+        table_score = _score_transactions(transactions)
+        text_score = _score_transactions(text_based_rows)
+        if not transactions or text_score < table_score:
+            logger.info(
+                "Switching to text-based parsing for %s (score %.2f -> %.2f)",
+                pdf_path.name,
+                table_score,
+                text_score,
+            )
+            transactions = text_based_rows
+
     logger.info("PDF extraction completed: found %d transactions across %d pages", len(transactions), len(pdf.pages) if 'pdf' in locals() else 0)
     return transactions, metadata
+
+
+def _clean_cell_text(value: Optional[str]) -> str:
+    if not value:
+        return ""
+    return re.sub(r"\s+", " ", value.replace("\xa0", " ")).strip()
+
+
+def _looks_like_time(value: str) -> bool:
+    stripped = value.strip()
+    return bool(re.fullmatch(r"\d{1,2}:\d{2}(:\d{2})?", stripped))
+
+
+def _is_masked_value(value: str) -> bool:
+    if not value:
+        return False
+    normalized = value.replace(" ", "")
+    return bool(re.fullmatch(r"\*{2,}\d{2,}", normalized))
+
+
+def _collect_description_from_cells(cells: List[str]) -> str:
+    parts: List[str] = []
+    for cell in cells:
+        text = _clean_cell_text(cell)
+        if not text:
+            continue
+        if parse_date(text):
+            continue
+        if _looks_like_time(text):
+            continue
+        if parse_amount([text]):
+            continue
+        if _is_masked_value(text):
+            continue
+        # Skip cells that are purely numeric identifiers (6+ digits)
+        numeric_only = text.replace(" ", "")
+        if numeric_only.isdigit() and len(numeric_only) >= 6:
+            continue
+        parts.append(text)
+    deduped: List[str] = []
+    seen: set[str] = set()
+    for part in parts:
+        lowered = part.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        deduped.append(part)
+    return " ".join(deduped).strip()
+
+
+def _line_starts_with_date(value: str) -> bool:
+    stripped = value.strip()
+    return bool(re.match(r"^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}", stripped))
+
+
+def _strip_date_prefix(value: str) -> str:
+    stripped = value.strip()
+    match = re.match(
+        r"^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\s*(\d{2}:\d{2})?\s*(\d{6,})?\s*(.*)$",
+        stripped,
+    )
+    if match:
+        remainder = match.group(3) or ""
+        return remainder.strip()
+    return stripped
+
+
+def _normalize_description(value: str) -> str:
+    if not value:
+        return "Imported transaction"
+    text = re.sub(r"\s+", " ", value).strip()
+    text = re.sub(r"^\d{4,}\s+", "", text)
+    text = re.sub(r"\bоперация по карте\s+\*+\d+\b", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bоперация по карте\b", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bкарте\s+\*+\d+\b", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"Продолжение на следующей странице.*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"Для проверки подлинности.*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"В ВАЛЮТЕ СЧЁТА.*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s+", " ", text).strip(" -")
+    return text or "Imported transaction"
+
+
+HEADER_KEYWORDS = (
+    "выписка",
+    "statement",
+    "www.",
+    "сбербанк",
+    "остаток",
+    "итого",
+    "категория",
+    "описание операции",
+    "account holder",
+)
+
+CREDIT_KEYWORDS = (
+    "перевод от",
+    "зачисление",
+    "зарплата",
+    "заработная плата",
+    "transfer from",
+    "incoming transfer",
+    "deposit",
+    "salary",
+    "credited",
+    "поступление",
+)
+
+DEBIT_KEYWORDS = (
+    "перевод на",
+    "списание",
+    "оплата",
+    "платеж",
+    "transfer to",
+    "payment to",
+    "withdrawal",
+    "cash withdrawal",
+)
+
+NUMBER_PATTERN = re.compile(r"[+-]?\d[\d\s]*[.,]\d{2}")
+
+
+def _looks_like_header(text: str) -> bool:
+    lowered = text.lower()
+    return any(keyword in lowered for keyword in HEADER_KEYWORDS)
+
+
+def _description_indicates_credit(text: str) -> bool:
+    lowered = text.lower()
+    return any(keyword in lowered for keyword in CREDIT_KEYWORDS)
+
+
+def _description_indicates_debit(text: str) -> bool:
+    lowered = text.lower()
+    return any(keyword in lowered for keyword in DEBIT_KEYWORDS)
+
+
+def _parse_text_transaction_line(line: str) -> Optional[Tuple[str, str, float]]:
+    match = re.match(r"(?P<date>\d{2}\.\d{2}\.\d{4})(?:\s+(?P<time>\d{2}:\d{2}))?\s+(?P<body>.+)", line)
+    if not match:
+        return None
+    date_raw = match.group("date")
+    date_value = parse_date(date_raw)
+    if not date_value:
+        return None
+    body = match.group("body").strip()
+    number_matches = list(NUMBER_PATTERN.finditer(body))
+    if not number_matches:
+        return None
+    amount_match = number_matches[-2] if len(number_matches) > 1 else number_matches[-1]
+    amount_text = amount_match.group()
+    amount_value = parse_amount([amount_text])
+    if amount_value is None:
+        return None
+    meta_text = body[:amount_match.start()].strip()
+    if not meta_text:
+        meta_text = "Imported transaction"
+    if amount_text.strip().startswith("+"):
+        amount = abs(amount_value)
+    elif amount_value < 0 or _description_indicates_debit(meta_text):
+        amount = -abs(amount_value)
+    elif _description_indicates_credit(meta_text):
+        amount = abs(amount_value)
+    else:
+        amount = -abs(amount_value)
+    return date_value, meta_text, amount
+
+
+def _finalize_pending_transaction(pending: _PendingTextTransaction) -> RawTransaction:
+    if pending.detail_parts:
+        detail = " ".join(pending.detail_parts)
+    elif pending.meta_parts:
+        detail = " ".join(pending.meta_parts)
+    else:
+        detail = "Imported transaction"
+    pending.record.description = _normalize_description(detail)
+    return pending.record
+
+
+def _extract_transactions_from_text(pdf_path: Path) -> List[RawTransaction]:
+    text_transactions: List[RawTransaction] = []
+    pending: Optional[_PendingTextTransaction] = None
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text() or ""
+                for raw_line in page_text.splitlines():
+                    line = raw_line.strip()
+                    if not line:
+                        continue
+                    parsed = _parse_text_transaction_line(line)
+                    if parsed:
+                        if pending:
+                            text_transactions.append(_finalize_pending_transaction(pending))
+                        date_value, meta_text, amount = parsed
+                        meta_clean = meta_text.strip()
+                        pending = _PendingTextTransaction(
+                            record=RawTransaction(
+                                date=date_value,
+                                description=meta_clean or "Imported transaction",
+                                amount=amount,
+                            ),
+                            meta_parts=[meta_clean] if meta_clean else [],
+                            detail_parts=[],
+                        )
+                        continue
+
+                    if pending is None:
+                        continue
+
+                    if _looks_like_header(line):
+                        continue
+
+                    if _is_masked_value(line):
+                        continue
+
+                    if parse_amount([line]):
+                        continue
+
+                    if _line_starts_with_date(line):
+                        remainder = _strip_date_prefix(line)
+                        if remainder:
+                            pending.detail_parts.append(remainder)
+                        continue
+
+                    if parse_date(line):
+                        continue
+
+                    pending.detail_parts.append(line)
+
+            if pending:
+                text_transactions.append(_finalize_pending_transaction(pending))
+    except Exception:
+        logger.exception("Text-based PDF parsing failed")
+        return []
+    return text_transactions
+
+
+def _score_transactions(rows: List[RawTransaction]) -> float:
+    if not rows:
+        return float("inf")
+    absolute_values = sorted(abs(tx.amount) for tx in rows if tx.amount is not None)
+    if not absolute_values:
+        return float("inf")
+    median = absolute_values[len(absolute_values) // 2]
+    header_penalty = sum(1 for tx in rows if _looks_like_header(tx.description)) / len(rows)
+    zero_penalty = sum(1 for tx in rows if tx.amount == 0) / len(rows)
+    return median * (1 + header_penalty + zero_penalty)
 
 
 def _process_table(table: List[List], page_index: int, table_index: int, transactions: List[RawTransaction]) -> int:
@@ -488,10 +835,14 @@ def _process_table(table: List[List], page_index: int, table_index: int, transac
     if desc_col_idx is None:
         desc_col_idx = 5
     
+    recent_transaction: Optional[RawTransaction] = None
+
     for row in body:
-        cells = [cell.strip() if cell else "" for cell in row]
+        cells = [_clean_cell_text(cell) for cell in row]
         if not any(cells):
             continue
+
+        row_description_hint = _collect_description_from_cells(cells)
 
         # Try to find date in any column if first column doesn't have it
         date_value = None
@@ -506,6 +857,12 @@ def _process_table(table: List[List], page_index: int, table_index: int, transac
                     break
         
         if not date_value:
+            if row_description_hint and recent_transaction:
+                existing = recent_transaction.description or ""
+                if existing == "Imported transaction":
+                    recent_transaction.description = row_description_hint
+                elif row_description_hint not in existing:
+                    recent_transaction.description = f"{existing} {row_description_hint}".strip()
             continue
 
         # Extract amounts
@@ -520,13 +877,32 @@ def _process_table(table: List[List], page_index: int, table_index: int, transac
         
         # If amounts not found in expected columns, try to find in any column
         if debit_amount is None and credit_amount is None:
-            for cell in cells:
-                if cell:
-                    amount = parse_amount([cell])
-                    if amount and amount != 0:
-                        # Assume negative if it looks like a debit/expense
-                        debit_amount = abs(amount)
-                        break
+            amount_candidates: List[Tuple[int, float, str]] = []
+            for idx in range(len(cells) - 1, -1, -1):
+                cell = cells[idx]
+                if not cell:
+                    continue
+                if parse_date(cell) or _looks_like_time(cell):
+                    continue
+                if _is_masked_value(cell):
+                    continue
+                stripped_digits = cell.replace(" ", "")
+                if stripped_digits.isdigit() and len(stripped_digits) >= 6 and "," not in cell and "." not in cell:
+                    continue
+                amount = parse_amount([cell])
+                if amount is None or amount == 0:
+                    continue
+                amount_candidates.append((idx, amount, cell))
+            if amount_candidates:
+                preferred = [candidate for candidate in amount_candidates if candidate[0] != len(cells) - 1]
+                target_idx, candidate_value, raw_cell = (preferred or amount_candidates)[0]
+                raw_stripped = raw_cell.strip()
+                if candidate_value < 0 or raw_stripped.startswith("-") or raw_stripped.startswith("("):
+                    debit_amount = abs(candidate_value)
+                elif raw_stripped.startswith("+"):
+                    credit_amount = abs(candidate_value)
+                else:
+                    debit_amount = abs(candidate_value)
         
         amount_value: Optional[float] = None
         if debit_amount is not None and debit_amount != 0:
@@ -549,15 +925,17 @@ def _process_table(table: List[List], page_index: int, table_index: int, transac
                 if not parse_date(text) and not parse_amount([text]):
                     description_segments.append(text)
         
-        description = " ".join(segment for segment in description_segments if segment).strip() or "Imported transaction"
+        description = " ".join(segment for segment in description_segments if segment).strip()
+        if not description:
+            description = row_description_hint or "Imported transaction"
 
-        transactions.append(
-            RawTransaction(
-                date=date_value,
-                description=description,
-                amount=amount_value,
-            )
+        new_transaction = RawTransaction(
+            date=date_value,
+            description=description,
+            amount=amount_value,
         )
+        transactions.append(new_transaction)
+        recent_transaction = new_transaction
         rows_processed += 1
     
     return rows_processed
