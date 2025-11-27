@@ -510,7 +510,7 @@ export async function GET(request: NextRequest) {
     const user = await requireCurrentUser();
     const { searchParams } = request.nextUrl;
     const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10));
-    const pageSize = Math.min(100, Math.max(1, Number.parseInt(searchParams.get('pageSize') ?? '12', 10)));
+    const pageSize = Math.min(100, Math.max(1, Number.parseInt(searchParams.get('pageSize') ?? '10', 10)));
     const search = (searchParams.get('search') ?? '').toLowerCase();
     const category = searchParams.get('category');
 

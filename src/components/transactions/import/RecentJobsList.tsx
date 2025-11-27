@@ -22,6 +22,8 @@ interface Job {
 interface RecentJobsListProps {
   onResumeJob: (jobId: string, status: JobStatus) => void;
   currentJobId?: string | null;
+  className?: string;
+  showTitle?: boolean;
 }
 
 const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
@@ -69,7 +71,12 @@ function formatDuration(createdAt: string, completedAt: string | null): string |
   return parts.join(' ');
 }
 
-export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobsListProps) {
+export default function RecentJobsList({
+  onResumeJob,
+  currentJobId,
+  className = '',
+  showTitle = true,
+}: RecentJobsListProps) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
@@ -142,8 +149,8 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
   const hasJobs = jobs.length > 0;
 
   return (
-    <div className="space-y-3 mt-6">
-      <h3 className="text-sm font-semibold text-[#E7E4E4] px-1">Recent Imports</h3>
+    <div className={`space-y-3 min-h-0 ${className}`}>
+      {showTitle && <h3 className="text-sm font-semibold text-[#E7E4E4] px-1">Recent Imports</h3>}
       <div className="space-y-2">
         {showSkeleton && (
           Array.from({ length: 3 }).map((_, index) => (
@@ -271,7 +278,7 @@ export default function RecentJobsList({ onResumeJob, currentJobId }: RecentJobs
 
         {!showSkeleton && !hasJobs && (
           <div className="rounded-2xl border border-dashed border-[#3a3a3a] bg-[#252525] p-6 text-center text-xs text-[var(--text-secondary)]">
-            No imports yet. Start by uploading a CSV to see history here.
+            No imports yet. Start by uploading a PDF to see history here.
           </div>
         )}
       </div>
