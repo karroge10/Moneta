@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const transactions = body?.transactions as UploadedTransaction[];
     const metadata = body?.metadata as TransactionUploadMetadata | undefined;
+    const statementCurrencyIdInput = body?.statementCurrencyId;
 
     console.log(`[TRANSACTION IMPORT] Received ${transactions?.length || 0} transactions to import\n`);
 
@@ -46,18 +47,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's default currency or use first available currency
-    let currencyId = user.currencyId;
-    if (!currencyId) {
-      const defaultCurrency = await db.currency.findFirst();
+    let resolvedCurrency: { id: number; alias: string; symbol: string } | null = null;
+    let requestedCurrencyId: number | null = null;
+    if (typeof statementCurrencyIdInput === 'number') {
+      requestedCurrencyId = statementCurrencyIdInput;
+    } else if (typeof statementCurrencyIdInput === 'string' && statementCurrencyIdInput.trim() !== '') {
+      const parsed = Number.parseInt(statementCurrencyIdInput, 10);
+      if (!Number.isNaN(parsed)) {
+        requestedCurrencyId = parsed;
+      }
+    }
+
+    if (requestedCurrencyId) {
+      const currencyRecord = await db.currency.findUnique({
+        where: { id: requestedCurrencyId },
+        select: { id: true, alias: true, symbol: true },
+      });
+      if (currencyRecord) {
+        resolvedCurrency = currencyRecord;
+      }
+    }
+
+    if (!resolvedCurrency && metadata?.currency) {
+      const currencyRecord = await db.currency.findFirst({
+        where: {
+          alias: metadata.currency.toUpperCase(),
+        },
+        select: { id: true, alias: true, symbol: true },
+      });
+      if (currencyRecord) {
+        resolvedCurrency = currencyRecord;
+      }
+    }
+
+    if (!resolvedCurrency && user.currencyId) {
+      const userCurrencyRecord = await db.currency.findUnique({
+        where: { id: user.currencyId },
+        select: { id: true, alias: true, symbol: true },
+      });
+      if (userCurrencyRecord) {
+        resolvedCurrency = userCurrencyRecord;
+      }
+    }
+
+    if (!resolvedCurrency) {
+      const defaultCurrency = await db.currency.findFirst({
+        select: { id: true, alias: true, symbol: true },
+      });
       if (!defaultCurrency) {
         return NextResponse.json(
           { error: 'No currency configured. Please set up currencies first.' },
           { status: 500 },
         );
       }
-      currencyId = defaultCurrency.id;
+      resolvedCurrency = defaultCurrency;
     }
+
+    const currencyId = resolvedCurrency.id;
 
     // Pre-fetch all categories to build a lookup map (do this first)
     const allCategories = await db.category.findMany();

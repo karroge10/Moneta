@@ -15,7 +15,9 @@ interface CategoryPickerProps {
 export default function CategoryPicker({ categories, selectedCategory, onSelect, suggestedCategory }: CategoryPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -27,6 +29,15 @@ export default function CategoryPicker({ categories, selectedCategory, onSelect,
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setOpenUpward(false);
+      return;
+    }
+
+    setOpenUpward(false);
+  }, [isOpen]);
 
   const selectedCategoryObj = categories.find(cat => cat.name === selectedCategory);
   const displayValue = selectedCategory || 'Uncategorized';
@@ -53,7 +64,11 @@ export default function CategoryPicker({ categories, selectedCategory, onSelect,
       </button>
       
       {isOpen && (
-        <div className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: '#202020' }}>
+        <div 
+          ref={dropdownRef}
+          className={`absolute left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-50 ${openUpward ? 'bottom-full mb-2' : 'top-full mt-2'}`}
+          style={{ backgroundColor: '#202020' }}
+        >
           <div className="max-h-[240px] overflow-y-auto custom-scrollbar">
             <button
               type="button"

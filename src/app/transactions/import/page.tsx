@@ -11,7 +11,8 @@ import CategoryPicker from '@/components/transactions/shared/CategoryPicker';
 import TypeFilter from '@/components/transactions/shared/TypeFilter';
 import CategoryStatsModal from '@/components/transactions/CategoryStatsModal';
 import RecentJobsList, { type JobStatus } from '@/components/transactions/import/RecentJobsList';
-import { TransactionUploadResponse, UploadedTransaction, type Category } from '@/types/dashboard';
+import CurrencySelector from '@/components/transactions/import/CurrencySelector';
+import { TransactionUploadResponse, TransactionUploadMetadata, UploadedTransaction, type Category } from '@/types/dashboard';
 import { Upload, WarningTriangle, Reports, Language, Trash } from 'iconoir-react';
 import { useCurrency } from '@/hooks/useCurrency';
 
@@ -20,6 +21,13 @@ type UploadState = 'idle' | 'queued' | 'uploading' | 'processing' | 'categorizin
 type TableRow = UploadedTransaction & {
   id: string;
   suggestedCategory?: string | null;
+};
+
+type CurrencyOption = {
+  id: number;
+  name: string;
+  symbol: string;
+  alias: string;
 };
 
 const REVIEW_PAGE_SIZE = 10;
@@ -45,6 +53,17 @@ export default function ImportTransactionsPage() {
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [isReviewLoading, setIsReviewLoading] = useState(false);
+  const [statementMetadata, setStatementMetadata] = useState<TransactionUploadMetadata | null>(null);
+  const [currencyOptions, setCurrencyOptions] = useState<CurrencyOption[]>([]);
+  const [selectedCurrencyId, setSelectedCurrencyId] = useState<number | null>(null);
+  const [currencySelectionTouched, setCurrencySelectionTouched] = useState(false);
+  const [currencySelectionError, setCurrencySelectionError] = useState<string | null>(null);
+
+  // Get selected currency object for display
+  const selectedCurrency = useMemo(() => {
+    if (!selectedCurrencyId) return null;
+    return currencyOptions.find(opt => opt.id === selectedCurrencyId) ?? null;
+  }, [selectedCurrencyId, currencyOptions]);
   
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dropZoneRef = useRef<HTMLDivElement | null>(null);
@@ -129,6 +148,22 @@ export default function ImportTransactionsPage() {
     fetchCategories();
   }, []);
 
+  useEffect(() => {
+    const fetchCurrencies = async () => {
+      try {
+        const response = await fetch('/api/currencies');
+        if (response.ok) {
+          const data = await response.json();
+          setCurrencyOptions(data.currencies || []);
+        }
+      } catch (err) {
+        console.error('Error fetching currencies:', err);
+      }
+    };
+
+    fetchCurrencies();
+  }, []);
+
   const categoryLookup = useMemo(() => {
     const map = new Map<string, Category>();
     categories.forEach(category => {
@@ -144,6 +179,30 @@ export default function ImportTransactionsPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  useEffect(() => {
+    if (currencySelectionTouched) return;
+    if (!statementMetadata?.currency) return;
+    if (!currencyOptions.length) return;
+    const match = currencyOptions.find(
+      option => option.alias?.toUpperCase() === statementMetadata.currency.toUpperCase(),
+    );
+    if (match) {
+      setSelectedCurrencyId(match.id);
+    }
+  }, [statementMetadata, currencyOptions, currencySelectionTouched]);
+
+  useEffect(() => {
+    if (currencySelectionTouched) return;
+    if (selectedCurrencyId !== null) return;
+    if (!currencyOptions.length) return;
+    if (statementMetadata?.currency) return;
+    const fallback =
+      currencyOptions.find(option => option.id === currency.id) ?? currencyOptions[0];
+    if (fallback) {
+      setSelectedCurrencyId(fallback.id);
+    }
+  }, [currencyOptions, currencySelectionTouched, selectedCurrencyId, statementMetadata, currency.id]);
 
   const resetUploadState = () => {
     setUploadState('idle');
@@ -168,6 +227,11 @@ export default function ImportTransactionsPage() {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
+
+    setStatementMetadata(null);
+    setSelectedCurrencyId(null);
+    setCurrencySelectionTouched(false);
+    setCurrencySelectionError(null);
   };
 
   // Format time in seconds to human-readable string
@@ -269,6 +333,10 @@ export default function ImportTransactionsPage() {
           setElapsedSeconds(totalTime); // freeze elapsed
           
           setParsedRows(normalized);
+          setStatementMetadata(result.metadata ?? null);
+          setSelectedCurrencyId(null);
+          setCurrencySelectionTouched(false);
+          setCurrencySelectionError(null);
           setUploadState('ready');
           setProgressValue(100);
           setStatusNote(null);
@@ -431,6 +499,10 @@ export default function ImportTransactionsPage() {
       setUploadState('idle');
       setStatusNote(null);
       setParsedRows([]);
+      setStatementMetadata(null);
+      setSelectedCurrencyId(null);
+      setCurrencySelectionTouched(false);
+      setCurrencySelectionError(null);
       setProgressValue(0);
       setProcessedCount(null);
       setTotalCount(null);
@@ -445,6 +517,10 @@ export default function ImportTransactionsPage() {
     setIsReviewLoading(true);
 
     setParsedRows([]);
+    setStatementMetadata(null);
+    setSelectedCurrencyId(null);
+    setCurrencySelectionTouched(false);
+    setCurrencySelectionError(null);
     setProgressValue(0);
     setProcessedCount(null);
     setTotalCount(null);
@@ -569,9 +645,14 @@ export default function ImportTransactionsPage() {
 
   const handleConfirmImport = async () => {
     if (!parsedRows.length) return;
+    if (!selectedCurrencyId) {
+      setCurrencySelectionError('Select the statement currency before importing.');
+      return;
+    }
 
     setIsConfirming(true);
     try {
+      setCurrencySelectionError(null);
       const payload = parsedRows.map(row => ({
         date: row.date,
         description: row.description,
@@ -581,10 +662,19 @@ export default function ImportTransactionsPage() {
         confidence: row.confidence,
       }));
 
+      const requestBody: Record<string, unknown> = {
+        transactions: payload,
+        statementCurrencyId: selectedCurrencyId,
+      };
+
+      if (statementMetadata) {
+        requestBody.metadata = statementMetadata;
+      }
+
       const response = await fetch('/api/transactions/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactions: payload }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -592,6 +682,9 @@ export default function ImportTransactionsPage() {
       }
 
       setParsedRows([]);
+      setStatementMetadata(null);
+      setSelectedCurrencyId(null);
+      setCurrencySelectionTouched(false);
       resetUploadState();
     } catch (error) {
       console.error('[import/confirm]', error);
@@ -787,7 +880,7 @@ export default function ImportTransactionsPage() {
 
               <div
                 className="relative w-full overflow-x-auto rounded-3xl border border-[#3a3a3a] flex-1"
-                style={{ backgroundColor: '#202020' }}
+                style={{ backgroundColor: '#202020', overflowY: 'visible' }}
                 aria-busy={isReviewLoading}
               >
                 {isReviewLoading && (
@@ -809,7 +902,7 @@ export default function ImportTransactionsPage() {
                     <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
                       <th className="px-5 py-3 align-top w-32">Date</th>
                       <th className="px-5 py-3 align-top w-[40%]">Description</th>
-                      <th className="px-5 py-3 align-top w-32">Type</th>
+                      <th className="px-5 py-3 align-top w-32">Amount</th>
                       <th className="px-5 py-3 align-top w-48">Category</th>
                       <th className="px-5 py-3 align-top w-16"></th>
                     </tr>
@@ -822,7 +915,7 @@ export default function ImportTransactionsPage() {
                         </td>
                       </tr>
                     ) : (
-                      paginatedReviewRows.map(row => {
+                      paginatedReviewRows.map((row) => {
                         const isExpense = row.amount < 0;
                         return (
                           <tr key={row.id} className="border-t border-[#2A2A2A]">
@@ -858,7 +951,7 @@ export default function ImportTransactionsPage() {
                               <div className="space-y-1.5">
                                 <div className="relative">
                                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                                    {currency.symbol}
+                                    {selectedCurrency?.symbol ?? currency.symbol}
                                   </span>
                                   <input
                                     type="text"
@@ -875,7 +968,7 @@ export default function ImportTransactionsPage() {
                                 </span>
                               </div>
                             </td>
-                            <td className="px-5 py-4 align-top">
+                            <td className="px-5 py-4 align-top overflow-visible">
                               <CategoryPicker
                                 categories={categories}
                                 selectedCategory={row.category ?? null}
@@ -953,16 +1046,33 @@ export default function ImportTransactionsPage() {
                 )}
               </div>
 
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  disabled={isConfirming || parsedRows.length === 0}
-                  onClick={handleConfirmImport}
-                  className="rounded-full px-5 py-2 font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
-                >
-                  {isConfirming ? 'Saving…' : 'Confirm Import'}
-                </button>
+              <div className="mt-6 flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 justify-end">
+                  <CurrencySelector
+                    options={currencyOptions}
+                    selectedCurrencyId={selectedCurrencyId}
+                    onSelect={(currencyId) => {
+                      setSelectedCurrencyId(currencyId);
+                      setCurrencySelectionTouched(true);
+                      setCurrencySelectionError(null);
+                    }}
+                    disabled={isConfirming}
+                  />
+                  <button
+                    type="button"
+                    disabled={isConfirming || parsedRows.length === 0 || !selectedCurrencyId}
+                    onClick={handleConfirmImport}
+                    className="rounded-full px-6 py-2.5 font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
+                    style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                  >
+                    {isConfirming ? 'Saving…' : 'Confirm Import'}
+                  </button>
+                  {currencySelectionError && (
+                    <p className="text-xs" style={{ color: 'var(--error)' }}>
+                      {currencySelectionError}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </Card>

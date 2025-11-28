@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { detectSpecialTransactionType } from '@/lib/merchant';
 import { Transaction as TransactionType, ExpenseCategory } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
+import { convertAmount } from '@/lib/currency-conversion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -53,13 +53,26 @@ function getIconForCategory(categoryName: string | null): string {
 const categoryColors = ['#74C648', '#AC66DA', '#D93F3F', '#4A90E2', '#FFA500', '#FF8C00'];
 
 // GET - Fetch dashboard data
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Get user with language included to avoid extra query
     const user = await requireCurrentUserWithLanguage();
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
     
     const now = new Date();
+
+    const userCurrencyRecord = user.currencyId
+      ? await db.currency.findUnique({ where: { id: user.currencyId } })
+      : await db.currency.findFirst();
+
+    if (!userCurrencyRecord) {
+      return NextResponse.json(
+        { error: 'No currency configured.' },
+        { status: 500 },
+      );
+    }
+
+    const targetCurrencyId = userCurrencyRecord.id;
     
     // Calculate date ranges
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -73,31 +86,48 @@ export async function GET(request: NextRequest) {
       },
       include: {
         category: true,
+        currency: true,
       },
       orderBy: {
         date: 'desc',
       },
     });
+
+    const transactionsWithConverted = await Promise.all(
+      allTransactions.map(async (transaction) => {
+        const convertedAmount = await convertAmount(
+          transaction.amount,
+          transaction.currencyId,
+          targetCurrencyId,
+          transaction.date,
+        );
+
+        return {
+          ...transaction,
+          convertedAmount,
+        };
+      }),
+    );
     
     // Calculate current month income and expenses - all transactions included
-    const currentMonthTransactions = allTransactions.filter((t: typeof allTransactions[0]) => t.date >= currentMonthStart);
+    const currentMonthTransactions = transactionsWithConverted.filter((t) => t.date >= currentMonthStart);
     const currentMonthIncome = currentMonthTransactions
-      .filter((t: typeof currentMonthTransactions[0]) => t.type === 'income')
-      .reduce((sum: number, t: typeof currentMonthTransactions[0]) => sum + t.amount, 0);
+      .filter((t) => t.type === 'income')
+      .reduce((sum: number, t) => sum + t.convertedAmount, 0);
     const currentMonthExpenses = currentMonthTransactions
-      .filter((t: typeof currentMonthTransactions[0]) => t.type === 'expense')
-      .reduce((sum: number, t: typeof currentMonthTransactions[0]) => sum + t.amount, 0);
+      .filter((t) => t.type === 'expense')
+      .reduce((sum: number, t) => sum + t.convertedAmount, 0);
     
     // Calculate last month income and expenses - all transactions included
-    const lastMonthTransactions = allTransactions.filter((t: typeof allTransactions[0]) => 
+    const lastMonthTransactions = transactionsWithConverted.filter((t) => 
       t.date >= lastMonthStart && t.date <= lastMonthEnd
     );
     const lastMonthIncome = lastMonthTransactions
-      .filter((t: typeof lastMonthTransactions[0]) => t.type === 'income')
-      .reduce((sum: number, t: typeof lastMonthTransactions[0]) => sum + t.amount, 0);
+      .filter((t) => t.type === 'income')
+      .reduce((sum: number, t) => sum + t.convertedAmount, 0);
     const lastMonthExpenses = lastMonthTransactions
-      .filter((t: typeof lastMonthTransactions[0]) => t.type === 'expense')
-      .reduce((sum: number, t: typeof lastMonthTransactions[0]) => sum + t.amount, 0);
+      .filter((t) => t.type === 'expense')
+      .reduce((sum: number, t) => sum + t.convertedAmount, 0);
     
     // Calculate trends
     const incomeTrend = lastMonthIncome > 0 
@@ -109,9 +139,11 @@ export async function GET(request: NextRequest) {
       : currentMonthExpenses > 0 ? 100 : 0;
     
     // Get latest transactions (limit to 6) - all transactions included
-    const latestTransactions: TransactionType[] = allTransactions
+    const latestTransactions: TransactionType[] = transactionsWithConverted
       .slice(0, 6)
-      .map((t: typeof allTransactions[0]) => {
+      .map((t) => {
+        const originalSignedAmount = t.type === 'expense' ? -t.amount : t.amount;
+        const convertedSignedAmount = t.type === 'expense' ? -t.convertedAmount : t.convertedAmount;
         // Format transaction name (cleaned and translated if needed)
         const displayName = formatTransactionName(t.description, userLanguageAlias, false);
         // Full name for modal (translated if needed, but not cleaned)
@@ -124,17 +156,20 @@ export async function GET(request: NextRequest) {
           originalDescription: t.description, // Original description from database
           date: formatDate(t.date),
           dateRaw: t.date.toISOString().split('T')[0],
-          amount: t.type === 'expense' ? -t.amount : t.amount,
+          amount: convertedSignedAmount,
+          originalAmount: originalSignedAmount,
+          originalCurrencySymbol: t.currency?.symbol,
+          originalCurrencyAlias: t.currency?.alias,
           category: t.category?.name || null,
           icon: getIconForCategory(t.category?.name || null),
         };
       });
     
     // Calculate top expense categories (current month)
-    const expenseTransactions = currentMonthTransactions.filter((t: typeof currentMonthTransactions[0]) => t.type === 'expense');
+    const expenseTransactions = currentMonthTransactions.filter((t) => t.type === 'expense');
     const categoryTotals = new Map<string, { amount: number; categoryId: number; categoryName: string }>();
     
-    expenseTransactions.forEach((t: typeof expenseTransactions[0]) => {
+    expenseTransactions.forEach((t) => {
       const categoryName = t.category?.name || 'Uncategorized';
       const categoryId = t.categoryId || 0;
       
@@ -147,7 +182,7 @@ export async function GET(request: NextRequest) {
       }
       
       const existing = categoryTotals.get(categoryName)!;
-      existing.amount += t.amount;
+      existing.amount += t.convertedAmount;
     });
     
     // Convert to array and sort by amount
@@ -159,7 +194,7 @@ export async function GET(request: NextRequest) {
     const totalExpenses = currentMonthExpenses;
     
     // Format top expenses with percentages and colors
-    const topExpenses: ExpenseCategory[] = topCategoriesArray.map((cat: typeof topCategoriesArray[0], index: number) => {
+    const topExpenses: ExpenseCategory[] = topCategoriesArray.map((cat, index: number) => {
       const percentage = totalExpenses > 0 
         ? Math.round((cat.amount / totalExpenses) * 100)
         : 0;
