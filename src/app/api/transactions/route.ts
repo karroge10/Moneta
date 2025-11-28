@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser, requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Transaction as TransactionType } from '@/types/dashboard';
-import { detectSpecialTransactionType } from '@/lib/merchant';
 import { formatTransactionName } from '@/lib/transaction-utils';
+import { convertAmount } from '@/lib/currency-conversion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,6 +55,19 @@ export async function GET(request: NextRequest) {
     // Get user with language included to avoid extra query
     const user = await requireCurrentUserWithLanguage();
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
+
+    const userCurrencyRecord = user.currencyId
+      ? await db.currency.findUnique({ where: { id: user.currencyId } })
+      : await db.currency.findFirst();
+
+    if (!userCurrencyRecord) {
+      return NextResponse.json(
+        { error: 'No currency configured.' },
+        { status: 500 },
+      );
+    }
+
+    const targetCurrencyId = userCurrencyRecord.id;
     
     const { searchParams } = new URL(request.url);
     
@@ -70,12 +83,12 @@ export async function GET(request: NextRequest) {
     const timePeriod = searchParams.get('timePeriod') || 'All Time';
     
     // Build where clause
-    const where: any = {
+    const where: Record<string, unknown> = {
       userId: user.id,
     };
     
     // Date filter based on time period or month
-    let dateFilter: { gte?: Date; lte?: Date } = {};
+    const dateFilter: { gte?: Date; lte?: Date } = {};
     const now = new Date();
     
     // Month filter takes precedence over time period if specified
@@ -145,16 +158,35 @@ export async function GET(request: NextRequest) {
       take: pageSize,
       include: {
         category: true,
+        currency: true,
       },
       orderBy: {
         date: 'desc',
       },
     });
+
+    const transactionsWithConverted = await Promise.all(
+      filteredTransactions.map(async (transaction) => {
+        const convertedAmount = await convertAmount(
+          transaction.amount,
+          transaction.currencyId,
+          targetCurrencyId,
+          transaction.date,
+        );
+
+        return {
+          ...transaction,
+          convertedAmount,
+        };
+      }),
+    );
     
     // Transform to frontend format
-    const transactions: TransactionType[] = filteredTransactions.map((t: typeof filteredTransactions[0]) => {
+    const transactions: TransactionType[] = transactionsWithConverted.map((t) => {
       // For transaction history page, show full name (translated if needed, but not cleaned)
       const fullName = formatTransactionName(t.description, userLanguageAlias, true);
+      const originalSignedAmount = t.type === 'expense' ? -t.amount : t.amount;
+      const convertedSignedAmount = t.type === 'expense' ? -t.convertedAmount : t.convertedAmount;
       
       return {
         id: t.id.toString(),
@@ -163,7 +195,11 @@ export async function GET(request: NextRequest) {
         originalDescription: t.description, // Original description from database
         date: formatDate(t.date),
         dateRaw: t.date.toISOString().split('T')[0], // Raw date for filtering
-        amount: t.type === 'expense' ? -t.amount : t.amount,
+        amount: convertedSignedAmount,
+        originalAmount: originalSignedAmount,
+        originalCurrencySymbol: t.currency?.symbol,
+        originalCurrencyAlias: t.currency?.alias,
+        currencyId: t.currencyId,
         category: t.category?.name || null,
         icon: getIconForCategory(t.category?.name || null),
       };
@@ -213,6 +249,10 @@ export async function POST(request: NextRequest) {
       }
       currencyId = defaultCurrency.id;
     }
+
+    const transactionCurrency = await db.currency.findUnique({
+      where: { id: currencyId },
+    });
     
     // Determine type and absolute amount
     const type = amount >= 0 ? 'income' : 'expense';
@@ -266,6 +306,8 @@ export async function POST(request: NextRequest) {
     });
     
     // Transform to frontend format (format name for display)
+    const signedAmount = newTransaction.type === 'expense' ? -newTransaction.amount : newTransaction.amount;
+
     const transaction: TransactionType = {
       id: newTransaction.id.toString(),
       name: formatTransactionName(newTransaction.description, userLanguageAlias, false),
@@ -273,9 +315,12 @@ export async function POST(request: NextRequest) {
       originalDescription: newTransaction.description, // Original description from database
       date: formatDate(newTransaction.date),
       dateRaw: newTransaction.date.toISOString().split('T')[0],
-      amount: newTransaction.type === 'expense' ? -newTransaction.amount : newTransaction.amount,
+      amount: signedAmount,
       category: newTransaction.category?.name || null,
       icon: getIconForCategory(newTransaction.category?.name || null),
+      originalAmount: signedAmount,
+      originalCurrencySymbol: transactionCurrency?.symbol,
+      originalCurrencyAlias: transactionCurrency?.alias,
     };
     
     return NextResponse.json({ transaction }, { status: 201 });
@@ -295,7 +340,7 @@ export async function PUT(request: NextRequest) {
     const user = await requireCurrentUserWithLanguage();
     const body = await request.json();
     
-    const { id, name, date, amount, category } = body;
+    const { id, name, date, amount, category, currencyId } = body;
     
     if (!id || !name || !date || amount === undefined) {
       return NextResponse.json(
@@ -350,6 +395,35 @@ export async function PUT(request: NextRequest) {
       }
     }
     
+    // Validate and get currency ID
+    let transactionCurrencyId: number;
+    if (currencyId !== undefined && currencyId !== null) {
+      // Validate currency exists
+      const currencyRecord = await db.currency.findUnique({
+        where: { id: Number(currencyId) },
+      });
+      if (!currencyRecord) {
+        return NextResponse.json(
+          { error: 'Invalid currency ID' },
+          { status: 400 }
+        );
+      }
+      transactionCurrencyId = currencyRecord.id;
+    } else {
+      // Fall back to user's default currency or existing transaction currency
+      transactionCurrencyId = user.currencyId ?? existingTransaction.currencyId;
+      if (!transactionCurrencyId) {
+        const defaultCurrency = await db.currency.findFirst();
+        if (!defaultCurrency) {
+          return NextResponse.json(
+            { error: 'No currency configured' },
+            { status: 500 }
+          );
+        }
+        transactionCurrencyId = defaultCurrency.id;
+      }
+    }
+    
     // Get language alias from user (already fetched with language relation)
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
     
@@ -362,9 +436,11 @@ export async function PUT(request: NextRequest) {
         description: name, // Save full description
         date: transactionDate,
         categoryId,
+        currencyId: transactionCurrencyId,
       },
       include: {
         category: true,
+        currency: true,
       },
     });
     
@@ -405,6 +481,29 @@ export async function PUT(request: NextRequest) {
     }
     
     // Transform to frontend format (format name for display)
+    const signedUpdatedAmount = updatedTransaction.type === 'expense' ? -updatedTransaction.amount : updatedTransaction.amount;
+    
+    // Get user's currency for conversion
+    const userCurrencyRecord = user.currencyId
+      ? await db.currency.findUnique({ where: { id: user.currencyId } })
+      : await db.currency.findFirst();
+
+    if (!userCurrencyRecord) {
+      return NextResponse.json(
+        { error: 'No currency configured.' },
+        { status: 500 },
+      );
+    }
+
+    const targetCurrencyId = userCurrencyRecord.id;
+    const convertedAmount = await convertAmount(
+      updatedTransaction.amount,
+      updatedTransaction.currencyId,
+      targetCurrencyId,
+      updatedTransaction.date,
+    );
+    const convertedSignedAmount = updatedTransaction.type === 'expense' ? -convertedAmount : convertedAmount;
+
     const transaction: TransactionType = {
       id: updatedTransaction.id.toString(),
       name: formatTransactionName(updatedTransaction.description, userLanguageAlias, false),
@@ -412,9 +511,13 @@ export async function PUT(request: NextRequest) {
       originalDescription: updatedTransaction.description, // Original description from database
       date: formatDate(updatedTransaction.date),
       dateRaw: updatedTransaction.date.toISOString().split('T')[0],
-      amount: updatedTransaction.type === 'expense' ? -updatedTransaction.amount : updatedTransaction.amount,
+      amount: convertedSignedAmount,
       category: updatedTransaction.category?.name || null,
       icon: getIconForCategory(updatedTransaction.category?.name || null),
+      originalAmount: signedUpdatedAmount,
+      originalCurrencySymbol: updatedTransaction.currency?.symbol,
+      originalCurrencyAlias: updatedTransaction.currency?.alias,
+      currencyId: updatedTransaction.currencyId,
     };
     
     return NextResponse.json({ transaction });
