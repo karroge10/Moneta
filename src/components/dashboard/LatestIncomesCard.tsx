@@ -82,6 +82,14 @@ export default function LatestIncomesCard({ incomes }: LatestIncomesCardProps) {
                   <div className="ml-4 space-y-3 mt-2 pb-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-4">
                     {monthIncomes.map((income) => {
                       const Icon = getIcon(income.icon);
+                      const originalAmount = income.originalAmount ?? income.amount;
+                      const absoluteOriginalAmount = Math.abs(originalAmount);
+                      const convertedAbsoluteAmount = Math.abs(income.amount);
+                      const displaySymbol = income.originalCurrencySymbol ?? currency.symbol;
+                      const shouldShowConvertedHelper =
+                        !!income.originalCurrencySymbol &&
+                        (income.originalCurrencySymbol !== currency.symbol ||
+                          convertedAbsoluteAmount !== absoluteOriginalAmount);
                       return (
                         <div key={income.id} className="flex items-center gap-3 min-w-0">
                           <div className="flex-shrink-0">
@@ -96,8 +104,15 @@ export default function LatestIncomesCard({ incomes }: LatestIncomesCardProps) {
                             <div className="text-body font-medium text-wrap-safe">{income.name}</div>
                             <div className="text-helper">{income.date}</div>
                           </div>
-                          <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
-                            {currency.symbol}{formatNumber(income.amount)}
+                          <div className="flex flex-col items-end flex-shrink-0 text-right">
+                            <div className="text-body font-semibold whitespace-nowrap">
+                              {displaySymbol}{formatNumber(absoluteOriginalAmount)}
+                            </div>
+                            {shouldShowConvertedHelper && (
+                              <div className="text-helper text-xs whitespace-nowrap">
+                                ≈ {currency.symbol}{formatNumber(convertedAbsoluteAmount)}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

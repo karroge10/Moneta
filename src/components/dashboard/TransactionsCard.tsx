@@ -33,7 +33,7 @@ export default function TransactionsCard({ transactions }: TransactionsCardProps
     setSelectedTransaction(null);
   };
 
-  const handleSave = async (updatedTransaction: Transaction) => {
+  const handleSave = async () => {
     // Transaction saved - modal will close
     // In a real app, you might want to refresh the dashboard data here
     setSelectedTransaction(null);
@@ -78,8 +78,14 @@ export default function TransactionsCard({ transactions }: TransactionsCardProps
           <div className="space-y-4 flex-1">
             {transactions.slice(0, 6).map((transaction) => {
               const Icon = getIcon(transaction.icon);
-              const isExpense = transaction.amount < 0;
-              const absoluteAmount = Math.abs(transaction.amount);
+              const originalAmount = transaction.originalAmount ?? transaction.amount;
+              const absoluteOriginalAmount = Math.abs(originalAmount);
+              const convertedAbsoluteAmount = Math.abs(transaction.amount);
+              const displaySymbol = transaction.originalCurrencySymbol ?? currency.symbol;
+              const shouldShowConvertedHelper =
+                !!transaction.originalCurrencySymbol &&
+                (transaction.originalCurrencySymbol !== currency.symbol ||
+                  convertedAbsoluteAmount !== absoluteOriginalAmount);
               const truncatedName = truncateName(transaction.name, MAX_NAME_LENGTH);
               
               return (
@@ -102,8 +108,15 @@ export default function TransactionsCard({ transactions }: TransactionsCardProps
                     </div>
                     <div className="text-helper">{transaction.date}</div>
                   </div>
-                  <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
-                    {currency.symbol}{formatNumber(absoluteAmount)}
+                  <div className="flex flex-col items-end flex-shrink-0 text-right">
+                    <div className="text-body font-semibold whitespace-nowrap">
+                      {displaySymbol}{formatNumber(absoluteOriginalAmount)}
+                    </div>
+                    {shouldShowConvertedHelper && (
+                      <div className="text-helper text-xs whitespace-nowrap">
+                        ≈ {currency.symbol}{formatNumber(convertedAbsoluteAmount)}
+                      </div>
+                    )}
                   </div>
                 </div>
               );

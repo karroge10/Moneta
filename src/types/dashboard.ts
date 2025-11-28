@@ -5,9 +5,13 @@ export interface Transaction {
   originalDescription?: string; // Original description from database (before translation)
   date: string;
   dateRaw?: string; // ISO date string (YYYY-MM-DD) for filtering
-  amount: number;
+  amount: number; // Converted amount in user's preferred currency
   category: string | null;
   icon: string;
+  originalAmount?: number; // Amount in statement currency (signed)
+  originalCurrencySymbol?: string;
+  originalCurrencyAlias?: string;
+  currencyId?: number; // Currency ID for editing
 }
 
 export interface Bill {
@@ -124,6 +128,8 @@ export interface StatisticsSummaryItem {
 
 export interface TransactionUploadMetadata {
   currency: string;
+  currencyConfidence?: number;
+  currencyDetectionMethod?: string | null;
   source: string | null;
   periodStart: string | null;
   periodEnd: string | null;

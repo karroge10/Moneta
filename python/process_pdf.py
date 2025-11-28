@@ -105,6 +105,8 @@ class _PendingTextTransaction:
 @dataclass
 class StatementMetadata:
     currency: str = "GEL"
+    currency_confidence: float = 0.4
+    currency_detection_method: Optional[str] = "default"
     source: Optional[str] = None
     period_start: Optional[str] = None
     period_end: Optional[str] = None
@@ -378,25 +380,51 @@ def parse_amount(candidates: Iterable[str]) -> Optional[float]:
     return None
 
 
-def detect_currency_from_text(text: Optional[str]) -> Optional[str]:
+def detect_currency_from_text(text: Optional[str]) -> Optional[Tuple[str, float, str]]:
+    """
+    Attempt to detect currency codes from statement text.
+    Returns (currency_code, confidence, detection_method).
+    """
+
     if not text:
         return None
-    for symbol, code in CURRENCY_SYMBOL_MAP.items():
-        if symbol in text:
-            return code
-    if re.search(r"\bруб", text, re.IGNORECASE):
-        return "RUB"
-    if re.search(r"\blari\b", text, re.IGNORECASE):
-        return "GEL"
+
+    detection_candidates: List[Tuple[str, float, str]] = []
+
+    # Highest confidence: explicit labels like "Currency: RUB" or "Валюта: RUB"
     currency_match = re.search(r"(?:currency|валюта)\s*[:\-]?\s*([A-Z]{3})", text, re.IGNORECASE)
     if currency_match:
-        return currency_match.group(1).upper()
+        detection_candidates.append((currency_match.group(1).upper(), 0.95, "header-label"))
+
+    # Symbols map (€, $, ₽, ₾, etc.)
+    for symbol, code in CURRENCY_SYMBOL_MAP.items():
+        if symbol and symbol in text:
+            detection_candidates.append((code, 0.9, f"symbol:{symbol}"))
+
+    # Common language-specific keywords
+    keyword_patterns: List[Tuple[str, str, float, str]] = [
+        (r"\bруб(?:\.|ля|лей|\b)", "RUB", 0.85, "keyword:rub"),
+        (r"\blari\b", "GEL", 0.8, "keyword:lari"),
+        (r"\btenge\b", "KZT", 0.75, "keyword:tenge"),
+        (r"\bdram\b", "AMD", 0.75, "keyword:dram"),
+    ]
+    for pattern, code, confidence, method in keyword_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            detection_candidates.append((code, confidence, method))
+
+    # ISO codes appearing in context (lower confidence because it might be part of text)
     code_candidates = re.findall(r"\b[A-Z]{3}\b", text)
     for candidate in code_candidates:
         upper_candidate = candidate.upper()
         if upper_candidate in COMMON_CURRENCY_CODES:
-            return upper_candidate
-    return None
+            detection_candidates.append((upper_candidate, 0.65, "iso-token"))
+
+    if not detection_candidates:
+        return None
+
+    # Return the candidate with highest confidence
+    detection_candidates.sort(key=lambda item: item[1], reverse=True)
+    return detection_candidates[0]
 
 
 def extract_transactions_with_pdfplumber(pdf_path: Path) -> Tuple[List[RawTransaction], StatementMetadata]:
@@ -474,7 +502,9 @@ def extract_transactions_with_pdfplumber(pdf_path: Path) -> Tuple[List[RawTransa
                     logger.info("Page 1 text preview: %s...", preview)
                     currency_hint = detect_currency_from_text(text_sample)
                     if currency_hint:
-                        metadata.currency = currency_hint
+                        metadata.currency = currency_hint[0]
+                        metadata.currency_confidence = currency_hint[1]
+                        metadata.currency_detection_method = currency_hint[2]
                 else:
                     logger.warning("Page 1: No text extracted - PDF might be image-based or encrypted")
             
@@ -1106,6 +1136,8 @@ def main() -> int:
         "transactions": [],
         "metadata": {
             "currency": metadata.currency,
+            "currencyConfidence": metadata.currency_confidence,
+            "currencyDetectionMethod": metadata.currency_detection_method,
             "source": metadata.source,
             "periodStart": metadata.period_start,
             "periodEnd": metadata.period_end,
