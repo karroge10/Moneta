@@ -40,6 +40,8 @@ export default function TransactionForm({
   const [formData, setFormData] = useState<Transaction>(transaction);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
+  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
+  const [currencyOptions, setCurrencyOptions] = useState<Array<{ id: number; name: string; symbol: string; alias: string }>>([]);
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>(
     transaction.amount < 0 ? 'expense' : 'income'
   );
@@ -49,6 +51,7 @@ export default function TransactionForm({
   const [dateInput, setDateInput] = useState('');
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const dateDropdownRef = useRef<HTMLDivElement>(null);
+  const currencyDropdownRef = useRef<HTMLDivElement>(null);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const initial = formatDateToInput(transaction.date);
     return initial ? new Date(initial) : new Date();
@@ -70,12 +73,30 @@ export default function TransactionForm({
   }, [transaction]);
 
   useEffect(() => {
+    const fetchCurrencies = async () => {
+      try {
+        const response = await fetch('/api/currencies');
+        if (response.ok) {
+          const data = await response.json();
+          setCurrencyOptions(data.currencies || []);
+        }
+      } catch (err) {
+        console.error('Error fetching currencies:', err);
+      }
+    };
+    fetchCurrencies();
+  }, []);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
         setIsCategoryOpen(false);
       }
       if (dateDropdownRef.current && !dateDropdownRef.current.contains(event.target as Node)) {
         setIsDateOpen(false);
+      }
+      if (currencyDropdownRef.current && !currencyDropdownRef.current.contains(event.target as Node)) {
+        setIsCurrencyOpen(false);
       }
     };
 
@@ -87,8 +108,8 @@ export default function TransactionForm({
   }, []);
 
   useEffect(() => {
-    onFloatingPanelToggle?.(isCategoryOpen || isDateOpen);
-  }, [isCategoryOpen, isDateOpen, onFloatingPanelToggle]);
+    onFloatingPanelToggle?.(isCategoryOpen || isDateOpen || isCurrencyOpen);
+  }, [isCategoryOpen, isDateOpen, isCurrencyOpen, onFloatingPanelToggle]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +164,16 @@ export default function TransactionForm({
     }
     setIsDateOpen(false);
   };
+
+  const handleCurrencySelect = (currencyId: number | null) => {
+    setFormData(prev => ({
+      ...prev,
+      currencyId: currencyId ?? undefined,
+    }));
+    setIsCurrencyOpen(false);
+  };
+
+  const selectedCurrency = currencyOptions.find(c => c.id === formData.currencyId) ?? currency;
 
   // Check if translation is available and different from original
   const hasTranslation = transaction.originalDescription && 
@@ -285,6 +316,52 @@ export default function TransactionForm({
             )}
           </div>
         </div>
+
+        <div>
+          <label className="block text-body font-medium mb-2">Currency</label>
+          <div className="relative" ref={currencyDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsCurrencyOpen(prev => !prev)}
+              disabled={isSaving}
+              className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              <span className="text-body font-semibold">
+                {selectedCurrency ? `${selectedCurrency.symbol} ${selectedCurrency.alias}` : 'Select currency'}
+              </span>
+              <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+            </button>
+
+            {isCurrencyOpen && (
+              <div
+                className="absolute top-full left-0 right-0 mt-2 rounded-2xl shadow-lg overflow-hidden z-10 border border-[#3a3a3a]"
+                style={{ backgroundColor: '#202020' }}
+              >
+                <div className="max-h-64 overflow-y-auto">
+                  {currencyOptions.map(currencyOption => {
+                    const isSelected = formData.currencyId === currencyOption.id;
+                    return (
+                      <button
+                        type="button"
+                        key={currencyOption.id}
+                        onClick={() => handleCurrencySelect(currencyOption.id)}
+                        className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)',
+                        }}
+                      >
+                        <span className="font-semibold">{currencyOption.symbol}</span>
+                        <span>{currencyOption.name} ({currencyOption.alias})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -327,7 +404,7 @@ export default function TransactionForm({
               className="absolute left-4 top-1/2 -translate-y-1/2 text-body font-semibold"
               style={{ color: 'var(--text-primary)' }}
             >
-              {currency.symbol}
+              {selectedCurrency.symbol}
             </span>
             <input
               type="text"
@@ -350,7 +427,7 @@ export default function TransactionForm({
           </div>
           {amountInput && !isNaN(parseFloat(amountInput.replace(/,/g, '.'))) && (
             <div className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {transactionType === 'expense' ? 'Expense' : 'Income'}: {currency.symbol}{formatNumber(parseFloat(amountInput.replace(/,/g, '.')) || 0)}
+              {transactionType === 'expense' ? 'Expense' : 'Income'}: {selectedCurrency.symbol}{formatNumber(parseFloat(amountInput.replace(/,/g, '.')) || 0)}
             </div>
           )}
         </div>
