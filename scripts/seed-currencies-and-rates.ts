@@ -148,7 +148,7 @@ async function populateExchangeRates(currencies: Array<{ id: number; alias: stri
         continue;
       }
 
-      await saveRate(baseCurrency, quoteCurrency, rateValue, false);
+      await saveRate(baseCurrency, quoteCurrency, rateValue);
     }
 
     // Add delay to avoid rate limiting
