@@ -31,7 +31,18 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
   const isUncategorized = selectedCategory === '__uncategorized__';
   const displayValue = isUncategorized ? 'Uncategorized' : (selectedCategory || 'All Categories');
   const textColor = isHovered ? '#AC66DA' : '#E7E4E4';
-  const DisplayIcon = selectedCategoryObj ? getIcon(selectedCategoryObj.icon) : null;
+
+  const resolveIcon = (categoryName?: string | null, iconKey?: string) => {
+    if (!categoryName) return getIcon('HelpCircle');
+    if (categoryName.toLowerCase() === 'other') return getIcon('ViewGrid');
+    return iconKey ? getIcon(iconKey) : getIcon('HelpCircle');
+  };
+
+  const DisplayIcon = (() => {
+    if (isUncategorized) return getIcon('HelpCircle');
+    if (selectedCategoryObj) return resolveIcon(selectedCategoryObj.name, selectedCategoryObj.icon);
+    return null;
+  })();
 
   return (
     <div className="relative" ref={ref}>
@@ -67,6 +78,7 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
                 color: selectedCategory === null ? 'var(--accent-purple)' : 'var(--text-primary)' 
               }}
             >
+              <Filter width={20} height={20} strokeWidth={1.5} />
               <span>All Categories</span>
             </button>
             <button
@@ -80,10 +92,14 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
                 color: isUncategorized ? 'var(--accent-purple)' : 'var(--text-primary)' 
               }}
             >
+              {(() => {
+                const Icon = getIcon('HelpCircle');
+                return <Icon width={20} height={20} strokeWidth={1.5} />;
+              })()}
               <span>Uncategorized</span>
             </button>
             {categories.map((category) => {
-              const Icon = getIcon(category.icon);
+              const Icon = resolveIcon(category.name, category.icon);
               const isSelected = selectedCategory === category.name;
               return (
                 <button
