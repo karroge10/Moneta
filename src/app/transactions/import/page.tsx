@@ -12,6 +12,7 @@ import TypeFilter from '@/components/transactions/shared/TypeFilter';
 import CategoryStatsModal from '@/components/transactions/CategoryStatsModal';
 import RecentJobsList, { type JobStatus } from '@/components/transactions/import/RecentJobsList';
 import CurrencySelector from '@/components/transactions/import/CurrencySelector';
+import ReviewDatePicker from '@/components/transactions/shared/ReviewDatePicker';
 import { TransactionUploadResponse, TransactionUploadMetadata, UploadedTransaction, type Category } from '@/types/dashboard';
 import { Upload, WarningTriangle, Reports, Language, Trash } from 'iconoir-react';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -920,12 +921,9 @@ export default function ImportTransactionsPage() {
                         return (
                           <tr key={row.id} className="border-t border-[#2A2A2A]">
                             <td className="px-5 py-4 align-top">
-                              <input
-                                type="date"
+                              <ReviewDatePicker
                                 value={row.date}
-                                onChange={event => handleRowUpdate(row.id, 'date', event.target.value)}
-                                className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-3 py-2 text-sm"
-                                style={{ color: 'var(--text-primary)' }}
+                                onChange={newDate => handleRowUpdate(row.id, 'date', newDate)}
                               />
                             </td>
                             <td className="px-5 py-4 align-top max-w-0">
@@ -940,7 +938,7 @@ export default function ImportTransactionsPage() {
                                   title={row.description}
                                 />
                                 <div className="flex items-center gap-1.5 text-xs min-w-0" style={{ color: 'var(--text-secondary)' }}>
-                                  <Language width={14} height={14} strokeWidth={1.5} className="flex-shrink-0" style={{ color: 'var(--text-secondary)' }} />
+                                  <Language width={14} height={14} strokeWidth={1.5} className="shrink-0" style={{ color: 'var(--text-secondary)' }} />
                                   <span className="truncate" title={row.translatedDescription || 'No translation'}>
                                     {row.translatedDescription || 'No translation'}
                                   </span>
