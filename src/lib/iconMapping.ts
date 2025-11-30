@@ -35,6 +35,11 @@ import {
   LotOfCash,
   Wallet,
   ShoppingBag,
+  RefreshDouble,
+  Spark,
+  Sparks,
+  User,
+  ViewGrid,
 } from 'iconoir-react';
 
 const iconMap: Record<string, React.ComponentType<{ width?: number; height?: number; strokeWidth?: number; style?: React.CSSProperties }>> = {
@@ -73,6 +78,11 @@ const iconMap: Record<string, React.ComponentType<{ width?: number; height?: num
   LotOfCash,
   Wallet,
   ShoppingBag,
+  RefreshDouble,
+  Spark,
+  Sparks,
+  User,
+  ViewGrid,
 };
 
 export function getIcon(iconName: string) {
