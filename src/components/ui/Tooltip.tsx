@@ -75,7 +75,7 @@ export default function Tooltip({ content, children, className = '' }: TooltipPr
         children,
         Object.assign(
           {},
-          children.props,
+          children.props as Record<string, unknown>,
           {
             ref: (node: HTMLElement | null) => {
               triggerRef.current = node;
@@ -91,7 +91,7 @@ export default function Tooltip({ content, children, className = '' }: TooltipPr
             },
             onMouseEnter: handleMouseEnter,
             onMouseLeave: handleMouseLeave,
-            className: `${children.props.className || ''} ${className}`.trim(),
+            className: `${((children.props as any)?.className || '')} ${className}`.trim(),
           }
         )
       )
