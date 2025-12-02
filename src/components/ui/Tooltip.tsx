@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect, cloneElement, isValidElement } from 'react';
+import { useState, useRef, useEffect, cloneElement, isValidElement, type ReactElement } from 'react';
 
 interface TooltipProps {
   content: string;
-  children: React.ReactElement;
+  children: ReactElement;
   className?: string;
 }
 
@@ -72,6 +72,7 @@ export default function Tooltip({ content, children, className = '' }: TooltipPr
 
   const childWithProps = isValidElement(children)
     ? cloneElement(children, {
+        ...children.props,
         ref: (node: HTMLElement | null) => {
           triggerRef.current = node;
           if (typeof children.ref === 'function') {
@@ -83,7 +84,7 @@ export default function Tooltip({ content, children, className = '' }: TooltipPr
         onMouseEnter: handleMouseEnter,
         onMouseLeave: handleMouseLeave,
         className: `${children.props.className || ''} ${className}`.trim(),
-      })
+      } as Parameters<typeof cloneElement>[1])
     : children;
 
   return (
