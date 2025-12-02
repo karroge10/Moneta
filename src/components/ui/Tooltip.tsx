@@ -1,0 +1,115 @@
+'use client';
+
+import { useState, useRef, useEffect, cloneElement, isValidElement } from 'react';
+
+interface TooltipProps {
+  content: string;
+  children: React.ReactElement;
+  className?: string;
+}
+
+export default function Tooltip({ content, children, className = '' }: TooltipProps) {
+  const [isVisible, setIsVisible] = useState(false);
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+  const triggerRef = useRef<HTMLElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const isHoveringTooltipRef = useRef(false);
+
+  useEffect(() => {
+    if (isVisible && triggerRef.current && tooltipRef.current) {
+      // Use requestAnimationFrame to ensure tooltip is rendered before calculating position
+      requestAnimationFrame(() => {
+        if (!triggerRef.current || !tooltipRef.current) return;
+
+        const triggerRect = triggerRef.current.getBoundingClientRect();
+        const tooltipRect = tooltipRef.current.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        let top = triggerRect.bottom + 8;
+        let left = triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2;
+
+        // Adjust if tooltip goes off screen horizontally
+        if (left < 8) {
+          left = 8;
+        } else if (left + tooltipRect.width > viewportWidth - 8) {
+          left = viewportWidth - tooltipRect.width - 8;
+        }
+
+        // If not enough space below, show above
+        if (top + tooltipRect.height > viewportHeight - 8) {
+          top = triggerRect.top - tooltipRect.height - 8;
+        }
+
+        setPosition({ top, left });
+      });
+    }
+  }, [isVisible]);
+
+  const handleMouseEnter = () => {
+    setIsVisible(true);
+    isHoveringTooltipRef.current = false;
+  };
+
+  const handleMouseLeave = () => {
+    // Small delay to allow moving cursor to tooltip
+    setTimeout(() => {
+      if (!isHoveringTooltipRef.current) {
+        setIsVisible(false);
+      }
+    }, 100);
+  };
+
+  const handleTooltipMouseEnter = () => {
+    isHoveringTooltipRef.current = true;
+    setIsVisible(true);
+  };
+
+  const handleTooltipMouseLeave = () => {
+    isHoveringTooltipRef.current = false;
+    setIsVisible(false);
+  };
+
+  const childWithProps = isValidElement(children)
+    ? cloneElement(children, {
+        ref: (node: HTMLElement | null) => {
+          triggerRef.current = node;
+          if (typeof children.ref === 'function') {
+            children.ref(node);
+          } else if (children.ref) {
+            (children.ref as React.MutableRefObject<HTMLElement | null>).current = node;
+          }
+        },
+        onMouseEnter: handleMouseEnter,
+        onMouseLeave: handleMouseLeave,
+        className: `${children.props.className || ''} ${className}`.trim(),
+      })
+    : children;
+
+  return (
+    <>
+      {childWithProps}
+      {isVisible && content && (
+        <div
+          ref={tooltipRef}
+          className="fixed z-50 px-3 py-2 rounded-lg shadow-lg max-w-xs wrap-break-word select-text"
+          onMouseEnter={handleTooltipMouseEnter}
+          onMouseLeave={handleTooltipMouseLeave}
+          style={{
+            top: position?.top ?? -9999,
+            left: position?.left ?? -9999,
+            backgroundColor: '#282828',
+            color: '#E7E4E4',
+            fontSize: '14px',
+            lineHeight: '1.4',
+            border: '1px solid #3a3a3a',
+            cursor: 'text',
+          }}
+        >
+          {content}
+        </div>
+      )}
+    </>
+  );
+}
+
