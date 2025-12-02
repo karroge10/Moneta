@@ -79,10 +79,14 @@ export default function Tooltip({ content, children, className = '' }: TooltipPr
           {
             ref: (node: HTMLElement | null) => {
               triggerRef.current = node;
-              if (typeof children.ref === 'function') {
-                children.ref(node);
-              } else if (children.ref) {
-                (children.ref as React.MutableRefObject<HTMLElement | null>).current = node;
+              // Handle existing ref if present
+              const existingRef = (children as any).ref;
+              if (existingRef) {
+                if (typeof existingRef === 'function') {
+                  existingRef(node);
+                } else if (existingRef && typeof existingRef === 'object' && 'current' in existingRef) {
+                  (existingRef as React.MutableRefObject<HTMLElement | null>).current = node;
+                }
               }
             },
             onMouseEnter: handleMouseEnter,
