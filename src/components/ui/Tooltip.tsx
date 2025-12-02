@@ -71,20 +71,26 @@ export default function Tooltip({ content, children, className = '' }: TooltipPr
   };
 
   const childWithProps = isValidElement(children)
-    ? cloneElement(children, {
-        ...children.props,
-        ref: (node: HTMLElement | null) => {
-          triggerRef.current = node;
-          if (typeof children.ref === 'function') {
-            children.ref(node);
-          } else if (children.ref) {
-            (children.ref as React.MutableRefObject<HTMLElement | null>).current = node;
+    ? cloneElement(
+        children,
+        Object.assign(
+          {},
+          children.props,
+          {
+            ref: (node: HTMLElement | null) => {
+              triggerRef.current = node;
+              if (typeof children.ref === 'function') {
+                children.ref(node);
+              } else if (children.ref) {
+                (children.ref as React.MutableRefObject<HTMLElement | null>).current = node;
+              }
+            },
+            onMouseEnter: handleMouseEnter,
+            onMouseLeave: handleMouseLeave,
+            className: `${children.props.className || ''} ${className}`.trim(),
           }
-        },
-        onMouseEnter: handleMouseEnter,
-        onMouseLeave: handleMouseLeave,
-        className: `${children.props.className || ''} ${className}`.trim(),
-      } as Parameters<typeof cloneElement>[1])
+        )
+      )
     : children;
 
   return (
