@@ -5,6 +5,7 @@ import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import Card from '@/components/ui/Card';
 import ProgressBar from '@/components/ui/ProgressBar';
+import Tooltip from '@/components/ui/Tooltip';
 import SearchBar from '@/components/transactions/shared/SearchBar';
 import CategoryFilter from '@/components/transactions/shared/CategoryFilter';
 import CategoryPicker from '@/components/transactions/shared/CategoryPicker';
@@ -939,9 +940,11 @@ export default function ImportTransactionsPage() {
                                 />
                                 <div className="flex items-center gap-1.5 text-xs min-w-0" style={{ color: 'var(--text-secondary)' }}>
                                   <Language width={14} height={14} strokeWidth={1.5} className="shrink-0" style={{ color: 'var(--text-secondary)' }} />
-                                  <span className="truncate" title={row.translatedDescription || 'No translation'}>
-                                    {row.translatedDescription || 'No translation'}
-                                  </span>
+                                  <Tooltip content={row.translatedDescription || 'No translation'}>
+                                    <span className="truncate">
+                                      {row.translatedDescription || 'No translation'}
+                                    </span>
+                                  </Tooltip>
                                 </div>
                               </div>
                             </td>

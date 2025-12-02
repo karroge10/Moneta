@@ -660,58 +660,62 @@ def _normalize_description(value: str) -> str:
     return text or "Imported transaction"
 
 
+# English-only keywords - text is translated before checking
 HEADER_KEYWORDS = (
-    "выписка",
     "statement",
     "www.",
-    "сбербанк",
-    "остаток",
-    "итого",
-    "категория",
-    "описание операции",
     "account holder",
+    "balance",
+    "total",
+    "category",
+    "operation description",
 )
 
 CREDIT_KEYWORDS = (
-    "перевод от",
-    "зачисление",
-    "зарплата",
-    "заработная плата",
     "transfer from",
     "incoming transfer",
     "deposit",
     "salary",
     "credited",
-    "поступление",
+    "income",
+    "receipt",
 )
 
 DEBIT_KEYWORDS = (
-    "перевод на",
-    "списание",
-    "оплата",
-    "платеж",
     "transfer to",
     "payment to",
     "withdrawal",
     "cash withdrawal",
+    "payment",
+    "expense",
+    "debit",
 )
 
 NUMBER_PATTERN = re.compile(r"[+-]?\d[\d\s]*[.,]\d{2}")
 
 
 def _looks_like_header(text: str) -> bool:
-    lowered = text.lower()
-    return any(keyword in lowered for keyword in HEADER_KEYWORDS)
+    """Check if text looks like a header row. Translates to English first."""
+    if not text:
+        return False
+    translated = translate_to_english(text).lower()
+    return any(keyword in translated for keyword in HEADER_KEYWORDS)
 
 
 def _description_indicates_credit(text: str) -> bool:
-    lowered = text.lower()
-    return any(keyword in lowered for keyword in CREDIT_KEYWORDS)
+    """Check if description indicates a credit transaction. Translates to English first."""
+    if not text:
+        return False
+    translated = translate_to_english(text).lower()
+    return any(keyword in translated for keyword in CREDIT_KEYWORDS)
 
 
 def _description_indicates_debit(text: str) -> bool:
-    lowered = text.lower()
-    return any(keyword in lowered for keyword in DEBIT_KEYWORDS)
+    """Check if description indicates a debit transaction. Translates to English first."""
+    if not text:
+        return False
+    translated = translate_to_english(text).lower()
+    return any(keyword in translated for keyword in DEBIT_KEYWORDS)
 
 
 def _parse_text_transaction_line(line: str) -> Optional[Tuple[str, str, float]]:
@@ -841,19 +845,45 @@ def _process_table(table: List[List], page_index: int, table_index: int, transac
     debit_col_idx = None
     credit_col_idx = None
     desc_col_idx = None
+    balance_col_idx = None
     
     # Try to find column indices from header
+    # Translate headers to English first, then check against English keywords only
     if header:
-        header_lower = [str(cell).lower().strip() if cell else "" for cell in header]
-        for idx, header_cell in enumerate(header_lower):
-            if any(keyword in header_cell for keyword in ['date', 'дата', 'თარიღი']):
+        logger.info("Page %d table %d: Detecting columns from header (translating to English)", page_index, table_index)
+        for idx, header_cell in enumerate(header):
+            if not header_cell:
+                continue
+            
+            # Translate header cell to English
+            header_text = str(header_cell).strip()
+            header_en = translate_to_english(header_text).lower()
+            logger.debug("Page %d table %d: Header[%d] '%s' -> '%s'", page_index, table_index, idx, header_text[:50], header_en[:50])
+            
+            # Check against English keywords only
+            if any(keyword in header_en for keyword in ['date', 'time']):
                 date_col_idx = idx
-            if any(keyword in header_cell for keyword in ['debit', 'дебет', 'დებეტი', 'out', 'გასავალი']):
+                logger.info("Page %d table %d: Found DATE column at index %d", page_index, table_index, idx)
+            # Look for debit column (Turnover DB, debit, out, withdrawal, etc.)
+            # Check for various forms: "turnover (db)", "turnover(db)", "turnover db", "db", "debit"
+            debit_keywords = ['debit', 'turnover (db)', 'turnover(db)', 'turnover db', 'turnover db)', 
+                            'db)', 'db)', 'out', 'withdrawal', 'expense', 'payment']
+            if any(keyword in header_en for keyword in debit_keywords):
                 debit_col_idx = idx
-            if any(keyword in header_cell for keyword in ['credit', 'кредит', 'კრედიტი', 'in', 'შემოსავალი']):
+                logger.info("Page %d table %d: Found DEBIT column at index %d (header: '%s' -> '%s')", 
+                          page_index, table_index, idx, header_text[:50], header_en[:50])
+            # Look for credit column (Turnover CR, credit, in, deposit, etc.)
+            elif any(keyword in header_en for keyword in ['credit', 'turnover (cr)', 'turnover(cr)', 'turnover cr', 'in', 'deposit', 'income', 'receipt']):
                 credit_col_idx = idx
-            if any(keyword in header_cell for keyword in ['description', 'описание', 'აღწერა', 'operation', 'операция', 'ოპერაცია', 'details', 'დეტალები']):
+                logger.info("Page %d table %d: Found CREDIT column at index %d", page_index, table_index, idx)
+            # Look for description column
+            elif any(keyword in header_en for keyword in ['description', 'operation', 'details', 'purpose', 'beneficiary', 'merchant', 'note', 'memo', 'reference']):
                 desc_col_idx = idx
+                logger.info("Page %d table %d: Found DESCRIPTION column at index %d", page_index, table_index, idx)
+            # Detect balance column to avoid importing balance values
+            elif any(keyword in header_en for keyword in ['balance', 'saldo', 'solde', 'remaining', 'total']):
+                balance_col_idx = idx
+                logger.info("Page %d table %d: Found BALANCE column at index %d (will skip)", page_index, table_index, idx)
     
     # Fallback to default positions if not found in header
     if date_col_idx is None:
@@ -895,53 +925,91 @@ def _process_table(table: List[List], page_index: int, table_index: int, transac
                     recent_transaction.description = f"{existing} {row_description_hint}".strip()
             continue
 
-        # Extract amounts
+        # CRITICAL: Only extract from Turnover (DB) - debit column
+        # If debit column was detected from header, ONLY use that column - no fallbacks
         debit_amount = None
-        credit_amount = None
-        if debit_col_idx < len(cells):
-            debit_text = cells[debit_col_idx].replace("\n", " ")
-            debit_amount = parse_amount([debit_text]) if debit_text else None
-        if credit_col_idx < len(cells):
-            credit_text = cells[credit_col_idx].replace("\n", " ")
-            credit_amount = parse_amount([credit_text]) if credit_text else None
         
-        # If amounts not found in expected columns, try to find in any column
-        if debit_amount is None and credit_amount is None:
+        # Also check credit column to ensure we're not accidentally importing credit-only rows
+        credit_amount = None
+        if credit_col_idx is not None and credit_col_idx < len(cells):
+            credit_text = cells[credit_col_idx].replace("\n", " ").strip()
+            if credit_text:
+                credit_amount = parse_amount([credit_text])
+        
+        if debit_col_idx is not None and debit_col_idx < len(cells):
+            # Debit column was detected - use ONLY this column
+            debit_text = cells[debit_col_idx].replace("\n", " ").strip()
+            if debit_text:
+                debit_amount = parse_amount([debit_text])
+                logger.debug("Page %d table %d row: Debit col[%d] = '%s' -> amount = %s", 
+                           page_index, table_index, debit_col_idx, debit_text[:30], debit_amount)
+            
+            # If debit column is empty or has no valid amount, skip this row entirely
+            # Also skip if this row ONLY has credit amount (no debit)
+            if debit_amount is None or debit_amount == 0:
+                # If there's a credit amount but no debit, this is an income transaction - skip it
+                if credit_amount is not None and credit_amount != 0:
+                    logger.debug("Page %d table %d row: Skipping - has credit (%s) but no debit", 
+                               page_index, table_index, credit_amount)
+                    continue
+                # If no debit and no credit, skip empty row
+                logger.debug("Page %d table %d row: Skipping - no debit amount found", page_index, table_index)
+                continue
+        else:
+            # Debit column was NOT detected - use fallback with strict filtering
+            # Only search in expected debit column position (index 2-3) and exclude known bad columns
             amount_candidates: List[Tuple[int, float, str]] = []
-            for idx in range(len(cells) - 1, -1, -1):
+            
+            # Search columns, but skip balance and credit columns
+            for idx in range(len(cells)):
+                # Skip balance column if detected
+                if balance_col_idx is not None and idx == balance_col_idx:
+                    continue
+                # Skip credit column if detected
+                if credit_col_idx is not None and idx == credit_col_idx:
+                    continue
+                # Skip last column (usually balance)
+                if idx == len(cells) - 1:
+                    continue
+                # Skip date column
+                if date_col_idx is not None and idx == date_col_idx:
+                    continue
+                # Skip description column
+                if desc_col_idx is not None and idx == desc_col_idx:
+                    continue
+                
                 cell = cells[idx]
                 if not cell:
                     continue
+                
+                # Skip non-numeric cells
                 if parse_date(cell) or _looks_like_time(cell):
                     continue
                 if _is_masked_value(cell):
                     continue
-                stripped_digits = cell.replace(" ", "")
-                if stripped_digits.isdigit() and len(stripped_digits) >= 6 and "," not in cell and "." not in cell:
+                stripped_digits = cell.replace(" ", "").replace(",", "").replace(".", "")
+                if stripped_digits.isdigit() and len(stripped_digits) >= 6:
                     continue
+                
                 amount = parse_amount([cell])
                 if amount is None or amount == 0:
                     continue
-                amount_candidates.append((idx, amount, cell))
+                
+                # Only accept amounts in debit column position (around index 2-3)
+                # This matches the default fallback position
+                if 2 <= idx <= 3:
+                    amount_candidates.append((idx, abs(amount), cell))
+            
             if amount_candidates:
-                preferred = [candidate for candidate in amount_candidates if candidate[0] != len(cells) - 1]
-                target_idx, candidate_value, raw_cell = (preferred or amount_candidates)[0]
-                raw_stripped = raw_cell.strip()
-                if candidate_value < 0 or raw_stripped.startswith("-") or raw_stripped.startswith("("):
-                    debit_amount = abs(candidate_value)
-                elif raw_stripped.startswith("+"):
-                    credit_amount = abs(candidate_value)
-                else:
-                    debit_amount = abs(candidate_value)
+                # Use the first candidate in debit position
+                target_idx, candidate_value, raw_cell = amount_candidates[0]
+                debit_amount = candidate_value
+            else:
+                # No debit amount found in expected position, skip this row
+                continue
         
-        amount_value: Optional[float] = None
-        if debit_amount is not None and debit_amount != 0:
-            amount_value = -abs(debit_amount)
-        elif credit_amount is not None and credit_amount != 0:
-            amount_value = abs(credit_amount)
-        
-        if amount_value is None:
-            continue
+        # ONLY use debit amount - never fall back to credit or balance
+        amount_value = -abs(debit_amount)
 
         # Extract description
         description_segments = []
