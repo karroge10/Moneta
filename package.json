@@ -22,10 +22,10 @@
     "@prisma/client": "^6.19.0",
     "detect-port": "^1.6.1",
     "iconoir-react": "^7.11.0",
-    "next": "16.0.1",
+    "next": "16.0.7",
     "prisma": "^6.19.0",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
     "recharts": "^2.12.0"
   },
   "devDependencies": {
@@ -36,7 +36,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "dotenv": "^17.2.3",
     "eslint": "^9",
-    "eslint-config-next": "16.0.1",
+    "eslint-config-next": "16.0.7",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5"
