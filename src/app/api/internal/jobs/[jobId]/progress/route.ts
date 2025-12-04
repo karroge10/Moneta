@@ -308,6 +308,70 @@ export async function POST(
       data: updateData,
     });
 
+    // Create notification when job completes (only if not already created)
+    if (status === 'completed') {
+      try {
+        // Get job details to find userId
+        const job = await db.pdfProcessingJob.findUnique({
+          where: { id: jobId },
+          select: { userId: true, fileName: true },
+        });
+
+        if (job) {
+          // Create notification for completed job
+          // No duplicate check needed - each job only completes once
+          const now = new Date();
+          
+          await db.notification.create({
+            data: {
+              userId: job.userId,
+              type: 'PDF Processing',
+              text: 'Your Processed PDF is ready for review',
+              date: now,
+              time: now.toTimeString().split(' ')[0],
+              read: false,
+            },
+          });
+          
+          console.log(`[job-progress] Created notification for completed job ${jobId}`);
+        }
+      } catch (notifError) {
+        console.error(`[job-progress] Failed to create notification for job ${jobId}:`, notifError);
+        // Don't fail the job update if notification creation fails
+      }
+    }
+
+    // Create notification when job fails
+    if (status === 'failed') {
+      try {
+        const job = await db.pdfProcessingJob.findUnique({
+          where: { id: jobId },
+          select: { userId: true, fileName: true, error: true },
+        });
+
+        if (job) {
+          const now = new Date();
+          const errorMessage = job.error || 'Unknown error occurred';
+          
+          await db.notification.create({
+            data: {
+              userId: job.userId,
+              type: 'PDF Processing',
+              text: `PDF processing failed for "${job.fileName}": ${errorMessage}`,
+              date: now,
+              time: now.toTimeString().split(' ')[0],
+              read: false,
+            },
+          });
+          
+          console.log(`[job-progress] Created failure notification for job ${jobId}`);
+        }
+      } catch (notifError) {
+        console.error(`[job-progress] Failed to create failure notification for job ${jobId}:`, notifError);
+        // Don't fail the job update if notification creation fails
+      }
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[job-progress] Failed to update progress:', error);

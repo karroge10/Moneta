@@ -79,6 +79,7 @@ export interface Category {
   name: string;
   icon: string;
   color: string;
+  type?: string | null; // 'income' | 'expense' | null (for both/all types)
 }
 
 export interface InvestmentActivity {

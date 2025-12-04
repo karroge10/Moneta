@@ -110,6 +110,66 @@ async function updateJobStatus(
       where: { id: jobId },
       data
     });
+
+    // Create notification when job completes (only if not already created)
+    if (status === 'completed') {
+      try {
+        const job = await db.pdfProcessingJob.findUnique({
+          where: { id: jobId },
+          select: { userId: true, fileName: true },
+        });
+
+        if (job) {
+          // Create notification for completed job
+          // No duplicate check needed - each job only completes once
+          const now = new Date();
+          
+          await db.notification.create({
+            data: {
+              userId: job.userId,
+              type: 'PDF Processing',
+              text: 'Your Processed PDF is ready for review',
+              date: now,
+              time: now.toTimeString().split(' ')[0],
+              read: false,
+            },
+          });
+          
+          console.log(`[background-process] Created notification for completed job ${jobId}`);
+        }
+      } catch (notifError) {
+        console.error(`[background-process] Failed to create notification for job ${jobId}:`, notifError);
+      }
+    }
+
+    // Create notification when job fails
+    if (status === 'failed' && error) {
+      try {
+        const job = await db.pdfProcessingJob.findUnique({
+          where: { id: jobId },
+          select: { userId: true, fileName: true },
+        });
+
+        if (job) {
+          const now = new Date();
+          
+          await db.notification.create({
+            data: {
+              userId: job.userId,
+              type: 'PDF Processing',
+              text: `PDF processing failed for "${job.fileName}": ${error}`,
+              date: now,
+              time: now.toTimeString().split(' ')[0],
+              read: false,
+            },
+          });
+          
+          console.log(`[background-process] Created failure notification for job ${jobId}`);
+        }
+      } catch (notifError) {
+        console.error(`[background-process] Failed to create failure notification for job ${jobId}:`, notifError);
+      }
+    }
   } catch (e) {
     console.error(`[background-process] Failed to update job ${jobId}:`, e);
   }
@@ -321,7 +381,7 @@ export async function POST(request: NextRequest) {
         fileName: fileName,
         fileContent: fileContentBuffer
       },
-      select: { id: true, createdAt: true }
+      select: { id: true, fileName: true, createdAt: true }
     });
 
     const jobId = job.id;
@@ -363,9 +423,11 @@ export async function POST(request: NextRequest) {
     // 4. Return Immediate Response
     return NextResponse.json({
       jobId,
-      status: 'queued',
+      fileName,
+      status: serviceUrl ? 'processing' : 'queued',
       progress: 0,
       queuePosition,
+      createdAt: job.createdAt.toISOString(),
       message: 'Upload accepted. Processing in background.'
     });
 
