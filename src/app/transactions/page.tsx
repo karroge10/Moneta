@@ -30,6 +30,7 @@ export default function TransactionsPage() {
   const router = useRouter();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [currencyOptions, setCurrencyOptions] = useState<Array<{ id: number; name: string; symbol: string; alias: string }>>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
   const [loading, setLoading] = useState(true);
@@ -128,6 +129,22 @@ export default function TransactionsPage() {
       }
     };
     fetchCategories();
+  }, []);
+
+  // Fetch currencies
+  useEffect(() => {
+    const fetchCurrencies = async () => {
+      try {
+        const response = await fetch('/api/currencies');
+        if (response.ok) {
+          const data = await response.json();
+          setCurrencyOptions(data.currencies || []);
+        }
+      } catch (err) {
+        console.error('Error fetching currencies:', err);
+      }
+    };
+    fetchCurrencies();
   }, []);
 
   // Fetch transactions when filters, page size, or page change
@@ -543,6 +560,8 @@ export default function TransactionsPage() {
           onSave={handleSave}
           onDelete={handleDelete}
           isSaving={isSaving}
+          categories={categories}
+          currencyOptions={currencyOptions}
         />
       )}
 

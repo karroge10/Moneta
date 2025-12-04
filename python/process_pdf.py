@@ -608,7 +608,7 @@ def extract_transactions_with_pdfplumber(pdf_path: Path) -> Tuple[List[RawTransa
     else:
         logger.info("Using table-based extraction results (%d transactions found)", len(transactions))
 
-    logger.info("PDF extraction completed: found %d transactions across %d pages", len(transactions), len(pdf.pages) if 'pdf' in locals() else 0)
+    logger.info("PDF extraction completed: found %d transactions", len(transactions))
     return transactions, metadata
 
 
@@ -806,6 +806,8 @@ def _extract_transactions_from_text(pdf_path: Path) -> List[RawTransaction]:
     pending: Optional[_PendingTextTransaction] = None
     try:
         with pdfplumber.open(pdf_path) as pdf:
+            total_pages = len(pdf.pages)
+            logger.info("Text-based extraction: processing all %d pages", total_pages)
             for page in pdf.pages:
                 page_text = page.extract_text() or ""
                 for raw_line in page_text.splitlines():
@@ -979,16 +981,29 @@ def _process_table(table: List[List], page_index: int, table_index: int, transac
         
         row_description_hint = _collect_description_from_cells(cells)
 
-        # Try to find date in any column if first column doesn't have it
+        # Try to find date in description column first (user's request)
         date_value = None
-        if date_col_idx < len(cells):
-            date_value = parse_date(cells[date_col_idx])
+        if desc_col_idx < len(cells) and cells[desc_col_idx]:
+            date_value = parse_date(cells[desc_col_idx])
+            if date_value and row_idx <= 6:
+                logger.info("Found date in description column: '%s' -> %s", cells[desc_col_idx][:50], date_value)
         
-        # If date not found in expected column, try all columns
+        # If date not found in description, try date column
+        if not date_value and date_col_idx < len(cells):
+            date_value = parse_date(cells[date_col_idx])
+            if date_value and row_idx <= 6:
+                logger.info("Found date in date column: '%s' -> %s", cells[date_col_idx][:50], date_value)
+        
+        # If date still not found, try all other columns (excluding description and date columns already checked)
         if not date_value:
-            for cell in cells:
+            for idx, cell in enumerate(cells):
+                # Skip description and date columns (already checked)
+                if idx == desc_col_idx or idx == date_col_idx:
+                    continue
                 date_value = parse_date(cell)
                 if date_value:
+                    if row_idx <= 6:
+                        logger.info("Found date in column[%d]: '%s' -> %s", idx, cell[:50], date_value)
                     break
         
         # Skip rows without dates - don't modify previous transactions

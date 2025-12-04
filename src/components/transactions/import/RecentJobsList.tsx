@@ -24,6 +24,13 @@ interface RecentJobsListProps {
   currentJobId?: string | null;
   className?: string;
   showTitle?: boolean;
+  refreshTrigger?: number; // When this changes, trigger a refresh
+  optimisticJob?: { // Optimistic job to add immediately
+    id: string;
+    fileName: string;
+    status: JobStatus;
+    createdAt: string;
+  } | null;
 }
 
 const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
@@ -76,24 +83,55 @@ export default function RecentJobsList({
   currentJobId,
   className = '',
   showTitle = true,
+  refreshTrigger,
+  optimisticJob,
 }: RecentJobsListProps) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const fetchJobs = useCallback(async () => {
     try {
-      const res = await fetch('/api/jobs');
+      const limit = showAll ? 50 : 20;
+      const res = await fetch(`/api/jobs?limit=${limit}`);
       if (res.ok) {
         const data = await res.json();
-        setJobs(data.jobs || []);
+        const fetchedJobs = data.jobs || [];
+        
+        // Merge with optimistic job if it exists and isn't already in the list
+        if (optimisticJob) {
+          const hasOptimisticJob = fetchedJobs.some((j: Job) => j.id === optimisticJob.id);
+          if (!hasOptimisticJob) {
+            const optimisticJobEntry: Job = {
+              id: optimisticJob.id,
+              status: optimisticJob.status,
+              progress: 0,
+              fileName: optimisticJob.fileName,
+              processedCount: null,
+              totalCount: null,
+              createdAt: optimisticJob.createdAt,
+              completedAt: null,
+              error: null,
+            };
+            // Add optimistic job at the top
+            fetchedJobs.unshift(optimisticJobEntry);
+          }
+        }
+        
+        setJobs(fetchedJobs);
+        // Set loading to false as soon as we have data (even if empty)
+        setIsLoading(false);
+      } else {
+        // If request fails, still stop loading to avoid infinite spinner
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('Failed to fetch recent jobs', error);
-    } finally {
+      // Stop loading even on error to avoid infinite spinner
       setIsLoading(false);
     }
-  }, []);
+  }, [optimisticJob, showAll]);
 
   const handleDelete = async (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation(); // Prevent triggering the onClick for resuming job
@@ -140,6 +178,45 @@ export default function RecentJobsList({
     if (currentJobId === undefined) return;
     fetchJobs();
   }, [currentJobId, fetchJobs]);
+
+  // Refresh when refreshTrigger changes (used when job status changes)
+  useEffect(() => {
+    if (refreshTrigger !== undefined && refreshTrigger > 0) {
+      fetchJobs();
+    }
+  }, [refreshTrigger, fetchJobs]);
+
+  // Add optimistic job immediately when provided
+  useEffect(() => {
+    if (optimisticJob) {
+      setJobs(prev => {
+        // Check if job already exists (from fetch)
+        const exists = prev.some(j => j.id === optimisticJob.id);
+        if (exists) {
+          // Update existing job
+          return prev.map(j => j.id === optimisticJob.id ? {
+            ...j,
+            status: optimisticJob.status,
+            fileName: optimisticJob.fileName,
+          } : j);
+        } else {
+          // Add new optimistic job at the top
+          const optimisticJobEntry: Job = {
+            id: optimisticJob.id,
+            status: optimisticJob.status,
+            progress: 0,
+            fileName: optimisticJob.fileName,
+            processedCount: null,
+            totalCount: null,
+            createdAt: optimisticJob.createdAt,
+            completedAt: null,
+            error: null,
+          };
+          return [optimisticJobEntry, ...prev].slice(0, 5); // Keep only top 5
+        }
+      });
+    }
+  }, [optimisticJob]);
 
   useEffect(() => {
     if (APP_CONFIG.polling.recentJobs.temporarilyDisabled) {
@@ -284,6 +361,16 @@ export default function RecentJobsList({
           <div className="rounded-2xl border border-dashed border-[#3a3a3a] bg-[#252525] p-6 text-center text-xs text-[var(--text-secondary)]">
             No imports yet. Start by uploading a PDF to see history here.
           </div>
+        )}
+
+        {!showSkeleton && hasJobs && jobs.length >= 20 && !showAll && (
+          <button
+            onClick={() => setShowAll(true)}
+            className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-4 py-3 text-sm font-medium transition-colors hover:border-[#AC66DA] hover:bg-[#2A2A2A] cursor-pointer"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            View All Imports
+          </button>
         )}
       </div>
     </div>

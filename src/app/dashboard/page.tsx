@@ -51,8 +51,11 @@ export default function DashboardPage() {
         }
         
         const data = await response.json();
-        setIncome(data.income);
-        setExpenses(data.expenses);
+        console.log('[dashboard] Received data:', data);
+        console.log('[dashboard] Income:', data.income);
+        console.log('[dashboard] Expenses:', data.expenses);
+        setIncome(data.income || { amount: 0, trend: 0 });
+        setExpenses(data.expenses || { amount: 0, trend: 0 });
         setTransactions(data.transactions || []);
         setTopExpenses(data.topExpenses || []);
       } catch (err) {

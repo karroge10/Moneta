@@ -40,10 +40,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract and normalize merchant name
+    // Description should already be in English (translatedDescription) when called from import flow
+    // But handle both cases: if it's still in original language, try to extract anyway
     const merchantName = extractMerchantFromDescription(description);
     const normalizedMerchant = normalizeMerchantName(merchantName);
 
-    if (!normalizedMerchant) {
+    if (!normalizedMerchant || normalizedMerchant.length < 2) {
+      console.warn('[merchants/learn] Could not extract merchant name', {
+        description,
+        extracted: merchantName,
+        normalized: normalizedMerchant,
+      });
       return NextResponse.json(
         { error: 'Could not extract merchant name from description' },
         { status: 400 },
