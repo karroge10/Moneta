@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Crown, Bell, Settings, LogOut, Plus, HeadsetHelp, Upload } from 'iconoir-react';
+import { Crown, Bell, Settings, LogOut, Plus, HeadsetHelp, Upload, CalendarCheck } from 'iconoir-react';
 import Link from 'next/link';
 import NotificationsDropdown from '@/components/updates/NotificationsDropdown';
 import { useNotifications } from '@/hooks/useNotifications';
+import Dropdown from '@/components/ui/Dropdown';
+import { TimePeriod } from '@/types/dashboard';
 
 interface ActionButton {
   label: string;
@@ -16,9 +18,27 @@ interface DashboardHeaderProps {
   pageName?: string;
   actionButton?: ActionButton;
   actionButtons?: ActionButton[];
+  timePeriod?: TimePeriod;
+  onTimePeriodChange?: (period: TimePeriod) => void;
 }
 
-export default function DashboardHeader({ pageName = 'Dashboard', actionButton, actionButtons }: DashboardHeaderProps) {
+const TIME_PERIOD_OPTIONS: TimePeriod[] = [
+  'This Month',
+  'Last Month',
+  'This Quarter',
+  'Last Quarter',
+  'This Year',
+  'Last Year',
+  'All Time',
+];
+
+export default function DashboardHeader({ 
+  pageName = 'Dashboard', 
+  actionButton, 
+  actionButtons,
+  timePeriod = 'This Month',
+  onTimePeriodChange,
+}: DashboardHeaderProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
@@ -63,6 +83,15 @@ export default function DashboardHeader({ pageName = 'Dashboard', actionButton, 
         ))}
         
         <div className="flex items-center gap-4">
+          {onTimePeriodChange && (
+            <Dropdown
+              label="Time Period"
+              options={TIME_PERIOD_OPTIONS}
+              value={timePeriod}
+              onChange={(value) => onTimePeriodChange(value as TimePeriod)}
+              iconLeft={<CalendarCheck width={16} height={16} strokeWidth={1.5} />}
+            />
+          )}
           <div className="relative" ref={notificationsRef}>
             <button
               onClick={() => {

@@ -58,6 +58,8 @@ const GEORGIAN_TO_ENGLISH: Record<string, string> = {
   'სხვა': 'Other',
   'სხვადასხვა': 'Various',
   'ბანკიდან': 'From bank',
+  'მობილური': 'Mobile',
+  'სელფი': 'Self',
 };
 
 /**
@@ -76,11 +78,27 @@ export function translateToEnglish(text: string): string {
     return GEORGIAN_TO_ENGLISH[text];
   }
   
-  // Replace known phrases
+  // Replace known phrases first (longer phrases first to avoid partial matches)
   let translated = text;
-  for (const [georgian, english] of Object.entries(GEORGIAN_TO_ENGLISH)) {
-    translated = translated.replace(new RegExp(georgian, 'gi'), english);
+  const sortedEntries = Object.entries(GEORGIAN_TO_ENGLISH).sort((a, b) => b[0].length - a[0].length);
+  for (const [georgian, english] of sortedEntries) {
+    translated = translated.replace(new RegExp(georgian.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), english);
   }
+  
+  // Also try word-by-word translation for remaining Georgian words
+  // Split by common delimiters but preserve them
+  const words = translated.split(/(\s+|[-\u2013\u2014\u2015])/);
+  translated = words.map(word => {
+    // If word contains Georgian characters and wasn't already translated
+    if (/[\u10A0-\u10FF]/.test(word)) {
+      // Try to find a translation for this word
+      const trimmedWord = word.trim();
+      if (GEORGIAN_TO_ENGLISH[trimmedWord]) {
+        return word.replace(trimmedWord, GEORGIAN_TO_ENGLISH[trimmedWord]);
+      }
+    }
+    return word;
+  }).join('');
   
   // If still contains Georgian characters and we have a translation API, use it
   // For now, return as-is if no mapping found
