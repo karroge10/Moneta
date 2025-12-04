@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { NavArrowDown, Trash, ShoppingBag, Wallet } from 'iconoir-react';
-import { Transaction } from '@/types/dashboard';
+import { Transaction, Category } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
-import { mockCategories } from '@/lib/mockData';
 import { useCurrency } from '@/hooks/useCurrency';
 import { formatNumber } from '@/lib/utils';
 import Spinner from '@/components/ui/Spinner';
@@ -19,6 +18,8 @@ interface TransactionFormProps {
   onDelete?: () => void;
   onFloatingPanelToggle?: (isOpen: boolean) => void;
   isSaving?: boolean;
+  categories: Category[];
+  currencyOptions: Array<{ id: number; name: string; symbol: string; alias: string }>;
 }
 
 export default function TransactionForm({
@@ -29,15 +30,16 @@ export default function TransactionForm({
   onDelete,
   onFloatingPanelToggle,
   isSaving = false,
+  categories: allCategories,
+  currencyOptions,
 }: TransactionFormProps) {
   const { currency } = useCurrency();
   const [formData, setFormData] = useState<Transaction>(transaction);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
-  const [currencyOptions, setCurrencyOptions] = useState<Array<{ id: number; name: string; symbol: string; alias: string }>>([]);
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>(
-    transaction.amount < 0 ? 'expense' : 'income'
+    transaction.amount < 0 ? 'expense' : transaction.amount > 0 ? 'income' : 'expense'
   );
   const [amountInput, setAmountInput] = useState(
     transaction.amount ? Math.abs(transaction.amount).toString() : ''
@@ -59,27 +61,19 @@ export default function TransactionForm({
     };
     // This is intentional - we need to sync props to state for controlled form
     setFormData(transactionToUse);
-    setTransactionType(transaction.amount < 0 ? 'expense' : 'income');
+    // Default to 'expense' if amount is 0 or missing, otherwise determine from amount sign
+    setTransactionType(transaction.amount < 0 ? 'expense' : transaction.amount > 0 ? 'income' : 'expense');
     setAmountInput(transaction.amount ? Math.abs(transaction.amount).toString() : '');
     const initial = formatDateToInput(transaction.date);
     setDateInput(initial);
     setCurrentMonth(initial ? new Date(initial) : new Date());
   }, [transaction]);
 
-  useEffect(() => {
-    const fetchCurrencies = async () => {
-      try {
-        const response = await fetch('/api/currencies');
-        if (response.ok) {
-          const data = await response.json();
-          setCurrencyOptions(data.currencies || []);
-        }
-      } catch (err) {
-        console.error('Error fetching currencies:', err);
-      }
-    };
-    fetchCurrencies();
-  }, []);
+  // Filter categories by transaction type (client-side filtering)
+  const categories = allCategories.filter(cat => {
+    // Include categories that match the transaction type or have null type (for both)
+    return !cat.type || cat.type === transactionType;
+  });
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -109,7 +103,8 @@ export default function TransactionForm({
     e.preventDefault();
     // Apply transaction type to amount (negative for expense, positive for income)
     const finalAmount = transactionType === 'expense' ? -formData.amount : formData.amount;
-    onSave({ ...formData, amount: finalAmount });
+    // Include currencyId in the saved transaction
+    onSave({ ...formData, amount: finalAmount, currencyId: formData.currencyId });
   };
 
   const handleDelete = async () => {
@@ -118,8 +113,23 @@ export default function TransactionForm({
     }
   };
 
+  // Check if current category is valid for current transaction type
+  useEffect(() => {
+    if (formData.category && allCategories.length > 0) {
+      const currentCategory = allCategories.find(cat => cat.name === formData.category);
+      // If category exists but doesn't match current transaction type, clear it
+      if (currentCategory && currentCategory.type && currentCategory.type !== transactionType) {
+        setFormData(prev => ({
+          ...prev,
+          category: null,
+          icon: 'HelpCircle',
+        }));
+      }
+    }
+  }, [transactionType, formData.category, allCategories]);
+
   const selectedCategory = formData.category
-    ? mockCategories.find(category => category.name === formData.category) ?? null
+    ? categories.find(category => category.name === formData.category) ?? null
     : null;
 
   // Get icon component from static map (not creating new component, just getting reference)
@@ -138,7 +148,7 @@ export default function TransactionForm({
       return;
     }
 
-    const category = mockCategories.find(item => item.id === categoryId);
+    const category = categories.find(item => item.id === categoryId);
     setFormData(prev => ({
       ...prev,
       category: category?.name ?? null,
@@ -245,7 +255,7 @@ export default function TransactionForm({
                   >
                     <span>None</span>
                   </button>
-                  {mockCategories.map(category => {
+                  {categories.map(category => {
                     const Icon = getIcon(category.icon);
                     const isSelected = selectedCategory?.id === category.id;
                     return (

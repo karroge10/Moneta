@@ -53,6 +53,12 @@ function getIconForCategory(categoryName: string | null): string {
 const categoryColors = ['#74C648', '#AC66DA', '#D93F3F', '#4A90E2', '#FFA500', '#FF8C00'];
 
 // GET - Fetch dashboard data
+// This endpoint fetches real transaction data from the database:
+// 1. Gets all transactions for the authenticated user from the Transaction table
+// 2. Converts amounts to user's preferred currency using exchange rates
+// 3. Filters transactions by date (current month vs last month)
+// 4. Calculates income (type='income') and expenses (type='expense') totals
+// 5. Calculates percentage trends comparing current month to last month
 export async function GET() {
   try {
     // Get user with language included to avoid extra query
@@ -74,12 +80,19 @@ export async function GET() {
 
     const targetCurrencyId = userCurrencyRecord.id;
     
-    // Calculate date ranges
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+    // Calculate date ranges for current and last month
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
     
-    // Fetch all transactions for the user - no filtering, all transactions are included
+    // Current month: from 1st of current month to end of current month
+    const currentMonthStart = new Date(currentYear, currentMonth, 1);
+    const currentMonthEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+    
+    // Last month: from 1st of last month to end of last month
+    const lastMonthStart = new Date(currentYear, currentMonth - 1, 1);
+    const lastMonthEnd = new Date(currentYear, currentMonth, 0, 23, 59, 59, 999);
+    
+    // Fetch all transactions for the user
     const allTransactions = await db.transaction.findMany({
       where: {
         userId: user.id,
@@ -109,8 +122,29 @@ export async function GET() {
       }),
     );
     
-    // Calculate current month income and expenses - all transactions included
-    const currentMonthTransactions = transactionsWithConverted.filter((t) => t.date >= currentMonthStart);
+    // Debug logging
+    console.log(`[dashboard] Total transactions found: ${allTransactions.length}`);
+    console.log(`[dashboard] Current month range: ${currentMonthStart.toISOString()} to ${currentMonthEnd.toISOString()}`);
+    console.log(`[dashboard] Last month range: ${lastMonthStart.toISOString()} to ${lastMonthEnd.toISOString()}`);
+    
+    // Helper function to check if a date is within a month range
+    const isInMonthRange = (date: Date, start: Date, end: Date): boolean => {
+      const d = new Date(date);
+      return d >= start && d <= end;
+    };
+    
+    // Calculate current month income and expenses
+    const currentMonthTransactions = transactionsWithConverted.filter((t) => 
+      isInMonthRange(t.date, currentMonthStart, currentMonthEnd)
+    );
+    
+    console.log(`[dashboard] Current month transactions: ${currentMonthTransactions.length}`);
+    if (currentMonthTransactions.length > 0) {
+      console.log(`[dashboard] Sample transaction dates:`, 
+        currentMonthTransactions.slice(0, 3).map(t => ({ date: t.date.toISOString(), type: t.type, amount: t.convertedAmount }))
+      );
+    }
+    
     const currentMonthIncome = currentMonthTransactions
       .filter((t) => t.type === 'income')
       .reduce((sum: number, t) => sum + t.convertedAmount, 0);
@@ -118,10 +152,15 @@ export async function GET() {
       .filter((t) => t.type === 'expense')
       .reduce((sum: number, t) => sum + t.convertedAmount, 0);
     
-    // Calculate last month income and expenses - all transactions included
+    console.log(`[dashboard] Current month income: ${currentMonthIncome}, expenses: ${currentMonthExpenses}`);
+    
+    // Calculate last month income and expenses
     const lastMonthTransactions = transactionsWithConverted.filter((t) => 
-      t.date >= lastMonthStart && t.date <= lastMonthEnd
+      isInMonthRange(t.date, lastMonthStart, lastMonthEnd)
     );
+    
+    console.log(`[dashboard] Last month transactions: ${lastMonthTransactions.length}`);
+    
     const lastMonthIncome = lastMonthTransactions
       .filter((t) => t.type === 'income')
       .reduce((sum: number, t) => sum + t.convertedAmount, 0);
@@ -129,14 +168,21 @@ export async function GET() {
       .filter((t) => t.type === 'expense')
       .reduce((sum: number, t) => sum + t.convertedAmount, 0);
     
-    // Calculate trends
+    // Calculate trends (percentage change from last month)
+    // If last month had no income/expenses but current month does, show 100% increase
+    // If both months are 0, show 0% (no change)
+    // Otherwise calculate percentage change
     const incomeTrend = lastMonthIncome > 0 
       ? Math.round(((currentMonthIncome - lastMonthIncome) / lastMonthIncome) * 100)
-      : currentMonthIncome > 0 ? 100 : 0;
+      : currentMonthIncome > 0 
+        ? 100  // New income this month (100% increase from 0)
+        : 0;   // No income in either month
     
     const expenseTrend = lastMonthExpenses > 0
       ? Math.round(((currentMonthExpenses - lastMonthExpenses) / lastMonthExpenses) * 100)
-      : currentMonthExpenses > 0 ? 100 : 0;
+      : currentMonthExpenses > 0 
+        ? 100  // New expenses this month (100% increase from 0)
+        : 0;   // No expenses in either month
     
     // Get latest transactions (limit to 6) - all transactions included
     const latestTransactions: TransactionType[] = transactionsWithConverted

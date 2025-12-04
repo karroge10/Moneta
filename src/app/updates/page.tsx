@@ -1,27 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import NotificationsTable from '@/components/updates/NotificationsTable';
 import NotificationSettingsCard from '@/components/updates/NotificationSettingsCard';
-import { mockNotifications, mockDeletedNotifications, mockNotificationSettings } from '@/lib/mockData';
+import { mockNotificationSettings } from '@/lib/mockData';
 import { NotificationEntry, NotificationSettings } from '@/types/dashboard';
 import { TimePeriod } from '@/types/dashboard';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export default function UpdatesPage() {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('All Time');
-  const [notifications, setNotifications] = useState<NotificationEntry[]>(mockNotifications);
-  const [deletedNotifications, setDeletedNotifications] = useState<NotificationEntry[]>(mockDeletedNotifications);
+  const [deletedNotifications, setDeletedNotifications] = useState<NotificationEntry[]>([]);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(mockNotificationSettings);
+  
+  // Fetch real notifications (all, not just unread)
+  const { notifications, isLoading: notificationsLoading, refresh: refreshNotifications } = useNotifications(50, false);
 
-  const handleDeleteNotification = (id: string) => {
+  const handleDeleteNotification = async (id: string) => {
     const notification = notifications.find(n => n.id === id);
     if (notification) {
-      // Move to deleted notifications
+      // Move to deleted notifications (local state only - could add API endpoint later)
       setDeletedNotifications(prev => [notification, ...prev]);
-      // Remove from active notifications
-      setNotifications(prev => prev.filter(n => n.id !== id));
+      // Refresh to remove from list (or mark as deleted in DB if we add that endpoint)
+      await refreshNotifications();
     }
   };
 

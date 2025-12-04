@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
     const user = await requireCurrentUserWithLanguage();
     const body = await request.json();
     
-    const { name, date, amount, category } = body;
+    const { name, date, amount, category, currencyId: requestCurrencyId } = body;
     
     if (!name || !date || amount === undefined) {
       return NextResponse.json(
@@ -237,17 +237,20 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Get user's default currency
-    let currencyId = user.currencyId;
+    // Use currencyId from request if provided, otherwise use user's default currency
+    let currencyId = requestCurrencyId;
     if (!currencyId) {
-      const defaultCurrency = await db.currency.findFirst();
-      if (!defaultCurrency) {
-        return NextResponse.json(
-          { error: 'No currency configured' },
-          { status: 500 }
-        );
+      currencyId = user.currencyId;
+      if (!currencyId) {
+        const defaultCurrency = await db.currency.findFirst();
+        if (!defaultCurrency) {
+          return NextResponse.json(
+            { error: 'No currency configured' },
+            { status: 500 }
+          );
+        }
+        currencyId = defaultCurrency.id;
       }
-      currencyId = defaultCurrency.id;
     }
 
     const transactionCurrency = await db.currency.findUnique({

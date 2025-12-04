@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
     
-    // Fetch standard categories
+    // Fetch all standard categories (no filtering by type - client will filter)
     const standardCategories = await db.category.findMany({
       orderBy: {
         name: 'asc',
@@ -53,12 +53,13 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    // Transform standard categories with usage counts
-    const categories: (Category & { usageCount: number })[] = standardCategories.map((cat: { id: number; name: string; icon: string; color: string }) => ({
+    // Transform standard categories with usage counts and type
+    const categories: (Category & { usageCount: number; type?: string | null })[] = standardCategories.map((cat: { id: number; name: string; icon: string; color: string; type: string | null }) => ({
       id: cat.id.toString(),
       name: cat.name,
       icon: cat.icon,
       color: cat.color,
+      type: cat.type || null,
       usageCount: usageMap.get(cat.id) || 0,
     }));
     
@@ -94,8 +95,8 @@ export async function GET(request: NextRequest) {
       return a.name.localeCompare(b.name);
     });
     
-    // Remove usageCount from final response (it was only for sorting)
-    const sortedCategories: Category[] = categories.map(({ usageCount, ...cat }) => cat);
+    // Remove usageCount from final response (it was only for sorting), but keep type
+    const sortedCategories: (Category & { type?: string | null })[] = categories.map(({ usageCount, ...cat }) => cat);
     
     return NextResponse.json({ categories: sortedCategories });
   } catch (error) {

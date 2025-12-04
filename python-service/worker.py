@@ -87,20 +87,31 @@ def update_job_status(conn, job_id, status, progress=None, result=None, error=No
 
 def create_notification(conn, user_id, message):
     """Create a notification for the user."""
-    cursor = conn.cursor()
-    now = datetime.now()
-    cursor.execute("""
-        INSERT INTO "Notification" ("userId", type, text, date, time, read)
-        VALUES (%s, %s, %s, %s, %s, false)
-    """, (
-        user_id,
-        'PDF Processing',
-        message,
-        now.date(),
-        now.strftime('%H:%M:%S'),
-    ))
-    conn.commit()
-    cursor.close()
+    cursor = None
+    try:
+        cursor = conn.cursor()
+        now = datetime.now()
+        # Use full datetime for date field (PostgreSQL will handle it)
+        cursor.execute("""
+            INSERT INTO "Notification" ("userId", type, text, date, time, read)
+            VALUES (%s, %s, %s, %s, %s, false)
+        """, (
+            user_id,
+            'PDF Processing',
+            message,
+            now,  # Use full datetime - PostgreSQL DateTime field accepts this
+            now.strftime('%H:%M:%S'),
+        ))
+        conn.commit()
+        print(f'[worker] Created notification for user {user_id}: {message}', flush=True)
+    except Exception as e:
+        print(f'[worker] ERROR: Failed to create notification for user {user_id}: {str(e)}', flush=True)
+        import traceback
+        print(f'[worker] Traceback: {traceback.format_exc()}', flush=True)
+        # Don't raise - notification creation failure shouldn't break the job
+    finally:
+        if cursor:
+            cursor.close()
 
 def process_job(conn, job_id, file_content, file_name, user_id):
     """Process a single PDF job."""
@@ -182,12 +193,8 @@ def process_job(conn, job_id, file_content, file_name, user_id):
         cursor.close()
         print(f'[worker] Deleted PDF content from database for job {job_id}', flush=True)
         
-        # Create notification
-        create_notification(
-            conn,
-            user_id,
-            f'Your bank statement has been processed successfully! Found {len(result_transactions)} transactions.'
-        )
+        # Notification will be created by the API route when it receives the completion status
+        # No need to create it here to avoid duplicates
         
         print(f'[worker] Job {job_id} completed successfully', flush=True)
         

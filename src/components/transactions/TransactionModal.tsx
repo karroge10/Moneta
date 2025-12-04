@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Xmark } from 'iconoir-react';
-import { Transaction } from '@/types/dashboard';
+import { Transaction, Category } from '@/types/dashboard';
 import TransactionForm from './TransactionForm';
 
 interface TransactionModalProps {
@@ -12,6 +12,8 @@ interface TransactionModalProps {
   onSave: (transaction: Transaction) => void;
   onDelete?: () => void;
   isSaving?: boolean;
+  categories: Category[];
+  currencyOptions: Array<{ id: number; name: string; symbol: string; alias: string }>;
 }
 
 export default function TransactionModal({
@@ -21,6 +23,8 @@ export default function TransactionModal({
   onSave,
   onDelete,
   isSaving = false,
+  categories,
+  currencyOptions,
 }: TransactionModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [isFloatingPanelOpen, setIsFloatingPanelOpen] = useState(false);
@@ -89,6 +93,8 @@ export default function TransactionModal({
                 onDelete={onDelete}
                 onFloatingPanelToggle={setIsFloatingPanelOpen}
                 isSaving={isSaving}
+                categories={categories}
+                currencyOptions={currencyOptions}
               />
             </div>
           </div>
