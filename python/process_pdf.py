@@ -380,6 +380,33 @@ def parse_amount(candidates: Iterable[str]) -> Optional[float]:
     return None
 
 
+def extract_amount_from_text(text: str) -> Optional[float]:
+    """
+    Extract amount from text that may contain currency codes like "20.65 GEL" or "3.54 GEL".
+    Returns the first valid amount found in the text.
+    """
+    if not text:
+        return None
+    
+    # Pattern to match amounts like "20.65 GEL", "3.54 GEL", "86.56", etc.
+    # Matches: optional sign, digits, optional dot/comma, digits, optional currency code
+    patterns = [
+        r'([+-]?\d+[.,]\d{2})\s*(?:GEL|USD|EUR|RUB|₾|₽|\$|€)?',  # "20.65 GEL" or "20.65"
+        r'([+-]?\d+[.,]\d{1,2})\s*(?:GEL|USD|EUR|RUB|₾|₽|\$|€)?',  # "20.6 GEL" or "20.6"
+        r'([+-]?\d+)\s*(?:GEL|USD|EUR|RUB|₾|₽|\$|€)',  # "20 GEL"
+    ]
+    
+    for pattern in patterns:
+        matches = re.finditer(pattern, text, re.IGNORECASE)
+        for match in matches:
+            amount_str = match.group(1)
+            amount = parse_amount([amount_str])
+            if amount is not None and amount != 0:
+                return amount
+    
+    return None
+
+
 def detect_currency_from_text(text: Optional[str]) -> Optional[Tuple[str, float, str]]:
     """
     Attempt to detect currency codes from statement text.
@@ -490,7 +517,8 @@ def extract_transactions_with_pdfplumber(pdf_path: Path) -> Tuple[List[RawTransa
 
     try:  # pragma: no cover - requires runtime dependency
         with pdfplumber.open(pdf_path) as pdf:
-            logger.info("Opened %s with %d pages", pdf_path.name, len(pdf.pages))
+            total_pages = len(pdf.pages)
+            logger.info("Opened %s with %d pages (processing all pages)", pdf_path.name, total_pages)
             
             # First, get some diagnostic info about the PDF
             if len(pdf.pages) > 0:
@@ -510,6 +538,7 @@ def extract_transactions_with_pdfplumber(pdf_path: Path) -> Tuple[List[RawTransa
             
             for page_index, page in enumerate(pdf.pages, start=1):
                 tables_found = False
+                transactions_before_page = len(transactions)
                 
                 # Try each extraction strategy
                 for strategy in table_strategies:
@@ -536,8 +565,8 @@ def extract_transactions_with_pdfplumber(pdf_path: Path) -> Tuple[List[RawTransa
                                 # Process this table
                                 processed = _process_table(table, page_index, table_index, transactions)
                                 if processed > 0:
-                                    logger.info("Page %d table %d: successfully processed %d transaction rows", 
-                                              page_index, table_index, processed)
+                                    logger.info("Page %d table %d: successfully processed %d transaction rows (total now: %d)", 
+                                              page_index, table_index, processed, len(transactions))
                             
                             # If we found and processed tables, no need to try other strategies
                             if tables_found and len(transactions) > 0:
@@ -545,6 +574,11 @@ def extract_transactions_with_pdfplumber(pdf_path: Path) -> Tuple[List[RawTransa
                     except Exception as e:
                         logger.debug("Page %d: strategy '%s' failed: %s", page_index, strategy["name"], str(e))
                         continue
+                
+                # Log page summary
+                transactions_added = len(transactions) - transactions_before_page
+                if transactions_added > 0:
+                    logger.info("Page %d: Added %d transactions (total: %d)", page_index, transactions_added, len(transactions))
                 
                 if not tables_found:
                     logger.warning("Page %d: No tables found with any extraction strategy", page_index)
@@ -563,18 +597,16 @@ def extract_transactions_with_pdfplumber(pdf_path: Path) -> Tuple[List[RawTransa
         traceback.print_exc()
         return [], metadata
 
-    text_based_rows = _extract_transactions_from_text(pdf_path)
-    if text_based_rows:
-        table_score = _score_transactions(transactions)
-        text_score = _score_transactions(text_based_rows)
-        if not transactions or text_score < table_score:
-            logger.info(
-                "Switching to text-based parsing for %s (score %.2f -> %.2f)",
-                pdf_path.name,
-                table_score,
-                text_score,
-            )
+    # Only use text-based extraction if table-based extraction found no transactions
+    # Table-based extraction is more reliable, so we prefer it when it finds transactions
+    if not transactions:
+        logger.info("No transactions found via table extraction, trying text-based extraction")
+        text_based_rows = _extract_transactions_from_text(pdf_path)
+        if text_based_rows:
+            logger.info("Text-based extraction found %d transactions", len(text_based_rows))
             transactions = text_based_rows
+    else:
+        logger.info("Using table-based extraction results (%d transactions found)", len(transactions))
 
     logger.info("PDF extraction completed: found %d transactions across %d pages", len(transactions), len(pdf.pages) if 'pdf' in locals() else 0)
     return transactions, metadata
@@ -660,62 +692,71 @@ def _normalize_description(value: str) -> str:
     return text or "Imported transaction"
 
 
-# English-only keywords - text is translated before checking
 HEADER_KEYWORDS = (
+    "выписка",
     "statement",
     "www.",
+    "сбербанк",
+    "остаток",
+    "итого",
+    "категория",
+    "описание операции",
     "account holder",
+    # Georgian header keywords
+    "თარიღი",
+    "ოპერაცია",
+    "ბრუნვა",
+    "ნაშთი",
+    "დანიშნულება",
+    "ბენეფიციარის",
+    "date",
+    "operation",
+    "turnover",
     "balance",
-    "total",
-    "category",
-    "operation description",
+    "description",
+    "beneficiary",
 )
 
 CREDIT_KEYWORDS = (
+    "перевод от",
+    "зачисление",
+    "зарплата",
+    "заработная плата",
     "transfer from",
     "incoming transfer",
     "deposit",
     "salary",
     "credited",
-    "income",
-    "receipt",
+    "поступление",
 )
 
 DEBIT_KEYWORDS = (
+    "перевод на",
+    "списание",
+    "оплата",
+    "платеж",
     "transfer to",
     "payment to",
     "withdrawal",
     "cash withdrawal",
-    "payment",
-    "expense",
-    "debit",
 )
 
 NUMBER_PATTERN = re.compile(r"[+-]?\d[\d\s]*[.,]\d{2}")
 
 
 def _looks_like_header(text: str) -> bool:
-    """Check if text looks like a header row. Translates to English first."""
-    if not text:
-        return False
-    translated = translate_to_english(text).lower()
-    return any(keyword in translated for keyword in HEADER_KEYWORDS)
+    lowered = text.lower()
+    return any(keyword in lowered for keyword in HEADER_KEYWORDS)
 
 
 def _description_indicates_credit(text: str) -> bool:
-    """Check if description indicates a credit transaction. Translates to English first."""
-    if not text:
-        return False
-    translated = translate_to_english(text).lower()
-    return any(keyword in translated for keyword in CREDIT_KEYWORDS)
+    lowered = text.lower()
+    return any(keyword in lowered for keyword in CREDIT_KEYWORDS)
 
 
 def _description_indicates_debit(text: str) -> bool:
-    """Check if description indicates a debit transaction. Translates to English first."""
-    if not text:
-        return False
-    translated = translate_to_english(text).lower()
-    return any(keyword in translated for keyword in DEBIT_KEYWORDS)
+    lowered = text.lower()
+    return any(keyword in lowered for keyword in DEBIT_KEYWORDS)
 
 
 def _parse_text_transaction_line(line: str) -> Optional[Tuple[str, str, float]]:
@@ -836,43 +877,45 @@ def _process_table(table: List[List], page_index: int, table_index: int, transac
     if not table or len(table) <= 1:
         return 0
     
-    body = table[1:]
+    # Check if first row is actually a header or a data row
+    first_row = table[0] if table and len(table) > 0 else None
+    first_row_text = " ".join(str(cell).lower().strip() if cell else "" for cell in first_row) if first_row else ""
+    is_first_row_header = _looks_like_header(first_row_text) if first_row_text else False
+    
+    # If first row is a header, skip it; otherwise include it in body
+    body = table[1:] if is_first_row_header else table
     rows_processed = 0
 
     # Try to detect column structure from header row if available
-    header = table[0] if table and len(table) > 0 else None
+    header = table[0] if is_first_row_header and table and len(table) > 0 else None
     date_col_idx = None
     debit_col_idx = None
     credit_col_idx = None
     desc_col_idx = None
-    balance_col_idx = None
     
     # Try to find column indices from header
-    # Translate headers to English first, then check against English keywords only
     if header:
-        for idx, header_cell in enumerate(header):
-            if not header_cell:
-                continue
-            
-            # Translate header cell to English
-            header_text = str(header_cell).strip()
-            header_en = translate_to_english(header_text).lower()
-            
-            # Check against English keywords only
-            if any(keyword in header_en for keyword in ['date', 'time']):
+        header_lower = [str(cell).lower().strip() if cell else "" for cell in header]
+        header_original = [str(cell).strip() if cell else "" for cell in header]
+        for idx, header_cell in enumerate(header_lower):
+            # Date column detection
+            if any(keyword in header_cell for keyword in ['date', 'дата', 'თარიღი']):
                 date_col_idx = idx
-            # Look for debit column (Turnover DB, debit, out, withdrawal, etc.)
-            elif any(keyword in header_en for keyword in ['debit', 'turnover (db)', 'turnover(db)', 'turnover db', 'out', 'withdrawal', 'expense', 'payment']):
+            # Debit column detection - includes Georgian "ბრუნვა (დებ)" pattern
+            if any(keyword in header_cell for keyword in ['debit', 'дебет', 'დებეტი', 'out', 'გასავალი', 'დებ']):
                 debit_col_idx = idx
-            # Look for credit column (Turnover CR, credit, in, deposit, etc.)
-            elif any(keyword in header_en for keyword in ['credit', 'turnover (cr)', 'turnover(cr)', 'turnover cr', 'in', 'deposit', 'income', 'receipt']):
+            # Also check original text for Georgian patterns
+            if header_original[idx] and ('ბრუნვა (დებ)' in header_original[idx] or 'დებ' in header_original[idx]):
+                debit_col_idx = idx
+            # Credit column detection - includes Georgian "ბრუნვა (კრ)" pattern
+            if any(keyword in header_cell for keyword in ['credit', 'кредит', 'კრედიტი', 'in', 'შემოსავალი', 'კრ']):
                 credit_col_idx = idx
-            # Look for description column
-            elif any(keyword in header_en for keyword in ['description', 'operation', 'details', 'purpose', 'beneficiary', 'merchant', 'note', 'memo', 'reference']):
+            # Also check original text for Georgian patterns
+            if header_original[idx] and ('ბრუნვა (კრ)' in header_original[idx] or 'კრ' in header_original[idx]):
+                credit_col_idx = idx
+            # Description column detection
+            if any(keyword in header_cell for keyword in ['description', 'описание', 'აღწერა', 'operation', 'операция', 'ოპერაცია', 'details', 'დეტალები', 'დანიშნულება']):
                 desc_col_idx = idx
-            # Detect balance column to avoid importing balance values
-            elif any(keyword in header_en for keyword in ['balance', 'saldo', 'solde', 'remaining', 'total']):
-                balance_col_idx = idx
     
     # Fallback to default positions if not found in header
     if date_col_idx is None:
@@ -884,13 +927,56 @@ def _process_table(table: List[List], page_index: int, table_index: int, transac
     if desc_col_idx is None:
         desc_col_idx = 5
     
+    # Log detected column structure for debugging
+    if header:
+        logger.debug("Page %d table %d: Detected columns - Date: %s, Debit: %s, Credit: %s, Desc: %s", 
+                    page_index, table_index, date_col_idx, debit_col_idx, credit_col_idx, desc_col_idx)
+    
     recent_transaction: Optional[RawTransaction] = None
 
-    for row in body:
+    for row_idx, row in enumerate(body, start=1):
         cells = [_clean_cell_text(cell) for cell in row]
         if not any(cells):
             continue
 
+        # Check if this row looks like a header row BEFORE processing
+        # But be careful - don't skip valid transactions that happen to contain header-like words
+        row_text = " ".join(cells).lower()
+        is_header = _looks_like_header(row_text)
+        
+        # Additional check: if row has a valid date AND amounts, it's probably a transaction, not a header
+        if is_header:
+            # Check if it has a date - if yes, it's probably a transaction row, not a header
+            has_date = False
+            for cell in cells:
+                if parse_date(cell):
+                    has_date = True
+                    break
+            
+            # If it has a date, don't treat it as a header
+            if has_date:
+                is_header = False
+                if row_idx <= 6:
+                    logger.info("Row %d contains header-like text but has a date - treating as transaction", row_idx)
+        
+        if is_header:
+            if row_idx <= 6:
+                logger.info("SKIPPING ROW %d: Detected as header row", row_idx)
+                logger.info("  Row text: %s", row_text[:100])
+            else:
+                logger.debug("Skipping header row %d: %s", row_idx, " | ".join(cells[:5]))
+            continue
+
+        # Log raw cells for first 6 rows to debug
+        if row_idx <= 6:
+            logger.info("=" * 80)
+            logger.info("PROCESSING ROW %d (Page %d, Table %d)", row_idx, page_index, table_index)
+            logger.info("Raw cells (%d total):", len(cells))
+            for i, cell in enumerate(cells[:8]):
+                logger.info("  [%d] '%s'", i, cell[:50] if cell else "(empty)")
+            if len(cells) > 8:
+                logger.info("  ... (%d more cells)", len(cells) - 8)
+        
         row_description_hint = _collect_description_from_cells(cells)
 
         # Try to find date in any column if first column doesn't have it
@@ -905,45 +991,62 @@ def _process_table(table: List[List], page_index: int, table_index: int, transac
                 if date_value:
                     break
         
+        # Skip rows without dates - don't modify previous transactions
+        # Only skip if we also don't have valid amounts (to avoid skipping valid transactions)
         if not date_value:
-            if row_description_hint and recent_transaction:
-                existing = recent_transaction.description or ""
-                if existing == "Imported transaction":
-                    recent_transaction.description = row_description_hint
-                elif row_description_hint not in existing:
-                    recent_transaction.description = f"{existing} {row_description_hint}".strip()
-            continue
-
-        # Extract amounts
-        debit_amount = None
-        credit_amount = None
-        if debit_col_idx < len(cells):
-            debit_text = cells[debit_col_idx].replace("\n", " ")
-            debit_amount = parse_amount([debit_text]) if debit_text else None
-        if credit_col_idx < len(cells):
-            credit_text = cells[credit_col_idx].replace("\n", " ")
-            credit_amount = parse_amount([credit_text]) if credit_text else None
-        
-        # CRITICAL: Only extract from Turnover (DB) - debit column
-        # Skip rows that only have credit amounts or no debit amount
-        if debit_amount is None or debit_amount == 0:
-            # If no debit amount found in expected column, try fallback search
-            # but ONLY accept amounts that look like debits (negative indicators or in debit column position)
-            if debit_col_idx < len(cells):
-                # Already checked debit column, skip this row
+            # Check if this row has any amounts - if yes, it might be a valid transaction with date in wrong column
+            has_amounts = False
+            if debit_col_idx < len(cells) and cells[debit_col_idx]:
+                if parse_amount([cells[debit_col_idx]]):
+                    has_amounts = True
+            if not has_amounts and credit_col_idx < len(cells) and cells[credit_col_idx]:
+                if parse_amount([cells[credit_col_idx]]):
+                    has_amounts = True
+            
+            # If no date and no amounts, skip this row entirely without modifying previous transaction
+            if not has_amounts:
+                if row_idx <= 6:
+                    logger.info("SKIPPING ROW %d: No date and no amounts", row_idx)
+                    logger.info("  Cells: %s", " | ".join(cells[:8]))
+                else:
+                    logger.debug("Skipping row %d: no date and no amounts. Cells: %s", row_idx, " | ".join(cells[:5]))
                 continue
             
-            # Fallback: search for debit-like amounts (only if we couldn't find debit column)
+            # If we have amounts but no date, try harder to find date or skip
+            if row_idx <= 6:
+                logger.info("SKIPPING ROW %d: Has amounts but no date (skipping to avoid misalignment)", row_idx)
+                logger.info("  Cells: %s", " | ".join(cells[:8]))
+            else:
+                logger.debug("Row %d has amounts but no date, skipping to avoid misalignment", row_idx)
+            continue
+
+        # Extract amounts from debit/credit columns - be very strict about column indices
+        debit_amount = None
+        credit_amount = None
+        
+        # Log column indices and amount extraction for first 6 rows
+        if row_idx <= 6:
+            logger.info("Column indices - Date: %s, Debit: %s, Credit: %s, Desc: %s", 
+                       date_col_idx, debit_col_idx, credit_col_idx, desc_col_idx)
+            logger.info("Date extraction: '%s' -> %s", cells[date_col_idx] if date_col_idx < len(cells) else "N/A", date_value)
+        
+        if debit_col_idx < len(cells):
+            debit_text = cells[debit_col_idx].replace("\n", " ").strip()
+            if debit_text:
+                debit_amount = parse_amount([debit_text])
+                if row_idx <= 6:
+                    logger.info("Debit column[%s]: '%s' -> %s", debit_col_idx, debit_text[:40], debit_amount)
+        if credit_col_idx < len(cells):
+            credit_text = cells[credit_col_idx].replace("\n", " ").strip()
+            if credit_text:
+                credit_amount = parse_amount([credit_text])
+                if row_idx <= 6:
+                    logger.info("Credit column[%s]: '%s' -> %s", credit_col_idx, credit_text[:40], credit_amount)
+        
+        # If amounts not found in expected columns, try to find in any column
+        if debit_amount is None and credit_amount is None:
             amount_candidates: List[Tuple[int, float, str]] = []
             for idx in range(len(cells) - 1, -1, -1):
-                # Skip balance column (detected or usually last column)
-                if balance_col_idx is not None and idx == balance_col_idx:
-                    continue
-                if idx == len(cells) - 1:
-                    continue
-                # Skip credit column if detected
-                if credit_col_idx is not None and idx == credit_col_idx:
-                    continue
                 cell = cells[idx]
                 if not cell:
                     continue
@@ -957,48 +1060,120 @@ def _process_table(table: List[List], page_index: int, table_index: int, transac
                 amount = parse_amount([cell])
                 if amount is None or amount == 0:
                     continue
-                raw_stripped = cell.strip()
-                # Only accept if it looks like a debit (negative indicators or in debit position)
-                if amount < 0 or raw_stripped.startswith("-") or raw_stripped.startswith("("):
-                    amount_candidates.append((idx, abs(amount), cell))
-            
+                amount_candidates.append((idx, amount, cell))
             if amount_candidates:
-                # Prefer amounts in debit column position (around index 2-3)
-                preferred = [c for c in amount_candidates if 1 <= c[0] <= 4]
-                if preferred:
-                    target_idx, candidate_value, raw_cell = preferred[0]
-                    debit_amount = candidate_value
+                preferred = [candidate for candidate in amount_candidates if candidate[0] != len(cells) - 1]
+                target_idx, candidate_value, raw_cell = (preferred or amount_candidates)[0]
+                raw_stripped = raw_cell.strip()
+                if candidate_value < 0 or raw_stripped.startswith("-") or raw_stripped.startswith("("):
+                    debit_amount = abs(candidate_value)
+                elif raw_stripped.startswith("+"):
+                    credit_amount = abs(candidate_value)
                 else:
-                    # No debit-like amount found, skip this row
-                    continue
+                    debit_amount = abs(candidate_value)
+        
+        # If still no amount found, try extracting from description text
+        if debit_amount is None and credit_amount is None:
+            # Collect description text first
+            description_segments = []
+            if desc_col_idx < len(cells):
+                description_segments.append(cells[desc_col_idx].replace("\n", " "))
+            # Also try adjacent columns for description
+            for idx in range(max(0, desc_col_idx - 1), min(len(cells), desc_col_idx + 2)):
+                if idx != desc_col_idx and cells[idx]:
+                    text = cells[idx].replace("\n", " ")
+                    # Skip if it looks like a date or pure amount
+                    if not parse_date(text) and not parse_amount([text]):
+                        description_segments.append(text)
+            
+            description_text = " ".join(segment for segment in description_segments if segment).strip()
+            if description_text:
+                extracted_amount = extract_amount_from_text(description_text)
+                if extracted_amount:
+                    if extracted_amount < 0:
+                        debit_amount = abs(extracted_amount)
+                    else:
+                        credit_amount = abs(extracted_amount)
+        
+        amount_value: Optional[float] = None
+        if debit_amount is not None and debit_amount != 0:
+            amount_value = -abs(debit_amount)
+        elif credit_amount is not None and credit_amount != 0:
+            amount_value = abs(credit_amount)
+        
+        if amount_value is None:
+            if row_idx <= 6:
+                logger.warning("SKIPPING ROW %d: Could not extract amount", row_idx)
+                logger.warning("  Debit amount: %s, Credit amount: %s", debit_amount, credit_amount)
+                logger.warning("  Cells: %s", " | ".join(cells[:8]))
             else:
-                # No amount candidates found, skip this row
-                continue
-        
-        # ONLY use debit amount - never fall back to credit
-        amount_value = -abs(debit_amount)
+                logger.warning("Row %d: Could not extract amount. Cells: %s", row_idx, " | ".join(cells[:8]))
+            continue
 
-        # Extract description
-        description_segments = []
+        # Extract description - STRICTLY use ONLY description column (column 5)
+        # Do NOT mix with operation column or any other column
+        description = ""
         if desc_col_idx < len(cells):
-            description_segments.append(cells[desc_col_idx].replace("\n", " "))
-        # Also try adjacent columns for description
-        for idx in range(max(0, desc_col_idx - 1), min(len(cells), desc_col_idx + 2)):
-            if idx != desc_col_idx and cells[idx]:
-                text = cells[idx].replace("\n", " ")
-                # Skip if it looks like a date or amount
-                if not parse_date(text) and not parse_amount([text]):
-                    description_segments.append(text)
+            description = cells[desc_col_idx].replace("\n", " ").strip()
         
-        description = " ".join(segment for segment in description_segments if segment).strip()
-        if not description:
-            description = row_description_hint or "Imported transaction"
+        if row_idx <= 6:
+            logger.info("Description extraction:")
+            logger.info("  Description column[%s]: '%s'", desc_col_idx, description[:80] if description else "(empty)")
+            if len(cells) > 1:
+                logger.info("  Operation column[1]: '%s' (NOT using)", cells[1][:80] if cells[1] else "(empty)")
+        
+        # If description column is truly empty, use operation column as fallback
+        # But ONLY if description is completely empty (not just whitespace)
+        if not description or description.strip() == "":
+            if len(cells) > 1:
+                operation_text = cells[1].replace("\n", " ").strip()
+                # Only use if it's a meaningful operation (not just "card operation" type)
+                if operation_text and not _looks_like_header(operation_text.lower()):
+                    # Check if it's a specific transaction type, not a generic operation label
+                    generic_operations = ['საბარათე ოპერაცია', 'card operation', 'გადახდები', 'payments']
+                    if operation_text not in generic_operations:
+                        description = operation_text
+                        if row_idx <= 6:
+                            logger.info("  Using operation column as fallback: '%s'", description[:80])
+        
+        # Final fallback
+        if not description or description.strip() == "":
+            description = "Imported transaction"
+        
+        # Final check: if description looks like a header, skip this row
+        if _looks_like_header(description.lower()):
+            if row_idx <= 6:
+                logger.info("SKIPPING ROW %d: Description looks like header", row_idx)
+                logger.info("  Description: %s", description[:100])
+            else:
+                logger.debug("Skipping row %d: description looks like header: %s", row_idx, description[:50])
+            continue
+        
+        # Clean up description - remove any embedded amounts that might have been extracted
+        # This prevents "გადახდა - LTD MADAGONI 2 3.54 GEL" from being in description when amount is already extracted
+        description = re.sub(r'\d+\.\d{2}\s*(?:GEL|USD|EUR|RUB|₾|₽|\$|€)', '', description, flags=re.IGNORECASE).strip()
+        description = re.sub(r'\s+', ' ', description).strip()
+        
+        if row_idx <= 6:
+            logger.info("  Final description: '%s'", description[:100])
 
         new_transaction = RawTransaction(
             date=date_value,
             description=description,
             amount=amount_value,
         )
+        
+        # Log transaction details for first 6 rows
+        if row_idx <= 6:
+            logger.info("EXTRACTED TRANSACTION:")
+            logger.info("  Date: %s", date_value)
+            logger.info("  Amount: %.2f (debit: %s, credit: %s)", 
+                       amount_value, debit_amount, credit_amount)
+            logger.info("  Description: %s", description[:100])
+            logger.info("  Description column[%s]: '%s'", desc_col_idx, 
+                       cells[desc_col_idx][:60] if desc_col_idx < len(cells) else "N/A")
+            logger.info("=" * 80)
+        
         transactions.append(new_transaction)
         recent_transaction = new_transaction
         rows_processed += 1

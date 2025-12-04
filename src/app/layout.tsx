@@ -86,25 +86,24 @@ export default async function RootLayout({
             </>
           ) : (
             // Regular pages with sidebar for signed in users
-            <>
+            // Wrap CurrencyProvider outside SignedIn/SignedOut to avoid hydration issues
+            <CurrencyProvider>
               <SignedIn>
-                <CurrencyProvider>
-                  <div style={{ display: "flex", minHeight: "100vh" }}>
-                    <div className="hidden md:block">
-                      <Sidebar />
-                    </div>
-                    <div 
-                      className="flex-1 transition-all duration-200 ease-in-out md:ml-[var(--sidebar-width)]"
-                    >
-                      {children}
-                    </div>
+                <div style={{ display: "flex", minHeight: "100vh" }}>
+                  <div className="hidden md:block">
+                    <Sidebar />
                   </div>
-                </CurrencyProvider>
+                  <div 
+                    className="flex-1 transition-all duration-200 ease-in-out md:ml-[var(--sidebar-width)]"
+                  >
+                    {children}
+                  </div>
+                </div>
               </SignedIn>
               <SignedOut>
                 {children}
               </SignedOut>
-            </>
+            </CurrencyProvider>
           )}
         </body>
       </html>
