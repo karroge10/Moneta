@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Card from '@/components/ui/Card';
+import PlaceholderDataBadge from '@/components/ui/PlaceholderDataBadge';
 import { NavArrowRight } from 'iconoir-react';
 import { formatNumber } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -28,7 +29,10 @@ export default function EstimatedTaxCard({ amount, isEnabled, onToggle }: Estima
       title="Estimated Tax"
       customHeader={
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-card-header">Estimated Tax</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-card-header">Estimated Tax</h2>
+            <PlaceholderDataBadge />
+          </div>
           <button
             onClick={handleToggle}
             className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
@@ -45,7 +49,7 @@ export default function EstimatedTaxCard({ amount, isEnabled, onToggle }: Estima
         </div>
       }
     >
-      <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex flex-col flex-1 min-h-0" style={{ filter: 'blur(2px)' }}>
         <div className="flex items-baseline gap-2 flex-1 min-w-0 flex-wrap mb-4">
           <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
           <span className="text-card-value break-all min-w-0">{formatNumber(amount)}</span>

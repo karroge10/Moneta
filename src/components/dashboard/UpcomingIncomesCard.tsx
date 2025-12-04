@@ -1,6 +1,7 @@
 'use client';
 
 import Card from '@/components/ui/Card';
+import PlaceholderDataBadge from '@/components/ui/PlaceholderDataBadge';
 import { Transaction } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { NavArrowRight } from 'iconoir-react';
@@ -16,8 +17,18 @@ export default function UpcomingIncomesCard({ incomes }: UpcomingIncomesCardProp
   const { currency } = useCurrency();
   if (incomes.length === 0) {
     return (
-      <Card title="Upcoming Incomes">
-        <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8">
+      <Card 
+        title="Upcoming Incomes"
+        customHeader={
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-card-header">Upcoming Incomes</h2>
+              <PlaceholderDataBadge />
+            </div>
+          </div>
+        }
+      >
+        <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8" style={{ filter: 'blur(2px)' }}>
           <div className="text-body text-center mb-2 opacity-70">Add your first income</div>
           <div className="text-helper text-center">Track recurring income and expected payments</div>
         </div>
@@ -26,8 +37,18 @@ export default function UpcomingIncomesCard({ incomes }: UpcomingIncomesCardProp
   }
 
   return (
-    <Card title="Upcoming Incomes">
-      <div className="flex flex-col flex-1 mt-2">
+    <Card 
+      title="Upcoming Incomes"
+      customHeader={
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-card-header">Upcoming Incomes</h2>
+            <PlaceholderDataBadge />
+          </div>
+        </div>
+      }
+    >
+      <div className="flex flex-col flex-1 mt-2" style={{ filter: 'blur(2px)' }}>
         <div className="space-y-4 flex-1">
           {incomes.map((income) => {
             const Icon = getIcon(income.icon);

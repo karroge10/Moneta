@@ -5,6 +5,7 @@ import Card from '@/components/ui/Card';
 import { NavArrowDown, Filter, User } from 'iconoir-react';
 import { DemographicComparison } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
+import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 
 interface DemographicComparisonsSectionProps {
   comparisons: DemographicComparison[];
@@ -34,9 +35,15 @@ export default function DemographicComparisonsSection({ comparisons }: Demograph
   return (
     <Card 
       title="Demographic Comparisons"
+      customHeader={
+        <div className="mb-4 flex items-center gap-3">
+          <h2 className="text-card-header">Demographic Comparisons</h2>
+          <ComingSoonBadge />
+        </div>
+      }
       showActions={false}
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4" style={{ filter: 'blur(2px)' }}>
         <div className="mb-2">
           <div className="relative" ref={ref}>
             <button
