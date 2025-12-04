@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Crown, Bell, Settings, LogOut, Plus, HeadsetHelp, Upload } from 'iconoir-react';
 import Link from 'next/link';
 import NotificationsDropdown from '@/components/updates/NotificationsDropdown';
-import { mockNotifications } from '@/lib/mockData';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface ActionButton {
   label: string;
@@ -21,8 +21,15 @@ interface DashboardHeaderProps {
 export default function DashboardHeader({ pageName = 'Dashboard', actionButton, actionButtons }: DashboardHeaderProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
+  const { notifications, refresh } = useNotifications(5, true); // Fetch top 5 unread notifications
+
+  // Update optimistic state when notifications change
+  useEffect(() => {
+    setHasUnreadNotifications(notifications.length > 0);
+  }, [notifications]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,16 +65,54 @@ export default function DashboardHeader({ pageName = 'Dashboard', actionButton, 
         <div className="flex items-center gap-4">
           <div className="relative" ref={notificationsRef}>
             <button
-              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              onClick={() => {
+                setIsNotificationsOpen(!isNotificationsOpen);
+                // Hide dot immediately when opening (optimistic update)
+                if (!isNotificationsOpen && hasUnreadNotifications) {
+                  setHasUnreadNotifications(false);
+                }
+              }}
               className="p-2 rounded-lg transition-colors relative cursor-pointer hover-text-purple"
               aria-label="Notifications"
             >
               <Bell width={20} height={20} strokeWidth={1.5} className="stroke-current" />
+              {hasUnreadNotifications && (
+                <span
+                  className="absolute top-0 right-0 blinking-dot"
+                  style={{ 
+                    width: '8px',
+                    height: '8px',
+                    backgroundColor: '#AC66DA',
+                    borderRadius: '50%'
+                  }}
+                  aria-label={`${notifications.length} unread notification${notifications.length !== 1 ? 's' : ''}`}
+                />
+              )}
             </button>
             <NotificationsDropdown
-              notifications={mockNotifications}
+              notifications={notifications}
               isOpen={isNotificationsOpen}
-              onClose={() => setIsNotificationsOpen(false)}
+              onClose={() => {
+                setIsNotificationsOpen(false);
+                refresh(); // Refresh when closing to get latest notifications
+              }}
+              onMarkAllRead={() => {
+                // Refresh notifications after marking all as read to update badge
+                refresh();
+              }}
+              onNotificationClick={async (notificationId) => {
+                try {
+                  const response = await fetch(`/api/notifications/${notificationId}/read`, {
+                    method: 'PATCH',
+                  });
+                  if (response.ok) {
+                    // Refresh notifications immediately to update the badge and remove purple dot
+                    await refresh();
+                  }
+                } catch (error) {
+                  console.error('Failed to mark notification as read:', error);
+                }
+              }}
             />
           </div>
           

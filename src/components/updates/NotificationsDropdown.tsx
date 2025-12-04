@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { NotificationEntry } from '@/types/dashboard';
 
@@ -8,14 +8,21 @@ interface NotificationsDropdownProps {
   notifications: NotificationEntry[];
   isOpen: boolean;
   onClose: () => void;
+  onNotificationClick?: (notificationId: string) => void;
+  onMarkAllRead?: () => void;
 }
 
 export default function NotificationsDropdown({ 
   notifications, 
   isOpen, 
-  onClose 
+  onClose,
+  onNotificationClick,
+  onMarkAllRead,
 }: NotificationsDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const hasMarkedAsReadRef = useRef(false);
+  // Snapshot of notifications when dropdown opens - keeps them visible even after marking as read
+  const [snapshotNotifications, setSnapshotNotifications] = useState<NotificationEntry[]>([]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -30,11 +37,47 @@ export default function NotificationsDropdown({
     }
   }, [isOpen, onClose]);
 
+  // Take snapshot and mark as read when dropdown opens
+  useEffect(() => {
+    if (isOpen && notifications.length > 0 && snapshotNotifications.length === 0 && !hasMarkedAsReadRef.current) {
+      // Take snapshot of current notifications to keep them visible
+      setSnapshotNotifications(notifications.slice(0, 5));
+      
+      // Mark all notifications as read immediately when opening dropdown
+      hasMarkedAsReadRef.current = true;
+      
+      fetch('/api/notifications', {
+        method: 'PATCH',
+      })
+        .then(() => {
+          // Refresh notifications to update badge and remove purple dot
+          onMarkAllRead?.();
+        })
+        .catch((error) => {
+          console.error('Failed to mark notifications as read:', error);
+          hasMarkedAsReadRef.current = false;
+        });
+    }
+    
+    // Reset flag when dropdown closes
+    if (!isOpen) {
+      hasMarkedAsReadRef.current = false;
+      // Clear snapshot when closing
+      if (snapshotNotifications.length > 0) {
+        setTimeout(() => {
+          setSnapshotNotifications([]);
+        }, 100);
+      }
+    }
+  }, [isOpen, notifications, snapshotNotifications.length, onMarkAllRead]);
+
   if (!isOpen) return null;
 
-  // Show only unread notifications (for now, show first 5)
-  const unreadNotifications = notifications.slice(0, 5);
-  const hasUnread = unreadNotifications.length > 0;
+  // Use snapshot if available, otherwise use current notifications
+  const displayedNotifications = snapshotNotifications.length > 0 
+    ? snapshotNotifications 
+    : notifications.slice(0, 5);
+  const hasNotifications = displayedNotifications.length > 0;
 
   return (
     <div 
@@ -51,14 +94,21 @@ export default function NotificationsDropdown({
 
       {/* Notifications List */}
       <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
-        {hasUnread ? (
+        {hasNotifications ? (
           <div className="py-2">
-            {unreadNotifications.map((notification) => (
+            {displayedNotifications.map((notification) => (
               <Link
                 key={notification.id}
                 href="/updates"
-                onClick={onClose}
-                className="block px-4 py-3 hover:opacity-80 transition-opacity border-b"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  await onNotificationClick?.(notification.id);
+                  // Close dropdown after marking as read (refresh will update badge)
+                  setTimeout(() => {
+                    onClose();
+                  }, 100);
+                }}
+                className="block px-4 py-2.5 hover:opacity-80 transition-opacity border-b"
                 style={{ borderColor: 'rgba(231, 228, 228, 0.05)' }}
               >
                 <div className="flex items-start gap-3">
@@ -77,7 +127,7 @@ export default function NotificationsDropdown({
                         {notification.type}
                       </span>
                     </div>
-                    <p className="text-body text-sm line-clamp-2" style={{ color: '#E7E4E4' }}>
+                    <p className="text-xs line-clamp-2" style={{ color: '#E7E4E4' }}>
                       {notification.text}
                     </p>
                   </div>

@@ -150,28 +150,46 @@ export function extractMerchantFromDescription(description: string): string {
   let cleaned = description;
   
   // Strategy 1: Remove common payment prefixes and transaction prefixes
-  // Handle utility payment patterns: "Payment [service type] - [merchant name]"
-  // Also handle Georgian utility patterns: "Cleaning - [merchant]", "Various - [merchant]"
-  // Examples: "Payment electricity - Telmiko", "Payment cleaning - Tbilservice Group", "Cleaning - Tbilservi Group"
-  const utilityPaymentMatch = cleaned.match(/^(?:payment\s+(?:for\s+)?(?:electricity|electric|gas|heating|water|internet|phone|mobile|cleaning|elevator|utility|utilities)|cleaning|various)\s*-\s*(.+?)(?:\s*-\s*[^-]+)?$/i);
-  if (utilityPaymentMatch && utilityPaymentMatch[1]) {
-    // Extract merchant from utility payment format
-    cleaned = utilityPaymentMatch[1].trim();
-    // Remove account numbers and extra info
-    cleaned = cleaned.replace(/\s*-\s*\d+\s*$/, '').trim();
-  } else {
-    // Handle generic payment patterns
+  // Handle utility payment patterns: "Payment [service type] - [merchant name] - [extra info] - [account number]"
+  // Examples: 
+  //   "Payment electricity - Telmiko - LLC Telmiko (Electricity) - 5985142"
+  //   "Cleaning - Tbilservice Group - Cleaning - 5985142"
+  //   "Phone, Internet - Magti - Optical Internet - 328647755"
+  // Pattern: [service type] - [merchant] - [optional details] - [account number]
+  // We want to extract the merchant name (second part)
+  
+  // First, try to match utility payment patterns with multiple dashes
+  // Pattern: [service] - [merchant] - [details] - [account]
+  const utilityPatternMatch = cleaned.match(/^(?:payment\s+(?:for\s+)?(?:electricity|electric|gas|heating|water|internet|phone|mobile|cleaning|elevator|utility|utilities|phone\s*,\s*internet)|cleaning|various|phone\s*,\s*internet)\s*-\s*([^-]+?)(?:\s*-\s*[^-]+)*\s*-\s*\d+\s*$/i);
+  if (utilityPatternMatch && utilityPatternMatch[1]) {
+    // Extract merchant from utility payment format (second part after first dash)
+    cleaned = utilityPatternMatch[1].trim();
+    // Remove business suffixes and parenthetical info
     cleaned = cleaned
-      .replace(/^card\s+operation\s+payment\s*-\s*/i, '') // "Card operation payment -"
-      .replace(/^card\s+operation\s+(?:cash\s+)?withdrawal\s*-\s*/i, '') // "Card operation withdrawal -"
-      .replace(/^card\s+payment\s*-\s*/i, '') // "Card payment -"
-      .replace(/^payment\s+(?:for\s+)?(?:electricity|electric|gas|heating|water|internet|phone|mobile|cleaning|elevator|utility|utilities)\s*-\s*/i, '') // "Payment electricity -"
-      .replace(/^cleaning\s*-\s*/i, '') // "Cleaning -" (Georgian utility payment)
-      .replace(/^various\s*-\s*/i, '') // "Various -" (Georgian utility payment)
-      .replace(/^payment\s*-\s*/i, '') // "Payment -"
-      .replace(/^transaction\s*-\s*/i, '') // "Transaction -"
-      .replace(/^payments?\s+/i, '') // "Payments" prefix
+      .replace(/\s*\([^)]*\)\s*/g, '') // Remove parenthetical info like "(Electricity)"
+      .replace(/\b(llc|inc|corp|ltd|limited|shps|შპს)\b/gi, '') // Remove business suffixes
       .trim();
+  } else {
+    // Handle simpler utility patterns: "[service] - [merchant] - [account]"
+    const simpleUtilityMatch = cleaned.match(/^(?:payment\s+(?:for\s+)?(?:electricity|electric|gas|heating|water|internet|phone|mobile|cleaning|elevator|utility|utilities)|cleaning|various|phone\s*,\s*internet)\s*-\s*([^-]+?)(?:\s*-\s*\d+)?\s*$/i);
+    if (simpleUtilityMatch && simpleUtilityMatch[1]) {
+      cleaned = simpleUtilityMatch[1].trim();
+      // Remove business suffixes
+      cleaned = cleaned.replace(/\b(llc|inc|corp|ltd|limited|shps|შპს)\b/gi, '').trim();
+    } else {
+      // Handle generic payment patterns
+      cleaned = cleaned
+        .replace(/^card\s+operation\s+payment\s*-\s*/i, '') // "Card operation payment -"
+        .replace(/^card\s+operation\s+(?:cash\s+)?withdrawal\s*-\s*/i, '') // "Card operation withdrawal -"
+        .replace(/^card\s+payment\s*-\s*/i, '') // "Card payment -"
+        .replace(/^payment\s+(?:for\s+)?(?:electricity|electric|gas|heating|water|internet|phone|mobile|cleaning|elevator|utility|utilities)\s*-\s*/i, '') // "Payment electricity -"
+        .replace(/^cleaning\s*-\s*/i, '') // "Cleaning -"
+        .replace(/^various\s*-\s*/i, '') // "Various -"
+        .replace(/^payment\s*-\s*/i, '') // "Payment -"
+        .replace(/^transaction\s*-\s*/i, '') // "Transaction -"
+        .replace(/^payments?\s+/i, '') // "Payments" prefix
+        .trim();
+    }
   }
   
   // Strategy 2: Extract merchant from payment processor patterns

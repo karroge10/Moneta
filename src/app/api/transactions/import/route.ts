@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
     const transactions = body?.transactions as UploadedTransaction[];
     const metadata = body?.metadata as TransactionUploadMetadata | undefined;
     const statementCurrencyIdInput = body?.statementCurrencyId;
+    const merchantsToLearn = body?.merchantsToLearn as Array<{ description: string; categoryId: number }> | undefined;
 
     console.log(`[TRANSACTION IMPORT] Received ${transactions?.length || 0} transactions to import\n`);
 
@@ -423,7 +424,7 @@ export async function POST(request: NextRequest) {
           amount: absoluteAmount,
           // Store the original description (user can edit it later if needed)
           description: item.description,
-          source: metadata?.source ?? 'pdf_import',
+          source: 'pdf_import', // Always use 'pdf_import' instead of PDF filename
           date,
           categoryId,
           currencyId,
@@ -494,15 +495,16 @@ export async function POST(request: NextRequest) {
       skipDuplicates: true,
     });
 
-    // Fetch the created transactions for response (using the data we just inserted)
-    // Since createMany doesn't return records, we'll query them back
+    // Fetch the created transactions for response (optimized query)
+    // Use a more efficient query: get recent transactions by createdAt timestamp
+    // This avoids expensive date range queries on large datasets
+    const now = new Date();
     const createdTransactions = await db.transaction.findMany({
       where: {
         userId: user.id,
-        source: metadata?.source ?? 'pdf_import',
-        date: {
-          gte: new Date(Math.min(...transactionsToCreate.map(tx => tx.date.getTime()))),
-          lte: new Date(Math.max(...transactionsToCreate.map(tx => tx.date.getTime()))),
+        source: 'pdf_import', // Always use 'pdf_import' instead of PDF filename
+        createdAt: {
+          gte: new Date(now.getTime() - 60000), // Last 60 seconds (should be enough for import)
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -531,6 +533,78 @@ export async function POST(request: NextRequest) {
     }));
 
     console.info('[transactions/import] persisted transactions', responseTransactions.length);
+
+    // Learn merchant mappings if provided (batched for performance)
+    if (merchantsToLearn && merchantsToLearn.length > 0) {
+      console.log(`[merchants/learn] Learning ${merchantsToLearn.length} merchant mappings`);
+      const { normalizeMerchantName, extractMerchantFromDescription } = await import('@/lib/merchant');
+      
+      // Process merchants in parallel batches (max 10 concurrent)
+      const batchSize = 10;
+      const batches: Array<typeof merchantsToLearn> = [];
+      for (let i = 0; i < merchantsToLearn.length; i += batchSize) {
+        batches.push(merchantsToLearn.slice(i, i + batchSize));
+      }
+      
+      // Process batches sequentially, but items within batch in parallel
+      for (const batch of batches) {
+        await Promise.all(
+          batch.map(async (item) => {
+            try {
+              const merchantName = extractMerchantFromDescription(item.description);
+              const normalizedMerchant = normalizeMerchantName(merchantName);
+              
+              if (normalizedMerchant && normalizedMerchant.length >= 2) {
+                await db.merchant.upsert({
+                  where: {
+                    userId_namePattern: {
+                      userId: user.id,
+                      namePattern: normalizedMerchant,
+                    },
+                  },
+                  update: {
+                    categoryId: item.categoryId,
+                    matchCount: { increment: 1 },
+                    updatedAt: new Date(),
+                  },
+                  create: {
+                    userId: user.id,
+                    namePattern: normalizedMerchant,
+                    categoryId: item.categoryId,
+                    matchCount: 1,
+                  },
+                });
+                console.log(`[merchants/learn] ✓ Learned: "${normalizedMerchant}" -> categoryId: ${item.categoryId}`);
+              } else {
+                console.warn(`[merchants/learn] ⚠ Could not extract merchant from: "${item.description}"`);
+              }
+            } catch (error) {
+              // Silently fail - learning is optional
+              console.debug('[merchants/learn] Failed to learn merchant mapping', error);
+            }
+          })
+        );
+      }
+      console.log(`[merchants/learn] Completed learning ${merchantsToLearn.length} merchant mappings`);
+    }
+
+    // Create notification about successful import
+    try {
+      const now = new Date();
+      await db.notification.create({
+        data: {
+          userId: user.id,
+          type: 'PDF Processing',
+          text: `Successfully imported ${responseTransactions.length} transaction${responseTransactions.length !== 1 ? 's' : ''}!`,
+          date: now,
+          time: now.toTimeString().split(' ')[0],
+          read: false,
+        },
+      });
+    } catch (notifError) {
+      console.error('[transactions/import] Failed to create notification:', notifError);
+      // Don't fail the import if notification creation fails
+    }
 
     return NextResponse.json({ ok: true, transactions: responseTransactions });
   } catch (error) {
