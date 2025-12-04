@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { NavArrowDown, Trash, ShoppingBag, Wallet } from 'iconoir-react';
+import { useState, useEffect, useRef, useLayoutEffect, useCallback, CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
+import { NavArrowDown, Trash, ShoppingBag, Wallet, Language } from 'iconoir-react';
 import { Transaction, Category } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -47,17 +48,30 @@ export default function TransactionForm({
   const [dateInput, setDateInput] = useState('');
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const dateDropdownRef = useRef<HTMLDivElement>(null);
+  const dateTriggerRef = useRef<HTMLButtonElement>(null);
+  const datePortalRef = useRef<HTMLDivElement>(null);
   const currencyDropdownRef = useRef<HTMLDivElement>(null);
+  const currencyTriggerRef = useRef<HTMLButtonElement>(null);
+  const currencyPortalRef = useRef<HTMLDivElement>(null);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const initial = formatDateToInput(transaction.date);
     return initial ? new Date(initial) : new Date();
   });
+  
+  // Portal positioning state for date dropdown
+  const [dateDropdownStyle, setDateDropdownStyle] = useState<CSSProperties | null>(null);
+  const [dateOpenUpward, setDateOpenUpward] = useState(false);
+  
+  // Portal positioning state for currency dropdown
+  const [currencyDropdownStyle, setCurrencyDropdownStyle] = useState<CSSProperties | null>(null);
+  const [currencyOpenUpward, setCurrencyOpenUpward] = useState(false);
 
   useEffect(() => {
     // Sync transaction prop to form state - necessary for controlled component
+    // Use originalDescription for the name field (what user sees and edits)
     const transactionToUse = {
       ...transaction,
-      name: transaction.fullName || transaction.name,
+      name: transaction.originalDescription || transaction.fullName || transaction.name,
     };
     // This is intentional - we need to sync props to state for controlled form
     setFormData(transactionToUse);
@@ -77,13 +91,26 @@ export default function TransactionForm({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      
+      // Category dropdown (absolute positioning)
+      if (isCategoryOpen && categoryDropdownRef.current && !categoryDropdownRef.current.contains(target)) {
         setIsCategoryOpen(false);
       }
-      if (dateDropdownRef.current && !dateDropdownRef.current.contains(event.target as Node)) {
+      
+      // Date dropdown (portal) - check both container and portal ref
+      if (isDateOpen && 
+          dateDropdownRef.current && 
+          !dateDropdownRef.current.contains(target) &&
+          (!datePortalRef.current || !datePortalRef.current.contains(target))) {
         setIsDateOpen(false);
       }
-      if (currencyDropdownRef.current && !currencyDropdownRef.current.contains(event.target as Node)) {
+      
+      // Currency dropdown (portal) - check both container and portal ref
+      if (isCurrencyOpen && 
+          currencyDropdownRef.current && 
+          !currencyDropdownRef.current.contains(target) &&
+          (!currencyPortalRef.current || !currencyPortalRef.current.contains(target))) {
         setIsCurrencyOpen(false);
       }
     };
@@ -93,11 +120,98 @@ export default function TransactionForm({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [isCategoryOpen, isDateOpen, isCurrencyOpen]);
 
   useEffect(() => {
-    onFloatingPanelToggle?.(isCategoryOpen || isDateOpen || isCurrencyOpen);
-  }, [isCategoryOpen, isDateOpen, isCurrencyOpen, onFloatingPanelToggle]);
+    onFloatingPanelToggle?.(isCategoryOpen);
+  }, [isCategoryOpen, onFloatingPanelToggle]);
+
+  // Position calculation for date dropdown portal
+  const updateDateDropdownPosition = useCallback(() => {
+    if (!isDateOpen || !dateTriggerRef.current || !datePortalRef.current) return;
+    const margin = 8;
+    const triggerRect = dateTriggerRef.current.getBoundingClientRect();
+    const dropdownRect = datePortalRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - triggerRect.bottom;
+    const spaceAbove = triggerRect.top;
+    const shouldOpenUp = dropdownRect.height + margin > spaceBelow && spaceAbove > spaceBelow;
+
+    const top = shouldOpenUp
+      ? Math.max(margin, triggerRect.top - dropdownRect.height - margin)
+      : Math.min(window.innerHeight - dropdownRect.height - margin, triggerRect.bottom + margin);
+
+    const maxLeft = window.innerWidth - dropdownRect.width - margin;
+    const left = Math.min(Math.max(triggerRect.left, margin), Math.max(margin, maxLeft));
+
+    setDateOpenUpward(shouldOpenUp);
+    setDateDropdownStyle({
+      position: 'fixed',
+      minWidth: '320px',
+      width: 'max-content',
+      left,
+      top,
+      zIndex: 1000,
+    });
+  }, [isDateOpen]);
+
+  useLayoutEffect(() => {
+    if (!isDateOpen) {
+      setDateDropdownStyle(null);
+      return;
+    }
+
+    updateDateDropdownPosition();
+    window.addEventListener('resize', updateDateDropdownPosition);
+    window.addEventListener('scroll', updateDateDropdownPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updateDateDropdownPosition);
+      window.removeEventListener('scroll', updateDateDropdownPosition, true);
+    };
+  }, [isDateOpen, updateDateDropdownPosition]);
+
+  // Position calculation for currency dropdown portal
+  const updateCurrencyDropdownPosition = useCallback(() => {
+    if (!isCurrencyOpen || !currencyTriggerRef.current || !currencyPortalRef.current) return;
+    const margin = 8;
+    const triggerRect = currencyTriggerRef.current.getBoundingClientRect();
+    const dropdownRect = currencyPortalRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - triggerRect.bottom;
+    const spaceAbove = triggerRect.top;
+    const shouldOpenUp = dropdownRect.height + margin > spaceBelow && spaceAbove > spaceBelow;
+
+    const top = shouldOpenUp
+      ? Math.max(margin, triggerRect.top - dropdownRect.height - margin)
+      : Math.min(window.innerHeight - dropdownRect.height - margin, triggerRect.bottom + margin);
+
+    const maxLeft = window.innerWidth - triggerRect.width - margin;
+    const left = Math.min(Math.max(triggerRect.left, margin), Math.max(margin, maxLeft));
+
+    setCurrencyOpenUpward(shouldOpenUp);
+    setCurrencyDropdownStyle({
+      position: 'fixed',
+      width: triggerRect.width,
+      left,
+      top,
+      zIndex: 1000,
+    });
+  }, [isCurrencyOpen]);
+
+  useLayoutEffect(() => {
+    if (!isCurrencyOpen) {
+      setCurrencyDropdownStyle(null);
+      return;
+    }
+
+    updateCurrencyDropdownPosition();
+    window.addEventListener('resize', updateCurrencyDropdownPosition);
+    window.addEventListener('scroll', updateCurrencyDropdownPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updateCurrencyDropdownPosition);
+      window.removeEventListener('scroll', updateCurrencyDropdownPosition, true);
+    };
+  }, [isCurrencyOpen, updateCurrencyDropdownPosition]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,117 +293,122 @@ export default function TransactionForm({
 
   const selectedCurrency = currencyOptions.find(c => c.id === formData.currencyId) ?? currency;
 
+  // Get the original description and translated version
+  const originalDescription = transaction.originalDescription || transaction.name;
+  const translatedDescription = transaction.fullName || transaction.name;
+  
   // Check if translation is available and different from original
-  const hasTranslation = transaction.originalDescription && 
-    transaction.originalDescription !== transaction.fullName &&
-    transaction.originalDescription.trim() !== '';
+  // Translation exists if original has Georgian characters and translated version is different
+  const hasGeorgianInOriginal = /[\u10A0-\u10FF]/.test(originalDescription || '');
+  const hasTranslation = originalDescription && 
+    translatedDescription &&
+    originalDescription !== translatedDescription &&
+    originalDescription.trim() !== '' &&
+    translatedDescription.trim() !== '' &&
+    hasGeorgianInOriginal;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <label className="block text-body font-medium mb-2">Transaction Name</label>
-        <input
-          type="text"
-          value={formData.name}
-          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-          disabled={isSaving}
-          className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ color: 'var(--text-primary)' }}
-          placeholder="Enter a name"
-        />
-        {hasTranslation && (
-          <div className="mt-2 p-3 rounded-xl bg-[#202020] border border-[#3a3a3a]">
-            <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
-              Original:
+        <div className="space-y-1.5">
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            disabled={isSaving}
+            className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ color: 'var(--text-primary)' }}
+            placeholder="Enter a name"
+            title={formData.name}
+          />
+          {hasTranslation && (
+            <div className="flex items-center gap-1.5 text-xs min-w-0" style={{ color: 'var(--text-secondary)' }}>
+              <Language width={14} height={14} strokeWidth={1.5} className="shrink-0" style={{ color: 'var(--text-secondary)' }} />
+              <span className="truncate" title={translatedDescription}>
+                {translatedDescription}
+              </span>
             </div>
-            <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
-              {transaction.originalDescription}
+          )}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-body font-medium mb-2">Category</label>
+        <div className="relative" ref={categoryDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setIsCategoryOpen(prev => !prev)}
+            disabled={isSaving}
+            className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            <span
+              className="flex items-center gap-2 text-body font-semibold"
+              style={{ color: selectedCategory ? 'var(--text-primary)' : '#8C8C8C' }}
+            >
+              {SelectedIcon && (
+                <SelectedIcon width={18} height={18} strokeWidth={1.5} style={{ color: 'var(--text-primary)' }} />
+              )}
+              {selectedCategory?.name ?? 'Select a category'}
+            </span>
+            <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+          </button>
+
+          {isCategoryOpen && (
+            <div
+              className="absolute top-full left-0 right-0 mt-2 rounded-2xl shadow-lg overflow-hidden z-10 border border-[#3a3a3a]"
+              style={{ backgroundColor: '#202020' }}
+            >
+              <div className="max-h-64 overflow-y-auto">
+                <button
+                  type="button"
+                  onClick={() => handleCategorySelect(null)}
+                  className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: selectedCategory === null ? 'var(--accent-purple)' : 'var(--text-primary)',
+                  }}
+                >
+                  <span>None</span>
+                </button>
+                {categories.map(category => {
+                  const Icon = getIcon(category.icon);
+                  const isSelected = selectedCategory?.id === category.id;
+                  return (
+                    <button
+                      type="button"
+                      key={category.id}
+                      onClick={() => handleCategorySelect(category.id)}
+                      className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
+                      style={{
+                        backgroundColor: 'transparent',
+                        color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)',
+                      }}
+                    >
+                      <Icon
+                        width={20}
+                        height={20}
+                        strokeWidth={1.5}
+                        style={{ color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' }}
+                      />
+                      <span>{category.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="text-xs mt-2 mb-1" style={{ color: 'var(--text-secondary)' }}>
-              Translation:
-            </div>
-            <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
-              {transaction.fullName || transaction.name}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-body font-medium mb-2">Category</label>
-          <div className="relative" ref={categoryDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setIsCategoryOpen(prev => !prev)}
-              disabled={isSaving}
-              className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              <span
-                className="flex items-center gap-2 text-body font-semibold"
-                style={{ color: selectedCategory ? 'var(--text-primary)' : '#8C8C8C' }}
-              >
-                {SelectedIcon && (
-                  <SelectedIcon width={18} height={18} strokeWidth={1.5} style={{ color: 'var(--text-primary)' }} />
-                )}
-                {selectedCategory?.name ?? 'Select a category'}
-              </span>
-              <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
-            </button>
-
-            {isCategoryOpen && (
-              <div
-                className="absolute top-full left-0 right-0 mt-2 rounded-2xl shadow-lg overflow-hidden z-10 border border-[#3a3a3a]"
-                style={{ backgroundColor: '#202020' }}
-              >
-                <div className="max-h-64 overflow-y-auto">
-                  <button
-                    type="button"
-                    onClick={() => handleCategorySelect(null)}
-                    className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
-                    style={{
-                      backgroundColor: 'transparent',
-                      color: selectedCategory === null ? 'var(--accent-purple)' : 'var(--text-primary)',
-                    }}
-                  >
-                    <span>None</span>
-                  </button>
-                  {categories.map(category => {
-                    const Icon = getIcon(category.icon);
-                    const isSelected = selectedCategory?.id === category.id;
-                    return (
-                      <button
-                        type="button"
-                        key={category.id}
-                        onClick={() => handleCategorySelect(category.id)}
-                        className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
-                        style={{
-                          backgroundColor: 'transparent',
-                          color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)',
-                        }}
-                      >
-                        <Icon
-                          width={20}
-                          height={20}
-                          strokeWidth={1.5}
-                          style={{ color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' }}
-                        />
-                        <span>{category.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
         <div>
           <label className="block text-body font-medium mb-2">Date</label>
           <div className="relative" ref={dateDropdownRef}>
             <button
               type="button"
+              ref={dateTriggerRef}
               onClick={() => setIsDateOpen(prev => !prev)}
               disabled={isSaving}
               className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -304,10 +423,21 @@ export default function TransactionForm({
               <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
             </button>
 
-            {isDateOpen && (
+            {isDateOpen && typeof document !== 'undefined' && createPortal(
               <div
-                className="absolute top-full left-0 mt-2 rounded-2xl shadow-lg overflow-hidden z-20 border border-[#3a3a3a] w-full"
-                style={{ backgroundColor: '#202020' }}
+                ref={datePortalRef}
+                className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden"
+                style={{
+                  backgroundColor: '#202020',
+                  ...(dateDropdownStyle ?? {
+                    position: 'fixed',
+                    top: -9999,
+                    left: -9999,
+                    zIndex: 1000,
+                    minWidth: '320px',
+                    width: 'max-content',
+                  }),
+                }}
               >
                 <CalendarPanel
                   selectedDate={dateInput}
@@ -316,7 +446,8 @@ export default function TransactionForm({
                   onMonthChange={setCurrentMonth}
                   controlAlignment="end"
                 />
-              </div>
+              </div>,
+              document.body,
             )}
           </div>
         </div>
@@ -326,6 +457,7 @@ export default function TransactionForm({
           <div className="relative" ref={currencyDropdownRef}>
             <button
               type="button"
+              ref={currencyTriggerRef}
               onClick={() => setIsCurrencyOpen(prev => !prev)}
               disabled={isSaving}
               className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -337,10 +469,20 @@ export default function TransactionForm({
               <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
             </button>
 
-            {isCurrencyOpen && (
+            {isCurrencyOpen && typeof document !== 'undefined' && createPortal(
               <div
-                className="absolute top-full left-0 right-0 mt-2 rounded-2xl shadow-lg overflow-hidden z-10 border border-[#3a3a3a]"
-                style={{ backgroundColor: '#202020' }}
+                ref={currencyPortalRef}
+                className={`rounded-2xl shadow-lg overflow-hidden border border-[#3a3a3a] ${currencyOpenUpward ? 'origin-bottom' : 'origin-top'}`}
+                style={{
+                  backgroundColor: '#202020',
+                  ...(currencyDropdownStyle ?? {
+                    position: 'fixed',
+                    top: -9999,
+                    left: -9999,
+                    zIndex: 1000,
+                    width: currencyTriggerRef.current?.getBoundingClientRect().width,
+                  }),
+                }}
               >
                 <div className="max-h-64 overflow-y-auto">
                   {currencyOptions.map(currencyOption => {
@@ -362,7 +504,8 @@ export default function TransactionForm({
                     );
                   })}
                 </div>
-              </div>
+              </div>,
+              document.body,
             )}
           </div>
         </div>
@@ -429,11 +572,6 @@ export default function TransactionForm({
               placeholder="0.00"
             />
           </div>
-          {amountInput && !isNaN(parseFloat(amountInput.replace(/,/g, '.'))) && (
-            <div className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {transactionType === 'expense' ? 'Expense' : 'Income'}: {selectedCurrency.symbol}{formatNumber(parseFloat(amountInput.replace(/,/g, '.')) || 0)}
-            </div>
-          )}
         </div>
       </div>
 
