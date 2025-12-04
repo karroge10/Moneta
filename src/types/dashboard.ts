@@ -50,7 +50,14 @@ export interface ExpenseCategory {
   color: string;
 }
 
-export type TimePeriod = 'This Month' | 'This Quarter' | 'This Year' | 'All Time';
+export type TimePeriod = 
+  | 'This Month' 
+  | 'Last Month' 
+  | 'This Quarter' 
+  | 'Last Quarter' 
+  | 'This Year' 
+  | 'Last Year' 
+  | 'All Time';
 
 export interface IncomeSource {
   id: string;
