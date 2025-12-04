@@ -15,7 +15,7 @@ import RecentJobsList, { type JobStatus } from '@/components/transactions/import
 import CurrencySelector from '@/components/transactions/import/CurrencySelector';
 import ReviewDatePicker from '@/components/transactions/shared/ReviewDatePicker';
 import { TransactionUploadResponse, TransactionUploadMetadata, UploadedTransaction, type Category } from '@/types/dashboard';
-import { Upload, WarningTriangle, Reports, Language, Trash } from 'iconoir-react';
+import { Upload, WarningTriangle, Reports, Language, Trash, StatUp, StatDown } from 'iconoir-react';
 import { useCurrency } from '@/hooks/useCurrency';
 import Toast, { ToastContainer, type ToastType } from '@/components/ui/Toast';
 
@@ -66,6 +66,8 @@ export default function ImportTransactionsPage() {
   const [jobsRefreshTrigger, setJobsRefreshTrigger] = useState(0);
   const [hasShownCompletionToast, setHasShownCompletionToast] = useState(false);
   const [optimisticJob, setOptimisticJob] = useState<{ id: string; fileName: string; status: JobStatus; createdAt: string } | null>(null);
+  const [sortField, setSortField] = useState<'amount' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // Get selected currency object for display
   const selectedCurrency = useMemo(() => {
@@ -82,7 +84,7 @@ export default function ImportTransactionsPage() {
 
   const filteredRows = useMemo(() => {
     const query = debouncedSearchQuery.toLowerCase();
-    return parsedRows.filter(row => {
+    const filtered = parsedRows.filter(row => {
       const matchesQuery =
         !query ||
         row.description.toLowerCase().includes(query) ||
@@ -96,28 +98,44 @@ export default function ImportTransactionsPage() {
         (typeFilter === 'income' && row.amount >= 0);
       return matchesQuery && matchesCategory && matchesType;
     });
-  }, [parsedRows, debouncedSearchQuery, categoryFilter, typeFilter]);
+
+    // Apply sorting
+    if (sortField === 'amount') {
+      const sorted = [...filtered].sort((a, b) => {
+        if (sortDirection === 'asc') {
+          return a.amount - b.amount;
+        } else {
+          return b.amount - a.amount;
+        }
+      });
+      return sorted;
+    }
+
+    return filtered;
+  }, [parsedRows, debouncedSearchQuery, categoryFilter, typeFilter, sortField, sortDirection]);
 
 
-  // Reset page to 1 only when filters/search change, not when rows are deleted
-  // We track the previous filter/search state to detect actual filter changes
-  const prevFilterStateRef = useRef({ searchQuery: '', categoryFilter: null, typeFilter: '' });
+  // Reset page to 1 only when filters/search/sort change, not when rows are deleted
+  // We track the previous filter/search/sort state to detect actual filter changes
+  const prevFilterStateRef = useRef({ searchQuery: '', categoryFilter: null, typeFilter: '', sortField: null as 'amount' | null, sortDirection: 'asc' as 'asc' | 'desc' });
   
   useEffect(() => {
-    const currentFilterState = { searchQuery: debouncedSearchQuery, categoryFilter, typeFilter };
+    const currentFilterState = { searchQuery: debouncedSearchQuery, categoryFilter, typeFilter, sortField, sortDirection };
     const prevFilterState = prevFilterStateRef.current;
     
-    // Only reset page if filters/search actually changed (not just row count)
+    // Only reset page if filters/search/sort actually changed (not just row count)
     if (
       prevFilterState.searchQuery !== currentFilterState.searchQuery ||
       prevFilterState.categoryFilter !== currentFilterState.categoryFilter ||
-      prevFilterState.typeFilter !== currentFilterState.typeFilter
+      prevFilterState.typeFilter !== currentFilterState.typeFilter ||
+      prevFilterState.sortField !== currentFilterState.sortField ||
+      prevFilterState.sortDirection !== currentFilterState.sortDirection
     ) {
       setReviewPage(1);
       setReviewPageInput('1');
       prevFilterStateRef.current = currentFilterState;
     }
-  }, [debouncedSearchQuery, categoryFilter, typeFilter]);
+  }, [debouncedSearchQuery, categoryFilter, typeFilter, sortField, sortDirection]);
 
   const reviewTotalPages = filteredRows.length
     ? Math.ceil(filteredRows.length / REVIEW_PAGE_SIZE)
@@ -249,6 +267,8 @@ export default function ImportTransactionsPage() {
     setIsReviewLoading(false);
     setHasShownCompletionToast(false);
     setOptimisticJob(null);
+    setSortField(null);
+    setSortDirection('asc');
     currentProgressRef.current = 0;
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
@@ -372,6 +392,8 @@ export default function ImportTransactionsPage() {
           setSelectedCurrencyId(null);
           setCurrencySelectionTouched(false);
           setCurrencySelectionError(null);
+          setSortField(null);
+          setSortDirection('asc');
           setUploadState('ready');
           setProgressValue(100);
           setStatusNote(null);
@@ -607,6 +629,8 @@ export default function ImportTransactionsPage() {
       setSelectedCurrencyId(null);
       setCurrencySelectionTouched(false);
       setCurrencySelectionError(null);
+      setSortField(null);
+      setSortDirection('asc');
       setProgressValue(0);
       setProcessedCount(null);
       setTotalCount(null);
@@ -625,6 +649,8 @@ export default function ImportTransactionsPage() {
     setSelectedCurrencyId(null);
     setCurrencySelectionTouched(false);
     setCurrencySelectionError(null);
+    setSortField(null);
+    setSortDirection('asc');
     setProgressValue(0);
     setProcessedCount(null);
     setTotalCount(null);
@@ -1094,7 +1120,53 @@ export default function ImportTransactionsPage() {
                     <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
                       <th className="px-5 py-3 align-top w-32">Date</th>
                       <th className="px-5 py-3 align-top w-[40%]">Description</th>
-                      <th className="px-5 py-3 align-top w-32">Amount</th>
+                      <th 
+                        className="px-5 py-3 align-top w-32 cursor-pointer hover:opacity-80 transition-opacity select-none group"
+                        onClick={() => {
+                          if (sortField === null) {
+                            // First click: enable ascending sort
+                            setSortField('amount');
+                            setSortDirection('asc');
+                          } else if (sortField === 'amount' && sortDirection === 'asc') {
+                            // Second click: switch to descending sort
+                            setSortDirection('desc');
+                          } else if (sortField === 'amount' && sortDirection === 'desc') {
+                            // Third click: disable sort (return to default)
+                            setSortField(null);
+                            setSortDirection('asc');
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>Amount</span>
+                          <div className="flex flex-col items-center justify-center -space-y-1">
+                            {sortField === 'amount' ? (
+                              sortDirection === 'asc' ? (
+                                <StatUp width={14} height={14} strokeWidth={1.5} style={{ color: 'var(--accent-purple)' }} />
+                              ) : (
+                                <StatDown width={14} height={14} strokeWidth={1.5} style={{ color: 'var(--accent-purple)' }} />
+                              )
+                            ) : (
+                              <>
+                                <StatUp 
+                                  width={10} 
+                                  height={10} 
+                                  strokeWidth={1.5} 
+                                  className="opacity-40 group-hover:opacity-60 transition-opacity" 
+                                  style={{ color: '#9CA3AF' }} 
+                                />
+                                <StatDown 
+                                  width={10} 
+                                  height={10} 
+                                  strokeWidth={1.5} 
+                                  className="opacity-40 group-hover:opacity-60 transition-opacity" 
+                                  style={{ color: '#9CA3AF' }} 
+                                />
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </th>
                       <th className="px-5 py-3 align-top w-48">Category</th>
                       <th className="px-5 py-3 align-top w-16"></th>
                     </tr>

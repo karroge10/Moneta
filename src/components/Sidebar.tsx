@@ -77,7 +77,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
     { id: "transactions", label: "Transactions", icon: LotOfCash, href: "/transactions", comingSoon: false },
     { id: "investments", label: "Investments", icon: BitcoinCircle, href: "/investments", comingSoon: true },
     { id: "goals", label: "Goals", icon: CalendarCheck, href: "/goals", comingSoon: true },
-    { id: "statistics", label: "Statistics", icon: Reports, href: "/statistics", comingSoon: true },
+    { id: "statistics", label: "Statistics", icon: Reports, href: "/statistics", comingSoon: false },
   ];
 
   return (

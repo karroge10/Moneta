@@ -30,7 +30,7 @@ export default function PerformanceCardNoPadding({ trend, trendText, data }: Per
         <div className="flex-1 min-h-0 w-full overflow-hidden" style={{ minHeight: '280px', height: '280px' }}>
           {data && data.length > 0 && (
             <div className="w-full h-full" style={{ marginLeft: '-24px', marginRight: '-24px', width: 'calc(100% + 48px)' }}>
-              <LineChart data={data} noPadding={true} />
+              <LineChart data={data} noPadding={true} currencySymbol={currency.symbol} />
             </div>
           )}
         </div>

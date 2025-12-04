@@ -36,7 +36,7 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
           }
           showActions={false}
         >
-          <div className="flex flex-col flex-1 min-h-0 justify-center items-center py-8">
+          <div className="flex flex-col flex-1 min-h-0 justify-center items-center py-8" style={{ filter: 'blur(2px)' }}>
             <div className="text-body text-center mb-2 opacity-70">Add transactions to see insights</div>
             <div className="text-helper text-center">Personalized insights will appear here</div>
           </div>
@@ -57,7 +57,7 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
         }
         showActions={false}
       >
-        <div className="flex flex-col flex-1 min-h-0">
+        <div className="flex flex-col flex-1 min-h-0" style={{ filter: 'blur(2px)' }}>
           <div className="flex items-center gap-2 flex-1">
             <span className="text-card-currency">{currency.symbol}</span>
             <span className="text-card-value">{formatNumber(amount)}</span>
@@ -79,7 +79,7 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
             <div className="text-card-header">Insight</div>
             <ComingSoonBadge />
           </div>
-          <div className="flex flex-col justify-center items-center py-4">
+          <div className="flex flex-col justify-center items-center py-4" style={{ filter: 'blur(2px)' }}>
             <div className="text-body text-center mb-2 opacity-70">Add transactions to see insights</div>
             <div className="text-helper text-center">Personalized insights will appear here</div>
           </div>
@@ -93,7 +93,7 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
           <div className="text-card-header">Insight</div>
           <ComingSoonBadge />
         </div>
-        <div className="flex items-center justify-between gap-3 min-w-0">
+        <div className="flex items-center justify-between gap-3 min-w-0" style={{ filter: 'blur(2px)' }}>
           <div className="flex-1 min-w-0">
             <div className="text-helper text-truncate-safe">{message}</div>
           </div>
@@ -126,7 +126,7 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
         }
         showActions={false}
       >
-        <div className="mt-2 flex flex-col flex-1 min-h-0 justify-center items-center py-8">
+        <div className="mt-2 flex flex-col flex-1 min-h-0 justify-center items-center py-8" style={{ filter: 'blur(2px)' }}>
           <div className="text-body text-center mb-2 opacity-70">Add transactions to see insights</div>
           <div className="text-helper text-center">Personalized insights will appear here</div>
         </div>
@@ -147,7 +147,7 @@ export default function InsightCard({ title, amount, message, investmentAmount, 
       }
       showActions={false}
     >
-      <div className="mt-2 flex flex-col flex-1 min-h-0">
+      <div className="mt-2 flex flex-col flex-1 min-h-0" style={{ filter: 'blur(2px)' }}>
         <div className="text-helper mb-4 text-wrap-safe break-words">{title}</div>
         <div className="flex items-baseline gap-2 mb-4 min-w-0 flex-wrap">
           <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>

@@ -2,6 +2,7 @@ import Card from '@/components/ui/Card';
 import { NavArrowRight, Trophy, InfoCircle, Plus } from 'iconoir-react';
 import Link from 'next/link';
 import { FinancialMilestone } from '@/types/dashboard';
+import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 
 interface FinancialMilestonesCardProps {
   milestone: FinancialMilestone;
@@ -13,7 +14,10 @@ export default function FinancialMilestonesCard({ milestone }: FinancialMileston
       title="Financial Milestones"
       customHeader={
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-card-header">Financial Milestones</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-card-header">Financial Milestones</h2>
+            <ComingSoonBadge />
+          </div>
           <button
             className="hover-text-purple transition-colors cursor-pointer group"
             aria-label="Add milestone"
@@ -23,7 +27,7 @@ export default function FinancialMilestonesCard({ milestone }: FinancialMileston
         </div>
       }
     >
-      <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex flex-col flex-1 min-h-0" style={{ filter: 'blur(2px)' }}>
         <div className="flex-1 min-h-0">
           <div 
             className="p-3 mb-4"
