@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Card from '@/components/ui/Card';
-import { Transaction } from '@/types/dashboard';
+import { Transaction, Category } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { NavArrowRight } from 'iconoir-react';
 import { formatNumber } from '@/lib/utils';
@@ -12,6 +12,7 @@ import TransactionModal from '@/components/transactions/TransactionModal';
 
 interface TransactionsCardProps {
   transactions: Transaction[];
+  onRefresh?: () => void;
 }
 
 const MAX_NAME_LENGTH = 25;
@@ -21,9 +22,44 @@ function truncateName(name: string, maxLength: number): string {
   return name.substring(0, maxLength) + '...';
 }
 
-export default function TransactionsCard({ transactions }: TransactionsCardProps) {
+export default function TransactionsCard({ transactions, onRefresh }: TransactionsCardProps) {
   const { currency } = useCurrency();
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [currencyOptions, setCurrencyOptions] = useState<Array<{ id: number; name: string; symbol: string; alias: string }>>([]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data.categories || []);
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // Fetch currencies
+  useEffect(() => {
+    const fetchCurrencies = async () => {
+      try {
+        const response = await fetch('/api/currencies');
+        if (response.ok) {
+          const data = await response.json();
+          setCurrencyOptions(data.currencies || []);
+        }
+      } catch (err) {
+        console.error('Error fetching currencies:', err);
+      }
+    };
+    fetchCurrencies();
+  }, []);
 
   const handleTransactionClick = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
@@ -33,10 +69,35 @@ export default function TransactionsCard({ transactions }: TransactionsCardProps
     setSelectedTransaction(null);
   };
 
-  const handleSave = async () => {
-    // Transaction saved - modal will close
-    // In a real app, you might want to refresh the dashboard data here
-    setSelectedTransaction(null);
+  const handleSave = async (updatedTransaction: Transaction) => {
+    if (!selectedTransaction) return;
+    
+    try {
+      setIsSaving(true);
+      const response = await fetch('/api/transactions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTransaction),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save transaction');
+      }
+      
+      setSelectedTransaction(null);
+      // Refresh dashboard data if callback provided
+      if (onRefresh) {
+        onRefresh();
+      } else {
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error('Error saving transaction:', err);
+      setSelectedTransaction(null);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -52,8 +113,12 @@ export default function TransactionsCard({ transactions }: TransactionsCardProps
       }
       
       setSelectedTransaction(null);
-      // In a real app, you might want to refresh the dashboard data here
-      window.location.reload(); // Simple refresh for now
+      // Refresh dashboard data if callback provided
+      if (onRefresh) {
+        onRefresh();
+      } else {
+        window.location.reload();
+      }
     } catch (err) {
       console.error('Error deleting transaction:', err);
       setSelectedTransaction(null);
@@ -94,7 +159,7 @@ export default function TransactionsCard({ transactions }: TransactionsCardProps
                   className="flex items-center gap-3 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => handleTransactionClick(transaction)}
                 >
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     <div
                       className="w-12 h-12 rounded-full flex items-center justify-center"
                       style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
@@ -108,7 +173,7 @@ export default function TransactionsCard({ transactions }: TransactionsCardProps
                     </div>
                     <div className="text-helper">{transaction.date}</div>
                   </div>
-                  <div className="flex flex-col items-end flex-shrink-0 text-right">
+                  <div className="flex flex-col items-end shrink-0 text-right">
                     <div className="text-body font-semibold whitespace-nowrap">
                       {displaySymbol}{formatNumber(absoluteOriginalAmount)}
                     </div>
@@ -133,13 +198,16 @@ export default function TransactionsCard({ transactions }: TransactionsCardProps
       </Card>
 
       {/* Transaction Modal */}
-      {selectedTransaction && (
+      {selectedTransaction && categories.length > 0 && currencyOptions.length > 0 && (
         <TransactionModal
           transaction={selectedTransaction}
           mode="edit"
           onClose={handleCloseModal}
           onSave={handleSave}
           onDelete={handleDelete}
+          isSaving={isSaving}
+          categories={categories}
+          currencyOptions={currencyOptions}
         />
       )}
     </>

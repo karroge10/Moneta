@@ -8,9 +8,10 @@ import { useCurrency } from '@/hooks/useCurrency';
 interface IncomeCardProps {
   amount: number;
   trend: number;
+  comparisonLabel?: string;
 }
 
-export default function IncomeCard({ amount, trend }: IncomeCardProps) {
+export default function IncomeCard({ amount, trend, comparisonLabel }: IncomeCardProps) {
   const { currency } = useCurrency();
   return (
     <Card title="Income" href="/income">
@@ -19,7 +20,7 @@ export default function IncomeCard({ amount, trend }: IncomeCardProps) {
           <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
           <span className="text-card-value break-all min-w-0">{amount.toLocaleString('en-US')}</span>
         </div>
-        <TrendIndicator value={trend} label="from last month" />
+        {comparisonLabel && comparisonLabel.trim() !== '' && <TrendIndicator value={trend} label={comparisonLabel} />}
       </div>
     </Card>
   );

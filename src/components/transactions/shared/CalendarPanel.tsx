@@ -34,10 +34,29 @@ export function CalendarPanel({
     days.push(day);
   }
 
-  const selected = selectedDate ? new Date(selectedDate) : null;
+  // Parse selected date in local time to avoid timezone issues
+  const selected = selectedDate ? (() => {
+    // Handle YYYY-MM-DD format
+    if (selectedDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    // Fallback to standard Date parsing
+    const date = new Date(selectedDate);
+    if (Number.isNaN(date.getTime())) return null;
+    return date;
+  })() : null;
 
   const isSameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  // Format date in local time to avoid timezone issues (YYYY-MM-DD)
+  const formatDateLocal = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const monthLabel = currentMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
@@ -100,7 +119,7 @@ export function CalendarPanel({
             <button
               type="button"
               key={day.toISOString()}
-              onClick={() => onChange(day.toISOString().slice(0, 10))}
+              onClick={() => onChange(formatDateLocal(day))}
               className={buttonClasses.join(' ')}
               style={buttonStyle}
             >
