@@ -60,6 +60,7 @@ export default function ImportTransactionsPage() {
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<number | null>(null);
   const [currencySelectionTouched, setCurrencySelectionTouched] = useState(false);
   const [currencySelectionError, setCurrencySelectionError] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Get selected currency object for display
   const selectedCurrency = useMemo(() => {
@@ -389,7 +390,8 @@ export default function ImportTransactionsPage() {
 
   const handleFileUpload = useCallback(
     async (file: File) => {
-      if (!['idle', 'ready'].includes(uploadState)) {
+      // Allow uploads when idle, ready, or error (to allow retry after error)
+      if (!['idle', 'ready', 'error'].includes(uploadState)) {
         return;
       }
       if (file.type !== 'application/pdf') {
@@ -398,6 +400,14 @@ export default function ImportTransactionsPage() {
         setIsReviewLoading(false);
         return;
       }
+
+      // Reset state completely when starting a new upload (especially after error)
+      if (uploadState === 'error') {
+        resetUploadState();
+      }
+
+      // Reset drag-over state when starting upload
+      setIsDragOver(false);
 
       // Reset and start timer
       const now = Date.now();
@@ -556,6 +566,7 @@ export default function ImportTransactionsPage() {
     (event: DragEvent) => {
       event.preventDefault();
       event.stopPropagation();
+      setIsDragOver(false);
       if (event.dataTransfer?.files?.[0]) {
         handleFileUpload(event.dataTransfer.files[0]);
       }
@@ -572,18 +583,47 @@ export default function ImportTransactionsPage() {
       event.stopPropagation();
     };
 
-    dropZone.addEventListener('dragenter', preventDefaults);
-    dropZone.addEventListener('dragover', preventDefaults);
-    dropZone.addEventListener('dragleave', preventDefaults);
+    const handleDragEnter = (event: DragEvent) => {
+      preventDefaults(event);
+      // Only highlight if not busy and dragging files
+      const isBusy = ['queued', 'uploading', 'processing', 'categorizing'].includes(uploadState);
+      if (!isBusy && event.dataTransfer?.types.includes('Files')) {
+        setIsDragOver(true);
+      }
+    };
+
+    const handleDragOver = (event: DragEvent) => {
+      preventDefaults(event);
+      // Set dropEffect to show it's a valid drop target
+      const isBusy = ['queued', 'uploading', 'processing', 'categorizing'].includes(uploadState);
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = isBusy ? 'none' : 'copy';
+      }
+    };
+
+    const handleDragLeave = (event: DragEvent) => {
+      preventDefaults(event);
+      // Only reset if we're actually leaving the dropzone (not just a child element)
+      const rect = dropZone.getBoundingClientRect();
+      const x = event.clientX;
+      const y = event.clientY;
+      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+        setIsDragOver(false);
+      }
+    };
+
+    dropZone.addEventListener('dragenter', handleDragEnter as EventListener);
+    dropZone.addEventListener('dragover', handleDragOver as EventListener);
+    dropZone.addEventListener('dragleave', handleDragLeave as EventListener);
     dropZone.addEventListener('drop', handleDrop as EventListener);
 
     return () => {
-      dropZone.removeEventListener('dragenter', preventDefaults);
-      dropZone.removeEventListener('dragover', preventDefaults);
-      dropZone.removeEventListener('dragleave', preventDefaults);
+      dropZone.removeEventListener('dragenter', handleDragEnter as EventListener);
+      dropZone.removeEventListener('dragover', handleDragOver as EventListener);
+      dropZone.removeEventListener('dragleave', handleDragLeave as EventListener);
       dropZone.removeEventListener('drop', handleDrop as EventListener);
     };
-  }, [handleDrop]);
+  }, [handleDrop, uploadState]);
 
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -747,7 +787,13 @@ export default function ImportTransactionsPage() {
               <div className="flex flex-col gap-4 w-full flex-1">
                 <div
                   ref={dropZoneRef}
-                  className={`border-2 border-dashed border-[#3a3a3a] rounded-3xl px-6 py-10 w-full flex-1 flex flex-col items-center justify-center gap-4 text-center transition-colors ${isUploadBusy ? 'pointer-events-none opacity-100' : 'hover:border-[#AC66DA]'}`}
+                  className={`border-2 border-dashed rounded-3xl px-6 py-10 w-full flex-1 flex flex-col items-center justify-center gap-4 text-center transition-colors ${
+                    isUploadBusy 
+                      ? 'pointer-events-none opacity-100 border-[#3a3a3a]' 
+                      : isDragOver 
+                        ? 'border-[#AC66DA]' 
+                        : 'border-[#3a3a3a] hover:border-[#AC66DA]'
+                  }`}
                   style={{ backgroundColor: '#282828', minHeight: '320px' }}
                   aria-busy={isUploadBusy}
                   aria-live="polite"

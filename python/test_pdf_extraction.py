@@ -1,97 +1,111 @@
 #!/usr/bin/env python3
 """
-Test script to debug PDF extraction for MYCREDO bank statements.
-Usage: python python/test_pdf_extraction.py path/to/file.pdf
+Test script to extract transactions from PDF and show detailed logging.
 """
 
-import sys
 import json
+import sys
 from pathlib import Path
 
-# Add the python directory to the path so we can import process_pdf
+# Add parent directory to path to import process_pdf
 sys.path.insert(0, str(Path(__file__).parent))
 
-from process_pdf import extract_transactions_with_pdfplumber, extract_transactions_with_mineru
+from process_pdf import extract_transactions_with_pdfplumber, translate_to_english
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python python/test_pdf_extraction.py <path_to_pdf>")
-        sys.exit(1)
+    # Find PDF in public folder
+    script_dir = Path(__file__).parent
+    project_root = script_dir.parent
+    public_dir = project_root / "public"
     
-    pdf_path = Path(sys.argv[1]).expanduser().resolve()
+    # Try to find the Georgian PDF
+    pdf_files = list(public_dir.glob("*.pdf"))
+    if not pdf_files:
+        print("ERROR: No PDF files found in public folder")
+        return 1
     
-    if not pdf_path.exists():
-        print(f"Error: PDF file not found: {pdf_path}")
-        sys.exit(1)
+    # Prefer the MYCREDO PDF if it exists
+    pdf_path = None
+    for pdf in pdf_files:
+        if "MYCREDO" in pdf.name:
+            pdf_path = pdf
+            break
     
+    if not pdf_path:
+        pdf_path = pdf_files[0]
+    
+    print(f"Testing PDF extraction on: {pdf_path.name}")
     print("=" * 80)
-    print(f"Testing PDF extraction for: {pdf_path.name}")
-    print("=" * 80)
-    print()
     
-    # Try pdfplumber extraction
-    print("Step 1: Attempting extraction with pdfplumber...")
-    print("-" * 80)
+    # Extract transactions
     transactions, metadata = extract_transactions_with_pdfplumber(pdf_path)
     
-    print()
-    print(f"Results from pdfplumber:")
-    print(f"  - Transactions found: {len(transactions)}")
-    print(f"  - Metadata: {metadata}")
-    print()
+    print("\n" + "=" * 80)
+    print("EXTRACTION SUMMARY")
+    print("=" * 80)
+    print(f"Total transactions found: {len(transactions)}")
+    print(f"Currency: {metadata.currency} (confidence: {metadata.currency_confidence:.2f})")
+    print("\n" + "=" * 80)
+    print("DETAILED TRANSACTION REPORT")
+    print("=" * 80)
     
-    if transactions:
-        print("Sample transactions (first 5):")
-        for i, tx in enumerate(transactions[:5], 1):
-            print(f"  {i}. Date: {tx.date}, Amount: {tx.amount}, Description: {tx.description[:50]}")
-        print()
-    
-    # If no transactions found, try mineru fallback
-    if not transactions:
-        print("Step 2: No transactions found with pdfplumber, trying mineru fallback...")
+    # Show all transactions with original and translated descriptions
+    for idx, tx in enumerate(transactions, start=1):
+        translated = translate_to_english(tx.description)
+        print(f"\nTransaction #{idx}:")
+        print(f"  Date: {tx.date}")
+        print(f"  Amount: {tx.amount:.2f}")
+        print(f"  Original Description: {tx.description}")
+        print(f"  Translated Description: {translated}")
         print("-" * 80)
-        mineru_transactions = extract_transactions_with_mineru(pdf_path)
-        print(f"Results from mineru fallback:")
-        print(f"  - Transactions found: {len(mineru_transactions)}")
-        print()
+    
+    # Check specific expected transactions
+    print("\n" + "=" * 80)
+    print("VALIDATION AGAINST EXPECTED VALUES")
+    print("=" * 80)
+    
+    expected_transactions = [
+        {
+            "description_pattern": "T AND K RESTAURANTS",
+            "expected_amount": 20.65,
+            "found": False
+        },
+        {
+            "description_pattern": "LTD MADAGONI 2",
+            "expected_amount": 3.54,
+            "found": False
+        },
+        {
+            "description_pattern": "უნაღდო კონვერტაცია",
+            "expected_amount": 86.56,
+            "found": False
+        }
+    ]
+    
+    for expected in expected_transactions:
+        pattern = expected["description_pattern"]
+        expected_amount = expected["expected_amount"]
         
-        if mineru_transactions:
-            print("Sample transactions from mineru (first 5):")
-            for i, tx in enumerate(mineru_transactions[:5], 1):
-                print(f"  {i}. Date: {tx.date}, Amount: {tx.amount}, Description: {tx.description[:50]}")
-            print()
+        for tx in transactions:
+            if pattern.lower() in tx.description.lower():
+                actual_amount = abs(tx.amount)
+                if abs(actual_amount - expected_amount) < 0.01:
+                    print(f"✓ FOUND: '{pattern}' - Expected: {expected_amount:.2f}, Got: {actual_amount:.2f} ✓")
+                    expected["found"] = True
+                    break
+                else:
+                    print(f"✗ MISMATCH: '{pattern}' - Expected: {expected_amount:.2f}, Got: {actual_amount:.2f} ✗")
+                    expected["found"] = True
+                    break
+        
+        if not expected["found"]:
+            print(f"✗ NOT FOUND: '{pattern}' - Expected amount: {expected_amount:.2f}")
     
-    # Summary
+    print("\n" + "=" * 80)
+    print("TEST COMPLETE")
     print("=" * 80)
-    print("SUMMARY")
-    print("=" * 80)
-    total_found = len(transactions) + (len(mineru_transactions) if not transactions else 0)
-    print(f"Total transactions extracted: {total_found}")
     
-    if total_found == 0:
-        print()
-        print("⚠️  No transactions were extracted!")
-        print("This could mean:")
-        print("  1. The PDF structure doesn't match expected table format")
-        print("  2. The PDF is image-based (scanned) and needs OCR")
-        print("  3. The PDF is encrypted or has access restrictions")
-        print("  4. The table extraction settings need adjustment")
-        print()
-        print("Check the logs above for detailed extraction attempts.")
-    elif total_found == 3:
-        sample_descriptions = ['Sample Subscription', 'Coffee Shop', 'Salary']
-        is_sample = all(
-            any(sample in tx.description for sample in sample_descriptions)
-            for tx in (transactions or mineru_transactions)
-        )
-        if is_sample:
-            print()
-            print("⚠️  WARNING: Sample data detected! PDF extraction failed.")
-    else:
-        print(f"✓ Successfully extracted {total_found} transactions")
-    
-    print()
+    return 0
 
 if __name__ == "__main__":
-    main()
-
+    sys.exit(main())
