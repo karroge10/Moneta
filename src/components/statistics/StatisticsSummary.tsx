@@ -7,6 +7,7 @@ import { getIcon } from '@/lib/iconMapping';
 import { formatNumber } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 import Link from 'next/link';
+import PlaceholderDataBadge from '@/components/ui/PlaceholderDataBadge';
 
 interface StatisticsSummaryProps {
   items: StatisticsSummaryItem[];
@@ -16,6 +17,10 @@ export default function StatisticsSummary({ items }: StatisticsSummaryProps) {
   const { currency } = useCurrency();
   const regularItems = items.filter(item => !item.isLarge);
   const largeItem = items.find(item => item.isLarge);
+  
+  // Check if Portfolio Balance is 0 (no investments)
+  const portfolioBalanceItem = regularItems.find(item => item.label === 'Portfolio Balance');
+  const hasPortfolioData = portfolioBalanceItem && typeof portfolioBalanceItem.value === 'number' && portfolioBalanceItem.value > 0;
 
   return (
     <Card 
@@ -33,7 +38,7 @@ export default function StatisticsSummary({ items }: StatisticsSummaryProps) {
         </div>
       }
     >
-      <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0">
+      <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0" style={{ filter: 'none' }}>
         <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 space-y-3 pr-1">
           {regularItems.map((item) => {
             const Icon = getIcon(item.icon);
@@ -41,16 +46,24 @@ export default function StatisticsSummary({ items }: StatisticsSummaryProps) {
               ? formatNumber(item.value) 
               : item.value;
             
+            // Check if this is Portfolio Balance with no data
+            const isPortfolioEmpty = item.label === 'Portfolio Balance' && typeof item.value === 'number' && item.value === 0;
+            
             return (
               <div
                 key={item.id}
-                className="flex items-center gap-3 p-3"
+                className="flex items-center gap-3 p-3 relative"
                 style={{
                   backgroundColor: '#202020',
                   borderRadius: '30px',
                   width: '100%',
                 }}
               >
+                {isPortfolioEmpty && (
+                  <div className="absolute top-2 right-2 z-10">
+                    <PlaceholderDataBadge size="sm" />
+                  </div>
+                )}
                 <div
                   className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
                   style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
@@ -82,52 +95,65 @@ export default function StatisticsSummary({ items }: StatisticsSummaryProps) {
 
         {/* Financial Health Score Card (Large) */}
         {largeItem && (
-          <div
-            className="flex flex-col items-center justify-center p-6 mt-4"
-            style={{
-              backgroundColor: '#202020',
-              borderRadius: '30px',
-              width: '100%',
-              minHeight: '200px',
-            }}
-          >
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-              style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
-            >
-              {(() => {
-                const Icon = getIcon(largeItem.icon);
-                return (
-                  <Icon
-                    width={32}
-                    height={32}
-                    strokeWidth={1.5}
-                    style={{ color: '#E7E4E4' }}
-                  />
-                );
-              })()}
+          <div className="relative">
+            <div className="absolute top-2 right-2 z-10">
+              <span 
+                className="px-3 py-1 text-xs rounded-full font-semibold"
+                style={{ backgroundColor: '#202020', color: '#E7E4E4' }}
+              >
+                Coming Soon
+              </span>
             </div>
-            <h3 className="text-card-header mb-4">{largeItem.label}</h3>
-            <div 
-              className="mb-4" 
-              style={{ 
-                color: largeItem.iconColor,
-                fontSize: 'clamp(48px, 5vw, 64px)',
-                fontWeight: 700,
-                lineHeight: 1.1
+            <div
+              className="flex flex-col items-center justify-center p-6 mt-4"
+              style={{
+                backgroundColor: '#202020',
+                borderRadius: '30px',
+                width: '100%',
+                minHeight: '200px',
+                filter: 'blur(2px)',
+                pointerEvents: 'none',
+                userSelect: 'none',
               }}
             >
-              {largeItem.value}
-            </div>
-            {largeItem.link && (
-              <Link 
-                href="#" 
-                className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap"
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
               >
-                <span className="text-wrap-safe break-words">{largeItem.link}</span>
-                <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0" />
-              </Link>
-            )}
+                {(() => {
+                  const Icon = getIcon(largeItem.icon);
+                  return (
+                    <Icon
+                      width={32}
+                      height={32}
+                      strokeWidth={1.5}
+                      style={{ color: '#E7E4E4' }}
+                    />
+                  );
+                })()}
+              </div>
+              <h3 className="text-card-header mb-4">{largeItem.label}</h3>
+              <div 
+                className="mb-4" 
+                style={{ 
+                  color: largeItem.iconColor,
+                  fontSize: 'clamp(48px, 5vw, 64px)',
+                  fontWeight: 700,
+                  lineHeight: 1.1
+                }}
+              >
+                {largeItem.value}
+              </div>
+              {largeItem.link && (
+                <Link 
+                  href="#" 
+                  className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap"
+                >
+                  <span className="text-wrap-safe break-words">{largeItem.link}</span>
+                  <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0" />
+                </Link>
+              )}
+            </div>
           </div>
         )}
       </div>

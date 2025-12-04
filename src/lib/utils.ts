@@ -58,6 +58,14 @@ export function getTrendColor(value: number): string {
   return value >= 0 ? 'var(--accent-green)' : 'var(--error)';
 }
 
+/**
+ * Get trend color for expenses (inverted logic)
+ * For expenses: negative trend (spending less) is good (green), positive (spending more) is bad (red)
+ */
+export function getExpenseTrendColor(value: number): string {
+  return value <= 0 ? 'var(--accent-green)' : 'var(--error)';
+}
+
 export function formatPercentage(value: number, includeSign = false): string {
   const sign = includeSign && value >= 0 ? '+' : '';
   return `${sign}${value.toFixed(2)}%`;

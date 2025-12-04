@@ -29,7 +29,7 @@ export default function UpcomingBillsCard({ bills }: UpcomingBillsCardProps) {
         }
         showActions={false}
       >
-        <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8">
+        <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8" style={{ filter: 'blur(2px)' }}>
           <div className="text-body text-center mb-2 opacity-70">Add your first bill</div>
           <div className="text-helper text-center">Track recurring payments and due dates</div>
         </div>
@@ -50,7 +50,7 @@ export default function UpcomingBillsCard({ bills }: UpcomingBillsCardProps) {
       }
       showActions={false}
     >
-      <div className="flex flex-col flex-1 mt-2">
+      <div className="flex flex-col flex-1 mt-2" style={{ filter: 'blur(2px)' }}>
         <div className="space-y-4 flex-1">
           {bills.map((bill) => {
             const Icon = getIcon(bill.icon);
