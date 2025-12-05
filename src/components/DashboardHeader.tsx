@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Crown, Bell, Settings, LogOut, Plus, HeadsetHelp, Upload, CalendarCheck } from 'iconoir-react';
 import Link from 'next/link';
+import { useClerk } from '@clerk/nextjs';
 import NotificationsDropdown from '@/components/updates/NotificationsDropdown';
 import { useNotifications } from '@/hooks/useNotifications';
 import Dropdown from '@/components/ui/Dropdown';
@@ -39,6 +40,7 @@ export default function DashboardHeader({
   timePeriod = 'This Month',
   onTimePeriodChange,
 }: DashboardHeaderProps) {
+  const { signOut } = useClerk();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
@@ -182,10 +184,9 @@ export default function DashboardHeader({
                 </Link>
                 <button 
                   className="w-full text-left px-4 py-3 flex items-center gap-2 hover-text-purple transition-colors text-body cursor-pointer"
-                  onClick={() => {
+                  onClick={async () => {
                     setIsUserMenuOpen(false);
-                    // TODO: Implement logout functionality
-                    console.log('Log out');
+                    await signOut({ redirectUrl: '/' });
                   }}
                 >
                   <LogOut width={18} height={18} strokeWidth={1.5} className="stroke-current" />
