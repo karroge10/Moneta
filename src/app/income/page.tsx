@@ -14,8 +14,9 @@ import AverageDailyCard from '@/components/dashboard/AverageDailyCard';
 import EstimatedTaxCard from '@/components/dashboard/EstimatedTaxCard';
 import CardSkeleton from '@/components/dashboard/CardSkeleton';
 import TrendIndicator from '@/components/ui/TrendIndicator';
+import TransactionModal from '@/components/transactions/TransactionModal';
 import { mockIncomePage } from '@/lib/mockData';
-import { TimePeriod, LatestIncome, IncomeSource, PerformanceDataPoint } from '@/types/dashboard';
+import { TimePeriod, LatestIncome, IncomeSource, PerformanceDataPoint, Transaction, Category } from '@/types/dashboard';
 import { formatNumber } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 
@@ -35,6 +36,13 @@ export default function IncomePage() {
   const [average, setAverage] = useState({ amount: 0, trend: 0, subtitle: 'Monthly average based on selected time period' });
   const [averageDaily, setAverageDaily] = useState<{ amount: number; trend: number } | null>(null);
   const [nextMonthPrediction, setNextMonthPrediction] = useState<number | null>(null);
+  
+  // Transaction modal state
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [isSaving, setIsSaving] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [currencyOptions, setCurrencyOptions] = useState<Array<{ id: number; name: string; symbol: string; alias: string }>>([]);
   
   // Keep mock data for components not requested to be changed
   const update = mockIncomePage.update;
@@ -86,6 +94,115 @@ export default function IncomePage() {
   useEffect(() => {
     fetchIncomeData();
   }, [fetchIncomeData]);
+
+  // Fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data.categories || []);
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // Fetch currencies
+  useEffect(() => {
+    const fetchCurrencies = async () => {
+      try {
+        const response = await fetch('/api/currencies');
+        if (response.ok) {
+          const data = await response.json();
+          setCurrencyOptions(data.currencies || []);
+        }
+      } catch (err) {
+        console.error('Error fetching currencies:', err);
+      }
+    };
+    fetchCurrencies();
+  }, []);
+
+  // Create draft income transaction (positive amount for income)
+  const createDraftIncome = (): Transaction => ({
+    id: crypto.randomUUID(),
+    name: '',
+    date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    amount: 0.01, // Positive amount indicates income
+    category: null,
+    icon: 'HelpCircle',
+  });
+
+  const handleAddIncomeClick = () => {
+    setModalMode('add');
+    setSelectedTransaction(createDraftIncome());
+  };
+
+  const handleSave = async (updatedTransaction: Transaction) => {
+    try {
+      setError(null);
+      setIsSaving(true);
+      
+      const isNew = modalMode === 'add';
+      
+      let response: Response;
+      if (isNew) {
+        response = await fetch('/api/transactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedTransaction),
+        });
+      } else {
+        response = await fetch('/api/transactions', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedTransaction),
+        });
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save transaction');
+      }
+      
+      setSelectedTransaction(null);
+      fetchIncomeData(); // Refresh income data
+    } catch (err) {
+      console.error('Error saving transaction:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save transaction');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setSelectedTransaction(null);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedTransaction) return;
+    
+    try {
+      const response = await fetch(`/api/transactions?id=${selectedTransaction.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete transaction');
+      }
+      
+      setSelectedTransaction(null);
+      fetchIncomeData(); // Refresh income data
+    } catch (err) {
+      console.error('Error deleting transaction:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete transaction');
+    }
+  };
 
   // Helper to get comparison label based on time period
   const getComparisonLabel = (period: TimePeriod): string => {
@@ -198,7 +315,7 @@ export default function IncomePage() {
             pageName="Income"
             actionButton={{
               label: 'Add Income',
-              onClick: () => console.log('Add income'),
+              onClick: handleAddIncomeClick,
             }}
             timePeriod={timePeriod}
             onTimePeriodChange={setTimePeriod}
@@ -230,7 +347,7 @@ export default function IncomePage() {
             pageName="Income"
             actionButton={{
               label: 'Add Income',
-              onClick: () => console.log('Add income'),
+              onClick: handleAddIncomeClick,
             }}
             timePeriod={timePeriod}
             onTimePeriodChange={setTimePeriod}
@@ -464,6 +581,20 @@ export default function IncomePage() {
           </div>
         </div>
       </div>
+
+      {/* Transaction Modal */}
+      {selectedTransaction && (
+        <TransactionModal
+          transaction={selectedTransaction}
+          mode={modalMode}
+          onClose={handleCloseModal}
+          onSave={handleSave}
+          onDelete={handleDelete}
+          isSaving={isSaving}
+          categories={categories}
+          currencyOptions={currencyOptions}
+        />
+      )}
     </main>
   );
 }
