@@ -104,7 +104,51 @@ const CustomTooltip = ({ active, payload, currencySymbol = '$' }: any) => {
   return null;
 };
 
+// Calculate optimal interval based on data length and type
+// Returns a number (0 = show all) or 'preserveStartEnd' for automatic spacing
+const calculateInterval = (data: Array<{ date: string; value: number }>): number | 'preserveStartEnd' => {
+  if (!data || data.length === 0) return 0;
+  
+  const isDaily = isDailyData(data[0].date);
+  const dataLength = data.length;
+  
+  if (isDaily) {
+    // For daily data (month views)
+    if (dataLength <= 31) {
+      // Show all labels for a single month or less
+      return 0;
+    } else {
+      // For more than a month of daily data, show approximately 12-15 labels
+      return Math.max(1, Math.floor(dataLength / 12));
+    }
+  } else {
+    // For monthly data
+    if (dataLength <= 6) {
+      // Show all labels for 6 months or less
+      return 0;
+    } else if (dataLength <= 12) {
+      // Show every other month for 7-12 months
+      return 1;
+    } else if (dataLength <= 24) {
+      // Show every 3rd month for 13-24 months (every quarter)
+      return 2;
+    } else if (dataLength <= 48) {
+      // Show every 4th month for 25-48 months
+      return 3;
+    } else {
+      // For "All Time" with many months (49+), calculate interval to show ~8-10 labels
+      // This ensures readable spacing without overlap
+      const targetLabels = 8;
+      const calculatedInterval = Math.floor(dataLength / targetLabels);
+      // Cap the interval - show at minimum every 6th month, but can be more for very long periods
+      return Math.max(5, calculatedInterval);
+    }
+  }
+};
+
 export default function LineChart({ data, noPadding = false, currencySymbol = '$' }: LineChartProps) {
+  const interval = calculateInterval(data);
+  
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -124,7 +168,7 @@ export default function LineChart({ data, noPadding = false, currencySymbol = '$
           tickLine={{ stroke: 'rgba(231, 228, 228, 0.3)' }}
           tick={<CustomXAxisTick />}
           height={40}
-          interval={0}
+          interval={interval}
         />
         <YAxis 
           hide
