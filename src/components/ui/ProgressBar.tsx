@@ -5,24 +5,30 @@ interface ProgressBarProps {
 }
 
 export default function ProgressBar({ value, showLabel = true, height = 32 }: ProgressBarProps) {
+  const percentage = Math.min(100, Math.max(0, value));
+  const displayValue = percentage.toFixed(1);
+  
   return (
     <div
       className="relative w-full rounded-full overflow-hidden"
       style={{ backgroundColor: '#E7E4E4', height }}
     >
       <div
-        className="h-full rounded-full flex items-center justify-center transition-all duration-500"
+        className="h-full rounded-full transition-all duration-500"
         style={{
           backgroundColor: 'var(--accent-purple)',
-          width: `${Math.min(100, Math.max(0, value))}%`,
+          width: `${percentage}%`,
         }}
-      >
-        {showLabel && value >= 50 && (
-          <span className="text-xs font-semibold" style={{ color: '#282828' }}>
-            % {value.toFixed(1)}
+      />
+      {showLabel && (
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+        >
+          <span className="text-sm font-bold" style={{ color: '#282828' }}>
+            {displayValue}%
           </span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

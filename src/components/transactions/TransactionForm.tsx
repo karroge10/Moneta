@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useLayoutEffect, useCallback, CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { NavArrowDown, Trash, ShoppingBag, Wallet, Language } from 'iconoir-react';
-import { Transaction, Category } from '@/types/dashboard';
+import { Transaction, Category, RecurringFrequencyUnit } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { useCurrency } from '@/hooks/useCurrency';
 import { formatNumber } from '@/lib/utils';
@@ -46,6 +46,25 @@ export default function TransactionForm({
     transaction.amount ? Math.abs(transaction.amount).toString() : ''
   );
   const [dateInput, setDateInput] = useState('');
+  const [recurringEnabled, setRecurringEnabled] = useState<boolean>(transaction.recurring?.isRecurring ?? false);
+  const [recurringUnit, setRecurringUnit] = useState<RecurringFrequencyUnit>(transaction.recurring?.frequencyUnit ?? 'month');
+  const [recurringInterval, setRecurringInterval] = useState<number>(transaction.recurring?.frequencyInterval ?? 1);
+  const [recurringStartDate, setRecurringStartDate] = useState<string>('');
+  const [recurringEndDate, setRecurringEndDate] = useState<string>('');
+  const [isRecurringStartOpen, setIsRecurringStartOpen] = useState(false);
+  const [isRecurringEndOpen, setIsRecurringEndOpen] = useState(false);
+  const [isRecurringUnitOpen, setIsRecurringUnitOpen] = useState(false);
+  const [recurringUnitOpenUpward, setRecurringUnitOpenUpward] = useState(false);
+  const [recurringStartMonth, setRecurringStartMonth] = useState<Date>(() => {
+    if (transaction.recurring?.startDate) return new Date(transaction.recurring.startDate);
+    const initial = formatDateToInput(transaction.date);
+    return initial ? new Date(initial) : new Date();
+  });
+  const [recurringEndMonth, setRecurringEndMonth] = useState<Date>(() => {
+    if (transaction.recurring?.endDate) return new Date(transaction.recurring.endDate);
+    const initial = formatDateToInput(transaction.date);
+    return initial ? new Date(initial) : new Date();
+  });
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const dateDropdownRef = useRef<HTMLDivElement>(null);
   const dateTriggerRef = useRef<HTMLButtonElement>(null);
@@ -53,6 +72,14 @@ export default function TransactionForm({
   const currencyDropdownRef = useRef<HTMLDivElement>(null);
   const currencyTriggerRef = useRef<HTMLButtonElement>(null);
   const currencyPortalRef = useRef<HTMLDivElement>(null);
+  const recurringStartDropdownRef = useRef<HTMLDivElement>(null);
+  const recurringStartTriggerRef = useRef<HTMLButtonElement>(null);
+  const recurringStartPortalRef = useRef<HTMLDivElement>(null);
+  const recurringEndDropdownRef = useRef<HTMLDivElement>(null);
+  const recurringEndTriggerRef = useRef<HTMLButtonElement>(null);
+  const recurringEndPortalRef = useRef<HTMLDivElement>(null);
+  const recurringUnitDropdownRef = useRef<HTMLDivElement>(null);
+  const recurringUnitTriggerRef = useRef<HTMLButtonElement>(null);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const initial = formatDateToInput(transaction.date);
     return initial ? new Date(initial) : new Date();
@@ -65,6 +92,10 @@ export default function TransactionForm({
   // Portal positioning state for currency dropdown
   const [currencyDropdownStyle, setCurrencyDropdownStyle] = useState<CSSProperties | null>(null);
   const [currencyOpenUpward, setCurrencyOpenUpward] = useState(false);
+  const [recurringStartDropdownStyle, setRecurringStartDropdownStyle] = useState<CSSProperties | null>(null);
+  const [recurringStartOpenUpward, setRecurringStartOpenUpward] = useState(false);
+  const [recurringEndDropdownStyle, setRecurringEndDropdownStyle] = useState<CSSProperties | null>(null);
+  const [recurringEndOpenUpward, setRecurringEndOpenUpward] = useState(false);
 
   useEffect(() => {
     // Sync transaction prop to form state - necessary for controlled component
@@ -81,6 +112,19 @@ export default function TransactionForm({
     const initial = formatDateToInput(transaction.date);
     setDateInput(initial);
     setCurrentMonth(initial ? new Date(initial) : new Date());
+    setRecurringEnabled(transaction.recurring?.isRecurring ?? false);
+    setRecurringUnit(transaction.recurring?.frequencyUnit ?? 'month');
+    setRecurringInterval(transaction.recurring?.frequencyInterval ?? 1);
+    const recurringStart = transaction.recurring?.startDate ?? initial ?? '';
+    const recurringEnd = transaction.recurring?.endDate ?? '';
+    setRecurringStartDate(recurringStart);
+    setRecurringEndDate(recurringEnd);
+    if (recurringStart) {
+      setRecurringStartMonth(new Date(recurringStart));
+    }
+    if (recurringEnd) {
+      setRecurringEndMonth(new Date(recurringEnd));
+    }
   }, [transaction]);
 
   // Filter categories by transaction type (client-side filtering)
@@ -113,6 +157,26 @@ export default function TransactionForm({
           (!currencyPortalRef.current || !currencyPortalRef.current.contains(target))) {
         setIsCurrencyOpen(false);
       }
+
+      if (isRecurringStartOpen &&
+          recurringStartDropdownRef.current &&
+          !recurringStartDropdownRef.current.contains(target) &&
+          (!recurringStartPortalRef.current || !recurringStartPortalRef.current.contains(target))) {
+        setIsRecurringStartOpen(false);
+      }
+
+      if (isRecurringEndOpen &&
+          recurringEndDropdownRef.current &&
+          !recurringEndDropdownRef.current.contains(target) &&
+          (!recurringEndPortalRef.current || !recurringEndPortalRef.current.contains(target))) {
+        setIsRecurringEndOpen(false);
+      }
+
+      if (isRecurringUnitOpen &&
+          recurringUnitDropdownRef.current &&
+          !recurringUnitDropdownRef.current.contains(target)) {
+        setIsRecurringUnitOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -120,7 +184,16 @@ export default function TransactionForm({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isCategoryOpen, isDateOpen, isCurrencyOpen]);
+  }, [isCategoryOpen, isDateOpen, isCurrencyOpen, isRecurringStartOpen, isRecurringEndOpen, isRecurringUnitOpen]);
+
+  useEffect(() => {
+    if (!isRecurringUnitOpen || !recurringUnitTriggerRef.current) return;
+    const triggerRect = recurringUnitTriggerRef.current.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - triggerRect.bottom;
+    const estimatedHeight = 220; // approx menu height
+    setRecurringUnitOpenUpward(spaceBelow < estimatedHeight);
+  }, [isRecurringUnitOpen]);
 
   useEffect(() => {
     onFloatingPanelToggle?.(isCategoryOpen);
@@ -197,6 +270,60 @@ export default function TransactionForm({
     });
   }, [isCurrencyOpen]);
 
+  const updateRecurringStartDropdownPosition = useCallback(() => {
+    if (!isRecurringStartOpen || !recurringStartTriggerRef.current || !recurringStartPortalRef.current) return;
+    const margin = 8;
+    const triggerRect = recurringStartTriggerRef.current.getBoundingClientRect();
+    const dropdownRect = recurringStartPortalRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - triggerRect.bottom;
+    const spaceAbove = triggerRect.top;
+    const shouldOpenUp = dropdownRect.height + margin > spaceBelow && spaceAbove > spaceBelow;
+
+    const top = shouldOpenUp
+      ? Math.max(margin, triggerRect.top - dropdownRect.height - margin)
+      : Math.min(window.innerHeight - dropdownRect.height - margin, triggerRect.bottom + margin);
+
+    const maxLeft = window.innerWidth - dropdownRect.width - margin;
+    const left = Math.min(Math.max(triggerRect.left, margin), Math.max(margin, maxLeft));
+
+    setRecurringStartOpenUpward(shouldOpenUp);
+    setRecurringStartDropdownStyle({
+      position: 'fixed',
+      minWidth: '320px',
+      width: 'max-content',
+      left,
+      top,
+      zIndex: 1000,
+    });
+  }, [isRecurringStartOpen]);
+
+  const updateRecurringEndDropdownPosition = useCallback(() => {
+    if (!isRecurringEndOpen || !recurringEndTriggerRef.current || !recurringEndPortalRef.current) return;
+    const margin = 8;
+    const triggerRect = recurringEndTriggerRef.current.getBoundingClientRect();
+    const dropdownRect = recurringEndPortalRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - triggerRect.bottom;
+    const spaceAbove = triggerRect.top;
+    const shouldOpenUp = dropdownRect.height + margin > spaceBelow && spaceAbove > spaceBelow;
+
+    const top = shouldOpenUp
+      ? Math.max(margin, triggerRect.top - dropdownRect.height - margin)
+      : Math.min(window.innerHeight - dropdownRect.height - margin, triggerRect.bottom + margin);
+
+    const maxLeft = window.innerWidth - dropdownRect.width - margin;
+    const left = Math.min(Math.max(triggerRect.left, margin), Math.max(margin, maxLeft));
+
+    setRecurringEndOpenUpward(shouldOpenUp);
+    setRecurringEndDropdownStyle({
+      position: 'fixed',
+      minWidth: '320px',
+      width: 'max-content',
+      left,
+      top,
+      zIndex: 1000,
+    });
+  }, [isRecurringEndOpen]);
+
   useLayoutEffect(() => {
     if (!isCurrencyOpen) {
       setCurrencyDropdownStyle(null);
@@ -213,12 +340,60 @@ export default function TransactionForm({
     };
   }, [isCurrencyOpen, updateCurrencyDropdownPosition]);
 
+  useLayoutEffect(() => {
+    if (!isRecurringStartOpen) {
+      setRecurringStartDropdownStyle(null);
+      return;
+    }
+
+    updateRecurringStartDropdownPosition();
+    window.addEventListener('resize', updateRecurringStartDropdownPosition);
+    window.addEventListener('scroll', updateRecurringStartDropdownPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updateRecurringStartDropdownPosition);
+      window.removeEventListener('scroll', updateRecurringStartDropdownPosition, true);
+    };
+  }, [isRecurringStartOpen, updateRecurringStartDropdownPosition]);
+
+  useLayoutEffect(() => {
+    if (!isRecurringEndOpen) {
+      setRecurringEndDropdownStyle(null);
+      return;
+    }
+
+    updateRecurringEndDropdownPosition();
+    window.addEventListener('resize', updateRecurringEndDropdownPosition);
+    window.addEventListener('scroll', updateRecurringEndDropdownPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updateRecurringEndDropdownPosition);
+      window.removeEventListener('scroll', updateRecurringEndDropdownPosition, true);
+    };
+  }, [isRecurringEndOpen, updateRecurringEndDropdownPosition]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Apply transaction type to amount (negative for expense, positive for income)
     const finalAmount = transactionType === 'expense' ? -formData.amount : formData.amount;
+    const startDateForRecurring = recurringStartDate || dateInput;
+    const recurringPayload = recurringEnabled
+      ? {
+          isRecurring: true,
+          frequencyUnit: recurringUnit,
+          frequencyInterval: Math.max(1, recurringInterval || 1),
+          startDate: startDateForRecurring,
+          endDate: recurringEndDate || null,
+          type: transactionType,
+        }
+      : undefined;
     // Include currencyId in the saved transaction
-    onSave({ ...formData, amount: finalAmount, currencyId: formData.currencyId });
+    onSave({
+      ...formData,
+      amount: finalAmount,
+      currencyId: formData.currencyId,
+      recurring: recurringPayload,
+    });
   };
 
   const handleDelete = async () => {
@@ -281,6 +456,18 @@ export default function TransactionForm({
       setCurrentMonth(new Date(value));
     }
     setIsDateOpen(false);
+  };
+
+  const handleRecurringStartSelect = (value: string) => {
+    setRecurringStartDate(value);
+    setRecurringStartMonth(new Date(value));
+    setIsRecurringStartOpen(false);
+  };
+
+  const handleRecurringEndSelect = (value: string) => {
+    setRecurringEndDate(value);
+    setRecurringEndMonth(new Date(value));
+    setIsRecurringEndOpen(false);
   };
 
   const handleCurrencySelect = (currencyId: number | null) => {
@@ -573,6 +760,187 @@ export default function TransactionForm({
             />
           </div>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-[#3a3a3a] p-4 bg-[#202020] flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-body font-medium">Recurring</p>
+            <p className="text-helper">Auto-create on the next due date</p>
+          </div>
+          <label className="inline-flex items-center cursor-pointer select-none">
+            <span className="sr-only">Toggle recurring</span>
+            <input
+              type="checkbox"
+              className="hidden"
+              checked={recurringEnabled}
+              onChange={() => setRecurringEnabled(prev => !prev)}
+              disabled={isSaving}
+            />
+            <div
+              className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ${recurringEnabled ? 'bg-[#AC66DA]' : 'bg-[#3a3a3a]'}`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full transition-transform duration-200 ${recurringEnabled ? 'translate-x-6' : ''}`}
+                style={{ backgroundColor: 'var(--text-primary)' }}
+              />
+            </div>
+          </label>
+        </div>
+
+        {recurringEnabled && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="flex flex-col gap-2">
+              <label className="text-body font-medium">Start Date</label>
+              <div className="relative" ref={recurringStartDropdownRef}>
+                <button
+                  type="button"
+                  ref={recurringStartTriggerRef}
+                  onClick={() => setIsRecurringStartOpen(prev => !prev)}
+                  disabled={isSaving}
+                  className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  <span
+                    className="text-body font-semibold"
+                    style={{ color: recurringStartDate ? 'var(--text-primary)' : '#8C8C8C' }}
+                  >
+                    {recurringStartDate ? formatDateForDisplay(recurringStartDate) : 'Select start date'}
+                  </span>
+                  <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+                </button>
+
+                {isRecurringStartOpen && typeof document !== 'undefined' && createPortal(
+                  <div
+                    ref={recurringStartPortalRef}
+                    className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden"
+                    style={{
+                      backgroundColor: '#202020',
+                      ...(recurringStartDropdownStyle ?? {
+                        position: 'fixed',
+                        top: -9999,
+                        left: -9999,
+                        zIndex: 1000,
+                        minWidth: '320px',
+                        width: 'max-content',
+                      }),
+                    }}
+                  >
+                    <CalendarPanel
+                      selectedDate={recurringStartDate}
+                      currentMonth={recurringStartMonth}
+                      onChange={handleRecurringStartSelect}
+                      onMonthChange={setRecurringStartMonth}
+                      controlAlignment="end"
+                    />
+                  </div>,
+                  document.body,
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-body font-medium">Frequency</label>
+              <div className="grid grid-cols-5 gap-2" ref={recurringUnitDropdownRef}>
+                <input
+                  type="number"
+                  min={1}
+                  value={recurringInterval}
+                  onChange={(e) => setRecurringInterval(parseInt(e.target.value, 10) || 1)}
+                  disabled={isSaving}
+                  className="col-span-2 px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ color: 'var(--text-primary)' }}
+                />
+                <div className="col-span-3 relative">
+                  <button
+                    type="button"
+                    ref={recurringUnitTriggerRef}
+                    onClick={() => setIsRecurringUnitOpen(prev => !prev)}
+                    disabled={isSaving}
+                    className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    <span className="text-body font-semibold capitalize">{recurringUnit}</span>
+                    <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+                  </button>
+                  {isRecurringUnitOpen && (
+                    <div
+                      className={`absolute left-0 right-0 rounded-2xl shadow-lg overflow-hidden border border-[#3a3a3a] z-10 ${recurringUnitOpenUpward ? 'bottom-full mb-2' : 'top-full mt-2'}`}
+                      style={{ backgroundColor: '#202020' }}
+                    >
+                      {(['day', 'week', 'month', 'year'] as RecurringFrequencyUnit[]).map((unit) => (
+                        <button
+                          key={unit}
+                          type="button"
+                          onClick={() => {
+                            setRecurringUnit(unit);
+                            setIsRecurringUnitOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-3 flex items-center justify-between gap-3 hover-text-purple transition-colors text-body cursor-pointer"
+                          style={{
+                            backgroundColor: 'transparent',
+                            color: recurringUnit === unit ? 'var(--accent-purple)' : 'var(--text-primary)',
+                          }}
+                        >
+                          <span className="capitalize">{unit}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-body font-medium">End Date (optional)</label>
+              <div className="relative" ref={recurringEndDropdownRef}>
+                <button
+                  type="button"
+                  ref={recurringEndTriggerRef}
+                  onClick={() => setIsRecurringEndOpen(prev => !prev)}
+                  disabled={isSaving}
+                  className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  <span
+                    className="text-body font-semibold"
+                    style={{ color: recurringEndDate ? 'var(--text-primary)' : '#8C8C8C' }}
+                  >
+                    {recurringEndDate ? formatDateForDisplay(recurringEndDate) : 'No end date'}
+                  </span>
+                  <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+                </button>
+
+                {isRecurringEndOpen && typeof document !== 'undefined' && createPortal(
+                  <div
+                    ref={recurringEndPortalRef}
+                    className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden"
+                    style={{
+                      backgroundColor: '#202020',
+                      ...(recurringEndDropdownStyle ?? {
+                        position: 'fixed',
+                        top: -9999,
+                        left: -9999,
+                        zIndex: 1000,
+                        minWidth: '320px',
+                        width: 'max-content',
+                      }),
+                    }}
+                  >
+                    <CalendarPanel
+                      selectedDate={recurringEndDate}
+                      currentMonth={recurringEndMonth}
+                      onChange={handleRecurringEndSelect}
+                      onMonthChange={setRecurringEndMonth}
+                      controlAlignment="end"
+                    />
+                  </div>,
+                  document.body,
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 pt-4">

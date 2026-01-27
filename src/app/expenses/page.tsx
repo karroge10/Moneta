@@ -15,10 +15,12 @@ import AverageDailyCard from '@/components/dashboard/AverageDailyCard';
 import CardSkeleton from '@/components/dashboard/CardSkeleton';
 import TrendIndicator from '@/components/ui/TrendIndicator';
 import TransactionModal from '@/components/transactions/TransactionModal';
-import { mockExpensesPage, mockBills } from '@/lib/mockData';
-import { TimePeriod, LatestExpense, ExpenseCategory, PerformanceDataPoint, Transaction, Category } from '@/types/dashboard';
+import { mockExpensesPage } from '@/lib/mockData';
+import { TimePeriod, LatestExpense, ExpenseCategory, PerformanceDataPoint, Transaction, Bill } from '@/types/dashboard';
 import { formatNumber } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useCategories } from '@/hooks/useCategories';
+import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 
 export default function ExpensesPage() {
   const { currency } = useCurrency();
@@ -35,14 +37,14 @@ export default function ExpensesPage() {
   });
   const [averageMonthly, setAverageMonthly] = useState({ amount: 0, trend: 0 });
   const [averageDaily, setAverageDaily] = useState<{ amount: number; trend: number } | null>(null);
-  const [nextMonthPrediction, setNextMonthPrediction] = useState<number | null>(null);
+  const [upcomingBills, setUpcomingBills] = useState<Bill[]>([]);
   
   // Transaction modal state
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [isSaving, setIsSaving] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [currencyOptions, setCurrencyOptions] = useState<Array<{ id: number; name: string; symbol: string; alias: string }>>([]);
+  const { categories } = useCategories();
+  const { currencyOptions } = useCurrencyOptions();
   
   // Keep mock data for components not requested to be changed
   const update = mockExpensesPage.update;
@@ -77,7 +79,22 @@ export default function ExpensesPage() {
         trend: data.averageMonthly?.trend || 0,
       });
       setAverageDaily(data.averageDaily ?? null);
-      setNextMonthPrediction(data.nextMonthPrediction ?? null);
+
+      const upcomingResponse = await fetch('/api/recurring?type=expense&upcoming=true');
+      if (upcomingResponse.ok) {
+        const upcomingData = (await upcomingResponse.json()) as { upcoming?: Bill[] };
+        const normalizedBills: Bill[] = (upcomingData.upcoming ?? []).map((bill) => ({
+          id: bill.id,
+          name: bill.name,
+          date: bill.date,
+          amount: bill.amount,
+          category: bill.category || 'Uncategorized',
+          icon: bill.icon || 'HelpCircle',
+        }));
+        setUpcomingBills(normalizedBills);
+      } else {
+        setUpcomingBills([]);
+      }
     } catch (err) {
       console.error('Error fetching expenses data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load expenses data');
@@ -87,7 +104,7 @@ export default function ExpensesPage() {
       setPerformance({ trend: 0, trendText: '', data: [] });
       setAverageMonthly({ amount: 0, trend: 0 });
       setAverageDaily(null);
-      setNextMonthPrediction(null);
+      setUpcomingBills([]);
     } finally {
       setLoading(false);
     }
@@ -96,38 +113,6 @@ export default function ExpensesPage() {
   useEffect(() => {
     fetchExpensesData();
   }, [fetchExpensesData]);
-
-  // Fetch categories
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch('/api/categories');
-        if (response.ok) {
-          const data = await response.json();
-          setCategories(data.categories || []);
-        }
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-      }
-    };
-    fetchCategories();
-  }, []);
-
-  // Fetch currencies
-  useEffect(() => {
-    const fetchCurrencies = async () => {
-      try {
-        const response = await fetch('/api/currencies');
-        if (response.ok) {
-          const data = await response.json();
-          setCurrencyOptions(data.currencies || []);
-        }
-      } catch (err) {
-        console.error('Error fetching currencies:', err);
-      }
-    };
-    fetchCurrencies();
-  }, []);
 
   // Create draft expense transaction (negative amount for expense)
   const createDraftExpense = (): Transaction => ({
@@ -150,9 +135,29 @@ export default function ExpensesPage() {
       setIsSaving(true);
       
       const isNew = modalMode === 'add';
+      const isRecurring = updatedTransaction.recurring?.isRecurring;
       
       let response: Response;
-      if (isNew) {
+      if (isNew && isRecurring) {
+        const recurrence = updatedTransaction.recurring;
+        const startDate = recurrence?.startDate || new Date().toISOString().split('T')[0];
+        response = await fetch('/api/recurring', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: updatedTransaction.name,
+            amount: Math.abs(updatedTransaction.amount),
+            category: updatedTransaction.category,
+            currencyId: updatedTransaction.currencyId,
+            type: 'expense',
+            startDate,
+            endDate: recurrence?.endDate ?? null,
+            frequencyUnit: recurrence?.frequencyUnit ?? 'month',
+            frequencyInterval: recurrence?.frequencyInterval ?? 1,
+            createInitial: true,
+          }),
+        });
+      } else if (isNew) {
         response = await fetch('/api/transactions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -172,7 +177,7 @@ export default function ExpensesPage() {
       }
       
       setSelectedTransaction(null);
-      fetchExpensesData(); // Refresh expenses data
+      fetchExpensesData(); // Refresh expenses data and upcoming bills
     } catch (err) {
       console.error('Error saving transaction:', err);
       setError(err instanceof Error ? err.message : 'Failed to save transaction');
@@ -281,7 +286,7 @@ export default function ExpensesPage() {
           </div>
           <div className="grid grid-cols-5 gap-4">
             <div className="col-span-3 flex flex-col gap-4">
-              <div className="flex-[7] min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+              <div className="flex-7 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <CardSkeleton title="Latest Expenses" variant="list" />
               </div>
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
@@ -420,7 +425,7 @@ export default function ExpensesPage() {
           <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3">
             <h2 className="text-card-header">Total</h2>
             <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-              <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
+            <span className="text-card-currency shrink-0">{currency.symbol}</span>
               <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
             </div>
             <TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />
@@ -431,7 +436,7 @@ export default function ExpensesPage() {
             <AverageMonthlyCard amount={averageMonthly.amount} trend={averageMonthly.trend} isExpense={true} />
           )}
         </div>
-        <UpcomingBillsCard bills={mockBills} />
+        <UpcomingBillsCard bills={upcomingBills} />
         <LatestExpensesCard expenses={latestExpenses} />
         <PerformanceCard 
           trend={performance.trend}
@@ -469,7 +474,7 @@ export default function ExpensesPage() {
         <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3">
           <h2 className="text-card-header">Total</h2>
           <div className="flex items-baseline gap-2 flex-1 min-w-0 flex-wrap">
-            <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
+            <span className="text-card-currency shrink-0">{currency.symbol}</span>
             <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
           </div>
           <TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />
@@ -479,7 +484,7 @@ export default function ExpensesPage() {
         ) : (
           <AverageMonthlyCard amount={averageMonthly.amount} trend={averageMonthly.trend} isExpense={true} />
         )}
-        <UpcomingBillsCard bills={mockBills} />
+        <UpcomingBillsCard bills={upcomingBills} />
         <LatestExpensesCard expenses={latestExpenses} />
         <PerformanceCard 
           trend={performance.trend}
@@ -523,7 +528,8 @@ export default function ExpensesPage() {
               <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 h-full">
                 <h2 className="text-card-header">Total</h2>
                 <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-                  <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
+            <span className="text-card-currency shrink-0">{currency.symbol}</span>
+                  <span className="text-card-currency shrink-0">{currency.symbol}</span>
                   <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
                 </div>
                 <TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />
@@ -542,7 +548,7 @@ export default function ExpensesPage() {
           <div className="grid grid-cols-5 gap-4">
             {/* Left column (3 cols): Latest Expenses + Demographic Comparison stacked */}
             <div className="col-span-3 flex flex-col gap-4">
-              <div className="flex-[7] min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+              <div className="flex-7 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <LatestExpensesCard expenses={latestExpenses} />
               </div>
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
@@ -585,7 +591,7 @@ export default function ExpensesPage() {
         {/* Grid 2: Right side (1 column) - Upcoming Bills + Top Categories */}
         <div className="col-span-1 flex flex-col gap-4">
           <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-            <UpcomingBillsCard bills={mockBills} />
+            <UpcomingBillsCard bills={upcomingBills} />
           </div>
           <div className="flex-1 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
             <TopCategoriesCard categories={topCategories} />

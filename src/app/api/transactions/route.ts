@@ -221,6 +221,44 @@ export async function GET(request: NextRequest) {
   }
 }
 
+async function createRecurringFromPayload(params: {
+  userId: number;
+  body: any;
+  type: 'income' | 'expense';
+  currencyId: number;
+  categoryId: number | null;
+  transactionDate: Date;
+}) {
+  const { userId, body, type, currencyId, categoryId, transactionDate } = params;
+  const recurring = body.recurring;
+  if (!recurring?.isRecurring) return;
+
+  const frequencyUnit = recurring.frequencyUnit || 'month';
+  const frequencyInterval = recurring.frequencyInterval || 1;
+  const startDateStr = recurring.startDate || body.dateRaw || body.date;
+  const endDateStr = recurring.endDate;
+
+  const startDate = startDateStr ? new Date(startDateStr) : transactionDate;
+  const nextDueDate = startDate;
+  const endDate = endDateStr ? new Date(endDateStr) : undefined;
+
+  await db.recurringTransaction.create({
+    data: {
+      userId,
+      type,
+      name: body.name,
+      amount: Math.abs(body.amount),
+      currencyId,
+      categoryId,
+      startDate,
+      nextDueDate,
+      frequencyUnit,
+      frequencyInterval,
+      endDate,
+    },
+  });
+}
+
 // POST - Create a new transaction
 export async function POST(request: NextRequest) {
   try {
@@ -291,6 +329,16 @@ export async function POST(request: NextRequest) {
     
     // Get language alias from user (already fetched with language relation)
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
+
+    // Create recurring schedule if requested
+    await createRecurringFromPayload({
+      userId: user.id,
+      body,
+      type,
+      currencyId,
+      categoryId,
+      transactionDate,
+    });
     
     // Create transaction (save full description to database)
     const newTransaction = await db.transaction.create({

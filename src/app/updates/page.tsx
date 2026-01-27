@@ -56,37 +56,84 @@ export default function UpdatesPage() {
         />
       </div>
 
-      {/* Content - 2 Column Layout */}
-      <div className="flex flex-col md:grid md:grid-cols-[1fr_1fr] gap-4 px-4 md:px-6 pb-6 md:h-[calc(100vh-120px)]">
-        {/* Left Column - Latest Notifications */}
-        <div className="flex flex-col gap-4 min-h-0 h-full">
+    {/* Content */}
+    {/* Mobile: stacked */}
+    <div className="md:hidden flex flex-col gap-4 px-4 pb-4">
+      <NotificationsTable 
+        notifications={notifications}
+        title="Latest Notifications"
+        onDelete={handleDeleteNotification}
+        showDeleteIcon={true}
+        useFullHeight={true}
+      />
+      <NotificationSettingsCard 
+        settings={notificationSettings}
+        onToggle={handleToggleSetting}
+      />
+      <NotificationsTable 
+        notifications={deletedNotifications}
+        title="Deleted Notifications"
+        showDeleteIcon={false}
+        showInfoText={true}
+        useFullHeight={true}
+      />
+    </div>
+
+    {/* Tablet: balanced columns */}
+    <div className="hidden md:grid 2xl:hidden md:grid-cols-[1fr_1fr] md:gap-4 md:px-6 md:pb-6 md:h-[calc(100vh-120px)]">
+      <div className="flex flex-col gap-4 min-h-0 h-full">
+        <NotificationsTable 
+          notifications={notifications}
+          title="Latest Notifications"
+          onDelete={handleDeleteNotification}
+          showDeleteIcon={true}
+          useFullHeight={true}
+        />
+      </div>
+      <div className="flex flex-col gap-4 min-h-0 h-full">
+        <NotificationSettingsCard 
+          settings={notificationSettings}
+          onToggle={handleToggleSetting}
+        />
+        <div className="flex flex-col gap-2 flex-1 min-h-0">
           <NotificationsTable 
-            notifications={notifications}
-            title="Latest Notifications"
-            onDelete={handleDeleteNotification}
-            showDeleteIcon={true}
+            notifications={deletedNotifications}
+            title="Deleted Notifications"
+            showDeleteIcon={false}
+            showInfoText={true}
             useFullHeight={true}
           />
         </div>
+      </div>
+    </div>
 
-        {/* Right Column - Settings + Deleted Notifications */}
-        <div className="flex flex-col gap-4 min-h-0 h-full">
-          <NotificationSettingsCard 
-            settings={notificationSettings}
-            onToggle={handleToggleSetting}
+    {/* Desktop: weighted split */}
+    <div className="hidden 2xl:grid 2xl:grid-cols-[1.1fr_0.9fr] 2xl:gap-4 2xl:px-6 2xl:pb-6 2xl:h-[calc(100vh-120px)]">
+      <div className="flex flex-col gap-4 min-h-0 h-full">
+        <NotificationsTable 
+          notifications={notifications}
+          title="Latest Notifications"
+          onDelete={handleDeleteNotification}
+          showDeleteIcon={true}
+          useFullHeight={true}
+        />
+      </div>
+      <div className="flex flex-col gap-4 min-h-0 h-full">
+        <NotificationSettingsCard 
+          settings={notificationSettings}
+          onToggle={handleToggleSetting}
+        />
+        <div className="flex flex-col gap-2 flex-1 min-h-0">
+          <NotificationsTable 
+            notifications={deletedNotifications}
+            title="Deleted Notifications"
+            showDeleteIcon={false}
+            showInfoText={true}
+            useFullHeight={true}
           />
-          
-          <div className="flex flex-col gap-2 flex-1 min-h-0">
-            <NotificationsTable 
-              notifications={deletedNotifications}
-              title="Deleted Notifications"
-              showDeleteIcon={false}
-              showInfoText={true}
-              useFullHeight={true}
-            />
-          </div>
         </div>
       </div>
+    </div>
     </main>
   );
 }

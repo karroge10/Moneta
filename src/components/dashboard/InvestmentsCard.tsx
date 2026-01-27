@@ -1,7 +1,6 @@
 'use client';
 
 import Card from '@/components/ui/Card';
-import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import { Investment } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { getTrendColor, formatNumber } from '@/lib/utils';
@@ -50,7 +49,6 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <h2 className="text-card-header">Investments</h2>
-              <ComingSoonBadge />
             </div>
           </div>
         }
@@ -72,7 +70,6 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h2 className="text-card-header">Investments</h2>
-            <ComingSoonBadge />
           </div>
         </div>
       }
