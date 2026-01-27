@@ -2,39 +2,62 @@
 
 import { Goal } from '@/types/dashboard';
 import ProgressBar from '@/components/ui/ProgressBar';
-import { MoreHoriz } from 'iconoir-react';
-import { getEncouragingMessage } from '@/lib/goalUtils';
+import { getEncouragingMessage, getGoalStatus } from '@/lib/goalUtils';
 import { useCurrency } from '@/hooks/useCurrency';
+import { CheckCircle, XmarkCircle } from 'iconoir-react';
 
 interface GoalCardProps {
   goal: Goal;
-  onOptionsClick?: () => void;
+  onClick?: () => void;
 }
 
-export default function GoalCard({ goal, onOptionsClick }: GoalCardProps) {
+export default function GoalCard({ goal, onClick }: GoalCardProps) {
   const { currency } = useCurrency();
   const encouragingMessage = getEncouragingMessage(goal);
+  const goalStatus = getGoalStatus(goal);
 
   return (
     <div 
-      className="flex flex-col p-6"
+      className="flex flex-col p-6 cursor-pointer transition-opacity hover:opacity-90"
       style={{ 
         backgroundColor: '#202020',
         borderRadius: '30px',
       }}
+      onClick={onClick}
     >
-      {/* Top row: Name, 3-dot menu */}
+      {/* Top row: Name and Status badge */}
       <div className="flex items-center justify-between mb-4 gap-2">
         <h3 className="text-card-header flex-1 min-w-0 text-wrap-safe break-words">
           {goal.name}
         </h3>
-        <button
-          onClick={onOptionsClick}
-          className="p-1 hover:opacity-70 transition-opacity cursor-pointer flex-shrink-0"
-          aria-label="More options"
-        >
-          <MoreHoriz width={20} height={20} strokeWidth={1.5} style={{ color: '#E7E4E4' }} />
-        </button>
+        {goalStatus === 'completed' && (
+          <div
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full flex-shrink-0"
+            style={{
+              backgroundColor: 'rgba(116, 198, 72, 0.1)',
+              border: '1px solid rgba(116, 198, 72, 0.3)',
+            }}
+          >
+            <CheckCircle width={14} height={14} strokeWidth={2} style={{ color: '#74C648' }} />
+            <span className="text-xs font-semibold" style={{ color: '#74C648' }}>
+              Completed
+            </span>
+          </div>
+        )}
+        {goalStatus === 'failed' && (
+          <div
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full flex-shrink-0"
+            style={{
+              backgroundColor: 'rgba(217, 63, 63, 0.1)',
+              border: '1px solid rgba(217, 63, 63, 0.3)',
+            }}
+          >
+            <XmarkCircle width={14} height={14} strokeWidth={2} style={{ color: '#D93F3F' }} />
+            <span className="text-xs font-semibold" style={{ color: '#D93F3F' }}>
+              Failed
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Second row: Deadline (left), Target amount (right) */}

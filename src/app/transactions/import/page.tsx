@@ -18,19 +18,14 @@ import { TransactionUploadResponse, TransactionUploadMetadata, UploadedTransacti
 import { Upload, WarningTriangle, Reports, Language, Trash, StatUp, StatDown } from 'iconoir-react';
 import { useCurrency } from '@/hooks/useCurrency';
 import Toast, { ToastContainer, type ToastType } from '@/components/ui/Toast';
+import { useCategories } from '@/hooks/useCategories';
+import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 
 type UploadState = 'idle' | 'queued' | 'uploading' | 'processing' | 'categorizing' | 'ready' | 'error';
 
 type TableRow = UploadedTransaction & {
   id: string;
   suggestedCategory?: string | null;
-};
-
-type CurrencyOption = {
-  id: number;
-  name: string;
-  symbol: string;
-  alias: string;
 };
 
 const REVIEW_PAGE_SIZE = 10;
@@ -47,7 +42,7 @@ export default function ImportTransactionsPage() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>(''); // 'expense' | 'income' | ''
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { categories } = useCategories();
   const [isConfirming, setIsConfirming] = useState(false);
   const [isCategoryStatsOpen, setIsCategoryStatsOpen] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -57,7 +52,7 @@ export default function ImportTransactionsPage() {
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [isReviewLoading, setIsReviewLoading] = useState(false);
   const [statementMetadata, setStatementMetadata] = useState<TransactionUploadMetadata | null>(null);
-  const [currencyOptions, setCurrencyOptions] = useState<CurrencyOption[]>([]);
+  const { currencyOptions } = useCurrencyOptions();
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<number | null>(null);
   const [currencySelectionTouched, setCurrencySelectionTouched] = useState(false);
   const [currencySelectionError, setCurrencySelectionError] = useState<string | null>(null);
@@ -172,38 +167,6 @@ export default function ImportTransactionsPage() {
 
   const isUploadBusy = ['queued', 'uploading', 'processing', 'categorizing'].includes(uploadState);
 
-
-  // Fetch categories from API
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch('/api/categories');
-        if (response.ok) {
-          const data = await response.json();
-          setCategories(data.categories || []);
-        }
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-      }
-    };
-    fetchCategories();
-  }, []);
-
-  useEffect(() => {
-    const fetchCurrencies = async () => {
-      try {
-        const response = await fetch('/api/currencies');
-        if (response.ok) {
-          const data = await response.json();
-          setCurrencyOptions(data.currencies || []);
-        }
-      } catch (err) {
-        console.error('Error fetching currencies:', err);
-      }
-    };
-
-    fetchCurrencies();
-  }, []);
 
   const categoryLookup = useMemo(() => {
     const map = new Map<string, Category>();

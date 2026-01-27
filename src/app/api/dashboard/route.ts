@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { Transaction as TransactionType, ExpenseCategory, TimePeriod } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
 import { convertAmount } from '@/lib/currency-conversion';
+import { getInvestmentsPortfolio } from '@/lib/investments';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -251,61 +252,70 @@ export async function GET(request: NextRequest) {
     const selectedRange = getDateRangeForPeriod(timePeriod, now);
     const comparisonRange = getComparisonDateRange(timePeriod, now);
     
-    // Fetch all transactions for the user
-    const allTransactions = await db.transaction.findMany({
-      where: {
-        userId: user.id,
-      },
-      include: {
-        category: true,
-        currency: true,
-      },
-      orderBy: {
-        date: 'desc',
-      },
-    });
-
-    const transactionsWithConverted = await Promise.all(
-      allTransactions.map(async (transaction) => {
-        const convertedAmount = await convertAmount(
-          transaction.amount,
-          transaction.currencyId,
-          targetCurrencyId,
-          transaction.date,
-        );
-
-        return {
-          ...transaction,
-          convertedAmount,
-        };
+    // Fetch only the needed slices to reduce payload and conversion work
+    const [selectedTransactions, comparisonTransactions, latestTransactionsRaw] = await Promise.all([
+      db.transaction.findMany({
+        where: {
+          userId: user.id,
+          date: {
+            gte: selectedRange.start,
+            lte: selectedRange.end,
+          },
+        },
+        include: {
+          category: true,
+          currency: true,
+        },
+        orderBy: { date: 'desc' },
       }),
-    );
-    
-    // Debug logging
-    console.log(`[dashboard] Total transactions found: ${allTransactions.length}`);
-    console.log(`[dashboard] Time period: ${timePeriod}`);
-    console.log(`[dashboard] Selected range: ${selectedRange.start.toISOString()} to ${selectedRange.end.toISOString()}`);
-    if (comparisonRange) {
-      console.log(`[dashboard] Comparison range: ${comparisonRange.start.toISOString()} to ${comparisonRange.end.toISOString()}`);
-    }
-    
-    // Helper function to check if a date is within a range
-    const isInRange = (date: Date, start: Date, end: Date): boolean => {
-      const d = new Date(date);
-      return d >= start && d <= end;
+      comparisonRange
+        ? db.transaction.findMany({
+            where: {
+              userId: user.id,
+              date: {
+                gte: comparisonRange.start,
+                lte: comparisonRange.end,
+              },
+            },
+            include: {
+              currency: true,
+            },
+            orderBy: { date: 'desc' },
+          })
+        : Promise.resolve([]),
+      db.transaction.findMany({
+        where: { userId: user.id },
+        include: {
+          category: true,
+          currency: true,
+        },
+        orderBy: { date: 'desc' },
+        take: 6,
+      }),
+    ]);
+
+    const convertTransactions = async <T extends { amount: number; currencyId: number; date: Date }>(
+      txs: (T & { convertedAmount?: number })[],
+    ) => {
+      return Promise.all(
+        txs.map(async (t) => {
+          const convertedAmount = await convertAmount(t.amount, t.currencyId, targetCurrencyId, t.date);
+          return { ...t, convertedAmount };
+        }),
+      );
     };
-    
+
+    const [selectedWithConverted, comparisonWithConverted, latestWithConverted] = await Promise.all([
+      convertTransactions(selectedTransactions),
+      convertTransactions(comparisonTransactions),
+      convertTransactions(latestTransactionsRaw),
+    ]);
+
     // Calculate selected period income and expenses
-    const selectedPeriodTransactions = transactionsWithConverted.filter((t) => 
-      isInRange(t.date, selectedRange.start, selectedRange.end)
-    );
-    
-    console.log(`[dashboard] Selected period transactions: ${selectedPeriodTransactions.length}`);
-    
-    const selectedPeriodIncome = selectedPeriodTransactions
+    const selectedPeriodIncome = selectedWithConverted
       .filter((t) => t.type === 'income')
       .reduce((sum: number, t) => sum + t.convertedAmount, 0);
-    const selectedPeriodExpenses = selectedPeriodTransactions
+    const selectedPeriodExpenses = selectedWithConverted
       .filter((t) => t.type === 'expense')
       .reduce((sum: number, t) => sum + t.convertedAmount, 0);
     
@@ -314,14 +324,10 @@ export async function GET(request: NextRequest) {
     let comparisonExpenses = 0;
     
     if (comparisonRange) {
-      const comparisonTransactions = transactionsWithConverted.filter((t) => 
-        isInRange(t.date, comparisonRange.start, comparisonRange.end)
-      );
-      
-      comparisonIncome = comparisonTransactions
+      comparisonIncome = comparisonWithConverted
         .filter((t) => t.type === 'income')
         .reduce((sum: number, t) => sum + t.convertedAmount, 0);
-      comparisonExpenses = comparisonTransactions
+      comparisonExpenses = comparisonWithConverted
         .filter((t) => t.type === 'expense')
         .reduce((sum: number, t) => sum + t.convertedAmount, 0);
     }
@@ -343,35 +349,33 @@ export async function GET(request: NextRequest) {
         ? 100  // New expenses in selected period (100% increase from 0)
         : 0;   // No comparison or no expenses in either period
     
-    // Get latest transactions (limit to 6) - all transactions included
-    const latestTransactions: TransactionType[] = transactionsWithConverted
-      .slice(0, 6)
-      .map((t) => {
-        const originalSignedAmount = t.type === 'expense' ? -t.amount : t.amount;
-        const convertedSignedAmount = t.type === 'expense' ? -t.convertedAmount : t.convertedAmount;
-        // Format transaction name (cleaned and translated if needed)
-        const displayName = formatTransactionName(t.description, userLanguageAlias, false);
-        // Full name for modal (translated if needed, but not cleaned)
-        const fullName = formatTransactionName(t.description, userLanguageAlias, true);
-        
-        return {
-          id: t.id.toString(),
-          name: displayName,
-          fullName: fullName, // Full description for transaction modal
-          originalDescription: t.description, // Original description from database
-          date: formatDate(t.date),
-          dateRaw: t.date.toISOString().split('T')[0],
-          amount: convertedSignedAmount,
-          originalAmount: originalSignedAmount,
-          originalCurrencySymbol: t.currency?.symbol,
-          originalCurrencyAlias: t.currency?.alias,
-          category: t.category?.name || null,
-          icon: getIconForCategory(t.category?.name || null),
-        };
-      });
+    // Get latest transactions (limit to 6) - already limited in query
+    const latestTransactions: TransactionType[] = latestWithConverted.map((t) => {
+      const originalSignedAmount = t.type === 'expense' ? -t.amount : t.amount;
+      const convertedSignedAmount = t.type === 'expense' ? -t.convertedAmount : t.convertedAmount;
+      // Format transaction name (cleaned and translated if needed)
+      const displayName = formatTransactionName(t.description, userLanguageAlias, false);
+      // Full name for modal (translated if needed, but not cleaned)
+      const fullName = formatTransactionName(t.description, userLanguageAlias, true);
+      
+      return {
+        id: t.id.toString(),
+        name: displayName,
+        fullName: fullName, // Full description for transaction modal
+        originalDescription: t.description, // Original description from database
+        date: formatDate(t.date),
+        dateRaw: t.date.toISOString().split('T')[0],
+        amount: convertedSignedAmount,
+        originalAmount: originalSignedAmount,
+        originalCurrencySymbol: t.currency?.symbol,
+        originalCurrencyAlias: t.currency?.alias,
+        category: t.category?.name || null,
+        icon: getIconForCategory(t.category?.name || null),
+      };
+    });
     
     // Calculate top expense categories (selected period)
-    const expenseTransactions = selectedPeriodTransactions.filter((t) => t.type === 'expense');
+    const expenseTransactions = selectedWithConverted.filter((t) => t.type === 'expense');
     const categoryTotals = new Map<string, { amount: number; categoryId: number; categoryName: string }>();
     
     expenseTransactions.forEach((t) => {
@@ -416,6 +420,9 @@ export async function GET(request: NextRequest) {
     
     // Get comparison label for trend display
     const comparisonLabel = getComparisonLabel(timePeriod);
+
+    // Investments (live)
+    const investmentsPortfolio = await getInvestmentsPortfolio(user.id, userCurrencyRecord);
     
     return NextResponse.json({
       income: {
@@ -430,6 +437,8 @@ export async function GET(request: NextRequest) {
       },
       transactions: latestTransactions,
       topExpenses,
+      investments: investmentsPortfolio.portfolio,
+      portfolioBalance: investmentsPortfolio.balance,
     });
   } catch (error) {
     console.error('Error fetching dashboard data:', error);

@@ -62,34 +62,80 @@ export default function SettingsPage() {
         />
       </div>
 
-      {/* Content - 2 Column Layout */}
-      <div className="flex flex-col md:grid md:grid-cols-[1fr_1fr] gap-4 px-4 md:px-6 pb-6">
-        {/* Left Column */}
-        <div className="flex flex-col gap-4 min-h-0">
-          <PersonalInformationCard 
-            settings={userSettings}
-            onEdit={handleEdit}
-            onChange={handleChange}
-          />
-          <LoginHistoryCard history={mockLoginHistory} />
-        </div>
+    {/* Content */}
+    {/* Mobile: stacked */}
+    <div className="md:hidden flex flex-col gap-4 px-4 pb-4">
+      <PersonalInformationCard 
+        settings={userSettings}
+        onEdit={handleEdit}
+        onChange={handleChange}
+      />
+      <LoginHistoryCard history={mockLoginHistory} />
+      <SecurityDetailsCard 
+        settings={userSettings}
+        onEdit={handleEdit}
+        onChange={handleChange}
+        onSetup2FA={handleSetup2FA}
+        onDeleteAccount={handleDeleteAccount}
+      />
+      <FinancialMilestonesCard achievements={mockAchievements} />
+      <DataSharingCard 
+        isEnabled={true}
+        onToggle={handleDataSharingToggle}
+      />
+    </div>
 
-        {/* Right Column */}
-        <div className="flex flex-col gap-4 min-h-0">
-          <SecurityDetailsCard 
-            settings={userSettings}
-            onEdit={handleEdit}
-            onChange={handleChange}
-            onSetup2FA={handleSetup2FA}
-            onDeleteAccount={handleDeleteAccount}
-          />
-          <FinancialMilestonesCard achievements={mockAchievements} />
-          <DataSharingCard 
-            isEnabled={true}
-            onToggle={handleDataSharingToggle}
-          />
-        </div>
+    {/* Tablet: two-column split */}
+    <div className="hidden md:grid 2xl:hidden md:grid-cols-[1fr_1fr] md:gap-4 md:px-6 md:pb-6">
+      <div className="flex flex-col gap-4 min-h-0">
+        <PersonalInformationCard 
+          settings={userSettings}
+          onEdit={handleEdit}
+          onChange={handleChange}
+        />
+        <LoginHistoryCard history={mockLoginHistory} />
       </div>
+      <div className="flex flex-col gap-4 min-h-0">
+        <SecurityDetailsCard 
+          settings={userSettings}
+          onEdit={handleEdit}
+          onChange={handleChange}
+          onSetup2FA={handleSetup2FA}
+          onDeleteAccount={handleDeleteAccount}
+        />
+        <FinancialMilestonesCard achievements={mockAchievements} />
+        <DataSharingCard 
+          isEnabled={true}
+          onToggle={handleDataSharingToggle}
+        />
+      </div>
+    </div>
+
+    {/* Desktop: widened ratio */}
+    <div className="hidden 2xl:grid 2xl:grid-cols-[1.1fr_0.9fr] 2xl:gap-4 2xl:px-6 2xl:pb-6">
+      <div className="flex flex-col gap-4 min-h-0">
+        <PersonalInformationCard 
+          settings={userSettings}
+          onEdit={handleEdit}
+          onChange={handleChange}
+        />
+        <LoginHistoryCard history={mockLoginHistory} />
+      </div>
+      <div className="flex flex-col gap-4 min-h-0">
+        <SecurityDetailsCard 
+          settings={userSettings}
+          onEdit={handleEdit}
+          onChange={handleChange}
+          onSetup2FA={handleSetup2FA}
+          onDeleteAccount={handleDeleteAccount}
+        />
+        <FinancialMilestonesCard achievements={mockAchievements} />
+        <DataSharingCard 
+          isEnabled={true}
+          onToggle={handleDataSharingToggle}
+        />
+      </div>
+    </div>
     </main>
   );
 }

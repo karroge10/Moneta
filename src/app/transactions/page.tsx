@@ -349,7 +349,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* Content */}
-      <div className="px-4 md:px-6 pb-6 flex flex-col min-h-[calc(100vh-120px)]">
+      <div className="px-4 md:px-6 pb-6 flex flex-col min-h-[calc(100vh-120px)] max-w-screen-2xl mx-auto w-full">
         <Card title="History" onAdd={handleAddTransactionClick} className="flex-1 flex flex-col">
           <div className="flex flex-col gap-4 flex-1 min-h-0">
             {/* Filters */}

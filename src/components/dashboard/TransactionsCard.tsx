@@ -1,14 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Card from '@/components/ui/Card';
-import { Transaction, Category } from '@/types/dashboard';
+import { Transaction } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { NavArrowRight } from 'iconoir-react';
 import { formatNumber } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 import Link from 'next/link';
 import TransactionModal from '@/components/transactions/TransactionModal';
+import { useCategories } from '@/hooks/useCategories';
+import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 
 interface TransactionsCardProps {
   transactions: Transaction[];
@@ -24,42 +26,10 @@ function truncateName(name: string, maxLength: number): string {
 
 export default function TransactionsCard({ transactions, onRefresh }: TransactionsCardProps) {
   const { currency } = useCurrency();
+  const { categories, loading: categoriesLoading } = useCategories();
+  const { currencyOptions, loading: currencyOptionsLoading } = useCurrencyOptions();
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [currencyOptions, setCurrencyOptions] = useState<Array<{ id: number; name: string; symbol: string; alias: string }>>([]);
   const [isSaving, setIsSaving] = useState(false);
-
-  // Fetch categories
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch('/api/categories');
-        if (response.ok) {
-          const data = await response.json();
-          setCategories(data.categories || []);
-        }
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-      }
-    };
-    fetchCategories();
-  }, []);
-
-  // Fetch currencies
-  useEffect(() => {
-    const fetchCurrencies = async () => {
-      try {
-        const response = await fetch('/api/currencies');
-        if (response.ok) {
-          const data = await response.json();
-          setCurrencyOptions(data.currencies || []);
-        }
-      } catch (err) {
-        console.error('Error fetching currencies:', err);
-      }
-    };
-    fetchCurrencies();
-  }, []);
 
   const handleTransactionClick = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
@@ -198,7 +168,11 @@ export default function TransactionsCard({ transactions, onRefresh }: Transactio
       </Card>
 
       {/* Transaction Modal */}
-      {selectedTransaction && categories.length > 0 && currencyOptions.length > 0 && (
+      {selectedTransaction &&
+        !categoriesLoading &&
+        !currencyOptionsLoading &&
+        categories.length > 0 &&
+        currencyOptions.length > 0 && (
         <TransactionModal
           transaction={selectedTransaction}
           mode="edit"

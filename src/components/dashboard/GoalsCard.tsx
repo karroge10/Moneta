@@ -1,18 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import Card from '@/components/ui/Card';
-import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { Goal } from '@/types/dashboard';
-import { InfoCircle } from 'iconoir-react';
+import { getGoalStatus } from '@/lib/goalUtils';
+import { InfoCircle, CheckCircle, XmarkCircle } from 'iconoir-react';
 import { useCurrency } from '@/hooks/useCurrency';
 
 interface GoalsCardProps {
   goals: Goal[];
+  onGoalClick?: (goal: Goal) => void;
 }
 
-export default function GoalsCard({ goals }: GoalsCardProps) {
+export default function GoalsCard({ goals, onGoalClick }: GoalsCardProps) {
   const { currency } = useCurrency();
   const [activeIndex, setActiveIndex] = useState(0);
   
@@ -23,10 +25,9 @@ export default function GoalsCard({ goals }: GoalsCardProps) {
         href="/goals"
         customHeader={
           <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <Link href="/goals" className="hover-text-purple transition-colors cursor-pointer">
               <h2 className="text-card-header">Goals</h2>
-              <ComingSoonBadge />
-            </div>
+            </Link>
           </div>
         }
         showActions={false}
@@ -42,6 +43,7 @@ export default function GoalsCard({ goals }: GoalsCardProps) {
   // Ensure activeIndex is within bounds
   const safeIndex = Math.min(activeIndex, goals.length - 1);
   const goal = goals[safeIndex];
+  const goalStatus = getGoalStatus(goal);
 
   return (
     <Card 
@@ -49,31 +51,89 @@ export default function GoalsCard({ goals }: GoalsCardProps) {
       href="/goals"
       customHeader={
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link href="/goals" className="hover-text-purple transition-colors cursor-pointer">
             <h2 className="text-card-header">Goals</h2>
-            <ComingSoonBadge />
-          </div>
+          </Link>
         </div>
       }
       showActions={false}
     >
       <div className="flex flex-col flex-1 mt-2">
-        <div className="flex-1 min-h-0">
+        <div 
+          className="flex-1 min-h-0 cursor-pointer transition-opacity hover:opacity-90"
+          onClick={() => onGoalClick?.(goal)}
+        >
+          {/* Target date */}
           <div className="text-helper mb-2">{goal.targetDate}</div>
+          
+          {/* Goal name and target amount */}
           <div className="flex items-center justify-between mb-2 gap-2 min-w-0">
-            <div className="text-body font-medium text-wrap-safe break-words min-w-0 flex-1">{goal.name}</div>
-            <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">{currency.symbol}{goal.targetAmount.toLocaleString('en-US')}</div>
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="text-body font-medium text-wrap-safe break-words min-w-0">{goal.name}</div>
+              {goalStatus === 'completed' && (
+                <div
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-full flex-shrink-0"
+                  style={{
+                    backgroundColor: 'rgba(116, 198, 72, 0.1)',
+                    border: '1px solid rgba(116, 198, 72, 0.3)',
+                  }}
+                >
+                  <CheckCircle width={12} height={12} strokeWidth={2} style={{ color: '#74C648' }} />
+                  <span className="text-[10px] font-semibold" style={{ color: '#74C648' }}>
+                    Completed
+                  </span>
+                </div>
+              )}
+              {goalStatus === 'failed' && (
+                <div
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-full flex-shrink-0"
+                  style={{
+                    backgroundColor: 'rgba(217, 63, 63, 0.1)',
+                    border: '1px solid rgba(217, 63, 63, 0.3)',
+                  }}
+                >
+                  <XmarkCircle width={12} height={12} strokeWidth={2} style={{ color: '#D93F3F' }} />
+                  <span className="text-[10px] font-semibold" style={{ color: '#D93F3F' }}>
+                    Failed
+                  </span>
+                </div>
+              )}
+            </div>
+            <div
+              className="px-3 py-1 rounded-lg flex-shrink-0"
+              style={{
+                backgroundColor: '#282828',
+                borderRadius: '10px',
+                border: '1px solid rgba(231, 228, 228, 0.1)',
+              }}
+            >
+              <span className="text-body font-semibold" style={{ color: 'var(--accent-purple)' }}>
+                {currency.symbol}{goal.targetAmount.toLocaleString('en-US')}
+              </span>
+            </div>
           </div>
+          
+          {/* Current amount */}
           <div className="flex items-baseline gap-2 mb-4 min-w-0 flex-wrap">
             <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
-            <span className="text-card-value break-all min-w-0">{goal.currentAmount.toLocaleString('en-US')}</span>
+            <span className="text-card-value break-all min-w-0">
+              {goal.currentAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
           </div>
+          
+          {/* Progress bar */}
           <ProgressBar value={goal.progress} />
         </div>
-        <div className="flex items-start gap-2 mt-4 text-sm min-w-0" style={{ color: 'var(--accent-purple)' }}>
-          <InfoCircle width={18} height={18} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" />
-          <span className="text-wrap-safe break-words leading-tight">Save ${(goal.targetAmount - goal.currentAmount).toLocaleString('en-US')} more to reach your goal!</span>
-        </div>
+        
+        {/* Info message - only show if not completed */}
+        {goal.progress < 100 && (
+          <div className="flex items-start gap-2 mt-4 text-sm min-w-0" style={{ color: 'var(--accent-purple)' }}>
+            <InfoCircle width={18} height={18} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" />
+            <span className="text-wrap-safe break-words leading-tight">
+              Save {currency.symbol}{(goal.targetAmount - goal.currentAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} more to reach your goal!
+            </span>
+          </div>
+        )}
         <div className="flex items-center justify-center gap-2 mt-6">
           {goals.map((_, idx) => (
             <button

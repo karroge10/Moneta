@@ -26,3 +26,4 @@ export default function AverageDailyCard({ amount, trend, isExpense = false }: A
   );
 }
 
+
