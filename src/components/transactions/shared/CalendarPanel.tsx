@@ -1,6 +1,5 @@
 'use client';
 
-import { CSSProperties } from 'react';
 import { NavArrowLeft, NavArrowRight } from 'iconoir-react';
 
 export type CalendarControlAlignment = 'start' | 'center' | 'end';
@@ -20,6 +19,20 @@ export function CalendarPanel({
   onMonthChange,
   controlAlignment = 'center',
 }: CalendarPanelProps) {
+  const monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
   const today = new Date();
   const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
 
@@ -58,29 +71,61 @@ export function CalendarPanel({
     return `${year}-${month}-${day}`;
   };
 
-  const monthLabel = currentMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  const selectedYear = selected?.getFullYear() ?? today.getFullYear();
+  const minYear = Math.min(today.getFullYear(), selectedYear, currentMonth.getFullYear()) - 50;
+  const maxYear = Math.max(today.getFullYear(), selectedYear, currentMonth.getFullYear()) + 50;
+  const years = Array.from({ length: maxYear - minYear + 1 }, (_, idx) => minYear + idx);
+
+  const alignmentClass =
+    controlAlignment === 'start' ? 'justify-start' : controlAlignment === 'end' ? 'justify-end' : 'justify-center';
 
   return (
     <div className="p-3 space-y-3">
-      <div className={`flex items-center ${controlAlignment === 'end' ? 'justify-end gap-2' : 'justify-between'}`}>
-        <button
-          type="button"
-          onClick={() => onMonthChange(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
-          className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer"
-          aria-label="Previous month"
-        >
-          <NavArrowLeft width={18} height={18} strokeWidth={1.5} />
-        </button>
-        {controlAlignment !== 'end' && <span className="text-body font-semibold">{monthLabel}</span>}
-        <button
-          type="button"
-          onClick={() => onMonthChange(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-          className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer"
-          aria-label="Next month"
-        >
-          <NavArrowRight width={18} height={18} strokeWidth={1.5} />
-        </button>
-        {controlAlignment === 'end' && <span className="text-body font-semibold ml-2">{monthLabel}</span>}
+      <div className={`flex ${alignmentClass}`}>
+        <div className="flex items-center justify-center gap-2 flex-nowrap">
+          <button
+            type="button"
+            onClick={() => onMonthChange(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+            className="w-9 h-9 rounded-full hover-text-purple transition-colors cursor-pointer bg-[#1f1f1f] flex items-center justify-center"
+            aria-label="Previous month"
+          >
+            <NavArrowLeft width={18} height={18} strokeWidth={1.5} />
+          </button>
+          <div className="flex items-center justify-center gap-2">
+            <select
+              aria-label="Select month"
+              value={currentMonth.getMonth()}
+              onChange={event => onMonthChange(new Date(currentMonth.getFullYear(), Number(event.target.value), 1))}
+              className="h-10 bg-[#202020] border border-[#3a3a3a] text-body text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-[var(--accent-purple)] cursor-pointer"
+            >
+              {monthNames.map((name, idx) => (
+                <option key={name} value={idx}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Select year"
+              value={currentMonth.getFullYear()}
+              onChange={event => onMonthChange(new Date(Number(event.target.value), currentMonth.getMonth(), 1))}
+              className="h-10 bg-[#202020] border border-[#3a3a3a] text-body text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-[var(--accent-purple)] cursor-pointer"
+            >
+              {years.map(year => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={() => onMonthChange(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+            className="w-9 h-9 rounded-full hover-text-purple transition-colors cursor-pointer bg-[#1f1f1f] flex items-center justify-center"
+            aria-label="Next month"
+          >
+            <NavArrowRight width={18} height={18} strokeWidth={1.5} />
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-7 gap-1 text-center text-helper text-[10px] uppercase tracking-wide">
@@ -96,19 +141,18 @@ export function CalendarPanel({
           const isToday = isSameDay(day, today);
           const isSelected = selected && isSameDay(day, selected);
 
-          const buttonClasses = ['h-9 rounded-xl text-body font-medium transition-colors cursor-pointer'];
-          const buttonStyle: CSSProperties = {
-            backgroundColor: '#1f1f1f',
-            color: 'var(--text-primary)',
-          };
+          const buttonClasses = [
+            'h-9 rounded-xl text-body font-medium transition-colors cursor-pointer flex items-center justify-center',
+            'bg-[#1f1f1f]',
+          ];
 
           if (isSelected) {
-            buttonClasses.push('text-black');
-            buttonStyle.backgroundColor = 'var(--accent-purple)';
-          } else if (isToday) {
-            buttonClasses.push('border');
-            buttonStyle.borderColor = 'var(--accent-purple)';
-            buttonStyle.borderWidth = '1px';
+            buttonClasses.push('text-black', 'bg-[var(--accent-purple)]');
+          } else {
+            buttonClasses.push('text-[var(--text-primary)]', 'hover:text-[var(--accent-purple)]', 'hover:bg-[#262626]');
+            if (isToday) {
+              buttonClasses.push('border', 'border-[var(--accent-purple)]');
+            }
           }
 
           if (!isCurrentMonth) {
@@ -121,7 +165,6 @@ export function CalendarPanel({
               key={day.toISOString()}
               onClick={() => onChange(formatDateLocal(day))}
               className={buttonClasses.join(' ')}
-              style={buttonStyle}
             >
               {day.getDate()}
             </button>

@@ -14,13 +14,13 @@ import InvestmentsCard from '@/components/dashboard/InvestmentsCard';
 import InsightCard from '@/components/dashboard/InsightCard';
 import TopExpensesCard from '@/components/dashboard/TopExpensesCard';
 import CardSkeleton from '@/components/dashboard/CardSkeleton';
-import { Transaction, ExpenseCategory, TimePeriod } from '@/types/dashboard';
+import GoalModal from '@/components/goals/GoalModal';
+import Confetti from '@/components/ui/Confetti';
+import { getGoalStatus } from '@/lib/goalUtils';
+import { Transaction, ExpenseCategory, TimePeriod, Goal, Investment, Bill } from '@/types/dashboard';
 import {
   mockUpdate,
-  mockBills,
-  mockGoals,
   mockFinancialHealth,
-  mockInvestments,
   mockInsight,
 } from '@/lib/mockData';
 
@@ -29,16 +29,22 @@ export default function DashboardPage() {
   const [expenses, setExpenses] = useState({ amount: 0, trend: 0, comparisonLabel: '' });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [topExpenses, setTopExpenses] = useState<ExpenseCategory[]>([]);
+  const [investments, setInvestments] = useState<Investment[]>([]);
+  const [upcomingBills, setUpcomingBills] = useState<Bill[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Month');
   
+  // Goal modal state
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
+  const [isSaving, setIsSaving] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  
   // Keep mock data for other components (not requested to be changed)
   const update = mockUpdate;
-  const bills = mockBills;
-  const goals = mockGoals;
   const financialHealth = mockFinancialHealth;
-  const investments = mockInvestments;
   const insight = mockInsight;
   
   const fetchDashboardData = useCallback(async () => {
@@ -70,6 +76,23 @@ export default function DashboardPage() {
       });
       setTransactions(data.transactions || []);
       setTopExpenses(data.topExpenses || []);
+      setInvestments(data.investments || []);
+
+      const upcomingResponse = await fetch('/api/recurring?type=expense&upcoming=true');
+      if (upcomingResponse.ok) {
+        const upcomingData = await upcomingResponse.json();
+        const normalizedBills: Bill[] = (upcomingData.upcoming || []).map((bill: any) => ({
+          id: bill.id,
+          name: bill.name,
+          date: bill.date,
+          amount: bill.amount,
+          category: bill.category || 'Uncategorized',
+          icon: bill.icon || 'HelpCircle',
+        }));
+        setUpcomingBills(normalizedBills);
+      } else {
+        setUpcomingBills([]);
+      }
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
@@ -78,10 +101,126 @@ export default function DashboardPage() {
       setExpenses({ amount: 0, trend: 0, comparisonLabel: '' });
       setTransactions([]);
       setTopExpenses([]);
+      setInvestments([]);
+      setUpcomingBills([]);
     } finally {
       setLoading(false);
     }
   }, [timePeriod]);
+
+  // Fetch goals separately - filter out completed goals
+  const fetchGoals = useCallback(async () => {
+    try {
+      const response = await fetch('/api/goals');
+      if (response.ok) {
+        const data = await response.json();
+        // Filter out completed goals for dashboard
+        const activeGoals = (data.goals || []).filter((goal: Goal) => getGoalStatus(goal) !== 'completed');
+        setGoals(activeGoals);
+      }
+    } catch (err) {
+      console.error('Error fetching goals:', err);
+      setGoals([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGoals();
+  }, [fetchGoals]);
+
+  const handleEditGoal = (goal: Goal) => {
+    setModalMode('edit');
+    setSelectedGoal(goal);
+  };
+
+  const handleSave = async (updatedGoal: Goal) => {
+    try {
+      setError(null);
+      setIsSaving(true);
+      
+      // Calculate progress to check if goal is complete
+      const calculatedProgress = updatedGoal.targetAmount > 0 
+        ? (updatedGoal.currentAmount / updatedGoal.targetAmount) * 100 
+        : 0;
+      const isNowComplete = calculatedProgress >= 100;
+      
+      // Check if goal was previously incomplete and is now complete
+      const wasIncomplete = selectedGoal ? selectedGoal.progress < 100 : true;
+      const justCompleted = wasIncomplete && isNowComplete;
+      
+      const isNew = modalMode === 'add';
+      
+      let response: Response;
+      if (isNew) {
+        response = await fetch('/api/goals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: updatedGoal.name,
+            targetDate: updatedGoal.targetDate,
+            targetAmount: updatedGoal.targetAmount,
+            currentAmount: updatedGoal.currentAmount,
+          }),
+        });
+      } else {
+        response = await fetch('/api/goals', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: updatedGoal.id,
+            name: updatedGoal.name,
+            targetDate: updatedGoal.targetDate,
+            targetAmount: updatedGoal.targetAmount,
+            currentAmount: updatedGoal.currentAmount,
+          }),
+        });
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save goal');
+      }
+      
+      setSelectedGoal(null);
+      
+      // Show confetti if goal was just completed
+      if (justCompleted || (isNew && isNowComplete)) {
+        setShowConfetti(true);
+      }
+      
+      fetchGoals(); // Refresh goals data
+    } catch (err) {
+      console.error('Error saving goal:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save goal');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setSelectedGoal(null);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedGoal) return;
+    
+    try {
+      const response = await fetch(`/api/goals?id=${selectedGoal.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete goal');
+      }
+      
+      setSelectedGoal(null);
+      fetchGoals(); // Refresh goals data
+    } catch (err) {
+      console.error('Error deleting goal:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete goal');
+    }
+  };
 
   useEffect(() => {
     fetchDashboardData();
@@ -256,13 +395,13 @@ export default function DashboardPage() {
         </div>
 
         {/* Goals full width */}
-        <GoalsCard goals={goals} />
+        <GoalsCard goals={goals} onGoalClick={handleEditGoal} />
 
         {/* Financial Health short row */}
         <FinancialHealthCard score={financialHealth} mobile />
 
         {/* Upcoming Bills full width */}
-        <UpcomingBillsCard bills={bills} />
+        <UpcomingBillsCard bills={upcomingBills} />
 
         {/* Transactions full width */}
         <TransactionsCard transactions={transactions} onRefresh={fetchDashboardData} />
@@ -306,8 +445,8 @@ export default function DashboardPage() {
           minimal
         />
         <FinancialHealthCard score={financialHealth} minimal />
-        <GoalsCard goals={goals} />
-        <UpcomingBillsCard bills={bills} />
+        <GoalsCard goals={goals} onGoalClick={handleEditGoal} />
+        <UpcomingBillsCard bills={upcomingBills} />
         <TransactionsCard transactions={transactions} onRefresh={fetchDashboardData} />
         <TopExpensesCard expenses={topExpenses} />
         <div className="col-span-2">
@@ -360,7 +499,7 @@ export default function DashboardPage() {
               {/* Top row: Goals + Financial Health side-by-side */}
               <div className="grid grid-cols-5 gap-4">
                 <div className="col-span-3 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  <GoalsCard goals={goals} />
+                  <GoalsCard goals={goals} onGoalClick={handleEditGoal} />
                 </div>
                 <div className="col-span-2 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                   <FinancialHealthCard score={financialHealth} />
@@ -378,13 +517,30 @@ export default function DashboardPage() {
         {/* Grid 2: Right side (1 column) - Upcoming Bills + Top Expenses */}
         <div className="col-span-1 flex flex-col gap-4">
           <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-            <UpcomingBillsCard bills={bills} />
+            <UpcomingBillsCard bills={upcomingBills} />
           </div>
           <div className="flex-1 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
             <TopExpensesCard expenses={topExpenses} />
           </div>
         </div>
       </div>
+
+      {/* Goal Modal */}
+      {selectedGoal && (
+        <GoalModal
+          goal={selectedGoal}
+          mode={modalMode}
+          onClose={handleCloseModal}
+          onSave={handleSave}
+          onDelete={handleDelete}
+          isSaving={isSaving}
+        />
+      )}
+
+      {/* Confetti */}
+      {showConfetti && (
+        <Confetti onComplete={() => setShowConfetti(false)} />
+      )}
     </main>
   );
 }

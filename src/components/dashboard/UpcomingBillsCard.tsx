@@ -1,7 +1,6 @@
 'use client';
 
 import Card from '@/components/ui/Card';
-import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import { Bill } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { NavArrowRight } from 'iconoir-react';
@@ -19,19 +18,11 @@ export default function UpcomingBillsCard({ bills }: UpcomingBillsCardProps) {
     return (
       <Card 
         title="Upcoming Bills"
-        customHeader={
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="text-card-header">Upcoming Bills</h2>
-              <ComingSoonBadge />
-            </div>
-          </div>
-        }
         showActions={false}
       >
-        <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8" style={{ filter: 'blur(2px)' }}>
-          <div className="text-body text-center mb-2 opacity-70">Add your first bill</div>
-          <div className="text-helper text-center">Track recurring payments and due dates</div>
+        <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8 gap-1.5">
+          <div className="text-body text-center opacity-80">No upcoming bills yet</div>
+          <div className="text-helper text-center">Create a recurring bill to see it here</div>
         </div>
       </Card>
     );
@@ -40,17 +31,9 @@ export default function UpcomingBillsCard({ bills }: UpcomingBillsCardProps) {
   return (
     <Card 
       title="Upcoming Bills"
-      customHeader={
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h2 className="text-card-header">Upcoming Bills</h2>
-            <ComingSoonBadge />
-          </div>
-        </div>
-      }
       showActions={false}
     >
-      <div className="flex flex-col flex-1 mt-2" style={{ filter: 'blur(2px)' }}>
+      <div className="flex flex-col flex-1 mt-2">
         <div className="space-y-4 flex-1">
           {bills.map((bill) => {
             const Icon = getIcon(bill.icon);

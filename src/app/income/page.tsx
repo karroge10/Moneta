@@ -19,6 +19,8 @@ import { mockIncomePage } from '@/lib/mockData';
 import { TimePeriod, LatestIncome, IncomeSource, PerformanceDataPoint, Transaction, Category } from '@/types/dashboard';
 import { formatNumber } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useCategories } from '@/hooks/useCategories';
+import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 
 export default function IncomePage() {
   const { currency } = useCurrency();
@@ -36,18 +38,18 @@ export default function IncomePage() {
   const [average, setAverage] = useState({ amount: 0, trend: 0, subtitle: 'Monthly average based on selected time period' });
   const [averageDaily, setAverageDaily] = useState<{ amount: number; trend: number } | null>(null);
   const [nextMonthPrediction, setNextMonthPrediction] = useState<number | null>(null);
+  const [upcomingIncomes, setUpcomingIncomes] = useState<Transaction[]>([]);
   
   // Transaction modal state
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [isSaving, setIsSaving] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [currencyOptions, setCurrencyOptions] = useState<Array<{ id: number; name: string; symbol: string; alias: string }>>([]);
+  const { categories } = useCategories();
+  const { currencyOptions } = useCurrencyOptions();
   
   // Keep mock data for components not requested to be changed
   const update = mockIncomePage.update;
   const estimatedTax = mockIncomePage.estimatedTax;
-  const upcomingIncomes = mockIncomePage.upcomingIncomes;
   const demographicComparison = mockIncomePage.demographicComparison;
   
   const fetchIncomeData = useCallback(async () => {
@@ -78,6 +80,22 @@ export default function IncomePage() {
         trend: data.average?.trend || 0,
         subtitle: data.average?.subtitle || 'Monthly average based on selected time period',
       });
+
+      const upcomingResponse = await fetch('/api/recurring?type=income&upcoming=true');
+      if (upcomingResponse.ok) {
+        const upcomingData = await upcomingResponse.json();
+        const normalizedIncomes: Transaction[] = (upcomingData.upcoming || []).map((income: any) => ({
+          id: income.id,
+          name: income.name,
+          date: income.date,
+          amount: income.amount,
+          category: income.category || null,
+          icon: income.icon || 'HelpCircle',
+        }));
+        setUpcomingIncomes(normalizedIncomes);
+      } else {
+        setUpcomingIncomes([]);
+      }
     } catch (err) {
       console.error('Error fetching income data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load income data');
@@ -86,6 +104,7 @@ export default function IncomePage() {
       setLatestIncomes([]);
       setPerformance({ trend: 0, trendText: '', data: [] });
       setAverage({ amount: 0, trend: 0, subtitle: 'Monthly average based on selected time period' });
+      setUpcomingIncomes([]);
     } finally {
       setLoading(false);
     }
@@ -94,38 +113,6 @@ export default function IncomePage() {
   useEffect(() => {
     fetchIncomeData();
   }, [fetchIncomeData]);
-
-  // Fetch categories
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch('/api/categories');
-        if (response.ok) {
-          const data = await response.json();
-          setCategories(data.categories || []);
-        }
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-      }
-    };
-    fetchCategories();
-  }, []);
-
-  // Fetch currencies
-  useEffect(() => {
-    const fetchCurrencies = async () => {
-      try {
-        const response = await fetch('/api/currencies');
-        if (response.ok) {
-          const data = await response.json();
-          setCurrencyOptions(data.currencies || []);
-        }
-      } catch (err) {
-        console.error('Error fetching currencies:', err);
-      }
-    };
-    fetchCurrencies();
-  }, []);
 
   // Create draft income transaction (positive amount for income)
   const createDraftIncome = (): Transaction => ({
@@ -148,9 +135,29 @@ export default function IncomePage() {
       setIsSaving(true);
       
       const isNew = modalMode === 'add';
+      const isRecurring = updatedTransaction.recurring?.isRecurring;
       
       let response: Response;
-      if (isNew) {
+      if (isNew && isRecurring) {
+        const recurrence = updatedTransaction.recurring;
+        const startDate = recurrence?.startDate || new Date().toISOString().split('T')[0];
+        response = await fetch('/api/recurring', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: updatedTransaction.name,
+            amount: Math.abs(updatedTransaction.amount),
+            category: updatedTransaction.category,
+            currencyId: updatedTransaction.currencyId,
+            type: 'income',
+            startDate,
+            endDate: recurrence?.endDate ?? null,
+            frequencyUnit: recurrence?.frequencyUnit ?? 'month',
+            frequencyInterval: recurrence?.frequencyInterval ?? 1,
+            createInitial: true,
+          }),
+        });
+      } else if (isNew) {
         response = await fetch('/api/transactions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -170,7 +177,7 @@ export default function IncomePage() {
       }
       
       setSelectedTransaction(null);
-      fetchIncomeData(); // Refresh income data
+      fetchIncomeData(); // Refresh income data and upcoming incomes
     } catch (err) {
       console.error('Error saving transaction:', err);
       setError(err instanceof Error ? err.message : 'Failed to save transaction');

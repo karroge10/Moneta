@@ -17,3 +17,4 @@ export default function PlaceholderDataBadge({ size = 'md' }: PlaceholderDataBad
   );
 }
 
+

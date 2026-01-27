@@ -71,8 +71,8 @@ export interface GoalSummaryStats {
   failedGoals: number;
   successRate: number;
   totalGoals: number;
-  longestStreak: number; // in days (placeholder)
-  averageTimeToComplete: number; // in days (placeholder)
+  completionsLast30d: number;
+  averageTimeToComplete: number | null; // in days
   totalMoneySaved: number;
 }
 
@@ -86,29 +86,68 @@ export function calculateSummaryStats(goals: Goal[]): GoalSummaryStats {
     failedGoals: 0,
     successRate: 0,
     totalGoals: goals.length,
-    longestStreak: 0, // Placeholder - requires date tracking
-    averageTimeToComplete: 0, // Placeholder - requires date tracking
+    completionsLast30d: 0,
+    averageTimeToComplete: null,
     totalMoneySaved: 0,
   };
+
+  const completedGoals: Goal[] = [];
+  const completionDates: Date[] = [];
+  const completionDurations: number[] = [];
 
   goals.forEach(goal => {
     const status = getGoalStatus(goal);
     if (status === 'active') stats.activeGoals++;
-    else if (status === 'completed') stats.completedGoals++;
-    else if (status === 'failed') stats.failedGoals++;
+    else if (status === 'completed') {
+      stats.completedGoals++;
+      completedGoals.push(goal);
+    } else if (status === 'failed') stats.failedGoals++;
     
     stats.totalMoneySaved += goal.currentAmount;
   });
 
-  // Calculate success rate
+  // Success rate
   if (stats.totalGoals > 0) {
     stats.successRate = (stats.completedGoals / stats.totalGoals) * 100;
   }
 
-  // Placeholder values for streak and average time
-  // These would require createdDate and completedDate fields in Goal interface
-  stats.longestStreak = 7; // Placeholder
-  stats.averageTimeToComplete = 39; // Placeholder
+  // Compute completion dates and durations when data is available
+  completedGoals.forEach(goal => {
+    const completionDate =
+      (goal.updatedAt && !isNaN(new Date(goal.updatedAt).getTime()))
+        ? new Date(goal.updatedAt)
+        : (goal.targetDate ? parseTargetDate(goal.targetDate) : null);
+
+    if (completionDate) {
+      completionDates.push(completionDate);
+    }
+
+    if (goal.createdAt && completionDate) {
+      const created = new Date(goal.createdAt);
+      const completed = completionDate;
+      const diffMs = completed.getTime() - created.getTime();
+      if (!isNaN(diffMs) && diffMs >= 0) {
+        const days = diffMs / (1000 * 60 * 60 * 24);
+        completionDurations.push(days);
+      }
+    } else if (completionDate) {
+      // If we have a completion date but no created date, treat as same-day completion (0 days)
+      completionDurations.push(0);
+    }
+  });
+
+  // Completions in the last 30 days
+  if (completionDates.length > 0) {
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    stats.completionsLast30d = completionDates.filter(d => d >= cutoff && d <= now).length;
+  }
+
+  // Average time to complete (in days)
+  if (completionDurations.length > 0) {
+    const total = completionDurations.reduce((sum, d) => sum + d, 0);
+    stats.averageTimeToComplete = Math.round((total / completionDurations.length) * 10) / 10;
+  }
 
   return stats;
 }
