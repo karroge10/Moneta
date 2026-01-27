@@ -36,3 +36,4 @@ export default function NextMonthIncomePredictionCard({ amount }: NextMonthIncom
   );
 }
 
+

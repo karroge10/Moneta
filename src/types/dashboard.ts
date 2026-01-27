@@ -12,6 +12,7 @@ export interface Transaction {
   originalCurrencySymbol?: string;
   originalCurrencyAlias?: string;
   currencyId?: number; // Currency ID for editing
+  recurring?: RecurringSettings;
 }
 
 export interface Bill {
@@ -23,6 +24,17 @@ export interface Bill {
   icon: string;
 }
 
+export type RecurringFrequencyUnit = 'day' | 'week' | 'month' | 'year';
+
+export interface RecurringSettings {
+  isRecurring: boolean;
+  frequencyUnit: RecurringFrequencyUnit;
+  frequencyInterval: number;
+  startDate: string; // ISO date string
+  endDate?: string | null;
+  type?: 'income' | 'expense';
+}
+
 export interface Goal {
   id: string;
   name: string;
@@ -30,12 +42,20 @@ export interface Goal {
   targetAmount: number;
   currentAmount: number;
   progress: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Investment {
   id: string;
   name: string;
   subtitle: string;
+  ticker?: string | null;
+  assetType?: 'crypto' | 'stock' | 'property' | 'custom';
+  sourceType?: 'live' | 'manual';
+  quantity?: number;
+  purchasePrice?: number | null;
+  purchaseDate?: string | null;
   currentValue: number;
   changePercent: number;
   icon: string;
