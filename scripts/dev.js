@@ -13,14 +13,13 @@ async function main() {
     );
   }
 
-  const nextArgs = ['dev', '-p', String(availablePort)];
-  const child = spawn(getNextCommand(), nextArgs, {
+  const child = spawn(getNextCommand(), getNextArgs(availablePort), {
     stdio: 'inherit',
     env: {
       ...process.env,
       PORT: String(availablePort),
     },
-    shell: false,
+    shell: true,
   });
 
   child.on('exit', (code) => {
@@ -29,7 +28,12 @@ async function main() {
 }
 
 function getNextCommand() {
-  return process.platform === 'win32' ? 'next.cmd' : 'next';
+  // With shell: true, we can use 'npx next' which works cross-platform
+  return 'npx';
+}
+
+function getNextArgs(port) {
+  return ['next', 'dev', '-p', String(port)];
 }
 
 main().catch((error) => {
