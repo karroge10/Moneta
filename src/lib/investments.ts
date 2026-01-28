@@ -89,7 +89,7 @@ async function fetchStooqQuote(ticker: string): Promise<{ close: number; open: n
 }
 
 function computePreviousValue(current: number, changePercent: number | undefined): number {
-  if (!Number.isFinite(changePercent) || changePercent === -100) return current;
+  if (changePercent === undefined || !Number.isFinite(changePercent) || changePercent === -100) return current;
   const delta = 1 + changePercent / 100;
   if (delta === 0) return current;
   return current / delta;
