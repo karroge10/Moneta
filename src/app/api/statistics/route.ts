@@ -221,11 +221,16 @@ export async function GET(request: NextRequest) {
     });
 
     // Convert to array and format
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const sortedMonths = Array.from(monthMap.entries())
       .sort((a, b) => {
         // Parse month labels to sort chronologically
-        const dateA = new Date(a[0].split(' ')[1], ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(a[0].split(' ')[0]));
-        const dateB = new Date(b[0].split(' ')[1], ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(b[0].split(' ')[0]));
+        const [monthNameA, yearStrA] = a[0].split(' ');
+        const [monthNameB, yearStrB] = b[0].split(' ');
+        const monthIndexA = monthNames.indexOf(monthNameA);
+        const monthIndexB = monthNames.indexOf(monthNameB);
+        const dateA = new Date(parseInt(yearStrA, 10), monthIndexA);
+        const dateB = new Date(parseInt(yearStrB, 10), monthIndexB);
         return dateB.getTime() - dateA.getTime();
       })
       .slice(0, 12); // Last 12 months
