@@ -31,6 +31,7 @@ interface RecentJobsListProps {
     status: JobStatus;
     createdAt: string;
   } | null;
+  onDeleteActiveJob?: () => void; // Called when the active job is deleted
 }
 
 const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
@@ -85,6 +86,7 @@ export default function RecentJobsList({
   showTitle = true,
   refreshTrigger,
   optimisticJob,
+  onDeleteActiveJob,
 }: RecentJobsListProps) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -140,6 +142,8 @@ export default function RecentJobsList({
       return;
     }
 
+    const isActiveJob = jobId === currentJobId;
+
     setDeletingJobId(jobId);
     try {
       const res = await fetch(`/api/jobs/${jobId}`, {
@@ -149,6 +153,11 @@ export default function RecentJobsList({
       if (res.ok) {
         // Remove the job from the list immediately
         setJobs(jobs.filter(job => job.id !== jobId));
+        
+        // If this was the active job, reset the dropzone and review table
+        if (isActiveJob && onDeleteActiveJob) {
+          onDeleteActiveJob();
+        }
       } else {
         const error = await res.json().catch(() => ({ error: 'Failed to delete job' }));
         alert(error.error || 'Failed to delete job');
