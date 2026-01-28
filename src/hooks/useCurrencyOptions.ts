@@ -19,16 +19,17 @@ async function loadCurrencies(force = false): Promise<CurrencyOption[]> {
   if (!force && cachedCurrencies) return cachedCurrencies;
   if (!force && currenciesPromise) return currenciesPromise;
 
-  currenciesPromise = (async () => {
+  currenciesPromise = (async (): Promise<CurrencyOption[]> => {
     const response = await fetch('/api/currencies');
     if (!response.ok) {
       throw new Error('Failed to fetch currencies');
     }
     const data = await response.json();
-    cachedCurrencies = data.currencies || [];
+    const currencies = data.currencies || [];
+    cachedCurrencies = currencies;
     // Fire and forget cache persistence
-    idbSet(CACHE_KEY, { data: cachedCurrencies, timestamp: Date.now() });
-    return cachedCurrencies;
+    idbSet(CACHE_KEY, { data: currencies, timestamp: Date.now() });
+    return currencies;
   })();
 
   try {

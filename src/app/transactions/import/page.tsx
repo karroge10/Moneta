@@ -112,7 +112,13 @@ export default function ImportTransactionsPage() {
 
   // Reset page to 1 only when filters/search/sort change, not when rows are deleted
   // We track the previous filter/search/sort state to detect actual filter changes
-  const prevFilterStateRef = useRef({ searchQuery: '', categoryFilter: null, typeFilter: '', sortField: null as 'amount' | null, sortDirection: 'asc' as 'asc' | 'desc' });
+  const prevFilterStateRef = useRef<{
+    searchQuery: string;
+    categoryFilter: string | null;
+    typeFilter: string;
+    sortField: 'amount' | null;
+    sortDirection: 'asc' | 'desc';
+  }>({ searchQuery: '', categoryFilter: null, typeFilter: '', sortField: null, sortDirection: 'asc' });
   
   useEffect(() => {
     const currentFilterState = { searchQuery: debouncedSearchQuery, categoryFilter, typeFilter, sortField, sortDirection };

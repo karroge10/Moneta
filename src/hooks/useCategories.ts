@@ -13,16 +13,17 @@ async function loadCategories(force = false): Promise<Category[]> {
   if (!force && cachedCategories) return cachedCategories;
   if (!force && categoriesPromise) return categoriesPromise;
 
-  categoriesPromise = (async () => {
+  categoriesPromise = (async (): Promise<Category[]> => {
     const response = await fetch('/api/categories');
     if (!response.ok) {
       throw new Error('Failed to fetch categories');
     }
     const data = await response.json();
-    cachedCategories = data.categories || [];
+    const categories = data.categories || [];
+    cachedCategories = categories;
     // Fire and forget cache persistence
-    idbSet(CACHE_KEY, { data: cachedCategories, timestamp: Date.now() });
-    return cachedCategories;
+    idbSet(CACHE_KEY, { data: categories, timestamp: Date.now() });
+    return categories;
   })();
 
   try {
