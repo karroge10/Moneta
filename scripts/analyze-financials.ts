@@ -9,7 +9,7 @@
  * Time periods: 'This Month' | 'Last Month' | 'This Quarter' | 'Last Quarter' | 'This Year' | 'Last Year' | 'All Time'
  */
 
-import { PrismaClient, Transaction, User } from '@prisma/client';
+import { PrismaClient, Transaction, User, Category, Currency } from '@prisma/client';
 import { resolve } from 'path';
 import { config } from 'dotenv';
 import { convertAmount } from '../src/lib/currency-conversion';
@@ -117,7 +117,12 @@ function fmt(amount: number): string {
   return amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-async function convertTransactions<T extends Transaction>(txs: T[], targetCurrencyId: number) {
+type TransactionWithRelations = Transaction & {
+  category: Category | null;
+  currency: Currency;
+};
+
+async function convertTransactions(txs: TransactionWithRelations[], targetCurrencyId: number) {
   return Promise.all(
     txs.map(async (t) => {
       const convertedAmount = await convertAmount(t.amount, t.currencyId, targetCurrencyId, t.date);
@@ -126,11 +131,13 @@ async function convertTransactions<T extends Transaction>(txs: T[], targetCurren
   );
 }
 
-function sumByType(txs: Array<Transaction & { convertedAmount: number }>, type: 'income' | 'expense') {
+type TransactionWithConverted = TransactionWithRelations & { convertedAmount: number };
+
+function sumByType(txs: TransactionWithConverted[], type: 'income' | 'expense') {
   return txs.filter((t) => t.type === type).reduce((sum, t) => sum + t.convertedAmount, 0);
 }
 
-function topExpenseCategories(txs: Array<Transaction & { convertedAmount: number }>) {
+function topExpenseCategories(txs: TransactionWithConverted[]) {
   const totals = new Map<string, { amount: number; categoryId: number; categoryName: string }>();
 
   txs.forEach((t) => {
@@ -145,7 +152,7 @@ function topExpenseCategories(txs: Array<Transaction & { convertedAmount: number
   return Array.from(totals.values()).sort((a, b) => b.amount - a.amount);
 }
 
-function topIncomeSources(txs: Array<Transaction & { convertedAmount: number }>) {
+function topIncomeSources(txs: TransactionWithConverted[]) {
   const totals = new Map<string, { amount: number; categoryName: string | null; merchantName: string }>();
 
   txs.forEach((t) => {
@@ -215,7 +222,7 @@ async function main() {
           include: { category: true, currency: true },
           orderBy: { date: 'desc' },
         })
-      : Promise.resolve([] as Transaction[]),
+      : Promise.resolve([] as TransactionWithRelations[]),
   ]);
 
   const [selectedWithConverted, comparisonWithConverted] = await Promise.all([
