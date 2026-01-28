@@ -252,6 +252,21 @@ export default function ImportTransactionsPage() {
     setCurrencySelectionError(null);
   };
 
+  const handleDeleteActiveJob = useCallback(() => {
+    // Clear review table
+    setParsedRows([]);
+    // Reset dropzone to default state
+    resetUploadState();
+    // Reset review page to first page
+    setReviewPage(1);
+    setReviewPageInput('1');
+    // Clear filters
+    setSearchQuery('');
+    setDebouncedSearchQuery('');
+    setCategoryFilter(null);
+    setTypeFilter('');
+  }, []);
+
   // Format time in seconds to human-readable string
   const formatTime = (seconds: number): string => {
     if (seconds < 60) {
@@ -1019,6 +1034,7 @@ export default function ImportTransactionsPage() {
                 className="mt-2 flex-1 overflow-y-auto pr-2 pb-6"
                 refreshTrigger={jobsRefreshTrigger}
                 optimisticJob={optimisticJob}
+                onDeleteActiveJob={handleDeleteActiveJob}
               />
             </Card>
           </div>
