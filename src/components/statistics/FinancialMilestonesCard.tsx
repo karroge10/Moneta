@@ -4,11 +4,46 @@ import Link from 'next/link';
 import { FinancialMilestone } from '@/types/dashboard';
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 
+const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
+
 interface FinancialMilestonesCardProps {
   milestone: FinancialMilestone;
+  loading?: boolean;
 }
 
-export default function FinancialMilestonesCard({ milestone }: FinancialMilestonesCardProps) {
+export default function FinancialMilestonesCard({ milestone, loading = false }: FinancialMilestonesCardProps) {
+  if (loading) {
+    return (
+      <Card
+        title="Financial Milestones"
+        customHeader={
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-6 w-40 rounded animate-pulse" style={SKELETON_STYLE} />
+              <div className="h-5 w-20 rounded-full animate-pulse" style={SKELETON_STYLE} />
+            </div>
+            <div className="w-8 h-8 rounded-full animate-pulse" style={SKELETON_STYLE} />
+          </div>
+        }
+      >
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="p-3 mb-4 rounded-2xl" style={{ backgroundColor: '#202020' }}>
+            <div className="h-3 w-16 rounded animate-pulse mb-2" style={SKELETON_STYLE} />
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
+              <div className="h-4 flex-1 max-w-[200px] rounded animate-pulse" style={SKELETON_STYLE} />
+            </div>
+          </div>
+          <div className="h-4 w-28 rounded animate-pulse mb-4" style={SKELETON_STYLE} />
+          <div className="flex items-start gap-2 mt-4">
+            <div className="w-4 h-4 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
+            <div className="h-3 flex-1 max-w-[180px] rounded animate-pulse" style={SKELETON_STYLE} />
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card 
       title="Financial Milestones"

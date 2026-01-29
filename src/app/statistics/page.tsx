@@ -8,7 +8,6 @@ import DemographicComparisonsSection from '@/components/statistics/DemographicCo
 import AverageExpensesCard from '@/components/statistics/AverageExpensesCard';
 import MonthlySummaryTable from '@/components/statistics/MonthlySummaryTable';
 import StatisticsSummary from '@/components/statistics/StatisticsSummary';
-import CardSkeleton from '@/components/dashboard/CardSkeleton';
 import { mockStatisticsPage } from '@/lib/mockData';
 import { TimePeriod, MonthlySummaryRow, StatisticsSummaryItem } from '@/types/dashboard';
 
@@ -59,151 +58,64 @@ export default function StatisticsPage() {
     fetchStatisticsData();
   }, [fetchStatisticsData]);
 
-  const renderLayout = (isSkeleton: boolean) => (
-    <>
+  const summaryItemsToShow = summaryItems.length > 0 ? summaryItems : (error ? mockStatisticsPage.summary.items : []);
+
+  return (
+    <main className="min-h-screen bg-[#202020]">
+      {/* Desktop Header */}
+      <div className="hidden md:block">
+        <DashboardHeader pageName="Statistics" />
+      </div>
+
+      {/* Mobile Navbar */}
+      <div className="md:hidden">
+        <MobileNavbar
+          pageName="Statistics"
+          timePeriod={timePeriod}
+          onTimePeriodChange={setTimePeriod}
+          activeSection="statistics"
+        />
+      </div>
+
+      {/* Content — same layout when loading; cards show skeleton internally */}
       {/* Mobile: stacked */}
       <div className="md:hidden flex flex-col gap-4 px-4 pb-4">
-        {isSkeleton ? (
-          <>
-            <CardSkeleton title="Financial Milestones" variant="list" />
-            <CardSkeleton title="Demographic Comparisons" variant="list" />
-            <CardSkeleton title="Average Expenses" variant="list" />
-            <CardSkeleton title="Monthly Summary" variant="list" />
-            <CardSkeleton title="Summary" variant="list" />
-          </>
-        ) : (
-          <>
-            <FinancialMilestonesCard milestone={mockStatisticsPage.milestone} />
-            <DemographicComparisonsSection comparisons={mockStatisticsPage.demographicComparisons} />
-            <AverageExpensesCard expenses={averageExpenses} />
-            <MonthlySummaryTable data={monthlySummary} />
-            <StatisticsSummary items={summaryItems.length > 0 ? summaryItems : (error ? mockStatisticsPage.summary.items : [])} />
-          </>
-        )}
+        <FinancialMilestonesCard milestone={mockStatisticsPage.milestone} loading={loading} />
+        <DemographicComparisonsSection comparisons={mockStatisticsPage.demographicComparisons} loading={loading} />
+        <AverageExpensesCard expenses={averageExpenses} loading={loading} />
+        <MonthlySummaryTable data={monthlySummary} loading={loading} />
+        <StatisticsSummary items={summaryItemsToShow} loading={loading} />
       </div>
 
       {/* Tablet: three-column split */}
       <div className="hidden md:grid 2xl:hidden md:grid-cols-[1fr_1.2fr_1fr] md:gap-4 md:px-6 md:pb-6">
         <div className="flex flex-col gap-4 min-h-0">
-          {isSkeleton ? (
-            <>
-              <CardSkeleton title="Financial Milestones" variant="list" />
-              <CardSkeleton title="Demographic Comparisons" variant="list" />
-            </>
-          ) : (
-            <>
-              <FinancialMilestonesCard milestone={mockStatisticsPage.milestone} />
-              <DemographicComparisonsSection comparisons={mockStatisticsPage.demographicComparisons} />
-            </>
-          )}
+          <FinancialMilestonesCard milestone={mockStatisticsPage.milestone} loading={loading} />
+          <DemographicComparisonsSection comparisons={mockStatisticsPage.demographicComparisons} loading={loading} />
         </div>
         <div className="flex flex-col gap-4 min-h-0">
-          {isSkeleton ? (
-            <>
-              <CardSkeleton title="Average Expenses" variant="list" />
-              <CardSkeleton title="Monthly Summary" variant="list" />
-            </>
-          ) : (
-            <>
-              <AverageExpensesCard expenses={averageExpenses} />
-              <MonthlySummaryTable data={monthlySummary} />
-            </>
-          )}
+          <AverageExpensesCard expenses={averageExpenses} loading={loading} />
+          <MonthlySummaryTable data={monthlySummary} loading={loading} />
         </div>
         <div className="min-h-0">
-          {isSkeleton ? (
-            <CardSkeleton title="Summary" variant="list" />
-          ) : (
-            <StatisticsSummary items={summaryItems.length > 0 ? summaryItems : (error ? mockStatisticsPage.summary.items : [])} />
-          )}
+          <StatisticsSummary items={summaryItemsToShow} loading={loading} />
         </div>
       </div>
 
       {/* Desktop: wider ratios */}
       <div className="hidden 2xl:grid 2xl:grid-cols-[1fr_1.3fr_1fr] 2xl:gap-4 2xl:px-6 2xl:pb-6">
         <div className="flex flex-col gap-4 min-h-0">
-          {isSkeleton ? (
-            <>
-              <CardSkeleton title="Financial Milestones" variant="list" />
-              <CardSkeleton title="Demographic Comparisons" variant="list" />
-            </>
-          ) : (
-            <>
-              <FinancialMilestonesCard milestone={mockStatisticsPage.milestone} />
-              <DemographicComparisonsSection comparisons={mockStatisticsPage.demographicComparisons} />
-            </>
-          )}
+          <FinancialMilestonesCard milestone={mockStatisticsPage.milestone} loading={loading} />
+          <DemographicComparisonsSection comparisons={mockStatisticsPage.demographicComparisons} loading={loading} />
         </div>
         <div className="flex flex-col gap-4 min-h-0">
-          {isSkeleton ? (
-            <>
-              <CardSkeleton title="Average Expenses" variant="list" />
-              <CardSkeleton title="Monthly Summary" variant="list" />
-            </>
-          ) : (
-            <>
-              <AverageExpensesCard expenses={averageExpenses} />
-              <MonthlySummaryTable data={monthlySummary} />
-            </>
-          )}
+          <AverageExpensesCard expenses={averageExpenses} loading={loading} />
+          <MonthlySummaryTable data={monthlySummary} loading={loading} />
         </div>
         <div className="min-h-0">
-          {isSkeleton ? (
-            <CardSkeleton title="Summary" variant="list" />
-          ) : (
-            <StatisticsSummary items={summaryItems.length > 0 ? summaryItems : (error ? mockStatisticsPage.summary.items : [])} />
-          )}
+          <StatisticsSummary items={summaryItemsToShow} loading={loading} />
         </div>
       </div>
-    </>
-  );
-
-  // Render skeleton layout during loading
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-[#202020]">
-        {/* Desktop Header */}
-        <div className="hidden md:block">
-          <DashboardHeader 
-            pageName="Statistics"
-          />
-        </div>
-
-        {/* Mobile Navbar */}
-        <div className="md:hidden">
-          <MobileNavbar 
-            pageName="Statistics" 
-            timePeriod={timePeriod} 
-            onTimePeriodChange={setTimePeriod}
-            activeSection="statistics"
-          />
-        </div>
-
-        {renderLayout(true)}
-      </main>
-    );
-  }
-
-  return (
-    <main className="min-h-screen bg-[#202020]">
-      {/* Desktop Header */}
-      <div className="hidden md:block">
-        <DashboardHeader 
-          pageName="Statistics"
-        />
-      </div>
-
-      {/* Mobile Navbar */}
-      <div className="md:hidden">
-        <MobileNavbar 
-          pageName="Statistics" 
-          timePeriod={timePeriod} 
-          onTimePeriodChange={setTimePeriod}
-          activeSection="statistics"
-        />
-      </div>
-
-      {renderLayout(false)}
     </main>
   );
 }

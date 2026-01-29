@@ -39,6 +39,12 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
       const response = await fetch('/api/user/settings');
+
+      if (response.status === 401) {
+        setCurrency(DEFAULT_CURRENCY);
+        return;
+      }
+
       if (response.ok) {
         const data = await response.json();
         if (data.currency) {
@@ -53,13 +59,13 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
           setCurrency(DEFAULT_CURRENCY);
         }
       } else {
-        throw new Error('Failed to fetch currency settings');
+        setCurrency(DEFAULT_CURRENCY);
+        setError(new Error('Failed to fetch currency settings'));
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error');
       setError(error);
       console.error('Error fetching currency:', error);
-      // Fall back to default currency on error
       setCurrency(DEFAULT_CURRENCY);
     } finally {
       setLoading(false);

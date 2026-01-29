@@ -3,84 +3,99 @@
 import Card from '@/components/ui/Card';
 import { LoginHistoryEntry } from '@/types/dashboard';
 
+const SKELETON_ROW_COUNT = 4;
+const COL_COUNT = 4;
+
 interface LoginHistoryCardProps {
   history: LoginHistoryEntry[];
+  loading?: boolean;
 }
 
-export default function LoginHistoryCard({ history }: LoginHistoryCardProps) {
-  // Calculate max height to show exactly 4 rows
-  // Each row: ~48px (py-3 = 12px top + 12px bottom + text ~24px)
-  // 4 rows: 4 * 48px = 192px
-  const maxHeight = '192px';
-  
+export default function LoginHistoryCard({ history, loading = false }: LoginHistoryCardProps) {
+  if (loading) {
+    return (
+      <Card title="Login History" showActions={false}>
+        <div className="mt-2 flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020' }}>
+          <div className="flex-1 min-h-0 overflow-auto">
+            <table className="min-w-full">
+              <thead className="sticky top-0 z-10" style={{ backgroundColor: '#202020' }}>
+                <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+                  <th className="px-5 py-3 align-top">Date</th>
+                  <th className="px-5 py-3 align-top">Time</th>
+                  <th className="px-5 py-3 align-top">Device</th>
+                  <th className="px-5 py-3 align-top">Location</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
+                  <tr key={i} className="border-t border-[#2A2A2A]">
+                    <td className="px-5 py-4 align-top">
+                      <div className="h-4 w-20 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <div className="h-4 w-14 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <div className="h-4 w-24 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <div className="h-4 w-28 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card title="Login History" showActions={false}>
-      <div className="mt-2">
-        <div className="overflow-hidden">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '25%' }} />
-            </colgroup>
-            <thead>
-              <tr style={{ backgroundColor: '#202020' }}>
-                <th 
-                  className="text-center text-helper font-semibold py-3 px-2"
-                  style={{ 
-                    backgroundColor: '#202020',
-                    borderRadius: '10px 0 0 10px'
-                  }}
-                >
-                  Date
-                </th>
-                <th 
-                  className="text-center text-helper font-semibold py-3 px-2"
-                  style={{ backgroundColor: '#202020' }}
-                >
-                  Time
-                </th>
-                <th 
-                  className="text-center text-helper font-semibold py-3 px-2"
-                  style={{ backgroundColor: '#202020' }}
-                >
-                  Device
-                </th>
-                <th 
-                  className="text-center text-helper font-semibold py-3 px-2"
-                  style={{ 
-                    backgroundColor: '#202020',
-                    borderRadius: '0 10px 10px 0'
-                  }}
-                >
-                  Location
-                </th>
+      <div className="mt-2 flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020' }}>
+        <div className="flex-1 min-h-0 overflow-auto">
+          <table className="min-w-full">
+            <thead className="sticky top-0 z-10" style={{ backgroundColor: '#202020' }}>
+              <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+                <th className="px-5 py-3 align-top">Date</th>
+                <th className="px-5 py-3 align-top">Time</th>
+                <th className="px-5 py-3 align-top">Device</th>
+                <th className="px-5 py-3 align-top">Location</th>
               </tr>
             </thead>
-          </table>
-        </div>
-        <div className="overflow-y-auto custom-scrollbar pr-2" style={{ maxHeight }}>
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '25%' }} />
-            </colgroup>
             <tbody>
-              {history.map((entry, index) => (
-                <tr
-                  key={index}
-                  className="border-b hover:opacity-80 transition-opacity"
-                  style={{ borderColor: 'rgba(231, 228, 228, 0.05)' }}
-                >
-                  <td className="text-body text-center py-3 px-2">{entry.date}</td>
-                  <td className="text-body text-center py-3 px-2">{entry.time}</td>
-                  <td className="text-body text-center py-3 px-2">{entry.device}</td>
-                  <td className="text-body text-center py-3 px-2">{entry.location}</td>
+              {history.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={COL_COUNT}
+                    className="px-5 py-12 text-center text-sm"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    No login history available.
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                history.map((entry, index) => (
+                  <tr
+                    key={index}
+                    className="border-t border-[#2A2A2A] hover:opacity-80 transition-opacity"
+                  >
+                    <td className="px-5 py-4 align-top">
+                      <span className="text-sm">{entry.date}</span>
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <span className="text-sm">{entry.time}</span>
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <span className="text-sm">{entry.device}</span>
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <span className="text-sm">{entry.location}</span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -88,6 +103,3 @@ export default function LoginHistoryCard({ history }: LoginHistoryCardProps) {
     </Card>
   );
 }
-
-
-

@@ -6,9 +6,13 @@ import { Clock, CheckCircle, XmarkCircle, Trophy, Page, FireFlame, Timer, LotOfC
 import Card from '@/components/ui/Card';
 import { useCurrency } from '@/hooks/useCurrency';
 
+const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
+const SKELETON_ITEMS = 8;
+
 interface GoalsSummaryProps {
   goals: Goal[];
   compact?: boolean;
+  loading?: boolean;
 }
 
 interface SummaryItem {
@@ -17,9 +21,38 @@ interface SummaryItem {
   icon: typeof Clock;
 }
 
-export default function GoalsSummary({ goals, compact = false }: GoalsSummaryProps) {
+export default function GoalsSummary({ goals, compact = false, loading = false }: GoalsSummaryProps) {
   const { currency } = useCurrency();
   const stats = calculateSummaryStats(goals);
+
+  if (loading) {
+    return (
+      <Card
+        title="Summary"
+        className="h-full flex flex-col"
+        customHeader={
+          <div className="mb-4 flex items-center justify-between">
+            <div className="h-6 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
+            <div className="w-8 h-8 rounded-full animate-pulse" style={SKELETON_STYLE} />
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-1">
+              {Array.from({ length: SKELETON_ITEMS }).map((_, idx) => (
+                <div key={idx} className="flex items-center gap-3 px-3 py-3 rounded-[30px]" style={{ backgroundColor: '#202020' }}>
+                  <div className="w-12 h-12 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
+                  <div className="h-4 flex-1 max-w-[120px] rounded animate-pulse" style={SKELETON_STYLE} />
+                  <div className="h-4 w-16 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   const summaryItems: SummaryItem[] = [
     { label: 'Active Goals', value: stats.activeGoals, icon: Clock },
