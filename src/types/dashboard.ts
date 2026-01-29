@@ -191,6 +191,8 @@ export interface UserSettings {
   profession: string;
   defaultPage: string;
   plan: string;
+  /** null = disabled, number = enabled (percentage 0-100) */
+  incomeTaxRate: number | null;
 }
 
 export interface LoginHistoryEntry {

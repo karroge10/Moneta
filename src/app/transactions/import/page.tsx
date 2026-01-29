@@ -15,7 +15,7 @@ import RecentJobsList, { type JobStatus } from '@/components/transactions/import
 import CurrencySelector from '@/components/transactions/import/CurrencySelector';
 import ReviewDatePicker from '@/components/transactions/shared/ReviewDatePicker';
 import { TransactionUploadResponse, TransactionUploadMetadata, UploadedTransaction, type Category } from '@/types/dashboard';
-import { Upload, WarningTriangle, Reports, Language, Trash, StatUp, StatDown } from 'iconoir-react';
+import { Upload, WarningTriangle, Reports, Language, Trash, NavArrowUp, NavArrowDown } from 'iconoir-react';
 import { useCurrency } from '@/hooks/useCurrency';
 import Toast, { ToastContainer, type ToastType } from '@/components/ui/Toast';
 import { useCategories } from '@/hooks/useCategories';
@@ -61,8 +61,10 @@ export default function ImportTransactionsPage() {
   const [jobsRefreshTrigger, setJobsRefreshTrigger] = useState(0);
   const [hasShownCompletionToast, setHasShownCompletionToast] = useState(false);
   const [optimisticJob, setOptimisticJob] = useState<{ id: string; fileName: string; status: JobStatus; createdAt: string } | null>(null);
-  const [sortField, setSortField] = useState<'amount' | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  type SortColumn = 'date' | 'description' | 'amount' | 'category';
+  type SortOrder = 'asc' | 'desc';
+  const [sortColumn, setSortColumn] = useState<SortColumn>('date');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   // Get selected currency object for display
   const selectedCurrency = useMemo(() => {
@@ -95,19 +97,35 @@ export default function ImportTransactionsPage() {
     });
 
     // Apply sorting
-    if (sortField === 'amount') {
-      const sorted = [...filtered].sort((a, b) => {
-        if (sortDirection === 'asc') {
-          return a.amount - b.amount;
-        } else {
-          return b.amount - a.amount;
+    const sorted = [...filtered].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortColumn) {
+        case 'date': {
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          comparison = dateA - dateB;
+          break;
         }
-      });
-      return sorted;
-    }
-
-    return filtered;
-  }, [parsedRows, debouncedSearchQuery, categoryFilter, typeFilter, sortField, sortDirection]);
+        case 'description':
+          comparison = a.description.localeCompare(b.description);
+          break;
+        case 'amount':
+          comparison = a.amount - b.amount;
+          break;
+        case 'category': {
+          const catA = a.category || '';
+          const catB = b.category || '';
+          comparison = catA.localeCompare(catB);
+          break;
+        }
+      }
+      
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+    
+    return sorted;
+  }, [parsedRows, debouncedSearchQuery, categoryFilter, typeFilter, sortColumn, sortOrder]);
 
 
   // Reset page to 1 only when filters/search/sort change, not when rows are deleted
@@ -116,12 +134,12 @@ export default function ImportTransactionsPage() {
     searchQuery: string;
     categoryFilter: string | null;
     typeFilter: string;
-    sortField: 'amount' | null;
-    sortDirection: 'asc' | 'desc';
-  }>({ searchQuery: '', categoryFilter: null, typeFilter: '', sortField: null, sortDirection: 'asc' });
+    sortColumn: SortColumn;
+    sortOrder: SortOrder;
+  }>({ searchQuery: '', categoryFilter: null, typeFilter: '', sortColumn: 'date', sortOrder: 'desc' });
   
   useEffect(() => {
-    const currentFilterState = { searchQuery: debouncedSearchQuery, categoryFilter, typeFilter, sortField, sortDirection };
+    const currentFilterState = { searchQuery: debouncedSearchQuery, categoryFilter, typeFilter, sortColumn, sortOrder };
     const prevFilterState = prevFilterStateRef.current;
     
     // Only reset page if filters/search/sort actually changed (not just row count)
@@ -129,14 +147,14 @@ export default function ImportTransactionsPage() {
       prevFilterState.searchQuery !== currentFilterState.searchQuery ||
       prevFilterState.categoryFilter !== currentFilterState.categoryFilter ||
       prevFilterState.typeFilter !== currentFilterState.typeFilter ||
-      prevFilterState.sortField !== currentFilterState.sortField ||
-      prevFilterState.sortDirection !== currentFilterState.sortDirection
+      prevFilterState.sortColumn !== currentFilterState.sortColumn ||
+      prevFilterState.sortOrder !== currentFilterState.sortOrder
     ) {
       setReviewPage(1);
       setReviewPageInput('1');
       prevFilterStateRef.current = currentFilterState;
     }
-  }, [debouncedSearchQuery, categoryFilter, typeFilter, sortField, sortDirection]);
+  }, [debouncedSearchQuery, categoryFilter, typeFilter, sortColumn, sortOrder]);
 
   const reviewTotalPages = filteredRows.length
     ? Math.ceil(filteredRows.length / REVIEW_PAGE_SIZE)
@@ -236,8 +254,8 @@ export default function ImportTransactionsPage() {
     setIsReviewLoading(false);
     setHasShownCompletionToast(false);
     setOptimisticJob(null);
-    setSortField(null);
-    setSortDirection('asc');
+    setSortColumn('date');
+    setSortOrder('desc');
     currentProgressRef.current = 0;
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
@@ -376,8 +394,8 @@ export default function ImportTransactionsPage() {
           setSelectedCurrencyId(null);
           setCurrencySelectionTouched(false);
           setCurrencySelectionError(null);
-          setSortField(null);
-          setSortDirection('asc');
+          setSortColumn('date');
+          setSortOrder('desc');
           setUploadState('ready');
           setProgressValue(100);
           setStatusNote(null);
@@ -446,7 +464,7 @@ export default function ImportTransactionsPage() {
     // Poll every 1.5 seconds
     pollingIntervalRef.current = setInterval(poll, 1500);
     poll(); // initial call
-  }, [startTime]);
+  }, [startTime, hasShownCompletionToast]);
 
   const handleFileUpload = useCallback(
     async (file: File) => {
@@ -603,7 +621,13 @@ export default function ImportTransactionsPage() {
 
   const handleResumeJob = useCallback((jobId: string, jobStatus: JobStatus) => {
     setCurrentJobId(jobId);
-    setHasShownCompletionToast(false); // Reset toast flag when resuming a job
+    // Only reset toast flag for in-progress jobs (not completed ones)
+    // For completed jobs, we don't want to show "PDF processed!" toast when just viewing
+    if (jobStatus !== 'completed') {
+      setHasShownCompletionToast(false);
+    } else {
+      setHasShownCompletionToast(true); // Prevent toast when viewing already-completed jobs
+    }
     setOptimisticJob(null); // Clear optimistic job when resuming
     if (jobStatus === 'failed') {
       setUploadState('idle');
@@ -613,8 +637,8 @@ export default function ImportTransactionsPage() {
       setSelectedCurrencyId(null);
       setCurrencySelectionTouched(false);
       setCurrencySelectionError(null);
-      setSortField(null);
-      setSortDirection('asc');
+      setSortColumn('date');
+      setSortOrder('desc');
       setProgressValue(0);
       setProcessedCount(null);
       setTotalCount(null);
@@ -633,8 +657,8 @@ export default function ImportTransactionsPage() {
     setSelectedCurrencyId(null);
     setCurrencySelectionTouched(false);
     setCurrencySelectionError(null);
-    setSortField(null);
-    setSortDirection('asc');
+    setSortColumn('date');
+    setSortOrder('desc');
     setProgressValue(0);
     setProcessedCount(null);
     setTotalCount(null);
@@ -1103,56 +1127,94 @@ export default function ImportTransactionsPage() {
                 <table className="min-w-full table-fixed">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                      <th className="px-5 py-3 align-top w-32">Date</th>
-                      <th className="px-5 py-3 align-top w-[40%]">Description</th>
                       <th 
-                        className="px-5 py-3 align-top w-32 cursor-pointer hover:opacity-80 transition-opacity select-none group"
+                        className="px-5 py-3 align-top w-32 cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
                         onClick={() => {
-                          if (sortField === null) {
-                            // First click: enable ascending sort
-                            setSortField('amount');
-                            setSortDirection('asc');
-                          } else if (sortField === 'amount' && sortDirection === 'asc') {
-                            // Second click: switch to descending sort
-                            setSortDirection('desc');
-                          } else if (sortField === 'amount' && sortDirection === 'desc') {
-                            // Third click: disable sort (return to default)
-                            setSortField(null);
-                            setSortDirection('asc');
+                          if (sortColumn === 'date') {
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortColumn('date');
+                            setSortOrder('desc');
                           }
                         }}
                       >
-                        <div className="flex items-center gap-1.5">
-                          <span>Amount</span>
-                          <div className="flex flex-col items-center justify-center -space-y-1">
-                            {sortField === 'amount' ? (
-                              sortDirection === 'asc' ? (
-                                <StatUp width={14} height={14} strokeWidth={1.5} style={{ color: 'var(--accent-purple)' }} />
-                              ) : (
-                                <StatDown width={14} height={14} strokeWidth={1.5} style={{ color: 'var(--accent-purple)' }} />
-                              )
+                        <span className="flex items-center gap-1">
+                          Date
+                          {sortColumn === 'date' && (
+                            sortOrder === 'asc' ? (
+                              <NavArrowUp width={14} height={14} strokeWidth={2} />
                             ) : (
-                              <>
-                                <StatUp 
-                                  width={10} 
-                                  height={10} 
-                                  strokeWidth={1.5} 
-                                  className="opacity-40 group-hover:opacity-60 transition-opacity" 
-                                  style={{ color: '#9CA3AF' }} 
-                                />
-                                <StatDown 
-                                  width={10} 
-                                  height={10} 
-                                  strokeWidth={1.5} 
-                                  className="opacity-40 group-hover:opacity-60 transition-opacity" 
-                                  style={{ color: '#9CA3AF' }} 
-                                />
-                              </>
-                            )}
-                          </div>
-                        </div>
+                              <NavArrowDown width={14} height={14} strokeWidth={2} />
+                            )
+                          )}
+                        </span>
                       </th>
-                      <th className="px-5 py-3 align-top w-48">Category</th>
+                      <th 
+                        className="px-5 py-3 align-top w-[40%] cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
+                        onClick={() => {
+                          if (sortColumn === 'description') {
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortColumn('description');
+                            setSortOrder('asc');
+                          }
+                        }}
+                      >
+                        <span className="flex items-center gap-1">
+                          Description
+                          {sortColumn === 'description' && (
+                            sortOrder === 'asc' ? (
+                              <NavArrowUp width={14} height={14} strokeWidth={2} />
+                            ) : (
+                              <NavArrowDown width={14} height={14} strokeWidth={2} />
+                            )
+                          )}
+                        </span>
+                      </th>
+                      <th 
+                        className="px-5 py-3 align-top w-32 cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
+                        onClick={() => {
+                          if (sortColumn === 'amount') {
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortColumn('amount');
+                            setSortOrder('desc');
+                          }
+                        }}
+                      >
+                        <span className="flex items-center gap-1">
+                          Amount
+                          {sortColumn === 'amount' && (
+                            sortOrder === 'asc' ? (
+                              <NavArrowUp width={14} height={14} strokeWidth={2} />
+                            ) : (
+                              <NavArrowDown width={14} height={14} strokeWidth={2} />
+                            )
+                          )}
+                        </span>
+                      </th>
+                      <th 
+                        className="px-5 py-3 align-top w-48 cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
+                        onClick={() => {
+                          if (sortColumn === 'category') {
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortColumn('category');
+                            setSortOrder('asc');
+                          }
+                        }}
+                      >
+                        <span className="flex items-center gap-1">
+                          Category
+                          {sortColumn === 'category' && (
+                            sortOrder === 'asc' ? (
+                              <NavArrowUp width={14} height={14} strokeWidth={2} />
+                            ) : (
+                              <NavArrowDown width={14} height={14} strokeWidth={2} />
+                            )
+                          )}
+                        </span>
+                      </th>
                       <th className="px-5 py-3 align-top w-16"></th>
                     </tr>
                   </thead>

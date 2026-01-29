@@ -76,28 +76,9 @@ const CustomTooltip = ({ active, payload, currencySymbol = '$' }: any) => {
     }
     
     return (
-      <div style={{
-        backgroundColor: 'var(--bg-surface)',
-        border: 'none',
-        borderRadius: '8px',
-        padding: '8px 12px',
-        color: 'var(--text-primary)',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
-      }}>
-        <div style={{ 
-          fontSize: '12px', 
-          color: 'rgba(231, 228, 228, 0.7)',
-          marginBottom: '4px'
-        }}>
-          {displayDate}
-        </div>
-        <div style={{ 
-          fontSize: '14px', 
-          fontWeight: 600,
-          color: 'var(--text-primary)'
-        }}>
-          {currencySymbol}{formatNumber(value)}
-        </div>
+      <div className="tooltip-surface">
+        <div className="tooltip-label">{displayDate}</div>
+        <div className="tooltip-value">{currencySymbol}{formatNumber(value)}</div>
       </div>
     );
   }
@@ -154,7 +135,7 @@ export default function LineChart({ data, noPadding = false, currencySymbol = '$
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart 
           data={data} 
-          margin={noPadding ? { top: 10, right: 0, left: 0, bottom: 0 } : { top: 10, right: 10, left: 10, bottom: 10 }}
+          margin={{ top: 10, right: 16, left: 16, bottom: 0 }}
         >
         <defs>
           <linearGradient id={`colorGradient-${noPadding ? 'no-pad' : 'default'}`} x1="0" y1="0" x2="0" y2="1">
@@ -164,10 +145,11 @@ export default function LineChart({ data, noPadding = false, currencySymbol = '$
         </defs>
         <XAxis 
           dataKey="date" 
-          stroke="rgba(231, 228, 228, 0.7)"
+          axisLine={{ stroke: 'rgba(231, 228, 228, 0.3)' }}
           tickLine={{ stroke: 'rgba(231, 228, 228, 0.3)' }}
           tick={<CustomXAxisTick />}
-          height={40}
+          height={54}
+          tickMargin={16}
           interval={interval}
         />
         <YAxis 

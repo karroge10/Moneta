@@ -16,7 +16,7 @@ export default function TrendIndicator({ value, label, isExpense = false }: Tren
     : (value >= 0 ? StatUp : StatDown); // For income: positive = good (up arrow green), negative = bad (down arrow red)
   
   return (
-    <div className="flex items-center gap-2 mt-2">
+    <div className="flex items-center gap-2">
       <Icon width={20} height={20} strokeWidth={1.5} style={{ color }} />
       <span>
         <span style={{ color, fontWeight: 600 }}>{formatPercentage(value, true)}</span>

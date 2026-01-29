@@ -116,6 +116,28 @@ body.sidebar-collapsed {
 /* Badges */
 .badge-glow { background: var(--accent-purple-glow); border-radius: 9999px; }
 
+/* Tooltips - Unified design system for all tooltip instances */
+.tooltip-surface {
+  background: var(--bg-surface);
+  border: 1px solid rgba(231, 228, 228, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  color: var(--text-primary);
+}
+
+.tooltip-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.tooltip-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
 /* Scrollbar utilities */
 .scrollbar-hide {
   -ms-overflow-style: none;

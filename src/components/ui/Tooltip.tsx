@@ -103,17 +103,14 @@ export default function Tooltip({ content, children, className = '' }: TooltipPr
       {isVisible && content && (
         <div
           ref={tooltipRef}
-          className="fixed z-50 px-3 py-2 rounded-lg shadow-lg max-w-xs wrap-break-word select-text"
+          className="tooltip-surface fixed z-50 max-w-xs wrap-break-word select-text"
           onMouseEnter={handleTooltipMouseEnter}
           onMouseLeave={handleTooltipMouseLeave}
           style={{
             top: position?.top ?? -9999,
             left: position?.left ?? -9999,
-            backgroundColor: '#282828',
-            color: '#E7E4E4',
             fontSize: '14px',
             lineHeight: '1.4',
-            border: '1px solid #3a3a3a',
             cursor: 'text',
           }}
         >
