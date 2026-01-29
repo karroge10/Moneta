@@ -15,13 +15,35 @@ interface AverageExpense {
   percentage?: number;
 }
 
+const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
+const SKELETON_ROWS = 4;
+
 interface AverageExpensesCardProps {
   expenses: AverageExpense[];
+  loading?: boolean;
 }
 
-export default function AverageExpensesCard({ expenses }: AverageExpensesCardProps) {
+export default function AverageExpensesCard({ expenses, loading = false }: AverageExpensesCardProps) {
   const { currency } = useCurrency();
   const isEmpty = expenses.length === 0;
+
+  if (loading) {
+    return (
+      <Card title="Average Expenses">
+        <div className="overflow-y-auto custom-scrollbar mt-2 pr-2" style={{ maxHeight: '300px' }}>
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
+                <div className="h-4 flex-1 max-w-[120px] rounded animate-pulse" style={SKELETON_STYLE} />
+                <div className="h-4 w-16 rounded animate-pulse shrink-0" style={SKELETON_STYLE} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card 

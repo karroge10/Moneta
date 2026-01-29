@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 
 /**
  * GET /api/user/settings
- * Get current user's settings
+ * Get current user's settings and option lists for language/currency
  */
 export async function GET() {
   try {
@@ -25,13 +26,34 @@ export async function GET() {
       );
     }
 
-    // incomeTaxRate is read via raw query because Prisma client may not include it if not regenerated after schema change
-    const taxRateRows = await db.$queryRaw<[{ incomeTaxRate: number | null }]>`
-      SELECT "incomeTaxRate" FROM "User" WHERE id = ${user.id}
-    `;
+    const [taxRateRows, languages, currencies, clerkUser] = await Promise.all([
+      db.$queryRaw<[{ incomeTaxRate: number | null }]>`
+        SELECT "incomeTaxRate" FROM "User" WHERE id = ${user.id}
+      `,
+      db.language.findMany({ orderBy: { name: 'asc' } }),
+      db.currency.findMany({ orderBy: { name: 'asc' } }),
+      currentUser(),
+    ]);
     const incomeTaxRate = taxRateRows[0]?.incomeTaxRate ?? null;
+    const email = clerkUser?.primaryEmailAddress?.emailAddress ?? null;
+
+    const u = userWithRelations as typeof userWithRelations & {
+      dateOfBirth?: Date | null;
+      country?: string | null;
+      city?: string | null;
+      profession?: string | null;
+      dataSharingEnabled?: boolean | null;
+    };
 
     return NextResponse.json({
+      firstName: userWithRelations.firstName,
+      lastName: userWithRelations.lastName,
+      userName: userWithRelations.userName,
+      email,
+      dateOfBirth: u.dateOfBirth ? u.dateOfBirth.toISOString().slice(0, 10) : null,
+      country: u.country ?? null,
+      city: u.city ?? null,
+      profession: u.profession ?? null,
       language: userWithRelations.language
         ? {
             id: userWithRelations.language.id,
@@ -50,9 +72,15 @@ export async function GET() {
       defaultPage: userWithRelations.defaultPage,
       plan: userWithRelations.plan,
       incomeTaxRate,
+      dataSharingEnabled: u.dataSharingEnabled ?? true,
+      languages: languages.map((l) => ({ id: l.id, name: l.name, alias: l.alias })),
+      currencies: currencies.map((c) => ({ id: c.id, name: c.name, symbol: c.symbol, alias: c.alias })),
     });
   } catch (error) {
     console.error('Error fetching user settings:', error);
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     return NextResponse.json(
       { error: 'Failed to fetch user settings' },
       { status: 500 }
@@ -63,7 +91,7 @@ export async function GET() {
 /**
  * PATCH /api/user/settings
  * Update current user's settings
- * Body: { languageId?: number, currencyId?: number, defaultPage?: string, incomeTaxRate?: number | null }
+ * Body: { firstName?, lastName?, userName?, dateOfBirth?, country?, city?, languageId?, currencyId?, defaultPage?, incomeTaxRate?, dataSharingEnabled? }
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -71,13 +99,65 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
 
     const updateData: {
+      firstName?: string | null;
+      lastName?: string | null;
+      userName?: string | null;
+      dateOfBirth?: Date | null;
+      country?: string | null;
+      city?: string | null;
+      profession?: string | null;
       languageId?: number | null;
       currencyId?: number | null;
       defaultPage?: string;
       incomeTaxRate?: number | null;
+      dataSharingEnabled?: boolean | null;
     } = {};
 
-    // Validate and set languageId
+    if (body.firstName !== undefined) {
+      updateData.firstName = body.firstName === '' ? null : String(body.firstName);
+    }
+    if (body.lastName !== undefined) {
+      updateData.lastName = body.lastName === '' ? null : String(body.lastName);
+    }
+    if (body.userName !== undefined) {
+      const userName = body.userName === '' ? null : String(body.userName).trim();
+      if (userName !== null && userName.length > 0) {
+        const existing = await db.user.findFirst({
+          where: { userName, id: { not: user.id } },
+        });
+        if (existing) {
+          return NextResponse.json(
+            { error: 'Username is already taken' },
+            { status: 400 }
+          );
+        }
+      }
+      updateData.userName = userName;
+    }
+    if (body.dateOfBirth !== undefined) {
+      if (body.dateOfBirth === null || body.dateOfBirth === '') {
+        updateData.dateOfBirth = null;
+      } else {
+        const d = new Date(body.dateOfBirth);
+        if (Number.isNaN(d.getTime())) {
+          return NextResponse.json(
+            { error: 'Invalid date of birth' },
+            { status: 400 }
+          );
+        }
+        updateData.dateOfBirth = d;
+      }
+    }
+    if (body.country !== undefined) {
+      updateData.country = body.country === '' ? null : String(body.country);
+    }
+    if (body.city !== undefined) {
+      updateData.city = body.city === '' ? null : String(body.city);
+    }
+    if (body.profession !== undefined) {
+      updateData.profession = body.profession === '' ? null : String(body.profession);
+    }
+
     if (body.languageId !== undefined) {
       if (body.languageId === null) {
         updateData.languageId = null;
@@ -95,7 +175,6 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    // Validate and set currencyId
     if (body.currencyId !== undefined) {
       if (body.currencyId === null) {
         updateData.currencyId = null;
@@ -113,12 +192,10 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    // Set defaultPage if provided
     if (body.defaultPage !== undefined) {
       updateData.defaultPage = body.defaultPage;
     }
 
-    // Validate and set incomeTaxRate (null = disabled, 0-100 = enabled)
     if (body.incomeTaxRate !== undefined) {
       if (body.incomeTaxRate === null) {
         updateData.incomeTaxRate = null;
@@ -134,18 +211,14 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    // incomeTaxRate is updated via raw SQL so the API works even if Prisma client was not regenerated after schema change
-    const { incomeTaxRate: taxRate, ...restUpdateData } = updateData;
-    if (taxRate !== undefined) {
-      await db.$executeRaw`
-        UPDATE "User" SET "incomeTaxRate" = ${taxRate} WHERE id = ${user.id}
-      `;
+    if (body.dataSharingEnabled !== undefined) {
+      updateData.dataSharingEnabled = Boolean(body.dataSharingEnabled);
     }
 
-    if (Object.keys(restUpdateData).length > 0) {
+    if (Object.keys(updateData).length > 0) {
       await db.user.update({
         where: { id: user.id },
-        data: restUpdateData,
+        data: updateData,
         include: { language: true, currency: true },
       });
     }
@@ -159,9 +232,21 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    const u = updatedUser as typeof updatedUser & {
+      dateOfBirth?: Date | null;
+      dataSharingEnabled?: boolean | null;
+    };
+
     return NextResponse.json({
       message: 'Settings updated successfully',
       settings: {
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        userName: updatedUser.userName,
+        dateOfBirth: u.dateOfBirth ? u.dateOfBirth.toISOString().slice(0, 10) : null,
+        country: (updatedUser as { country?: string | null }).country ?? null,
+        city: (updatedUser as { city?: string | null }).city ?? null,
+        profession: (updatedUser as { profession?: string | null }).profession ?? null,
         language: updatedUser.language
           ? {
               id: updatedUser.language.id,
@@ -179,7 +264,8 @@ export async function PATCH(request: NextRequest) {
           : null,
         defaultPage: updatedUser.defaultPage,
         plan: updatedUser.plan,
-        incomeTaxRate: taxRate !== undefined ? taxRate : (updatedUser as { incomeTaxRate?: number | null }).incomeTaxRate ?? null,
+        incomeTaxRate: (updatedUser as { incomeTaxRate?: number | null }).incomeTaxRate ?? null,
+        dataSharingEnabled: u.dataSharingEnabled ?? true,
       },
     });
   } catch (error) {
