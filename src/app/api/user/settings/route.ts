@@ -25,6 +25,12 @@ export async function GET() {
       );
     }
 
+    // incomeTaxRate is read via raw query because Prisma client may not include it if not regenerated after schema change
+    const taxRateRows = await db.$queryRaw<[{ incomeTaxRate: number | null }]>`
+      SELECT "incomeTaxRate" FROM "User" WHERE id = ${user.id}
+    `;
+    const incomeTaxRate = taxRateRows[0]?.incomeTaxRate ?? null;
+
     return NextResponse.json({
       language: userWithRelations.language
         ? {
@@ -43,6 +49,7 @@ export async function GET() {
         : null,
       defaultPage: userWithRelations.defaultPage,
       plan: userWithRelations.plan,
+      incomeTaxRate,
     });
   } catch (error) {
     console.error('Error fetching user settings:', error);
@@ -56,7 +63,7 @@ export async function GET() {
 /**
  * PATCH /api/user/settings
  * Update current user's settings
- * Body: { languageId?: number, currencyId?: number, defaultPage?: string }
+ * Body: { languageId?: number, currencyId?: number, defaultPage?: string, incomeTaxRate?: number | null }
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -67,6 +74,7 @@ export async function PATCH(request: NextRequest) {
       languageId?: number | null;
       currencyId?: number | null;
       defaultPage?: string;
+      incomeTaxRate?: number | null;
     } = {};
 
     // Validate and set languageId
@@ -110,15 +118,46 @@ export async function PATCH(request: NextRequest) {
       updateData.defaultPage = body.defaultPage;
     }
 
-    // Update user
-    const updatedUser = await db.user.update({
+    // Validate and set incomeTaxRate (null = disabled, 0-100 = enabled)
+    if (body.incomeTaxRate !== undefined) {
+      if (body.incomeTaxRate === null) {
+        updateData.incomeTaxRate = null;
+      } else {
+        const rate = Number(body.incomeTaxRate);
+        if (Number.isNaN(rate) || rate < 0 || rate > 100) {
+          return NextResponse.json(
+            { error: 'Income tax rate must be between 0 and 100' },
+            { status: 400 }
+          );
+        }
+        updateData.incomeTaxRate = rate;
+      }
+    }
+
+    // incomeTaxRate is updated via raw SQL so the API works even if Prisma client was not regenerated after schema change
+    const { incomeTaxRate: taxRate, ...restUpdateData } = updateData;
+    if (taxRate !== undefined) {
+      await db.$executeRaw`
+        UPDATE "User" SET "incomeTaxRate" = ${taxRate} WHERE id = ${user.id}
+      `;
+    }
+
+    if (Object.keys(restUpdateData).length > 0) {
+      await db.user.update({
+        where: { id: user.id },
+        data: restUpdateData,
+        include: { language: true, currency: true },
+      });
+    }
+
+    const updatedUser = await db.user.findUnique({
       where: { id: user.id },
-      data: updateData,
-      include: {
-        language: true,
-        currency: true,
-      },
+      include: { language: true, currency: true },
     });
+
+    if (!updatedUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
 
     return NextResponse.json({
       message: 'Settings updated successfully',
@@ -140,14 +179,16 @@ export async function PATCH(request: NextRequest) {
           : null,
         defaultPage: updatedUser.defaultPage,
         plan: updatedUser.plan,
+        incomeTaxRate: taxRate !== undefined ? taxRate : (updatedUser as { incomeTaxRate?: number | null }).incomeTaxRate ?? null,
       },
     });
   } catch (error) {
     console.error('Error updating user settings:', error);
-    return NextResponse.json(
-      { error: 'Failed to update user settings' },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error && process.env.NODE_ENV === 'development'
+        ? error.message
+        : 'Failed to update user settings';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

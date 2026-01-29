@@ -22,6 +22,7 @@ model User {
   currencyId   Int?
   defaultPage  String?
   plan         String? @default("basic") // basic, premium, ultimate
+  incomeTaxRate Float? // Percentage (e.g., 25.0 for 25%). null = disabled
 
   // Relations
   language    Language?    @relation(fields: [languageId], references: [id])

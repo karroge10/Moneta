@@ -99,7 +99,7 @@ export default function NotificationsDropdown({
             {displayedNotifications.map((notification) => (
               <Link
                 key={notification.id}
-                href="/updates"
+                href="/notifications"
                 onClick={async (e) => {
                   e.preventDefault();
                   await onNotificationClick?.(notification.id);
@@ -147,7 +147,7 @@ export default function NotificationsDropdown({
       {/* Footer with View All button */}
       <div className="px-4 py-2 border-t" style={{ borderColor: 'rgba(231, 228, 228, 0.1)' }}>
         <Link
-          href="/updates"
+          href="/notifications"
           onClick={onClose}
           className="block w-full text-center px-3 py-1.5 rounded-lg transition-opacity cursor-pointer hover:opacity-80 text-sm font-semibold"
           style={{ 
