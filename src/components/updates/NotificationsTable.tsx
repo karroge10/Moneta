@@ -1,148 +1,85 @@
 'use client';
 
-import Card from '@/components/ui/Card';
 import { NotificationEntry } from '@/types/dashboard';
-import { Trash, InfoCircle } from 'iconoir-react';
 
 interface NotificationsTableProps {
   notifications: NotificationEntry[];
-  title: string;
-  onDelete?: (id: string) => void;
-  showDeleteIcon?: boolean;
-  showInfoText?: boolean;
-  useFullHeight?: boolean;
+  isLoading?: boolean;
 }
 
-export default function NotificationsTable({ 
-  notifications, 
-  title, 
-  onDelete, 
-  showDeleteIcon = false,
-  showInfoText = false,
-  useFullHeight = false
-}: NotificationsTableProps) {
-  // Calculate max height to show exactly 4 rows
-  // Each row: ~48px (py-3 = 12px top + 12px bottom + text ~24px)
-  // 4 rows: 4 * 48px = 192px
-  // For full height tables (when parent has h-full), use flex-1 instead
-  const maxHeight = useFullHeight ? undefined : '192px';
-  
-  const handleDelete = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete?.(id);
-  };
+const COL_COUNT = 4;
 
+export default function NotificationsTable({
+  notifications,
+  isLoading = false,
+}: NotificationsTableProps) {
   return (
-    <Card title={title} showActions={false} className="flex flex-col h-full">
-      <div className="mt-2 flex flex-col flex-1 min-h-0">
-        <div className="overflow-hidden">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: showDeleteIcon ? '20%' : '25%' }} />
-              <col style={{ width: showDeleteIcon ? '20%' : '25%' }} />
-              <col style={{ width: showDeleteIcon ? '20%' : '25%' }} />
-              <col style={{ width: showDeleteIcon ? '30%' : '25%' }} />
-              {showDeleteIcon && <col style={{ width: '10%' }} />}
-            </colgroup>
-            <thead>
-              <tr style={{ backgroundColor: '#202020' }}>
-                <th 
-                  className="text-center text-helper font-semibold py-3 px-2"
-                  style={{ 
-                    backgroundColor: '#202020',
-                    borderRadius: '10px 0 0 10px'
-                  }}
+    <div
+      className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden"
+      style={{ backgroundColor: '#202020' }}
+    >
+      <div className="flex-1 min-h-0 overflow-auto">
+        <table className="min-w-full">
+          <thead className="sticky top-0 z-10" style={{ backgroundColor: '#202020' }}>
+            <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+              <th className="px-5 py-3 align-top">Date</th>
+              <th className="px-5 py-3 align-top">Time</th>
+              <th className="px-5 py-3 align-top">Type</th>
+              <th className="px-5 py-3 align-top">Text</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              Array.from({ length: 8 }).map((_, index) => (
+                <tr key={`skeleton-${index}`} className="border-t border-[#2A2A2A]">
+                  <td className="px-5 py-4">
+                    <div className="h-4 w-20 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="h-4 w-16 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="h-4 w-24 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="h-4 w-48 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
+                  </td>
+                </tr>
+              ))
+            ) : notifications.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={COL_COUNT}
+                  className="px-5 py-12 text-center text-sm"
+                  style={{ color: 'var(--text-secondary)' }}
                 >
-                  Date
-                </th>
-                <th 
-                  className="text-center text-helper font-semibold py-3 px-2"
-                  style={{ backgroundColor: '#202020' }}
-                >
-                  Time
-                </th>
-                <th 
-                  className="text-center text-helper font-semibold py-3 px-2"
-                  style={{ backgroundColor: '#202020' }}
-                >
-                  Type
-                </th>
-                <th 
-                  className="text-center text-helper font-semibold py-3 px-2"
-                  style={{ 
-                    backgroundColor: '#202020',
-                    borderRadius: showDeleteIcon ? '0' : '0 10px 10px 0'
-                  }}
-                >
-                  Text
-                </th>
-                {showDeleteIcon && (
-                  <th 
-                    className="text-center text-helper font-semibold py-3 px-2"
-                    style={{ 
-                      backgroundColor: '#202020',
-                      borderRadius: '0 10px 10px 0'
-                    }}
-                  >
-                  </th>
-                )}
+                  No notifications. They are automatically removed after 30 days.
+                </td>
               </tr>
-            </thead>
-          </table>
-        </div>
-        <div 
-          className={`overflow-y-auto custom-scrollbar pr-2 ${useFullHeight ? 'flex-1' : ''}`}
-          style={maxHeight ? { maxHeight } : (useFullHeight ? { flex: 1, minHeight: 0 } : {})}
-        >
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col style={{ width: showDeleteIcon ? '20%' : '25%' }} />
-              <col style={{ width: showDeleteIcon ? '20%' : '25%' }} />
-              <col style={{ width: showDeleteIcon ? '20%' : '25%' }} />
-              <col style={{ width: showDeleteIcon ? '30%' : '25%' }} />
-              {showDeleteIcon && <col style={{ width: '10%' }} />}
-            </colgroup>
-            <tbody>
-              {notifications.map((notification) => (
+            ) : (
+              notifications.map((notification) => (
                 <tr
                   key={notification.id}
-                  className="border-b hover:opacity-80 transition-opacity"
-                  style={{ borderColor: 'rgba(231, 228, 228, 0.05)' }}
+                  className="border-t border-[#2A2A2A] hover:opacity-80 transition-opacity"
                 >
-                  <td className="text-body text-center py-3 px-2">{notification.date}</td>
-                  <td className="text-body text-center py-3 px-2">{notification.time}</td>
-                  <td className="text-body text-center py-3 px-2">{notification.type}</td>
-                  <td className="text-body text-center py-3 px-2">{notification.text}</td>
-                  {showDeleteIcon && (
-                    <td className="text-center py-3 px-2">
-                      <button
-                        onClick={(e) => handleDelete(notification.id, e)}
-                        className="hover:opacity-70 transition-opacity cursor-pointer"
-                        aria-label="Delete notification"
-                      >
-                        <Trash width={16} height={16} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />
-                      </button>
-                    </td>
-                  )}
+                  <td className="px-5 py-4 align-top">
+                    <span className="text-sm">{notification.date}</span>
+                  </td>
+                  <td className="px-5 py-4 align-top">
+                    <span className="text-sm">{notification.time}</span>
+                  </td>
+                  <td className="px-5 py-4 align-top">
+                    <span className="text-sm">{notification.type}</span>
+                  </td>
+                  <td className="px-5 py-4 align-top">
+                    <span className="text-sm">{notification.text}</span>
+                  </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {showInfoText && (
-          <div className="flex items-center gap-2 px-4 pt-4 pb-2">
-            <InfoCircle 
-              width={16} 
-              height={16} 
-              strokeWidth={1.5} 
-              style={{ color: 'var(--accent-purple)' }}
-            />
-            <span className="text-body" style={{ color: '#B9B9B9' }}>
-              Deleted notifications are stored in the system for 30 days before being erased permanently.
-            </span>
-          </div>
-        )}
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
-    </Card>
+    </div>
   );
 }

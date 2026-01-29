@@ -12,6 +12,7 @@ import DemographicComparisonCard from '@/components/dashboard/DemographicCompari
 import InsightCard from '@/components/dashboard/InsightCard';
 import AverageMonthlyCard from '@/components/dashboard/AverageMonthlyCard';
 import AverageDailyCard from '@/components/dashboard/AverageDailyCard';
+import ValueCard from '@/components/dashboard/ValueCard';
 import CardSkeleton from '@/components/dashboard/CardSkeleton';
 import TrendIndicator from '@/components/ui/TrendIndicator';
 import TransactionModal from '@/components/transactions/TransactionModal';
@@ -422,14 +423,13 @@ export default function ExpensesPage() {
           linkHref="/transactions"
         />
         <div className="grid grid-cols-2 gap-4">
-          <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3">
-            <h2 className="text-card-header">Total</h2>
-            <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+          <ValueCard
+            title="Total"
+            bottomRow={<TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />}
+          >
             <span className="text-card-currency shrink-0">{currency.symbol}</span>
-              <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
-            </div>
-            <TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />
-          </div>
+            <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
+          </ValueCard>
           {(timePeriod === 'This Month' || timePeriod === 'Last Month') && averageDaily !== null ? (
             <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} isExpense={true} />
           ) : (
@@ -471,14 +471,13 @@ export default function ExpensesPage() {
           link={update.link}
           linkHref="/transactions"
         />
-        <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3">
-          <h2 className="text-card-header">Total</h2>
-          <div className="flex items-baseline gap-2 flex-1 min-w-0 flex-wrap">
-            <span className="text-card-currency shrink-0">{currency.symbol}</span>
-            <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
-          </div>
-          <TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />
-        </div>
+        <ValueCard
+          title="Total"
+          bottomRow={<TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />}
+        >
+          <span className="text-card-currency shrink-0">{currency.symbol}</span>
+          <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
+        </ValueCard>
         {(timePeriod === 'This Month' || timePeriod === 'Last Month') && averageDaily !== null ? (
           <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} isExpense={true} />
         ) : (
@@ -525,15 +524,13 @@ export default function ExpensesPage() {
               />
             </div>
             <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-              <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 h-full">
-                <h2 className="text-card-header">Total</h2>
-                <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-            <span className="text-card-currency shrink-0">{currency.symbol}</span>
-                  <span className="text-card-currency shrink-0">{currency.symbol}</span>
-                  <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
-                </div>
-                <TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />
-              </div>
+              <ValueCard
+                title="Total"
+                bottomRow={<TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />}
+              >
+                <span className="text-card-currency shrink-0">{currency.symbol}</span>
+                <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
+              </ValueCard>
             </div>
             <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
               {(timePeriod === 'This Month' || timePeriod === 'Last Month') && averageDaily !== null ? (

@@ -69,42 +69,44 @@ export default async function RootLayout({
         <body
           className={`${sen.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          {isUnauthorizedPage ? (
-            // Always render unauthorized page without sidebar (signed out context)
-            <SignedOut>
-              {children}
-            </SignedOut>
-          ) : isLandingPage ? (
-            // Always render landing page without sidebar (but allow signed in state)
-            <>
-              <SignedIn>
-                {children}
-              </SignedIn>
+          {/* CurrencyProvider wraps everything to ensure useCurrency is always available */}
+          <CurrencyProvider>
+            {isUnauthorizedPage ? (
+              // Always render unauthorized page without sidebar (signed out context)
               <SignedOut>
                 {children}
               </SignedOut>
-            </>
-          ) : (
-            // Regular pages with sidebar for signed in users
-            // Wrap CurrencyProvider outside SignedIn/SignedOut to avoid hydration issues
-            <CurrencyProvider>
-              <SignedIn>
-                <div style={{ display: "flex", minHeight: "100vh" }}>
-                  <div className="hidden md:block">
-                    <Sidebar />
+            ) : isLandingPage ? (
+              // Always render landing page without sidebar (but allow signed in state)
+              <>
+                <SignedIn>
+                  {children}
+                </SignedIn>
+                <SignedOut>
+                  {children}
+                </SignedOut>
+              </>
+            ) : (
+              // Regular pages with sidebar for signed in users
+              <>
+                <SignedIn>
+                  <div style={{ display: "flex", minHeight: "100vh" }}>
+                    <div className="hidden md:block">
+                      <Sidebar />
+                    </div>
+                    <div 
+                      className="flex-1 transition-all duration-200 ease-in-out md:ml-[var(--sidebar-width)]"
+                    >
+                      {children}
+                    </div>
                   </div>
-                  <div 
-                    className="flex-1 transition-all duration-200 ease-in-out md:ml-[var(--sidebar-width)]"
-                  >
-                    {children}
-                  </div>
-                </div>
-              </SignedIn>
-              <SignedOut>
-                {children}
-              </SignedOut>
-            </CurrencyProvider>
-          )}
+                </SignedIn>
+                <SignedOut>
+                  {children}
+                </SignedOut>
+              </>
+            )}
+          </CurrencyProvider>
         </body>
       </html>
     </ClerkProvider>
