@@ -17,7 +17,7 @@ export default function UpdateCard({ date, message, highlight, link, linkHref }:
     <Card 
       title="Update"
       customHeader={
-        <Link href="/updates" className="mb-4 flex items-center justify-between hover-text-purple transition-colors cursor-pointer">
+        <Link href="/notifications" className="mb-4 flex items-center justify-between hover-text-purple transition-colors cursor-pointer">
           <div className="flex items-center gap-3">
             <PulsingDot />
             <h2 className="text-card-header">Update</h2>

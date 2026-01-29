@@ -82,6 +82,10 @@ export async function GET(request: NextRequest) {
     const month = searchParams.get('month'); // Format: 'YYYY-MM'
     const timePeriod = searchParams.get('timePeriod') || 'All Time';
     
+    // Sorting
+    const sortBy = searchParams.get('sortBy') || 'date';
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
+    
     // Build where clause
     const where: Record<string, unknown> = {
       userId: user.id,
@@ -151,6 +155,30 @@ export async function GET(request: NextRequest) {
     const total = await db.transaction.count({ where });
     const totalPages = Math.ceil(total / pageSize);
     
+    // Build orderBy clause based on sort parameters
+    type OrderDirection = 'asc' | 'desc';
+    const direction: OrderDirection = sortOrder === 'asc' ? 'asc' : 'desc';
+    
+    let orderBy: Record<string, unknown>;
+    switch (sortBy) {
+      case 'description':
+        orderBy = { description: direction };
+        break;
+      case 'type':
+        orderBy = { type: direction };
+        break;
+      case 'amount':
+        orderBy = { amount: direction };
+        break;
+      case 'category':
+        orderBy = { category: { name: direction } };
+        break;
+      case 'date':
+      default:
+        orderBy = { date: direction };
+        break;
+    }
+    
     // Fetch paginated transactions - all transactions are included (no filtering)
     const filteredTransactions = await db.transaction.findMany({
       where,
@@ -160,9 +188,7 @@ export async function GET(request: NextRequest) {
         category: true,
         currency: true,
       },
-      orderBy: {
-        date: 'desc',
-      },
+      orderBy,
     });
 
     const transactionsWithConverted = await Promise.all(

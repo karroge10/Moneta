@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import PersonalInformationCard from '@/components/settings/PersonalInformationCard';
@@ -8,6 +8,7 @@ import LoginHistoryCard from '@/components/settings/LoginHistoryCard';
 import SecurityDetailsCard from '@/components/settings/SecurityDetailsCard';
 import FinancialMilestonesCard from '@/components/settings/FinancialMilestonesCard';
 import DataSharingCard from '@/components/settings/DataSharingCard';
+import TaxSettingsCard from '@/components/settings/TaxSettingsCard';
 import { mockUserSettings, mockLoginHistory, mockAchievements } from '@/lib/mockData';
 import { UserSettings } from '@/types/dashboard';
 import { TimePeriod } from '@/types/dashboard';
@@ -15,6 +16,20 @@ import { TimePeriod } from '@/types/dashboard';
 export default function SettingsPage() {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('All Time');
   const [userSettings, setUserSettings] = useState<UserSettings>(mockUserSettings);
+  const [incomeTaxRate, setIncomeTaxRate] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/user/settings')
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((data) => {
+        if (data.incomeTaxRate != null) {
+          setIncomeTaxRate(Number(data.incomeTaxRate));
+        } else {
+          setIncomeTaxRate(null);
+        }
+      })
+      .catch(() => setIncomeTaxRate(null));
+  }, []);
 
   const handleEdit = (field: string) => {
     console.log('Edit field:', field);
@@ -41,6 +56,25 @@ export default function SettingsPage() {
   const handleDataSharingToggle = (enabled: boolean) => {
     console.log('Data sharing:', enabled);
     // TODO: Implement data sharing toggle
+  };
+
+  const handleTaxUpdate = async (newRate: number | null) => {
+    const previous = incomeTaxRate;
+    setIncomeTaxRate(newRate);
+    try {
+      const res = await fetch('/api/user/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ incomeTaxRate: newRate }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to update tax settings');
+      }
+    } catch (err) {
+      setIncomeTaxRate(previous);
+      console.error('Tax settings update failed:', err);
+    }
   };
 
   return (
@@ -83,6 +117,7 @@ export default function SettingsPage() {
         isEnabled={true}
         onToggle={handleDataSharingToggle}
       />
+      <TaxSettingsCard incomeTaxRate={incomeTaxRate} onUpdate={handleTaxUpdate} />
     </div>
 
     {/* Tablet: two-column split */}
@@ -108,6 +143,7 @@ export default function SettingsPage() {
           isEnabled={true}
           onToggle={handleDataSharingToggle}
         />
+        <TaxSettingsCard incomeTaxRate={incomeTaxRate} onUpdate={handleTaxUpdate} />
       </div>
     </div>
 
@@ -134,6 +170,7 @@ export default function SettingsPage() {
           isEnabled={true}
           onToggle={handleDataSharingToggle}
         />
+        <TaxSettingsCard incomeTaxRate={incomeTaxRate} onUpdate={handleTaxUpdate} />
       </div>
     </div>
     </main>

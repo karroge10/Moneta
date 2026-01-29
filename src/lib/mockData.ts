@@ -1169,6 +1169,7 @@ export const mockUserSettings: UserSettings = {
   profession: 'Frontend Developer',
   defaultPage: 'Dashboard',
   plan: 'basic',
+  incomeTaxRate: null,
 };
 
 export const mockLoginHistory: LoginHistoryEntry[] = [

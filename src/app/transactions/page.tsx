@@ -12,7 +12,7 @@ import TypeFilter from '@/components/transactions/shared/TypeFilter';
 import MonthFilter from '@/components/transactions/shared/MonthFilter';
 import Card from '@/components/ui/Card';
 import { Transaction, Category } from '@/types/dashboard';
-import { Upload, Reports } from 'iconoir-react';
+import { Upload, Reports, NavArrowUp, NavArrowDown } from 'iconoir-react';
 import { getIcon } from '@/lib/iconMapping';
 import { formatNumber } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -51,6 +51,12 @@ export default function TransactionsPage() {
   const [typeFilter, setTypeFilter] = useState<string>(''); // 'expense' | 'income' | ''
   const [monthFilter, setMonthFilter] = useState<string>(''); // 'this_month' | 'this_quarter' | 'this_year' | month string | ''
   
+  // Sorting
+  type SortColumn = 'date' | 'description' | 'type' | 'amount' | 'category';
+  type SortOrder = 'asc' | 'desc';
+  const [sortColumn, setSortColumn] = useState<SortColumn>('date');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  
   // Modals
   const [isCategoryStatsOpen, setIsCategoryStatsOpen] = useState(false);
 
@@ -73,6 +79,8 @@ export default function TransactionsPage() {
         page: page.toString(),
         pageSize: pageSize.toString(),
         timePeriod: 'All Time', // Always use All Time, filter by month/time period instead
+        sortBy: sortColumn,
+        sortOrder: sortOrder,
       });
       
       if (debouncedSearchQuery) params.set('search', debouncedSearchQuery);
@@ -113,7 +121,7 @@ export default function TransactionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearchQuery, categoryFilter, typeFilter, monthFilter, pageSize]);
+  }, [debouncedSearchQuery, categoryFilter, typeFilter, monthFilter, pageSize, sortColumn, sortOrder]);
 
   // Fetch categories
   useEffect(() => {
@@ -315,6 +323,29 @@ export default function TransactionsPage() {
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
 
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      // Toggle order if same column
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New column, default to desc for date/amount, asc for text columns
+      setSortColumn(column);
+      setSortOrder(column === 'date' || column === 'amount' ? 'desc' : 'asc');
+    }
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) {
+      return null;
+    }
+    return sortOrder === 'asc' ? (
+      <NavArrowUp width={14} height={14} strokeWidth={2} />
+    ) : (
+      <NavArrowDown width={14} height={14} strokeWidth={2} />
+    );
+  };
+
   return (
     <main className="min-h-screen bg-[#202020]">
       {/* Desktop Header */}
@@ -397,11 +428,51 @@ export default function TransactionsPage() {
                 <table className="min-w-full" style={{ height: transactions.length === 0 && !loading ? '100%' : 'auto' }}>
                       <thead>
                         <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                          <th className="px-5 py-3 align-top">Date</th>
-                          <th className="px-5 py-3 align-top">Description</th>
-                          <th className="px-5 py-3 align-top">Type</th>
-                          <th className="px-5 py-3 align-top">Amount</th>
-                          <th className="px-5 py-3 align-top">Category</th>
+                          <th 
+                            className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
+                            onClick={() => handleSort('date')}
+                          >
+                            <span className="flex items-center gap-1">
+                              Date
+                              <SortIcon column="date" />
+                            </span>
+                          </th>
+                          <th 
+                            className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
+                            onClick={() => handleSort('description')}
+                          >
+                            <span className="flex items-center gap-1">
+                              Description
+                              <SortIcon column="description" />
+                            </span>
+                          </th>
+                          <th 
+                            className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
+                            onClick={() => handleSort('type')}
+                          >
+                            <span className="flex items-center gap-1">
+                              Type
+                              <SortIcon column="type" />
+                            </span>
+                          </th>
+                          <th 
+                            className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
+                            onClick={() => handleSort('amount')}
+                          >
+                            <span className="flex items-center gap-1">
+                              Amount
+                              <SortIcon column="amount" />
+                            </span>
+                          </th>
+                          <th 
+                            className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
+                            onClick={() => handleSort('category')}
+                          >
+                            <span className="flex items-center gap-1">
+                              Category
+                              <SortIcon column="category" />
+                            </span>
+                          </th>
                         </tr>
                       </thead>
                   <tbody>

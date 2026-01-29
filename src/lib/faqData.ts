@@ -93,7 +93,7 @@ export const faqData: FAQItem[] = [
   {
     id: '15',
     question: 'Why am I not receiving notifications?',
-    answer: 'Check your notification settings on the Updates page to ensure alerts are enabled for your account.',
+    answer: 'Check your notification settings on the Notifications page to ensure alerts are enabled for your account.',
     category: 'Technical'
   },
   {

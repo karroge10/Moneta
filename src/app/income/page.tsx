@@ -12,6 +12,7 @@ import DemographicComparisonCard from '@/components/dashboard/DemographicCompari
 import AverageCard from '@/components/dashboard/AverageCard';
 import AverageDailyCard from '@/components/dashboard/AverageDailyCard';
 import EstimatedTaxCard from '@/components/dashboard/EstimatedTaxCard';
+import ValueCard from '@/components/dashboard/ValueCard';
 import CardSkeleton from '@/components/dashboard/CardSkeleton';
 import TrendIndicator from '@/components/ui/TrendIndicator';
 import TransactionModal from '@/components/transactions/TransactionModal';
@@ -49,8 +50,22 @@ export default function IncomePage() {
   
   // Keep mock data for components not requested to be changed
   const update = mockIncomePage.update;
-  const estimatedTax = mockIncomePage.estimatedTax;
   const demographicComparison = mockIncomePage.demographicComparison;
+
+  const [incomeTaxRate, setIncomeTaxRate] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/user/settings')
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((data) => {
+        if (data.incomeTaxRate != null) {
+          setIncomeTaxRate(Number(data.incomeTaxRate));
+        } else {
+          setIncomeTaxRate(null);
+        }
+      })
+      .catch(() => setIncomeTaxRate(null));
+  }, []);
   
   const fetchIncomeData = useCallback(async () => {
     try {
@@ -419,18 +434,14 @@ export default function IncomePage() {
           link={update.link}
           linkHref="/statistics"
         />
-        <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3">
-          <h2 className="text-card-header">Total</h2>
-          <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-            <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
-            <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
-          </div>
-          <TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} />
-        </div>
-        <EstimatedTaxCard 
-          amount={estimatedTax.amount}
-          isEnabled={estimatedTax.isEnabled}
-        />
+        <ValueCard
+          title="Total"
+          bottomRow={<TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} />}
+        >
+          <span className="text-card-currency shrink-0">{currency.symbol}</span>
+          <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
+        </ValueCard>
+        <EstimatedTaxCard taxRate={incomeTaxRate} totalIncome={total.amount} />
         <UpcomingIncomesCard incomes={upcomingIncomes} />
         <LatestIncomesCard incomes={latestIncomes} />
         <PerformanceCard 
@@ -466,18 +477,14 @@ export default function IncomePage() {
           link={update.link}
           linkHref="/statistics"
         />
-        <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3">
-          <h2 className="text-card-header">Total</h2>
-          <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-            <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
-            <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
-          </div>
-          <TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} />
-        </div>
-        <EstimatedTaxCard 
-          amount={estimatedTax.amount}
-          isEnabled={estimatedTax.isEnabled}
-        />
+        <ValueCard
+          title="Total"
+          bottomRow={<TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} />}
+        >
+          <span className="text-card-currency shrink-0">{currency.symbol}</span>
+          <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
+        </ValueCard>
+        <EstimatedTaxCard taxRate={incomeTaxRate} totalIncome={total.amount} />
         <UpcomingIncomesCard incomes={upcomingIncomes} />
         <LatestIncomesCard incomes={latestIncomes} />
         <PerformanceCard 
@@ -520,20 +527,16 @@ export default function IncomePage() {
               />
             </div>
             <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-              <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 h-full">
-                <h2 className="text-card-header">Total</h2>
-                <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-                  <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
-                  <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
-                </div>
-                <TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} />
-              </div>
+              <ValueCard
+                title="Total"
+                bottomRow={<TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} />}
+              >
+                <span className="text-card-currency shrink-0">{currency.symbol}</span>
+                <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
+              </ValueCard>
             </div>
             <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-              <EstimatedTaxCard 
-                amount={estimatedTax.amount}
-                isEnabled={estimatedTax.isEnabled}
-              />
+              <EstimatedTaxCard taxRate={incomeTaxRate} totalIncome={total.amount} />
             </div>
           </div>
 
