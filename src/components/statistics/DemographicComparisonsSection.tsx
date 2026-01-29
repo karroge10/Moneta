@@ -7,11 +7,15 @@ import { DemographicComparison } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 
+const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
+const SKELETON_ITEMS = 3;
+
 interface DemographicComparisonsSectionProps {
   comparisons: DemographicComparison[];
+  loading?: boolean;
 }
 
-export default function DemographicComparisonsSection({ comparisons }: DemographicComparisonsSectionProps) {
+export default function DemographicComparisonsSection({ comparisons, loading = false }: DemographicComparisonsSectionProps) {
   const [selectedAgeGroup, setSelectedAgeGroup] = useState('25-34');
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -31,6 +35,39 @@ export default function DemographicComparisonsSection({ comparisons }: Demograph
   }, []);
 
   const textColor = isHovered ? '#AC66DA' : '#E7E4E4';
+
+  if (loading) {
+    return (
+      <Card
+        title="Demographic Comparisons"
+        customHeader={
+          <div className="mb-4 flex items-center gap-3">
+            <div className="h-6 w-44 rounded animate-pulse" style={SKELETON_STYLE} />
+            <div className="h-5 w-20 rounded-full animate-pulse" style={SKELETON_STYLE} />
+          </div>
+        }
+        showActions={false}
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ backgroundColor: '#202020' }}>
+            <div className="w-4 h-4 rounded animate-pulse" style={SKELETON_STYLE} />
+            <div className="h-4 w-14 rounded animate-pulse" style={SKELETON_STYLE} />
+          </div>
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: SKELETON_ITEMS }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-3xl" style={{ backgroundColor: '#202020' }}>
+                <div className="w-12 h-12 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="h-4 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
+                  <div className="h-3 w-32 rounded animate-pulse" style={SKELETON_STYLE} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card 

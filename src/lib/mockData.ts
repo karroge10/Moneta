@@ -1156,30 +1156,30 @@ export const mockStatisticsPage = {
 };
 
 export const mockUserSettings: UserSettings = {
-  name: 'Egor Kabantsov',
-  username: 'karoge',
-  email: 'egorkabantsov@gmail.com',
-  jobPosition: 'Frontend Developer',
-  age: 23,
-  city: 'Tbilisi',
-  country: 'United States of America',
+  name: '',
+  username: '',
+  email: '',
+  jobPosition: '',
+  age: 0,
+  city: '',
+  country: '',
   language: 'English',
   currency: '$ USD',
-  dateOfBirth: 'March 20th 2001',
-  profession: 'Frontend Developer',
+  dateOfBirth: '',
+  profession: '',
   defaultPage: 'Dashboard',
   plan: 'basic',
   incomeTaxRate: null,
 };
 
 export const mockLoginHistory: LoginHistoryEntry[] = [
-  { date: '22.01.2023', time: '20:32:10', device: 'iPhone 16 Pro', location: 'Tbilisi, Georgia' },
-  { date: '22.01.2023', time: '20:30:15', device: 'iPhone 16 Pro', location: 'Tbilisi, Georgia' },
-  { date: '21.01.2023', time: '14:09:29', device: 'Desktop PC', location: 'Tbilisi, Georgia' },
-  { date: '20.01.2023', time: '18:45:16', device: 'iPhone 16 Pro', location: 'Tbilisi, Georgia' },
-  { date: '19.01.2023', time: '10:22:33', device: 'Desktop PC', location: 'Tbilisi, Georgia' },
-  { date: '18.01.2023', time: '16:55:42', device: 'iPhone 16 Pro', location: 'Tbilisi, Georgia' },
-  { date: '17.01.2023', time: '09:11:28', device: 'Desktop PC', location: 'Tbilisi, Georgia' },
+  { date: '22.01.2023', time: '20:32:10', device: 'iPhone 16 Pro', location: '—' },
+  { date: '22.01.2023', time: '20:30:15', device: 'iPhone 16 Pro', location: '—' },
+  { date: '21.01.2023', time: '14:09:29', device: 'Desktop PC', location: '—' },
+  { date: '20.01.2023', time: '18:45:16', device: 'iPhone 16 Pro', location: '—' },
+  { date: '19.01.2023', time: '10:22:33', device: 'Desktop PC', location: '—' },
+  { date: '18.01.2023', time: '16:55:42', device: 'iPhone 16 Pro', location: '—' },
+  { date: '17.01.2023', time: '09:11:28', device: 'Desktop PC', location: '—' },
 ];
 
 export const mockAchievements: Achievement[] = [

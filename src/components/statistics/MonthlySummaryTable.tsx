@@ -6,17 +6,69 @@ import { MonthlySummaryRow } from '@/types/dashboard';
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import { useCurrency } from '@/hooks/useCurrency';
 
+const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
+const SKELETON_ROW_COUNT = 5;
+const maxHeight = '288px';
+
 interface MonthlySummaryTableProps {
   data: MonthlySummaryRow[];
+  loading?: boolean;
 }
 
-export default function MonthlySummaryTable({ data }: MonthlySummaryTableProps) {
+export default function MonthlySummaryTable({ data, loading = false }: MonthlySummaryTableProps) {
   const { currency } = useCurrency();
-  // Calculate max height to show exactly 6 rows
-  // Each row: ~48px (py-3 = 12px top + 12px bottom + text ~24px)
-  // 6 rows: 6 * 48px = 288px
-  const maxHeight = '288px';
   const isEmpty = data.length === 0;
+
+  if (loading) {
+    return (
+      <Card title="Monthly Summary" showActions={false}>
+        <div className="mt-2">
+          <div className="overflow-hidden">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+              </colgroup>
+              <thead>
+                <tr style={{ backgroundColor: '#202020' }}>
+                  <th className="text-center text-helper font-semibold py-3 px-2 rounded-l-xl" style={{ backgroundColor: '#202020' }}>Month</th>
+                  <th className="text-center text-helper font-semibold py-3 px-2" style={{ backgroundColor: '#202020' }}>Income</th>
+                  <th className="text-center text-helper font-semibold py-3 px-2" style={{ backgroundColor: '#202020' }}>Expenses</th>
+                  <th className="text-center text-helper font-semibold py-3 px-2" style={{ backgroundColor: '#202020' }}>Savings</th>
+                  <th className="text-center text-helper font-semibold py-3 px-2 rounded-r-xl" style={{ backgroundColor: '#202020' }}>Top Category</th>
+                </tr>
+              </thead>
+            </table>
+          </div>
+          <div className="overflow-y-auto custom-scrollbar pr-2" style={{ maxHeight }}>
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+              </colgroup>
+              <tbody>
+                {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
+                  <tr key={i} className="border-b" style={{ borderColor: 'rgba(231, 228, 228, 0.05)' }}>
+                    <td className="py-3 px-2 text-center"><div className="h-4 w-10 rounded animate-pulse mx-auto" style={SKELETON_STYLE} /></td>
+                    <td className="py-3 px-2 text-center"><div className="h-4 w-12 rounded animate-pulse mx-auto" style={SKELETON_STYLE} /></td>
+                    <td className="py-3 px-2 text-center"><div className="h-4 w-12 rounded animate-pulse mx-auto" style={SKELETON_STYLE} /></td>
+                    <td className="py-3 px-2 text-center"><div className="h-4 w-12 rounded animate-pulse mx-auto" style={SKELETON_STYLE} /></td>
+                    <td className="py-3 px-2 text-center"><div className="h-4 w-16 rounded animate-pulse mx-auto" style={SKELETON_STYLE} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Card>
+    );
+  }
   
   return (
     <Card 
