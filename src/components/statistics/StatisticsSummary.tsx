@@ -9,11 +9,15 @@ import { useCurrency } from '@/hooks/useCurrency';
 import Link from 'next/link';
 import PlaceholderDataBadge from '@/components/ui/PlaceholderDataBadge';
 
+const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
+const SKELETON_ITEMS = 4;
+
 interface StatisticsSummaryProps {
   items: StatisticsSummaryItem[];
+  loading?: boolean;
 }
 
-export default function StatisticsSummary({ items }: StatisticsSummaryProps) {
+export default function StatisticsSummary({ items, loading = false }: StatisticsSummaryProps) {
   const { currency } = useCurrency();
   const regularItems = items.filter(item => !item.isLarge);
   const largeItem = items.find(item => item.isLarge);
@@ -21,6 +25,41 @@ export default function StatisticsSummary({ items }: StatisticsSummaryProps) {
   // Check if Portfolio Balance is 0 (no investments)
   const portfolioBalanceItem = regularItems.find(item => item.label === 'Portfolio Balance');
   const hasPortfolioData = portfolioBalanceItem && typeof portfolioBalanceItem.value === 'number' && portfolioBalanceItem.value > 0;
+
+  if (loading) {
+    return (
+      <Card
+        title="Summary"
+        className="h-full flex flex-col"
+        customHeader={
+          <div className="mb-4 flex items-center justify-between">
+            <div className="h-6 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
+            <div className="w-8 h-8 rounded-full animate-pulse" style={SKELETON_STYLE} />
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0">
+          <div className="flex-1 space-y-3 pr-1">
+            {Array.from({ length: SKELETON_ITEMS }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-3xl" style={{ backgroundColor: '#202020' }}>
+                <div className="w-12 h-12 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="h-4 w-28 rounded animate-pulse" style={SKELETON_STYLE} />
+                  <div className="h-3 w-20 rounded animate-pulse" style={SKELETON_STYLE} />
+                </div>
+                <div className="h-4 w-14 rounded animate-pulse shrink-0" style={SKELETON_STYLE} />
+              </div>
+            ))}
+          </div>
+          <div className="p-6 mt-4 rounded-3xl min-h-[200px] flex flex-col items-center justify-center" style={{ backgroundColor: '#202020' }}>
+            <div className="w-16 h-16 rounded-full animate-pulse mb-4" style={SKELETON_STYLE} />
+            <div className="h-6 w-32 rounded animate-pulse mb-4" style={SKELETON_STYLE} />
+            <div className="h-12 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card 

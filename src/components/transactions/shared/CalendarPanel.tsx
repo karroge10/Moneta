@@ -1,6 +1,7 @@
 'use client';
 
-import { NavArrowLeft, NavArrowRight } from 'iconoir-react';
+import { useState, useRef, useEffect } from 'react';
+import { NavArrowLeft, NavArrowRight, NavArrowDown } from 'iconoir-react';
 
 export type CalendarControlAlignment = 'start' | 'center' | 'end';
 
@@ -79,6 +80,30 @@ export function CalendarPanel({
   const alignmentClass =
     controlAlignment === 'start' ? 'justify-start' : controlAlignment === 'end' ? 'justify-end' : 'justify-center';
 
+  const [monthOpen, setMonthOpen] = useState(false);
+  const [yearOpen, setYearOpen] = useState(false);
+  const monthRef = useRef<HTMLDivElement>(null);
+  const yearRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (monthRef.current && !monthRef.current.contains(target)) setMonthOpen(false);
+      if (yearRef.current && !yearRef.current.contains(target)) setYearOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectMonth = (idx: number) => {
+    onMonthChange(new Date(currentMonth.getFullYear(), idx, 1));
+    setMonthOpen(false);
+  };
+  const selectYear = (y: number) => {
+    onMonthChange(new Date(y, currentMonth.getMonth(), 1));
+    setYearOpen(false);
+  };
+
   return (
     <div className="p-3 space-y-3">
       <div className={`flex ${alignmentClass}`}>
@@ -92,30 +117,62 @@ export function CalendarPanel({
             <NavArrowLeft width={18} height={18} strokeWidth={1.5} />
           </button>
           <div className="flex items-center justify-center gap-2">
-            <select
-              aria-label="Select month"
-              value={currentMonth.getMonth()}
-              onChange={event => onMonthChange(new Date(currentMonth.getFullYear(), Number(event.target.value), 1))}
-              className="h-10 bg-[#202020] border border-[#3a3a3a] text-body text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-[var(--accent-purple)] cursor-pointer"
-            >
-              {monthNames.map((name, idx) => (
-                <option key={name} value={idx}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="Select year"
-              value={currentMonth.getFullYear()}
-              onChange={event => onMonthChange(new Date(Number(event.target.value), currentMonth.getMonth(), 1))}
-              className="h-10 bg-[#202020] border border-[#3a3a3a] text-body text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-[var(--accent-purple)] cursor-pointer"
-            >
-              {years.map(year => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
+            <div className="relative" ref={monthRef}>
+              <button
+                type="button"
+                onClick={() => { setYearOpen(false); setMonthOpen((o) => !o); }}
+                aria-label="Select month"
+                aria-expanded={monthOpen}
+                className="relative h-10 bg-[#202020] border border-[#3a3a3a] text-body text-sm rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:border-[var(--accent-purple)] cursor-pointer flex items-center gap-2 min-w-[100px]"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                <span className="truncate">{monthNames[currentMonth.getMonth()]}</span>
+                <NavArrowDown width={14} height={14} strokeWidth={2} className="absolute right-2 top-1/2 -translate-y-1/2 shrink-0" style={{ color: '#B9B9B9' }} />
+              </button>
+              {monthOpen && (
+                <div className="absolute top-full left-0 mt-1 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[100px] max-h-[200px] overflow-y-auto" style={{ backgroundColor: '#202020', border: '1px solid #3a3a3a' }}>
+                  {monthNames.map((name, idx) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => selectMonth(idx)}
+                      className="w-full text-left px-3 py-2 text-body text-sm hover:bg-[#2a2a2a] transition-colors cursor-pointer"
+                      style={{ color: currentMonth.getMonth() === idx ? 'var(--accent-purple)' : 'var(--text-primary)' }}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="relative" ref={yearRef}>
+              <button
+                type="button"
+                onClick={() => { setMonthOpen(false); setYearOpen((o) => !o); }}
+                aria-label="Select year"
+                aria-expanded={yearOpen}
+                className="relative h-10 bg-[#202020] border border-[#3a3a3a] text-body text-sm rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:border-[var(--accent-purple)] cursor-pointer flex items-center gap-2 min-w-[72px]"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                <span>{currentMonth.getFullYear()}</span>
+                <NavArrowDown width={14} height={14} strokeWidth={2} className="absolute right-2 top-1/2 -translate-y-1/2 shrink-0" style={{ color: '#B9B9B9' }} />
+              </button>
+              {yearOpen && (
+                <div className="absolute top-full left-0 mt-1 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[72px] max-h-[200px] overflow-y-auto" style={{ backgroundColor: '#202020', border: '1px solid #3a3a3a' }}>
+                  {years.map((y) => (
+                    <button
+                      key={y}
+                      type="button"
+                      onClick={() => selectYear(y)}
+                      className="w-full text-left px-3 py-2 text-body text-sm hover:bg-[#2a2a2a] transition-colors cursor-pointer"
+                      style={{ color: currentMonth.getFullYear() === y ? 'var(--accent-purple)' : 'var(--text-primary)' }}
+                    >
+                      {y}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <button
             type="button"

@@ -1,5 +1,10 @@
+import { randomUUID } from 'crypto';
 import { auth } from '@clerk/nextjs/server';
 import { db } from './db';
+
+function generateRandomUsername(): string {
+  return `user_${randomUUID().slice(0, 8)}`;
+}
 
 /**
  * Get or create a user in the database based on Clerk authentication
@@ -18,13 +23,28 @@ export async function getCurrentUser() {
   });
 
   if (!user) {
-    // Create new user if doesn't exist
-    user = await db.user.create({
-      data: {
-        clerkUserId,
-        plan: 'basic',
-      },
-    });
+    let userName = generateRandomUsername();
+    const maxAttempts = 5;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        user = await db.user.create({
+          data: {
+            clerkUserId,
+            userName,
+            plan: 'basic',
+          },
+        });
+        break;
+      } catch (err) {
+        const isUniqueViolation =
+          err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2002';
+        if (isUniqueViolation && attempt < maxAttempts - 1) {
+          userName = generateRandomUsername();
+        } else {
+          throw err;
+        }
+      }
+    }
   }
 
   return user;
@@ -63,14 +83,32 @@ export async function requireCurrentUserWithLanguage() {
   });
 
   if (!user) {
-    // Create new user if doesn't exist
-    user = await db.user.create({
-      data: {
-        clerkUserId,
-        plan: 'basic',
-      },
-      include: { language: true },
-    });
+    let userName = generateRandomUsername();
+    const maxAttempts = 5;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        user = await db.user.create({
+          data: {
+            clerkUserId,
+            userName,
+            plan: 'basic',
+          },
+          include: { language: true },
+        });
+        break;
+      } catch (err) {
+        const isUniqueViolation =
+          err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2002';
+        if (isUniqueViolation && attempt < maxAttempts - 1) {
+          userName = generateRandomUsername();
+        } else {
+          throw err;
+        }
+      }
+    }
+    if (!user) {
+      throw new Error('Unauthorized: Failed to create user');
+    }
   }
 
   return user;

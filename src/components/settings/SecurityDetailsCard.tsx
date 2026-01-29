@@ -5,21 +5,74 @@ import SettingsField from './SettingsField';
 import { UserSettings } from '@/types/dashboard';
 import { User, Mail, Lock } from 'iconoir-react';
 
+const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
+
+function FieldRowSkeleton({ labelWidth = 'w-24' }: { labelWidth?: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className={`h-4 rounded animate-pulse ${labelWidth}`} style={SKELETON_STYLE} />
+      <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ backgroundColor: '#202020' }}>
+        <div className="w-5 h-5 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
+        <div className="h-4 flex-1 min-w-0 rounded animate-pulse max-w-[180px]" style={SKELETON_STYLE} />
+      </div>
+    </div>
+  );
+}
+
 interface SecurityDetailsCardProps {
   settings: UserSettings;
   onEdit?: (field: string) => void;
   onChange?: (field: string, value: string) => void;
+  onOpenAccountProfile?: () => void;
   onSetup2FA?: () => void;
   onDeleteAccount?: () => void;
+  loading?: boolean;
 }
 
-export default function SecurityDetailsCard({ 
-  settings, 
+export default function SecurityDetailsCard({
+  settings,
   onEdit,
   onChange,
+  onOpenAccountProfile,
   onSetup2FA,
-  onDeleteAccount
+  onDeleteAccount,
+  loading = false,
 }: SecurityDetailsCardProps) {
+  const openProfile = onOpenAccountProfile ?? onSetup2FA;
+
+  if (loading) {
+    return (
+      <Card title="Security Details" showActions={false}>
+        <div className="flex flex-col gap-4">
+          <FieldRowSkeleton labelWidth="w-20" />
+          <div className="flex flex-col gap-2">
+            <div className="h-4 w-12 rounded animate-pulse" style={SKELETON_STYLE} />
+            <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ backgroundColor: '#202020' }}>
+              <div className="w-5 h-5 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
+              <div className="h-4 flex-1 max-w-[200px] rounded animate-pulse" style={SKELETON_STYLE} />
+              <div className="h-4 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="h-4 w-20 rounded animate-pulse" style={SKELETON_STYLE} />
+            <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ backgroundColor: '#202020' }}>
+              <div className="w-5 h-5 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
+              <div className="h-4 flex-1 max-w-[120px] rounded animate-pulse" style={SKELETON_STYLE} />
+              <div className="h-4 w-28 rounded animate-pulse" style={SKELETON_STYLE} />
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 mt-2">
+            <div className="h-4 w-48 rounded animate-pulse" style={SKELETON_STYLE} />
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="h-9 w-24 rounded-full animate-pulse" style={SKELETON_STYLE} />
+              <div className="h-9 w-32 rounded-full animate-pulse" style={SKELETON_STYLE} />
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card title="Security Details" showActions={false}>
       <div className="flex flex-col gap-4">
@@ -28,37 +81,67 @@ export default function SecurityDetailsCard({
           value={settings.username}
           icon={<User width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
           type="input"
-          onEdit={() => onEdit?.('username')}
+          placeholder="Username"
+          onChange={(value) => onChange?.('username', value)}
         />
-        <SettingsField
-          label="Email"
-          value={settings.email}
-          icon={<Mail width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
-          type="input"
-          onEdit={() => onEdit?.('email')}
-        />
-        <SettingsField
-          label="Password"
-          value="************"
-          icon={<Lock width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
-          type="input"
-          onEdit={() => onEdit?.('password')}
-        />
+        <div className="flex flex-col gap-2">
+          <label className="text-body" style={{ color: '#E7E4E4' }}>
+            Email
+          </label>
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ backgroundColor: '#202020', color: '#B9B9B9' }}>
+            <Mail width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />
+            <span className="flex-1 text-body" style={{ color: settings.email ? undefined : 'rgba(231, 228, 228, 0.5)' }}>
+              {settings.email || 'No email set'}
+            </span>
+            {openProfile && (
+              <button
+                type="button"
+                onClick={openProfile}
+                className="text-body font-semibold transition-opacity hover:opacity-90"
+                style={{ color: 'var(--accent-purple)' }}
+              >
+                Change email
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-body" style={{ color: '#E7E4E4' }}>
+            Password
+          </label>
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ backgroundColor: '#202020', color: '#B9B9B9' }}>
+            <Lock width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />
+            <span className="flex-1 text-body">••••••••••••</span>
+            {openProfile && (
+              <button
+                type="button"
+                onClick={openProfile}
+                className="text-body font-semibold transition-opacity hover:opacity-90"
+                style={{ color: 'var(--accent-purple)' }}
+              >
+                Change password
+              </button>
+            )}
+          </div>
+        </div>
 
-        {/* Two-Factor Authentication Section */}
         <div className="flex flex-col gap-3 mt-2">
           <div className="text-body" style={{ color: '#E7E4E4' }}>
             Two-Factor Authentication
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {openProfile && (
+              <button
+                type="button"
+                onClick={openProfile}
+                className="px-4 py-2 rounded-full text-body transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#282828', color: '#E7E4E4' }}
+              >
+                Set up 2FA
+              </button>
+            )}
             <button
-              onClick={onSetup2FA}
-              className="px-4 py-2 rounded-full text-body transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#282828', color: '#E7E4E4' }}
-            >
-              Set up 2FA
-            </button>
-            <button
+              type="button"
               onClick={onDeleteAccount}
               className="px-4 py-2 rounded-full text-body font-semibold transition-opacity hover:opacity-90"
               style={{ backgroundColor: '#D93F3F', color: '#E7E4E4' }}

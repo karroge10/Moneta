@@ -10,9 +10,10 @@ interface ReviewDatePickerProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  placeholder?: string;
 }
 
-export default function ReviewDatePicker({ value, onChange, disabled = false }: ReviewDatePickerProps) {
+export default function ReviewDatePicker({ value, onChange, disabled = false, placeholder = 'Select date' }: ReviewDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dateInput, setDateInput] = useState(() => formatDateToInput(value));
   const [currentMonth, setCurrentMonth] = useState(() => (value ? new Date(value) : new Date()));
@@ -62,9 +63,10 @@ export default function ReviewDatePicker({ value, onChange, disabled = false }: 
     const left = Math.min(Math.max(triggerRect.left, margin), Math.max(margin, maxLeft));
 
     setOpenUpward(shouldOpenUp);
+    const dropdownWidth = 280;
     setDropdownStyle({
       position: 'fixed',
-      width: triggerRect.width,
+      width: dropdownWidth,
       left,
       top,
       zIndex: 1000,
@@ -94,26 +96,26 @@ export default function ReviewDatePicker({ value, onChange, disabled = false }: 
     setIsOpen(false);
   };
 
-  const formattedLabel = value ? formatDateForDisplay(value) : 'Select a date';
+  const formattedLabel = value ? formatDateForDisplay(value) : placeholder;
 
   return (
-    <div ref={containerRef}>
+    <div ref={containerRef} className="w-full min-w-0">
       <button
         type="button"
         ref={triggerRef}
         onClick={() => !disabled && setIsOpen(prev => !prev)}
         disabled={disabled}
-        className="w-full px-3 py-2 rounded-xl bg-[#282828] text-sm font-semibold border border-[#3a3a3a] flex items-center justify-between gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-        style={{ color: value ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+        className="w-full min-w-0 px-0 py-0 rounded-lg text-body bg-transparent border-none flex items-center justify-between gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+        style={{ color: value ? 'var(--text-primary)' : 'rgba(231, 228, 228, 0.7)' }}
       >
         <span className="truncate">{formattedLabel}</span>
-        <NavArrowDown width={16} height={16} strokeWidth={2} />
+        <NavArrowDown width={16} height={16} strokeWidth={2} className="shrink-0" style={{ color: '#B9B9B9' }} />
       </button>
 
       {isOpen && typeof document !== 'undefined' && createPortal(
         <div
           ref={dropdownRef}
-          className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden"
+          className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden w-[280px] max-w-[min(280px,100vw)]"
           style={{
             backgroundColor: '#202020',
             ...(dropdownStyle ?? {

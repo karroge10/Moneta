@@ -13,11 +13,18 @@ export function useNotifications(limit: number = 10, unreadOnly: boolean = false
       setIsLoading(true);
       setError(null);
       const response = await fetch(`/api/notifications?limit=${limit}&unreadOnly=${unreadOnly}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch notifications');
+
+      if (response.status === 401) {
+        setNotifications([]);
+        return;
       }
-      
+
+      if (!response.ok) {
+        setError('Failed to fetch notifications');
+        setNotifications([]);
+        return;
+      }
+
       const data = await response.json();
       setNotifications(data.notifications || []);
     } catch (err) {

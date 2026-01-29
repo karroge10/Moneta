@@ -6,7 +6,6 @@ import MobileNavbar from '@/components/MobileNavbar';
 import GoalsList from '@/components/goals/GoalsList';
 import GoalsSummary from '@/components/goals/GoalsSummary';
 import GoalModal from '@/components/goals/GoalModal';
-import CardSkeleton from '@/components/dashboard/CardSkeleton';
 import Confetti from '@/components/ui/Confetti';
 import { Goal } from '@/types/dashboard';
 import { TimePeriod } from '@/types/dashboard';
@@ -168,63 +167,6 @@ export default function GoalsPage() {
     }
   };
 
-  const renderSkeletonLayout = () => (
-    <>
-      {/* Mobile: stacked layout */}
-      <div className="flex flex-col gap-4 px-4 pb-4 md:hidden">
-        <CardSkeleton title="Goals" variant="goal" />
-        <CardSkeleton title="Overview" variant="list" />
-      </div>
-
-      {/* Tablet & small desktop (< xl): vertical */}
-      <div className="hidden md:flex xl:hidden flex-col gap-4 md:px-6 md:pb-6">
-        <CardSkeleton title="Goals" variant="goal" />
-        <CardSkeleton title="Overview" variant="list" />
-      </div>
-
-      {/* Desktop: wider canvas */}
-      <div className="hidden xl:grid xl:grid-cols-3 xl:gap-4 xl:px-6 xl:pb-6">
-        <div className="col-span-2 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-          <CardSkeleton title="Goals" variant="goal" />
-        </div>
-        <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-          <CardSkeleton title="Overview" variant="list" />
-        </div>
-      </div>
-    </>
-  );
-
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-[#202020]">
-        {/* Desktop Header */}
-        <div className="hidden md:block">
-          <DashboardHeader 
-            pageName="Goals"
-            actionButton={{
-              label: 'Add Goal',
-              onClick: handleAddGoalClick,
-            }}
-          />
-        </div>
-
-        {/* Mobile Navbar */}
-        <div className="md:hidden">
-          <MobileNavbar 
-            pageName="Goals" 
-            timePeriod={timePeriod} 
-            onTimePeriodChange={setTimePeriod}
-            activeSection="goals"
-          />
-        </div>
-
-        {/* Loading State */}
-        {renderSkeletonLayout()}
-      </main>
-    );
-  }
-
   if (error && goals.length === 0) {
     return (
       <main className="min-h-screen bg-[#202020]">
@@ -295,35 +237,26 @@ export default function GoalsPage() {
         </div>
       )}
 
-      {/* Content */}
+      {/* Content — same layout when loading; cards show skeleton internally */}
       {/* Mobile: stacked (prioritize goals first) */}
       <div className="md:hidden flex flex-col gap-4 px-4 pb-4">
-        <GoalsList
-          goals={goals}
-          onGoalClick={handleEditGoal}
-        />
-        <GoalsSummary goals={goals} compact />
+        <GoalsList goals={goals} onGoalClick={handleEditGoal} loading={loading} />
+        <GoalsSummary goals={goals} compact loading={loading} />
       </div>
 
       {/* Tablet & small desktop (< xl): vertical flow with goals first */}
       <div className="hidden md:flex xl:hidden flex-col gap-4 md:px-6 md:pb-6">
-        <GoalsList
-          goals={goals}
-          onGoalClick={handleEditGoal}
-        />
-        <GoalsSummary goals={goals} compact />
+        <GoalsList goals={goals} onGoalClick={handleEditGoal} loading={loading} />
+        <GoalsSummary goals={goals} compact loading={loading} />
       </div>
 
       {/* Desktop: generous canvas */}
       <div className="hidden xl:grid xl:grid-cols-3 xl:gap-4 xl:px-6 xl:pb-6">
         <div className="col-span-2 min-h-0 flex flex-col">
-          <GoalsList
-            goals={goals}
-            onGoalClick={handleEditGoal}
-          />
+          <GoalsList goals={goals} onGoalClick={handleEditGoal} loading={loading} />
         </div>
         <div className="min-h-0 flex flex-col">
-          <GoalsSummary goals={goals} />
+          <GoalsSummary goals={goals} loading={loading} />
         </div>
       </div>
 
