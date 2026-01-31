@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useLayoutEffect, useCallback, CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import { NavArrowDown, Trash, ShoppingBag, Wallet, Language } from 'iconoir-react';
+import { NavArrowDown, Trash, ShoppingBag, Wallet, Language, Pause, Play } from 'iconoir-react';
 import { Transaction, Category, RecurringFrequencyUnit } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -17,6 +17,7 @@ interface TransactionFormProps {
   onSave: (transaction: Transaction) => void;
   onCancel: () => void;
   onDelete?: () => void;
+  onPauseResume?: (recurringId: number, isActive: boolean) => void;
   onFloatingPanelToggle?: (isOpen: boolean) => void;
   isSaving?: boolean;
   categories: Category[];
@@ -29,6 +30,7 @@ export default function TransactionForm({
   onSave,
   onCancel,
   onDelete,
+  onPauseResume,
   onFloatingPanelToggle,
   isSaving = false,
   categories: allCategories,
@@ -376,7 +378,8 @@ export default function TransactionForm({
     e.preventDefault();
     // Apply transaction type to amount (negative for expense, positive for income)
     const finalAmount = transactionType === 'expense' ? -formData.amount : formData.amount;
-    const startDateForRecurring = recurringStartDate || dateInput;
+    // When adding, transaction date is the first occurrence so it is the start date; when editing, allow explicit start date.
+    const startDateForRecurring = mode === 'add' ? dateInput : (recurringStartDate || dateInput);
     const recurringPayload = recurringEnabled
       ? {
           isRecurring: true,
@@ -385,6 +388,7 @@ export default function TransactionForm({
           startDate: startDateForRecurring,
           endDate: recurringEndDate || null,
           type: transactionType,
+          isActive: transaction.recurringId !== undefined ? (transaction.recurring?.isActive ?? true) : undefined,
         }
       : undefined;
     // Include currencyId in the saved transaction
@@ -766,16 +770,20 @@ export default function TransactionForm({
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-body font-medium">Recurring</p>
-            <p className="text-helper">Auto-create on the next due date</p>
+            <p className="text-helper">
+              {mode === 'add'
+                ? 'Starts on the date above. Auto-creates on the next due date.'
+                : 'Auto-create on the next due date'}
+            </p>
           </div>
-          <label className="inline-flex items-center cursor-pointer select-none">
+          <label className={`inline-flex items-center select-none ${transaction.recurringId === undefined ? 'cursor-pointer' : 'cursor-default'}`}>
             <span className="sr-only">Toggle recurring</span>
             <input
               type="checkbox"
               className="hidden"
               checked={recurringEnabled}
-              onChange={() => setRecurringEnabled(prev => !prev)}
-              disabled={isSaving}
+              onChange={() => transaction.recurringId === undefined && setRecurringEnabled(prev => !prev)}
+              disabled={isSaving || transaction.recurringId !== undefined}
             />
             <div
               className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ${recurringEnabled ? 'bg-[#AC66DA]' : 'bg-[#3a3a3a]'}`}
@@ -789,55 +797,58 @@ export default function TransactionForm({
         </div>
 
         {recurringEnabled && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="flex flex-col gap-2">
-              <label className="text-body font-medium">Start Date</label>
-              <div className="relative" ref={recurringStartDropdownRef}>
-                <button
-                  type="button"
-                  ref={recurringStartTriggerRef}
-                  onClick={() => setIsRecurringStartOpen(prev => !prev)}
-                  disabled={isSaving}
-                  className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  <span
-                    className="text-body font-semibold"
-                    style={{ color: recurringStartDate ? 'var(--text-primary)' : '#8C8C8C' }}
+          <div className={`grid grid-cols-1 gap-3 ${mode === 'edit' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+            {/* Start Date only when editing: when adding, the transaction date above is the first occurrence and is used as start date */}
+            {mode === 'edit' && (
+              <div className="flex flex-col gap-2">
+                <label className="text-body font-medium">Start Date</label>
+                <div className="relative" ref={recurringStartDropdownRef}>
+                  <button
+                    type="button"
+                    ref={recurringStartTriggerRef}
+                    onClick={() => setIsRecurringStartOpen(prev => !prev)}
+                    disabled={isSaving}
+                    className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ color: 'var(--text-primary)' }}
                   >
-                    {recurringStartDate ? formatDateForDisplay(recurringStartDate) : 'Select start date'}
-                  </span>
-                  <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
-                </button>
+                    <span
+                      className="text-body font-semibold"
+                      style={{ color: recurringStartDate ? 'var(--text-primary)' : '#8C8C8C' }}
+                    >
+                      {recurringStartDate ? formatDateForDisplay(recurringStartDate) : 'Select start date'}
+                    </span>
+                    <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+                  </button>
 
-                {isRecurringStartOpen && typeof document !== 'undefined' && createPortal(
-                  <div
-                    ref={recurringStartPortalRef}
-                    className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden"
-                    style={{
-                      backgroundColor: '#202020',
-                      ...(recurringStartDropdownStyle ?? {
-                        position: 'fixed',
-                        top: -9999,
-                        left: -9999,
-                        zIndex: 1000,
-                        minWidth: '320px',
-                        width: 'max-content',
-                      }),
-                    }}
-                  >
-                    <CalendarPanel
-                      selectedDate={recurringStartDate}
-                      currentMonth={recurringStartMonth}
-                      onChange={handleRecurringStartSelect}
-                      onMonthChange={setRecurringStartMonth}
-                      controlAlignment="end"
-                    />
-                  </div>,
-                  document.body,
-                )}
+                  {isRecurringStartOpen && typeof document !== 'undefined' && createPortal(
+                    <div
+                      ref={recurringStartPortalRef}
+                      className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden"
+                      style={{
+                        backgroundColor: '#202020',
+                        ...(recurringStartDropdownStyle ?? {
+                          position: 'fixed',
+                          top: -9999,
+                          left: -9999,
+                          zIndex: 1000,
+                          minWidth: '320px',
+                          width: 'max-content',
+                        }),
+                      }}
+                    >
+                      <CalendarPanel
+                        selectedDate={recurringStartDate}
+                        currentMonth={recurringStartMonth}
+                        onChange={handleRecurringStartSelect}
+                        onMonthChange={setRecurringStartMonth}
+                        controlAlignment="end"
+                      />
+                    </div>,
+                    document.body,
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <label className="text-body font-medium">Frequency</label>
@@ -939,12 +950,46 @@ export default function TransactionForm({
                 )}
               </div>
             </div>
+
           </div>
         )}
       </div>
 
       <div className="flex flex-col gap-3 pt-4">
         <div className="flex gap-3 items-center justify-end">
+          {transaction.recurringId !== undefined && onPauseResume && (
+            transaction.recurring?.isActive !== false ? (
+              <button
+                type="button"
+                onClick={() => onPauseResume(transaction.recurringId!, false)}
+                disabled={isSaving}
+                className="px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: '#282828',
+                  color: 'var(--text-primary)',
+                  border: '1px solid #D97706',
+                }}
+              >
+                <Pause width={16} height={16} strokeWidth={1.5} style={{ color: '#D97706' }} />
+                <span>Pause</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onPauseResume(transaction.recurringId!, true)}
+                disabled={isSaving}
+                className="px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: '#282828',
+                  color: 'var(--text-primary)',
+                  border: '1px solid #74C648',
+                }}
+              >
+                <Play width={16} height={16} strokeWidth={1.5} style={{ color: '#74C648' }} />
+                <span>Resume</span>
+              </button>
+            )
+          )}
           {mode === 'edit' && onDelete && (
             <button
               type="button"

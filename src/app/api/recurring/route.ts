@@ -21,6 +21,7 @@ interface RecurringPayload {
   frequencyUnit: FrequencyUnit;
   frequencyInterval: number;
   createInitial?: boolean;
+  isActive?: boolean;
 }
 
 function formatDate(date: Date): string {
@@ -350,11 +351,21 @@ export async function PUT(request: NextRequest) {
     }
 
     const currencyId = body.currencyId ?? existing.currencyId ?? await getUserCurrencyId(user.currencyId ?? undefined);
-    const categoryId = await resolveCategoryId(user.id, body.category);
+    const categoryId =
+      body.category !== undefined
+        ? await resolveCategoryId(user.id, body.category)
+        : existing.categoryId;
 
     const startDate = body.startDate ? new Date(body.startDate) : existing.startDate;
     const endDate = body.endDate ? new Date(body.endDate) : existing.endDate;
     const nextDueDate = startDate && startDate <= existing.nextDueDate ? existing.nextDueDate : startDate;
+
+    const isActive =
+      body.isActive !== undefined
+        ? body.isActive
+        : body.endDate && endDate && endDate < new Date()
+          ? false
+          : existing.isActive;
 
     await db.recurringTransaction.update({
       where: { id: existing.id },
@@ -369,7 +380,7 @@ export async function PUT(request: NextRequest) {
         nextDueDate: nextDueDate ?? existing.nextDueDate,
         frequencyUnit: body.frequencyUnit ?? existing.frequencyUnit,
         frequencyInterval: body.frequencyInterval ?? existing.frequencyInterval,
-        isActive: body.endDate && endDate && endDate < new Date() ? false : existing.isActive,
+        isActive,
       },
     });
 

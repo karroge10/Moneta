@@ -127,7 +127,9 @@ export default function Sidebar({ activeSection }: SidebarProps) {
       <div className="sidebar-footer">
         <ClerkLoading>
           <div className="sidebar-logout pointer-events-none cursor-default opacity-80" aria-hidden="true">
-            <div className="w-5 h-5 shrink-0 rounded-full bg-[#3a3a3a] animate-pulse" />
+            <div className="sidebar-account-avatar-slot">
+              <div className="w-full h-full rounded-full bg-[#3a3a3a] animate-pulse" />
+            </div>
             {!isCollapsed && (
               <span className="text-sidebar-button">Account</span>
             )}
@@ -135,18 +137,37 @@ export default function Sidebar({ activeSection }: SidebarProps) {
         </ClerkLoading>
         <ClerkLoaded>
           <SignedIn>
-            <div className="sidebar-logout">
-              <UserButton 
-                appearance={{
-                  elements: {
-                    avatarBox: "w-5 h-5",
-                    userButtonPopoverCard: "bg-[#282828] border border-[#3a3a3a]",
-                    userButtonPopoverActionButton: "text-[#E7E4E4] hover:bg-[#3a3a3a]",
-                    userButtonPopoverActionButtonText: "text-[#E7E4E4]",
-                    userButtonPopoverFooter: "hidden",
-                  },
-                }}
-              />
+            <div
+              className="sidebar-logout"
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                const trigger = (e.currentTarget as HTMLElement).querySelector<HTMLButtonElement>('.sidebar-account-avatar-slot button');
+                if (trigger && !(e.target as HTMLElement).closest('.sidebar-account-avatar-slot button')) {
+                  trigger.click();
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  (e.currentTarget as HTMLElement).querySelector<HTMLButtonElement>('.sidebar-account-avatar-slot button')?.click();
+                }
+              }}
+              aria-label="Open account menu"
+            >
+              <div className="sidebar-account-avatar-slot">
+                <UserButton 
+                  appearance={{
+                    elements: {
+                      avatarBox: "!w-5 !h-5 min-w-5 min-h-5",
+                      userButtonPopoverCard: "bg-[#282828] border border-[#3a3a3a]",
+                      userButtonPopoverActionButton: "text-[#E7E4E4] hover:bg-[#3a3a3a]",
+                      userButtonPopoverActionButtonText: "text-[#E7E4E4]",
+                      userButtonPopoverFooter: "hidden",
+                    },
+                  }}
+                />
+              </div>
               {!isCollapsed && (
                 <span className="text-sidebar-button">Account</span>
               )}

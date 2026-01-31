@@ -106,7 +106,7 @@ export default function ReviewDatePicker({ value, onChange, disabled = false, pl
         onClick={() => !disabled && setIsOpen(prev => !prev)}
         disabled={disabled}
         className="w-full min-w-0 px-0 py-0 rounded-lg text-body bg-transparent border-none flex items-center justify-between gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-        style={{ color: value ? 'var(--text-primary)' : 'rgba(231, 228, 228, 0.7)' }}
+        style={{ color: value ? 'var(--text-primary)' : 'var(--text-secondary)' }}
       >
         <span className="truncate">{formattedLabel}</span>
         <NavArrowDown width={16} height={16} strokeWidth={2} className="shrink-0" style={{ color: '#B9B9B9' }} />

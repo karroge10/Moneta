@@ -13,6 +13,10 @@ export interface Transaction {
   originalCurrencyAlias?: string;
   currencyId?: number; // Currency ID for editing
   recurring?: RecurringSettings;
+  /** Set when this "transaction" is actually a recurring item (future view); used for Pause and PUT recurring */
+  recurringId?: number;
+  /** When true = active, when false = paused; used in upcoming list to show Paused badge */
+  isActive?: boolean;
 }
 
 export interface Bill {
@@ -22,6 +26,8 @@ export interface Bill {
   amount: number;
   category: string;
   icon: string;
+  /** When true = active, when false = paused; used in upcoming list to show Paused badge */
+  isActive?: boolean;
 }
 
 export type RecurringFrequencyUnit = 'day' | 'week' | 'month' | 'year';
@@ -33,6 +39,40 @@ export interface RecurringSettings {
   startDate: string; // ISO date string
   endDate?: string | null;
   type?: 'income' | 'expense';
+  /** Paused state for recurring items (future view); when false = active, when true = paused */
+  isActive?: boolean;
+}
+
+/** Recurring item from GET /api/recurring (full list, not upcoming-only) */
+export interface RecurringItem {
+  id: number;
+  name: string;
+  type: 'income' | 'expense';
+  amount: number;
+  convertedAmount?: number;
+  currencyId: number;
+  category: string | null;
+  startDate: string;
+  nextDueDate: string;
+  endDate: string | null;
+  isActive: boolean;
+  frequencyUnit: RecurringFrequencyUnit;
+  frequencyInterval: number;
+  lastGeneratedAt: string | null;
+}
+
+/** Row shape for future (recurring) table; compatible with table columns + Status */
+export interface RecurringRow {
+  id: string;
+  name: string;
+  date: string;
+  dateRaw: string;
+  amount: number;
+  category: string | null;
+  icon: string;
+  isRecurring: true;
+  recurringId: number;
+  isActive: boolean;
 }
 
 export interface Goal {
@@ -73,8 +113,6 @@ export interface ExpenseCategory {
 export type TimePeriod = 
   | 'This Month' 
   | 'Last Month' 
-  | 'This Quarter' 
-  | 'Last Quarter' 
   | 'This Year' 
   | 'Last Year' 
   | 'All Time';
@@ -179,11 +217,12 @@ export interface TransactionUploadResponse {
 
 export interface UserSettings {
   name: string;
+  firstName: string;
+  lastName: string;
   username: string;
   email: string;
   jobPosition: string;
   age: number;
-  city: string;
   country: string;
   language: string;
   currency: string;

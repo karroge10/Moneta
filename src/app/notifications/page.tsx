@@ -1,30 +1,51 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import NotificationsTable from '@/components/updates/NotificationsTable';
 import NotificationSettingsModal from '@/components/updates/NotificationSettingsModal';
 import Card from '@/components/ui/Card';
-import { mockNotificationSettings } from '@/lib/mockData';
-import { NotificationSettings } from '@/types/dashboard';
+import { DEFAULT_NOTIFICATION_SETTINGS } from '@/lib/notification-settings-constants';
+import type { NotificationSettings } from '@/types/dashboard';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Settings } from 'iconoir-react';
 
 export default function NotificationsPage() {
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(mockNotificationSettings);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const { notifications, isLoading: notificationsLoading } = useNotifications(50, false);
 
-  const handleToggleSetting = (key: keyof NotificationSettings, enabled: boolean) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      [key]: enabled
-    }));
-    console.log(`Notification setting ${key} toggled to ${enabled}`);
-    // TODO: Implement actual API call to save settings
-  };
+  const fetchNotificationSettings = useCallback(() => {
+    fetch('/api/user/settings')
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((data) => {
+        if (data.notificationSettings) {
+          setNotificationSettings(data.notificationSettings);
+        }
+      })
+      .catch(() => setNotificationSettings(DEFAULT_NOTIFICATION_SETTINGS));
+  }, []);
+
+  useEffect(() => {
+    fetchNotificationSettings();
+  }, [fetchNotificationSettings]);
+
+  const handleToggleSetting = useCallback(async (key: keyof NotificationSettings, enabled: boolean) => {
+    const next = { ...notificationSettings, [key]: enabled };
+    setNotificationSettings(next);
+    try {
+      const res = await fetch('/api/user/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationSettings: next }),
+      });
+      if (!res.ok) fetchNotificationSettings();
+    } catch {
+      fetchNotificationSettings();
+    }
+  }, [notificationSettings, fetchNotificationSettings]);
 
   return (
     <main className="min-h-screen bg-[#202020]">

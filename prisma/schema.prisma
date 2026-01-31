@@ -20,7 +20,6 @@ model User {
   // Profile (optional)
   dateOfBirth   DateTime?
   country       String?
-  city          String?
   profession    String?
 
   // User preferences (stored directly in User table)
@@ -29,11 +28,12 @@ model User {
   defaultPage      String?
   plan             String? @default("basic") // basic, premium, ultimate
   incomeTaxRate    Float?  // Percentage (e.g., 25.0 for 25%). null = disabled
-  dataSharingEnabled Boolean? @default(true)
+  dataSharingEnabled Boolean? @default(false)
 
   // Relations
   language    Language?    @relation(fields: [languageId], references: [id])
   currency    Currency?    @relation(fields: [currencyId], references: [id])
+  notificationSettings UserNotificationSettings?
   transactions Transaction[]
   goals       Goal[]
   investments Investment[]
@@ -46,6 +46,25 @@ model User {
   Income           Income[]
   Trip             Trip[]
   pdfProcessingJobs PdfProcessingJob[]
+}
+
+// User notification preferences (separate table - read infrequently)
+model UserNotificationSettings {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @unique
+  pushNotifications  Boolean  @default(true)
+  upcomingBills      Boolean  @default(true)
+  upcomingIncome     Boolean  @default(true)
+  investments        Boolean  @default(true)
+  goals              Boolean  @default(true)
+  promotionalEmail   Boolean  @default(true)
+  aiInsights         Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // Unified Transaction table replacing Expense and Income

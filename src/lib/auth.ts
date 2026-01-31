@@ -23,6 +23,10 @@ export async function getCurrentUser() {
   });
 
   if (!user) {
+    const [englishLanguage, usdCurrency] = await Promise.all([
+      db.language.findFirst({ where: { alias: 'en' }, select: { id: true } }),
+      db.currency.findFirst({ where: { alias: 'USD' }, select: { id: true } }),
+    ]);
     let userName = generateRandomUsername();
     const maxAttempts = 5;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -32,6 +36,21 @@ export async function getCurrentUser() {
             clerkUserId,
             userName,
             plan: 'basic',
+            languageId: englishLanguage?.id ?? null,
+            currencyId: usdCurrency?.id ?? null,
+            defaultPage: 'Dashboard',
+            dataSharingEnabled: false,
+            notificationSettings: {
+              create: {
+                pushNotifications: true,
+                upcomingBills: true,
+                upcomingIncome: true,
+                investments: true,
+                goals: true,
+                promotionalEmail: true,
+                aiInsights: true,
+              },
+            },
           },
         });
         break;
@@ -83,6 +102,10 @@ export async function requireCurrentUserWithLanguage() {
   });
 
   if (!user) {
+    const [englishLanguage, usdCurrency] = await Promise.all([
+      db.language.findFirst({ where: { alias: 'en' }, select: { id: true } }),
+      db.currency.findFirst({ where: { alias: 'USD' }, select: { id: true } }),
+    ]);
     let userName = generateRandomUsername();
     const maxAttempts = 5;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -92,6 +115,21 @@ export async function requireCurrentUserWithLanguage() {
             clerkUserId,
             userName,
             plan: 'basic',
+            languageId: englishLanguage?.id ?? null,
+            currencyId: usdCurrency?.id ?? null,
+            defaultPage: 'Dashboard',
+            dataSharingEnabled: false,
+            notificationSettings: {
+              create: {
+                pushNotifications: true,
+                upcomingBills: true,
+                upcomingIncome: true,
+                investments: true,
+                goals: true,
+                promotionalEmail: true,
+                aiInsights: true,
+              },
+            },
           },
           include: { language: true },
         });

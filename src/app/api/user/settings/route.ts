@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import {
+  getNotificationSettings,
+  DEFAULT_NOTIFICATION_SETTINGS,
+} from '@/lib/notification-settings';
 
 /**
  * GET /api/user/settings
@@ -26,13 +30,14 @@ export async function GET() {
       );
     }
 
-    const [taxRateRows, languages, currencies, clerkUser] = await Promise.all([
+    const [taxRateRows, languages, currencies, clerkUser, notificationSettings] = await Promise.all([
       db.$queryRaw<[{ incomeTaxRate: number | null }]>`
         SELECT "incomeTaxRate" FROM "User" WHERE id = ${user.id}
       `,
       db.language.findMany({ orderBy: { name: 'asc' } }),
       db.currency.findMany({ orderBy: { name: 'asc' } }),
       currentUser(),
+      getNotificationSettings(user.id),
     ]);
     const incomeTaxRate = taxRateRows[0]?.incomeTaxRate ?? null;
     const email = clerkUser?.primaryEmailAddress?.emailAddress ?? null;
@@ -40,19 +45,18 @@ export async function GET() {
     const u = userWithRelations as typeof userWithRelations & {
       dateOfBirth?: Date | null;
       country?: string | null;
-      city?: string | null;
       profession?: string | null;
       dataSharingEnabled?: boolean | null;
     };
 
     return NextResponse.json({
+      userId: userWithRelations.id,
       firstName: userWithRelations.firstName,
       lastName: userWithRelations.lastName,
       userName: userWithRelations.userName,
       email,
       dateOfBirth: u.dateOfBirth ? u.dateOfBirth.toISOString().slice(0, 10) : null,
       country: u.country ?? null,
-      city: u.city ?? null,
       profession: u.profession ?? null,
       language: userWithRelations.language
         ? {
@@ -73,6 +77,7 @@ export async function GET() {
       plan: userWithRelations.plan,
       incomeTaxRate,
       dataSharingEnabled: u.dataSharingEnabled ?? true,
+      notificationSettings,
       languages: languages.map((l) => ({ id: l.id, name: l.name, alias: l.alias })),
       currencies: currencies.map((c) => ({ id: c.id, name: c.name, symbol: c.symbol, alias: c.alias })),
     });
@@ -91,7 +96,7 @@ export async function GET() {
 /**
  * PATCH /api/user/settings
  * Update current user's settings
- * Body: { firstName?, lastName?, userName?, dateOfBirth?, country?, city?, languageId?, currencyId?, defaultPage?, incomeTaxRate?, dataSharingEnabled? }
+ * Body: { firstName?, lastName?, userName?, dateOfBirth?, country?, languageId?, currencyId?, defaultPage?, incomeTaxRate?, dataSharingEnabled? }
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -104,13 +109,13 @@ export async function PATCH(request: NextRequest) {
       userName?: string | null;
       dateOfBirth?: Date | null;
       country?: string | null;
-      city?: string | null;
       profession?: string | null;
       languageId?: number | null;
       currencyId?: number | null;
       defaultPage?: string;
       incomeTaxRate?: number | null;
       dataSharingEnabled?: boolean | null;
+      notificationSettings?: object;
     } = {};
 
     if (body.firstName !== undefined) {
@@ -122,6 +127,16 @@ export async function PATCH(request: NextRequest) {
     if (body.userName !== undefined) {
       const userName = body.userName === '' ? null : String(body.userName).trim();
       if (userName !== null && userName.length > 0) {
+        const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
+        if (!usernameRegex.test(userName)) {
+          return NextResponse.json(
+            {
+              error:
+                'Username must be 3–30 characters and only contain letters, numbers, and underscores',
+            },
+            { status: 400 }
+          );
+        }
         const existing = await db.user.findFirst({
           where: { userName, id: { not: user.id } },
         });
@@ -150,9 +165,6 @@ export async function PATCH(request: NextRequest) {
     }
     if (body.country !== undefined) {
       updateData.country = body.country === '' ? null : String(body.country);
-    }
-    if (body.city !== undefined) {
-      updateData.city = body.city === '' ? null : String(body.city);
     }
     if (body.profession !== undefined) {
       updateData.profession = body.profession === '' ? null : String(body.profession);
@@ -215,6 +227,28 @@ export async function PATCH(request: NextRequest) {
       updateData.dataSharingEnabled = Boolean(body.dataSharingEnabled);
     }
 
+    if (body.notificationSettings !== undefined) {
+      const raw = body.notificationSettings;
+      if (raw !== null && typeof raw === 'object') {
+        const keys = Object.keys(DEFAULT_NOTIFICATION_SETTINGS) as (keyof typeof DEFAULT_NOTIFICATION_SETTINGS)[];
+        const validated: Record<string, boolean> = {};
+        for (const key of keys) {
+          if (key in raw && typeof (raw as Record<string, unknown>)[key] === 'boolean') {
+            validated[key] = (raw as Record<string, boolean>)[key];
+          } else {
+            validated[key] = DEFAULT_NOTIFICATION_SETTINGS[key];
+          }
+        }
+        // Prisma requires relation ops (create/update/upsert) for nested writes, not a plain object
+        updateData.notificationSettings = {
+          upsert: {
+            create: validated,
+            update: validated,
+          },
+        };
+      }
+    }
+
     if (Object.keys(updateData).length > 0) {
       await db.user.update({
         where: { id: user.id },
@@ -237,6 +271,8 @@ export async function PATCH(request: NextRequest) {
       dataSharingEnabled?: boolean | null;
     };
 
+    const notificationSettings = await getNotificationSettings(user.id);
+
     return NextResponse.json({
       message: 'Settings updated successfully',
       settings: {
@@ -245,7 +281,6 @@ export async function PATCH(request: NextRequest) {
         userName: updatedUser.userName,
         dateOfBirth: u.dateOfBirth ? u.dateOfBirth.toISOString().slice(0, 10) : null,
         country: (updatedUser as { country?: string | null }).country ?? null,
-        city: (updatedUser as { city?: string | null }).city ?? null,
         profession: (updatedUser as { profession?: string | null }).profession ?? null,
         language: updatedUser.language
           ? {
@@ -266,6 +301,7 @@ export async function PATCH(request: NextRequest) {
         plan: updatedUser.plan,
         incomeTaxRate: (updatedUser as { incomeTaxRate?: number | null }).incomeTaxRate ?? null,
         dataSharingEnabled: u.dataSharingEnabled ?? true,
+        notificationSettings,
       },
     });
   } catch (error) {

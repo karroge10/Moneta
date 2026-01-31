@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -23,6 +23,9 @@ interface MobileDrawerProps {
 }
 
 export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboard' }: MobileDrawerProps) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const pointerDownOnOverlay = useRef(false);
+
   // Prevent body scroll when drawer is open
   useEffect(() => {
     if (isOpen) {
@@ -50,9 +53,18 @@ export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboa
       {/* Overlay */}
       {isOpen && (
         <div
+          ref={overlayRef}
           className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
-          onClick={onClose}
           aria-hidden="true"
+          onMouseDown={() => {
+            pointerDownOnOverlay.current = true;
+          }}
+          onMouseUp={() => {
+            if (pointerDownOnOverlay.current && overlayRef.current) {
+              onClose();
+            }
+            pointerDownOnOverlay.current = false;
+          }}
         />
       )}
 
@@ -64,6 +76,9 @@ export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboa
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
+        onMouseDown={() => {
+          pointerDownOnOverlay.current = false;
+        }}
       >
         <div className="flex flex-col h-full">
           {/* Header */}

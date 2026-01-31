@@ -54,24 +54,6 @@ function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; en
         end: new Date(year, month, 0, 23, 59, 59, 999),
       };
     
-    case 'This Quarter': {
-      const quarter = Math.floor(month / 3);
-      return {
-        start: new Date(year, quarter * 3, 1),
-        end: new Date(year, (quarter + 1) * 3, 0, 23, 59, 59, 999),
-      };
-    }
-    
-    case 'Last Quarter': {
-      const quarter = Math.floor(month / 3);
-      const lastQuarter = quarter === 0 ? 3 : quarter - 1;
-      const lastQuarterYear = quarter === 0 ? year - 1 : year;
-      return {
-        start: new Date(lastQuarterYear, lastQuarter * 3, 1),
-        end: new Date(lastQuarterYear, (lastQuarter + 1) * 3, 0, 23, 59, 59, 999),
-      };
-    }
-    
     case 'This Year':
       return {
         start: new Date(year, 0, 1),
@@ -280,21 +262,32 @@ export async function GET(request: NextRequest) {
     // Calculate total expenses for percentage calculation
     const totalExpensesForAverage = totalExpenses;
 
-    const averageExpenses = Array.from(categoryTotals.entries())
-      .map(([name, data]) => {
-        const averageAmount = data.count > 0 ? data.total / data.count : 0;
+    // 24 distinct hues — one per color family (no duplicate greens, blues, purples)
+    const categoryColors = [
+      '#74C648', '#AC66DA', '#D93F3F', '#4A90E2', '#FF8C00', '#00B4D8', '#8E44AD', '#1ABC9C',
+      '#E74C3C', '#F1C40F', '#E91E8C', '#FFBF00', '#00CED1', '#FF6B6B', '#6A5ACD', '#E67E22',
+      '#16A085', '#C0392B', '#5E35B1', '#FB8C00', '#00897B', '#D81B60', '#795548', '#607D8B',
+    ];
+    const colorCount = categoryColors.length;
+    const entries = Array.from(categoryTotals.entries());
+    // Spread indices across palette to avoid similar colors; when few categories, each gets unique
+    const getColorIndex = (i: number, total: number) =>
+      total <= colorCount ? i : Math.floor((i * (colorCount - 1)) / Math.max(1, total - 1)) % colorCount;
+    // amount = total spend in category (matches percentage); sort by total descending
+    const averageExpenses = entries
+      .map(([name, data], index) => {
         const categoryTotal = data.total;
-        const percentage = totalExpensesForAverage > 0 
+        const percentage = totalExpensesForAverage > 0
           ? Math.round((categoryTotal / totalExpensesForAverage) * 100)
           : 0;
-        
+
         return {
           id: name,
           name,
-          amount: averageAmount,
+          amount: categoryTotal,
           percentage,
           icon: getIconForCategory(name),
-          color: '#AC66DA', // Default color, can be customized
+          color: categoryColors[getColorIndex(index, entries.length)],
         };
       })
       .sort((a, b) => b.amount - a.amount);

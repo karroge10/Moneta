@@ -80,40 +80,70 @@ export default function StatisticsPage() {
       {/* Content — same layout when loading; cards show skeleton internally */}
       {/* Mobile: stacked */}
       <div className="md:hidden flex flex-col gap-4 px-4 pb-4">
-        <FinancialMilestonesCard milestone={mockStatisticsPage.milestone} loading={loading} />
-        <DemographicComparisonsSection comparisons={mockStatisticsPage.demographicComparisons} loading={loading} />
-        <AverageExpensesCard expenses={averageExpenses} loading={loading} />
-        <MonthlySummaryTable data={monthlySummary} loading={loading} />
-        <StatisticsSummary items={summaryItemsToShow} loading={loading} />
+        <FinancialMilestonesCard
+          milestone={mockStatisticsPage.milestone}
+          loading={loading || !!error}
+        />
+        <DemographicComparisonsSection
+          comparisons={mockStatisticsPage.demographicComparisons}
+          loading={loading || !!error}
+        />
+        <AverageExpensesCard
+          expenses={averageExpenses}
+          loading={loading}
+          error={error}
+          onRetry={fetchStatisticsData}
+        />
+        <MonthlySummaryTable
+          data={monthlySummary}
+          loading={loading}
+          error={error}
+          onRetry={fetchStatisticsData}
+        />
+        <StatisticsSummary
+          items={summaryItemsToShow}
+          loading={loading || !!error}
+        />
       </div>
 
-      {/* Tablet: three-column split */}
-      <div className="hidden md:grid 2xl:hidden md:grid-cols-[1fr_1.2fr_1fr] md:gap-4 md:px-6 md:pb-6">
-        <div className="flex flex-col gap-4 min-h-0">
-          <FinancialMilestonesCard milestone={mockStatisticsPage.milestone} loading={loading} />
-          <DemographicComparisonsSection comparisons={mockStatisticsPage.demographicComparisons} loading={loading} />
+      {/* Tablet/Desktop: top row (3 cols) + bottom row (full-width table) */}
+      <div className="hidden md:flex flex-col gap-4 md:px-6 md:pb-6 min-h-[calc(100vh-120px)]">
+        {/* Top row: Milestones+Demographic | Average Expenses | Summary — equal height columns */}
+        <div className="grid md:grid-cols-[1fr_1.2fr_1fr] 2xl:grid-cols-[1fr_1.3fr_1fr] md:grid-rows-1 gap-4 min-h-[600px] shrink-0 items-stretch">
+          <div className="flex flex-col gap-4 min-h-0 h-full">
+            <FinancialMilestonesCard
+              milestone={mockStatisticsPage.milestone}
+              loading={loading || !!error}
+            />
+            <DemographicComparisonsSection
+              comparisons={mockStatisticsPage.demographicComparisons}
+              loading={loading || !!error}
+            />
+          </div>
+          <div className="flex flex-col min-h-0 min-w-0 h-full">
+            <AverageExpensesCard
+          expenses={averageExpenses}
+          loading={loading}
+          error={error}
+          onRetry={fetchStatisticsData}
+        />
+          </div>
+          <div className="flex flex-col min-h-0 min-w-0 h-full">
+            <StatisticsSummary
+            items={summaryItemsToShow}
+            loading={loading || !!error}
+          />
+          </div>
         </div>
-        <div className="flex flex-col gap-4 min-h-0">
-          <AverageExpensesCard expenses={averageExpenses} loading={loading} />
-          <MonthlySummaryTable data={monthlySummary} loading={loading} />
-        </div>
-        <div className="min-h-0">
-          <StatisticsSummary items={summaryItemsToShow} loading={loading} />
-        </div>
-      </div>
 
-      {/* Desktop: wider ratios */}
-      <div className="hidden 2xl:grid 2xl:grid-cols-[1fr_1.3fr_1fr] 2xl:gap-4 2xl:px-6 2xl:pb-6">
-        <div className="flex flex-col gap-4 min-h-0">
-          <FinancialMilestonesCard milestone={mockStatisticsPage.milestone} loading={loading} />
-          <DemographicComparisonsSection comparisons={mockStatisticsPage.demographicComparisons} loading={loading} />
-        </div>
-        <div className="flex flex-col gap-4 min-h-0">
-          <AverageExpensesCard expenses={averageExpenses} loading={loading} />
-          <MonthlySummaryTable data={monthlySummary} loading={loading} />
-        </div>
-        <div className="min-h-0">
-          <StatisticsSummary items={summaryItemsToShow} loading={loading} />
+        {/* Bottom row: Monthly Summary — full width */}
+        <div className="flex-1 flex flex-col min-h-[320px]">
+          <MonthlySummaryTable
+          data={monthlySummary}
+          loading={loading}
+          error={error}
+          onRetry={fetchStatisticsData}
+        />
         </div>
       </div>
     </main>

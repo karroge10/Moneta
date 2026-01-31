@@ -10,6 +10,7 @@ import Link from 'next/link';
 
 interface LatestIncomesCardProps {
   incomes: LatestIncome[];
+  onItemClick?: (income: LatestIncome) => void;
 }
 
 const MAX_NAME_LENGTH = 25;
@@ -19,7 +20,7 @@ function truncateName(name: string, maxLength: number): string {
   return name.substring(0, maxLength) + '...';
 }
 
-export default function LatestIncomesCard({ incomes }: LatestIncomesCardProps) {
+export default function LatestIncomesCard({ incomes, onItemClick }: LatestIncomesCardProps) {
   const { currency } = useCurrency();
 
   if (incomes.length === 0) {
@@ -52,7 +53,9 @@ export default function LatestIncomesCard({ incomes }: LatestIncomesCardProps) {
             return (
               <div 
                 key={income.id} 
-                className="flex items-center gap-3 min-w-0"
+                className={`flex items-center gap-3 min-w-0 ${onItemClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                onClick={onItemClick ? () => onItemClick(income) : undefined}
+                role={onItemClick ? 'button' : undefined}
               >
                 <div className="shrink-0">
                   <div
@@ -85,6 +88,7 @@ export default function LatestIncomesCard({ incomes }: LatestIncomesCardProps) {
         <Link 
           href="/transactions" 
           className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors"
+          onClick={(e) => e.stopPropagation()}
         >
           View All <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
         </Link>
