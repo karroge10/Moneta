@@ -71,12 +71,16 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
               <div className="w-32 h-32 rounded-full animate-pulse" style={SKELETON_STYLE} />
             </div>
             <div
-              className="overflow-y-auto custom-scrollbar mt-4 pr-2 flex-1 min-h-0"
+              className="overflow-y-auto scrollbar-hide mt-4 pr-2 flex-1 min-h-0"
               style={{ maxHeight: LIST_MAX_HEIGHT, minHeight: LIST_MAX_HEIGHT }}
             >
               <div className="flex flex-col gap-3">
                 {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3 min-w-0">
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 min-w-0 px-4 py-3 rounded-2xl"
+                    style={{ backgroundColor: '#202020' }}
+                  >
                     <div className="w-10 h-10 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
                     <div className="h-4 flex-1 max-w-[120px] rounded animate-pulse" style={SKELETON_STYLE} />
                     <div className="h-4 w-16 rounded animate-pulse shrink-0" style={SKELETON_STYLE} />
@@ -124,7 +128,8 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
                   return (
                     <div
                       key={expense.id}
-                      className="flex items-center gap-3 min-w-0"
+                      className="flex items-center gap-3 min-w-0 px-4 py-3 rounded-2xl"
+                      style={{ backgroundColor: '#202020' }}
                     >
                       <div
                         className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"

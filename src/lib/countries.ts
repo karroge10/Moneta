@@ -205,3 +205,22 @@ export const COUNTRIES: Country[] = [
   { code: 'ZW', name: 'Zimbabwe' },
   { code: 'EU', name: 'European Union' },
 ];
+
+/**
+ * Resolve a country by ISO code (e.g. "DE") or full name (e.g. "Germany").
+ * Returns { code, name } for display (flag + label). Case-insensitive for name.
+ */
+export function getCountryByCodeOrName(str: string): { code: string; name: string } | null {
+  if (!str || typeof str !== 'string') return null;
+  const trimmed = str.trim();
+  if (!trimmed) return null;
+  const isCode = trimmed.length === 2 && /^[A-Za-z]{2}$/.test(trimmed);
+  const upper = trimmed.toUpperCase();
+  const lower = trimmed.toLowerCase();
+  if (isCode) {
+    const c = COUNTRIES.find((x) => x.code === upper);
+    return c ? { code: c.code, name: c.name } : null;
+  }
+  const c = COUNTRIES.find((x) => x.name.toLowerCase() === lower);
+  return c ? { code: c.code, name: c.name } : null;
+}

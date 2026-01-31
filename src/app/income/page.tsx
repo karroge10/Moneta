@@ -461,6 +461,21 @@ export default function IncomePage() {
 
         {/* Loading State with Skeletons */}
         {renderSkeletonLayout()}
+
+        {/* Transaction Modal (available even while loading) */}
+        {selectedTransaction && (
+          <TransactionModal
+            transaction={selectedTransaction}
+            mode={modalMode}
+            onClose={handleCloseModal}
+            onSave={handleSave}
+            onDelete={handleDelete}
+            onPauseResume={selectedTransaction.recurringId !== undefined ? handlePauseResume : undefined}
+            isSaving={isSaving}
+            categories={categories}
+            currencyOptions={currencyOptions}
+          />
+        )}
       </main>
     );
   }
@@ -501,6 +516,21 @@ export default function IncomePage() {
             Retry
           </button>
         </div>
+
+        {/* Transaction Modal (available in error state too) */}
+        {selectedTransaction && (
+          <TransactionModal
+            transaction={selectedTransaction}
+            mode={modalMode}
+            onClose={handleCloseModal}
+            onSave={handleSave}
+            onDelete={handleDelete}
+            onPauseResume={selectedTransaction.recurringId !== undefined ? handlePauseResume : undefined}
+            isSaving={isSaving}
+            categories={categories}
+            currencyOptions={currencyOptions}
+          />
+        )}
       </main>
     );
   }
