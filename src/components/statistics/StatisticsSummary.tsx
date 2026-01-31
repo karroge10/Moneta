@@ -1,13 +1,12 @@
 'use client';
 
 import { StatisticsSummaryItem } from '@/types/dashboard';
-import { MoreHoriz, StatUp, NavArrowRight } from 'iconoir-react';
+import { MoreHoriz, NavArrowRight } from 'iconoir-react';
 import Card from '@/components/ui/Card';
 import { getIcon } from '@/lib/iconMapping';
 import { formatNumber } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 import Link from 'next/link';
-import PlaceholderDataBadge from '@/components/ui/PlaceholderDataBadge';
 
 const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
 const SKELETON_ITEMS = 5;
@@ -38,9 +37,10 @@ export default function StatisticsSummary({ items, loading = false }: Statistics
         showActions={false}
       >
         <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0 overflow-hidden" style={{ minHeight: contentMinHeight }}>
-          <div className="flex-1 space-y-3 pr-1">
+          {/* Same order as content: 5 small rows (Income, Expenses, Income Saved, Goals, Portfolio) then Financial Health block right under */}
+          <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0 space-y-3 pr-2">
             {Array.from({ length: SKELETON_ITEMS }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-3xl" style={{ backgroundColor: '#202020' }}>
+              <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-3xl" style={{ backgroundColor: '#202020' }}>
                 <div className="w-12 h-12 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
                 <div className="flex-1 min-w-0 space-y-2">
                   <div className="h-4 w-28 rounded animate-pulse" style={SKELETON_STYLE} />
@@ -49,11 +49,11 @@ export default function StatisticsSummary({ items, loading = false }: Statistics
                 <div className="h-4 w-14 rounded animate-pulse shrink-0" style={SKELETON_STYLE} />
               </div>
             ))}
-          </div>
-          <div className="p-6 mt-4 rounded-3xl min-h-[200px] flex flex-col items-center justify-center" style={{ backgroundColor: '#202020' }}>
-            <div className="w-16 h-16 rounded-full animate-pulse mb-4" style={SKELETON_STYLE} />
-            <div className="h-6 w-32 rounded animate-pulse mb-4" style={SKELETON_STYLE} />
-            <div className="h-12 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
+            <div className="p-6 mt-4 rounded-3xl min-h-[200px] flex flex-col items-center justify-center" style={{ backgroundColor: '#202020' }}>
+              <div className="w-16 h-16 rounded-full animate-pulse mb-4" style={SKELETON_STYLE} />
+              <div className="h-6 w-32 rounded animate-pulse mb-4" style={SKELETON_STYLE} />
+              <div className="h-12 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
+            </div>
           </div>
         </div>
       </Card>
@@ -77,7 +77,7 @@ export default function StatisticsSummary({ items, loading = false }: Statistics
       }
     >
       <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0" style={{ filter: 'none', minHeight: contentMinHeight }}>
-        <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 space-y-3 pr-1">
+        <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 space-y-3 pr-2">
           {itemsBeforePortfolio.map((item) => (
             <SummaryItem key={item.id} item={item} currency={currency} />
           ))}
@@ -155,25 +155,24 @@ export default function StatisticsSummary({ items, loading = false }: Statistics
 
 function SummaryItem({ item, currency }: { item: StatisticsSummaryItem; currency: { symbol: string } }) {
   const Icon = getIcon(item.icon);
-  const displayValue = typeof item.value === 'number' 
-    ? formatNumber(item.value) 
+  const displayValue = typeof item.value === 'number'
+    ? formatNumber(item.value)
     : item.value;
-  const isPortfolioEmpty = item.label === 'Portfolio Balance' && typeof item.value === 'number' && item.value === 0;
+  const isNegativeChange = item.change.startsWith('-');
+  const changeColor = isNegativeChange ? '#D93F3F' : '#74C648';
+  const changeParts = item.change ? item.change.split(/\s+(.+)/) : [];
+  const changePct = changeParts[0] ?? '';
+  const changeLabel = changeParts[1] ?? '';
 
   return (
     <div
-      className="flex items-center gap-3 p-3 relative"
+      className="flex items-center gap-3 px-4 py-3 relative"
       style={{
         backgroundColor: '#202020',
         borderRadius: '30px',
         width: '100%',
       }}
     >
-      {isPortfolioEmpty && (
-        <div className="absolute top-2 right-2 z-10">
-          <PlaceholderDataBadge size="sm" />
-        </div>
-      )}
       <div
         className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
         style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
@@ -183,9 +182,11 @@ function SummaryItem({ item, currency }: { item: StatisticsSummaryItem; currency
       <div className="flex-1 min-w-0">
         <div className="text-body font-medium text-wrap-safe break-words">{item.label}</div>
         {item.change && (
-          <div className="flex items-center gap-1 mt-1">
-            <StatUp width={14} height={14} strokeWidth={1.5} style={{ color: '#74C648' }} />
-            <span className="text-helper">{item.change}</span>
+          <div className="flex items-center gap-2 mt-1">
+            <span>
+              <span style={{ color: changeColor, fontWeight: 600 }}>{changePct}</span>
+              {changeLabel && <span className="text-helper"> {changeLabel}</span>}
+            </span>
           </div>
         )}
       </div>

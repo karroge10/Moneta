@@ -3,7 +3,7 @@ import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { LatestIncome, IncomeSource, PerformanceDataPoint, TimePeriod } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
-import { convertAmount } from '@/lib/currency-conversion';
+import { convertTransactionsToTarget } from '@/lib/currency-conversion';
 import { normalizeMerchantName } from '@/lib/merchant';
 
 export const runtime = 'nodejs';
@@ -230,20 +230,9 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const transactionsWithConverted = await Promise.all(
-      allIncomeTransactions.map(async (transaction) => {
-        const convertedAmount = await convertAmount(
-          transaction.amount,
-          transaction.currencyId,
-          targetCurrencyId,
-          transaction.date,
-        );
-
-        return {
-          ...transaction,
-          convertedAmount,
-        };
-      }),
+    const transactionsWithConverted = await convertTransactionsToTarget(
+      allIncomeTransactions,
+      targetCurrencyId,
     );
     
     // Helper: normalize to calendar date (strip time) for consistent period bucketing across timezones

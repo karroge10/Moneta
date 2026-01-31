@@ -3,7 +3,7 @@ import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Transaction as TransactionType, ExpenseCategory, TimePeriod } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
-import { convertAmount } from '@/lib/currency-conversion';
+import { convertTransactionsToTarget } from '@/lib/currency-conversion';
 import { getInvestmentsPortfolio } from '@/lib/investments';
 
 export const runtime = 'nodejs';
@@ -248,21 +248,10 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    const convertTransactions = async <T extends { amount: number; currencyId: number; date: Date }>(
-      txs: (T & { convertedAmount?: number })[],
-    ) => {
-      return Promise.all(
-        txs.map(async (t) => {
-          const convertedAmount = await convertAmount(t.amount, t.currencyId, targetCurrencyId, t.date);
-          return { ...t, convertedAmount };
-        }),
-      );
-    };
-
     const [selectedWithConverted, comparisonWithConverted, latestWithConverted] = await Promise.all([
-      convertTransactions(selectedTransactions),
-      convertTransactions(comparisonTransactions),
-      convertTransactions(latestTransactionsRaw),
+      convertTransactionsToTarget(selectedTransactions, targetCurrencyId),
+      convertTransactionsToTarget(comparisonTransactions, targetCurrencyId),
+      convertTransactionsToTarget(latestTransactionsRaw, targetCurrencyId),
     ]);
 
     // Calculate selected period income and expenses
