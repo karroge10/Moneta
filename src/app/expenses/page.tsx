@@ -496,7 +496,7 @@ export default function ExpensesPage() {
           <div className="text-body opacity-70 text-center">{error}</div>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded-full bg-[#AC66DA] text-[#E7E4E4] text-body font-medium hover:opacity-90 transition-opacity"
+            className="px-4 py-2 rounded-full bg-[#E7E4E4] text-[#282828] text-body font-medium hover:opacity-90 transition-opacity"
           >
             Retry
           </button>

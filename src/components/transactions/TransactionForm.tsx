@@ -8,6 +8,7 @@ import { getIcon } from '@/lib/iconMapping';
 import { useCurrency } from '@/hooks/useCurrency';
 import { formatNumber } from '@/lib/utils';
 import Spinner from '@/components/ui/Spinner';
+import CurrencySelector from '@/components/transactions/import/CurrencySelector';
 import { CalendarPanel } from '@/components/transactions/shared/CalendarPanel';
 import { formatDateForDisplay, formatDateToInput } from '@/lib/dateFormatting';
 
@@ -40,7 +41,6 @@ export default function TransactionForm({
   const [formData, setFormData] = useState<Transaction>(transaction);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
-  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>(
     transaction.amount < 0 ? 'expense' : transaction.amount > 0 ? 'income' : 'expense'
   );
@@ -71,9 +71,6 @@ export default function TransactionForm({
   const dateDropdownRef = useRef<HTMLDivElement>(null);
   const dateTriggerRef = useRef<HTMLButtonElement>(null);
   const datePortalRef = useRef<HTMLDivElement>(null);
-  const currencyDropdownRef = useRef<HTMLDivElement>(null);
-  const currencyTriggerRef = useRef<HTMLButtonElement>(null);
-  const currencyPortalRef = useRef<HTMLDivElement>(null);
   const recurringStartDropdownRef = useRef<HTMLDivElement>(null);
   const recurringStartTriggerRef = useRef<HTMLButtonElement>(null);
   const recurringStartPortalRef = useRef<HTMLDivElement>(null);
@@ -91,9 +88,6 @@ export default function TransactionForm({
   const [dateDropdownStyle, setDateDropdownStyle] = useState<CSSProperties | null>(null);
   const [dateOpenUpward, setDateOpenUpward] = useState(false);
   
-  // Portal positioning state for currency dropdown
-  const [currencyDropdownStyle, setCurrencyDropdownStyle] = useState<CSSProperties | null>(null);
-  const [currencyOpenUpward, setCurrencyOpenUpward] = useState(false);
   const [recurringStartDropdownStyle, setRecurringStartDropdownStyle] = useState<CSSProperties | null>(null);
   const [recurringStartOpenUpward, setRecurringStartOpenUpward] = useState(false);
   const [recurringEndDropdownStyle, setRecurringEndDropdownStyle] = useState<CSSProperties | null>(null);
@@ -152,14 +146,7 @@ export default function TransactionForm({
         setIsDateOpen(false);
       }
       
-      // Currency dropdown (portal) - check both container and portal ref
-      if (isCurrencyOpen && 
-          currencyDropdownRef.current && 
-          !currencyDropdownRef.current.contains(target) &&
-          (!currencyPortalRef.current || !currencyPortalRef.current.contains(target))) {
-        setIsCurrencyOpen(false);
-      }
-
+      
       if (isRecurringStartOpen &&
           recurringStartDropdownRef.current &&
           !recurringStartDropdownRef.current.contains(target) &&
@@ -186,7 +173,7 @@ export default function TransactionForm({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isCategoryOpen, isDateOpen, isCurrencyOpen, isRecurringStartOpen, isRecurringEndOpen, isRecurringUnitOpen]);
+  }, [isCategoryOpen, isDateOpen, isRecurringStartOpen, isRecurringEndOpen, isRecurringUnitOpen]);
 
   useEffect(() => {
     if (!isRecurringUnitOpen || !recurringUnitTriggerRef.current) return;
@@ -245,33 +232,6 @@ export default function TransactionForm({
     };
   }, [isDateOpen, updateDateDropdownPosition]);
 
-  // Position calculation for currency dropdown portal
-  const updateCurrencyDropdownPosition = useCallback(() => {
-    if (!isCurrencyOpen || !currencyTriggerRef.current || !currencyPortalRef.current) return;
-    const margin = 8;
-    const triggerRect = currencyTriggerRef.current.getBoundingClientRect();
-    const dropdownRect = currencyPortalRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - triggerRect.bottom;
-    const spaceAbove = triggerRect.top;
-    const shouldOpenUp = dropdownRect.height + margin > spaceBelow && spaceAbove > spaceBelow;
-
-    const top = shouldOpenUp
-      ? Math.max(margin, triggerRect.top - dropdownRect.height - margin)
-      : Math.min(window.innerHeight - dropdownRect.height - margin, triggerRect.bottom + margin);
-
-    const maxLeft = window.innerWidth - triggerRect.width - margin;
-    const left = Math.min(Math.max(triggerRect.left, margin), Math.max(margin, maxLeft));
-
-    setCurrencyOpenUpward(shouldOpenUp);
-    setCurrencyDropdownStyle({
-      position: 'fixed',
-      width: triggerRect.width,
-      left,
-      top,
-      zIndex: 1000,
-    });
-  }, [isCurrencyOpen]);
-
   const updateRecurringStartDropdownPosition = useCallback(() => {
     if (!isRecurringStartOpen || !recurringStartTriggerRef.current || !recurringStartPortalRef.current) return;
     const margin = 8;
@@ -325,22 +285,6 @@ export default function TransactionForm({
       zIndex: 1000,
     });
   }, [isRecurringEndOpen]);
-
-  useLayoutEffect(() => {
-    if (!isCurrencyOpen) {
-      setCurrencyDropdownStyle(null);
-      return;
-    }
-
-    updateCurrencyDropdownPosition();
-    window.addEventListener('resize', updateCurrencyDropdownPosition);
-    window.addEventListener('scroll', updateCurrencyDropdownPosition, true);
-
-    return () => {
-      window.removeEventListener('resize', updateCurrencyDropdownPosition);
-      window.removeEventListener('scroll', updateCurrencyDropdownPosition, true);
-    };
-  }, [isCurrencyOpen, updateCurrencyDropdownPosition]);
 
   useLayoutEffect(() => {
     if (!isRecurringStartOpen) {
@@ -479,7 +423,6 @@ export default function TransactionForm({
       ...prev,
       currencyId: currencyId ?? undefined,
     }));
-    setIsCurrencyOpen(false);
   };
 
   const selectedCurrency = currencyOptions.find(c => c.id === formData.currencyId) ?? currency;
@@ -645,60 +588,12 @@ export default function TransactionForm({
 
         <div>
           <label className="block text-body font-medium mb-2">Currency</label>
-          <div className="relative" ref={currencyDropdownRef}>
-            <button
-              type="button"
-              ref={currencyTriggerRef}
-              onClick={() => setIsCurrencyOpen(prev => !prev)}
-              disabled={isSaving}
-              className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              <span className="text-body font-semibold">
-                {selectedCurrency ? `${selectedCurrency.symbol} ${selectedCurrency.alias}` : 'Select currency'}
-              </span>
-              <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
-            </button>
-
-            {isCurrencyOpen && typeof document !== 'undefined' && createPortal(
-              <div
-                ref={currencyPortalRef}
-                className={`rounded-2xl shadow-lg overflow-hidden border border-[#3a3a3a] ${currencyOpenUpward ? 'origin-bottom' : 'origin-top'}`}
-                style={{
-                  backgroundColor: '#202020',
-                  ...(currencyDropdownStyle ?? {
-                    position: 'fixed',
-                    top: -9999,
-                    left: -9999,
-                    zIndex: 1000,
-                    width: currencyTriggerRef.current?.getBoundingClientRect().width,
-                  }),
-                }}
-              >
-                <div className="max-h-64 overflow-y-auto">
-                  {currencyOptions.map(currencyOption => {
-                    const isSelected = formData.currencyId === currencyOption.id;
-                    return (
-                      <button
-                        type="button"
-                        key={currencyOption.id}
-                        onClick={() => handleCurrencySelect(currencyOption.id)}
-                        className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
-                        style={{
-                          backgroundColor: 'transparent',
-                          color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)',
-                        }}
-                      >
-                        <span className="font-semibold">{currencyOption.symbol}</span>
-                        <span>{currencyOption.name} ({currencyOption.alias})</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>,
-              document.body,
-            )}
-          </div>
+          <CurrencySelector
+            options={currencyOptions}
+            selectedCurrencyId={formData.currencyId ?? null}
+            onSelect={handleCurrencySelect}
+            disabled={isSaving}
+          />
         </div>
       </div>
 

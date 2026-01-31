@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { calculateGoalProgress } from '@/lib/goalUtils';
 import { TimePeriod, MonthlySummaryRow, StatisticsSummaryItem, DemographicComparison } from '@/types/dashboard';
 import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
 
@@ -202,7 +203,7 @@ export async function GET(request: NextRequest) {
         db.investment.findMany({ where: { userId: user.id } }),
       ]);
       const totalGoals = goals.length;
-      const completedGoals = goals.filter((g) => g.progress >= 100).length;
+      const completedGoals = goals.filter((g) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
       const goalsSuccessRate = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100 * 10) / 10 : 0;
       const portfolioBalance = investments.reduce((s, i) => s + i.currentValue, 0);
       let demographicComparisons: DemographicComparison[] = [];
@@ -238,7 +239,7 @@ export async function GET(request: NextRequest) {
                 db.investment.findMany({ where: { userId: cohortUser.id } }),
               ]);
               const cg = cohortGoals.length;
-              const cgDone = cohortGoals.filter((g) => g.progress >= 100).length;
+              const cgDone = cohortGoals.filter((g) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
               const goalsSuccessRateC = cg > 0 ? (cgDone / cg) * 100 : 0;
               const portfolioBal = cohortInvestments.reduce((s, i) => s + i.currentValue, 0);
               return { income: cohortIncome, expenses: cohortExpenses, goalsSuccessRate: goalsSuccessRateC, portfolioBalance: portfolioBal };
@@ -483,7 +484,7 @@ export async function GET(request: NextRequest) {
     });
 
     const totalGoals = goals.length;
-    const completedGoals = goals.filter((g) => g.progress >= 100).length;
+    const completedGoals = goals.filter((g) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
     const goalsSuccessRate = totalGoals > 0 
       ? Math.round((completedGoals / totalGoals) * 100 * 10) / 10 // Round to 1 decimal
       : 0;
@@ -539,7 +540,7 @@ export async function GET(request: NextRequest) {
               db.investment.findMany({ where: { userId: cohortUser.id } }),
             ]);
             const totalGoals = cohortGoals.length;
-            const completedGoals = cohortGoals.filter((g) => g.progress >= 100).length;
+            const completedGoals = cohortGoals.filter((g) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
             const goalsSuccessRate = totalGoals > 0 ? (completedGoals / totalGoals) * 100 : 0;
             const portfolioBal = cohortInvestments.reduce((s, i) => s + i.currentValue, 0);
             return {

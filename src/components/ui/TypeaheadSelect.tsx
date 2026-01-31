@@ -17,6 +17,8 @@ export interface TypeaheadOption {
   searchTerms?: string[];
   /** Additional display text, e.g. currency symbol on the right. */
   suffix?: string;
+  /** Currency symbol shown between flag/icon and label with font-semibold. */
+  symbol?: string;
 }
 
 interface TypeaheadSelectProps {
@@ -164,6 +166,21 @@ export default function TypeaheadSelect({
     setIsOpen(false);
   };
 
+  const handleTriggerClick = () => {
+    if (disabled) return;
+    if (!isOpen) {
+      // When opening, scroll trigger into view if near bottom so dropdown has room
+      if (ref.current) {
+        const rect = ref.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        if (spaceBelow < DROPDOWN_HEIGHT && rect.top > DROPDOWN_HEIGHT) {
+          ref.current.scrollIntoView({ block: 'center', behavior: 'auto' });
+        }
+      }
+    }
+    setIsOpen((prev) => !prev);
+  };
+
   const dropdownContent = (
     <>
       <div className="p-2 border-b border-[#2A2A2A]">
@@ -182,7 +199,7 @@ export default function TypeaheadSelect({
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.stopPropagation()}
             placeholder={searchPlaceholder}
-            className="w-full pl-9 pr-3 py-2 rounded-lg text-body bg-[#282828] border border-[#3a3a3a] outline-none focus:border-[var(--accent-purple)]"
+            className="w-full pl-9 pr-3 py-2 rounded-xl text-body bg-[#282828] border border-[#3a3a3a] outline-none focus:border-[var(--accent-purple)]"
             style={{ color: 'var(--text-primary)' }}
             aria-label="Search options"
           />
@@ -227,6 +244,11 @@ export default function TypeaheadSelect({
                     <Globe width={20} height={20} strokeWidth={1.5} />
                   </span>
                 )}
+                {option.symbol ? (
+                  <span className="shrink-0 font-semibold text-body" style={{ color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' }}>
+                    {option.symbol}
+                  </span>
+                ) : null}
                 <span className="flex-1 min-w-0 truncate text-left">
                   {option.label}
                 </span>
@@ -257,8 +279,8 @@ export default function TypeaheadSelect({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         disabled={disabled}
-        onClick={() => !disabled && setIsOpen((prev) => !prev)}
-        className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg w-full text-body cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        onClick={handleTriggerClick}
+        className="flex items-center justify-between gap-3 px-4 py-2 rounded-xl w-full text-body cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         style={{
           backgroundColor: '#202020',
           color: selectedOption ? '#E7E4E4' : 'var(--text-secondary)',
@@ -283,6 +305,9 @@ export default function TypeaheadSelect({
                   <Globe width={20} height={20} strokeWidth={1.5} />
                 </span>
               )}
+              {selectedOption.symbol ? (
+                <span className="shrink-0 font-semibold text-body">{selectedOption.symbol}</span>
+              ) : null}
               <span className="truncate">
                 {selectedOption.label}
                 {selectedOption.suffix ? ` ${selectedOption.suffix}` : ''}

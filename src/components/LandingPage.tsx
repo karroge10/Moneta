@@ -157,7 +157,7 @@ export default function LandingPage({ initialUserPlan }: { initialUserPlan?: str
             <SignedIn>
               <Link
                 href="/dashboard"
-                className="flex items-center justify-center h-8 px-4 rounded-full bg-[#AC66DA] text-[#E7E4E4] font-semibold text-body hover:opacity-90 transition-opacity"
+                className="flex items-center justify-center h-8 px-4 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity"
               >
                 <span className="hidden sm:inline">Open Dashboard</span>
                 <span className="sm:hidden">Open</span>
@@ -185,7 +185,7 @@ export default function LandingPage({ initialUserPlan }: { initialUserPlan?: str
               <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard">
                 <button
                   type="button"
-                  className="px-6 py-2.5 rounded-full bg-[#AC66DA] text-[#E7E4E4] font-semibold hover:opacity-90 transition-opacity"
+                  className="px-6 py-2.5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold hover:opacity-90 transition-opacity"
                 >
                   Get Started
                 </button>
@@ -218,7 +218,7 @@ export default function LandingPage({ initialUserPlan }: { initialUserPlan?: str
                 <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard">
                   <button
                     type="button"
-                    className="px-8 py-3.5 rounded-full bg-[#AC66DA] text-[#E7E4E4] font-semibold text-body hover:opacity-90 transition-opacity"
+                    className="px-8 py-3.5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity"
                   >
                     Start Free Trial
                   </button>
@@ -227,7 +227,7 @@ export default function LandingPage({ initialUserPlan }: { initialUserPlan?: str
               <SignedIn>
                 <Link
                   href="/dashboard"
-                  className="inline-block px-8 py-3.5 rounded-full bg-[#AC66DA] text-[#E7E4E4] font-semibold text-body hover:opacity-90 transition-opacity"
+                  className="inline-block px-8 py-3.5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity"
                 >
                   Open Dashboard
                 </Link>
@@ -788,7 +788,7 @@ function PricingCard({
             className={`mt-4 py-3 px-6 rounded-full text-body font-semibold transition-colors cursor-pointer ${
               name === "Basic"
                 ? "bg-[#282828] hover:bg-[#393939] text-[#E7E4E4]"
-                : "bg-[#AC66DA] hover:opacity-90 text-[#E7E4E4]"
+                : "bg-[#E7E4E4] hover:opacity-90 text-[#282828]"
             }`}
           >
             {ctaText}
@@ -802,7 +802,7 @@ function PricingCard({
             className={`mt-4 py-3 px-6 rounded-full text-body font-semibold transition-colors cursor-not-allowed opacity-60 ${
               name === "Basic"
                 ? "bg-[#282828] text-[#E7E4E4]"
-                : "bg-[#AC66DA] text-[#E7E4E4]"
+                : "bg-[#E7E4E4] text-[#282828]"
             }`}
           >
             {buttonConfig.text}
@@ -810,11 +810,7 @@ function PricingCard({
         ) : buttonConfig.text === "Upgrade" ? (
           <Link
             href="/pricing"
-            className={`mt-4 py-3 px-6 rounded-full text-body font-semibold transition-colors cursor-pointer inline-block text-center ${
-              name === "Basic"
-                ? "bg-[#282828] hover:bg-[#393939] text-[#E7E4E4]"
-                : "bg-[#AC66DA] hover:opacity-90 text-[#E7E4E4]"
-            }`}
+            className="mt-4 py-3 px-6 rounded-full text-body font-semibold transition-all cursor-pointer inline-block text-center bg-[var(--accent-purple)] text-[#E7E4E4] hover:opacity-90 ring-2 ring-[#AC66DA]/50 ring-offset-2 ring-offset-[#202020]"
           >
             {buttonConfig.text}
           </Link>
@@ -824,7 +820,7 @@ function PricingCard({
             className={`mt-4 py-3 px-6 rounded-full text-body font-semibold transition-colors cursor-pointer inline-block text-center ${
               name === "Basic"
                 ? "bg-[#282828] hover:bg-[#393939] text-[#E7E4E4]"
-                : "bg-[#AC66DA] hover:opacity-90 text-[#E7E4E4]"
+                : "bg-[#E7E4E4] hover:opacity-90 text-[#282828]"
             }`}
           >
             Open Dashboard

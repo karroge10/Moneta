@@ -7,17 +7,19 @@ import SearchBar from '@/components/transactions/shared/SearchBar';
 import GoalFilter from './shared/GoalFilter';
 import GoalCard from './GoalCard';
 import Card from '@/components/ui/Card';
+import type { CurrencyOption } from '@/lib/currency-country-map';
 
 const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
 const SKELETON_CARDS = 4;
 
 interface GoalsListProps {
   goals: Goal[];
+  currencyOptions?: CurrencyOption[];
   onGoalClick?: (goal: Goal) => void;
   loading?: boolean;
 }
 
-export default function GoalsList({ goals, onGoalClick, loading = false }: GoalsListProps) {
+export default function GoalsList({ goals, currencyOptions = [], onGoalClick, loading = false }: GoalsListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<GoalStatus | 'all' | null>('all');
 
@@ -84,6 +86,7 @@ export default function GoalsList({ goals, onGoalClick, loading = false }: Goals
                 <GoalCard
                   key={goal.id}
                   goal={goal}
+                  currencyOptions={currencyOptions}
                   onClick={() => onGoalClick?.(goal)}
                 />
               ))}

@@ -1,18 +1,10 @@
 'use client';
 
 import TypeaheadSelect from '@/components/ui/TypeaheadSelect';
-import {
-  getCountryCodeForCurrency,
-  getSearchTermsForCurrency,
-} from '@/lib/currency-country-map';
+import { buildCurrencyTypeaheadOptions, type CurrencyOption } from '@/lib/currency-country-map';
 import type { TypeaheadOption } from '@/components/ui/TypeaheadSelect';
 
-export type CurrencyOption = {
-  id: number;
-  name: string;
-  symbol: string;
-  alias: string;
-};
+export type { CurrencyOption };
 
 interface CurrencySelectorProps {
   options: CurrencyOption[];
@@ -32,13 +24,7 @@ export default function CurrencySelector({
       value: '__none__',
       label: 'Select currency',
     },
-    ...options.map((c) => ({
-      value: c.id.toString(),
-      label: c.name,
-      countryCode: getCountryCodeForCurrency(c.alias),
-      searchTerms: [c.name, c.alias, ...getSearchTermsForCurrency(c.alias)],
-      suffix: c.symbol,
-    })),
+    ...buildCurrencyTypeaheadOptions(options, 'id'),
   ];
 
   const value =
@@ -56,7 +42,7 @@ export default function CurrencySelector({
   };
 
   return (
-    <div className="w-full sm:w-auto sm:min-w-[320px]">
+    <div className="w-full min-w-0">
       <TypeaheadSelect
         options={typeaheadOptions}
         value={value}
@@ -65,6 +51,7 @@ export default function CurrencySelector({
         searchPlaceholder="Search (e.g. United States, USD)..."
         disabled={disabled}
         aria-label="Statement currency"
+        dropdownInPortal
       />
     </div>
   );

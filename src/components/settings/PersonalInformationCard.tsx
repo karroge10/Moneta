@@ -21,11 +21,7 @@ import {
 } from 'iconoir-react';
 import type { SelectOptionItem } from './SettingsField';
 import { COUNTRIES } from '@/lib/countries';
-import {
-  getCountryCodeForCurrency,
-  getSearchTermsForCurrency,
-  getDisplayNameForCurrency,
-} from '@/lib/currency-country-map';
+import { buildCurrencyTypeaheadOptions } from '@/lib/currency-country-map';
 import { getCountryCodeForLanguage } from '@/lib/language-country-map';
 
 const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
@@ -34,7 +30,7 @@ function FieldRowSkeleton({ labelWidth = 'w-24' }: { labelWidth?: string }) {
   return (
     <div className="flex flex-col gap-2">
       <div className={`h-4 rounded animate-pulse ${labelWidth}`} style={SKELETON_STYLE} />
-      <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ backgroundColor: '#202020' }}>
+      <div className="flex items-center gap-3 px-4 py-2 rounded-xl" style={{ backgroundColor: '#202020' }}>
         <div className="w-5 h-5 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
         <div className="h-4 flex-1 min-w-0 rounded animate-pulse max-w-[180px]" style={SKELETON_STYLE} />
       </div>
@@ -94,13 +90,7 @@ export default function PersonalInformationCard({
       ? [{ value: settings.language, label: settings.language, icon: <Globe {...ICON_STYLE} /> }]
       : [];
   const currencyOptionItems: SelectOptionItem[] = currencyOptionsProp?.length
-    ? currencyOptionsProp.map((c) => ({
-        value: `${c.symbol} ${c.alias}`,
-        label: getDisplayNameForCurrency(c.alias) ?? c.name,
-        countryCode: getCountryCodeForCurrency(c.alias),
-        searchTerms: [c.name, c.alias, ...getSearchTermsForCurrency(c.alias)],
-        suffix: c.symbol,
-      }))
+    ? (buildCurrencyTypeaheadOptions(currencyOptionsProp, 'display') as SelectOptionItem[])
     : settings.currency
       ? [{ value: settings.currency, label: settings.currency, symbol: settings.currency.split(' ')[0] ?? '', alias: settings.currency.split(' ')[1] ?? settings.currency }]
       : [];
@@ -179,7 +169,7 @@ export default function PersonalInformationCard({
               <div className="relative w-12 h-6 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
             </div>
             <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-3 px-4 py-3 rounded-lg w-full" style={{ backgroundColor: '#202020' }}>
+              <div className="flex items-center gap-3 px-4 py-2 rounded-xl w-full" style={{ backgroundColor: '#202020' }}>
                 <div className="h-4 flex-1 rounded animate-pulse" style={SKELETON_STYLE} />
               </div>
               <div className="h-3 w-full max-w-[280px] rounded animate-pulse" style={SKELETON_STYLE} />
@@ -301,6 +291,7 @@ export default function PersonalInformationCard({
             optionItems={countryOptionItems}
             placeholder="Select country"
             searchPlaceholder="Search countries..."
+            dropdownInPortal
             disabled={disabled}
             onChange={(value) => onChange?.('country', value)}
           />
@@ -312,6 +303,7 @@ export default function PersonalInformationCard({
             optionItems={languageOptionItems}
             placeholder="Select language"
             searchPlaceholder="Search languages..."
+            dropdownInPortal
             disabled={disabled}
             onChange={(value) => onChange?.('language', value)}
           />
@@ -323,6 +315,7 @@ export default function PersonalInformationCard({
             optionItems={currencyOptionItems}
             placeholder="Select currency"
             searchPlaceholder="Search currencies (e.g. United States, USD)..."
+            dropdownInPortal
             disabled={disabled}
             onChange={(value) => onChange?.('currency', value)}
           />
@@ -384,7 +377,7 @@ export default function PersonalInformationCard({
             {taxEnabled && (
               <div className="flex flex-col gap-2">
                 <div
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg w-full border border-[#3a3a3a]"
+                  className="flex items-center gap-3 px-4 py-2 rounded-xl w-full border border-[#3a3a3a]"
                   style={{ backgroundColor: '#202020' }}
                 >
                   <input
@@ -426,8 +419,8 @@ export default function PersonalInformationCard({
               </span>
               <Link
                 href="/pricing"
-                className="px-6 py-2 rounded-full text-body font-semibold transition-opacity hover:opacity-90 cursor-pointer"
-                style={{ backgroundColor: '#E7E4E4', color: '#202020' }}
+                className="px-6 py-2.5 rounded-full text-body font-semibold transition-all hover:opacity-90 cursor-pointer ring-2 ring-[#AC66DA]/40 ring-offset-2 ring-offset-[#282828]"
+                style={{ backgroundColor: 'var(--accent-purple)', color: '#E7E4E4' }}
               >
                 Upgrade to Premium
               </Link>

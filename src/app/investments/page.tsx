@@ -239,7 +239,7 @@ export default function InvestmentsPage() {
           <div className="text-body opacity-70 text-center">{error || 'Unable to load investments.'}</div>
           <button
             onClick={fetchInvestments}
-            className="px-4 py-2 rounded-full bg-[#AC66DA] text-[#E7E4E4] text-body font-medium hover:opacity-90 transition-opacity"
+            className="px-4 py-2 rounded-full bg-[#E7E4E4] text-[#282828] text-body font-medium hover:opacity-90 transition-opacity"
           >
             Retry
           </button>
@@ -522,7 +522,7 @@ export default function InvestmentsPage() {
               <button
                 disabled={saving || !formState.name}
                 onClick={handleSaveInvestment}
-                className="px-4 py-2 rounded-full bg-[#AC66DA] text-[#E7E4E4] text-body font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="px-4 py-2 rounded-full bg-[#E7E4E4] text-[#282828] text-body font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {saving ? 'Saving...' : 'Save'}
               </button>

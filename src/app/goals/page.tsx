@@ -7,14 +7,25 @@ import GoalsList from '@/components/goals/GoalsList';
 import GoalsSummary from '@/components/goals/GoalsSummary';
 import GoalModal from '@/components/goals/GoalModal';
 import Confetti from '@/components/ui/Confetti';
+import { ToastContainer, type ToastType } from '@/components/ui/Toast';
 import { Goal } from '@/types/dashboard';
 import { TimePeriod } from '@/types/dashboard';
+import { useCurrency } from '@/hooks/useCurrency';
+import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 
 export default function GoalsPage() {
+  const { currency: userCurrency } = useCurrency();
+  const { currencyOptions } = useCurrencyOptions();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Year');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState(false);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type?: ToastType }>>([]);
+
+  const addToast = useCallback((message: string, type: ToastType = 'success') => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    setToasts((prev) => [...prev, { id, message, type }]);
+  }, []);
   
   // Modal state
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
@@ -25,23 +36,24 @@ export default function GoalsPage() {
   const fetchGoals = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
-      const response = await fetch('/api/goals');
+      setFetchError(false);
+      const res = await fetch('/api/goals');
       
-      if (!response.ok) {
+      if (!res.ok) {
         throw new Error('Failed to fetch goals');
       }
       
-      const data = await response.json();
+      const data = await res.json();
       setGoals(data.goals || []);
     } catch (err) {
       console.error('Error fetching goals:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load goals');
+      setFetchError(true);
       setGoals([]);
+      addToast(err instanceof Error ? err.message : 'Failed to load goals', 'error');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [addToast]);
 
   useEffect(() => {
     fetchGoals();
@@ -65,6 +77,7 @@ export default function GoalsPage() {
       targetAmount: 0,
       currentAmount: 0,
       progress: 0,
+      currencyId: userCurrency?.id ?? undefined,
     };
   };
 
@@ -80,7 +93,6 @@ export default function GoalsPage() {
 
   const handleSave = async (updatedGoal: Goal) => {
     try {
-      setError(null);
       setIsSaving(true);
       
       // Calculate progress to check if goal is complete
@@ -95,9 +107,9 @@ export default function GoalsPage() {
       
       const isNew = modalMode === 'add';
       
-      let response: Response;
+      let res: Response;
       if (isNew) {
-        response = await fetch('/api/goals', {
+        res = await fetch('/api/goals', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -105,10 +117,11 @@ export default function GoalsPage() {
             targetDate: updatedGoal.targetDate,
             targetAmount: updatedGoal.targetAmount,
             currentAmount: updatedGoal.currentAmount,
+            currencyId: updatedGoal.currencyId ?? undefined,
           }),
         });
       } else {
-        response = await fetch('/api/goals', {
+        res = await fetch('/api/goals', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -117,16 +130,18 @@ export default function GoalsPage() {
             targetDate: updatedGoal.targetDate,
             targetAmount: updatedGoal.targetAmount,
             currentAmount: updatedGoal.currentAmount,
+            currencyId: updatedGoal.currencyId ?? undefined,
           }),
         });
       }
       
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!res.ok) {
+        const errorData = await res.json();
         throw new Error(errorData.error || 'Failed to save goal');
       }
       
       setSelectedGoal(null);
+      addToast('Goal saved');
       
       // Show confetti if goal was just completed
       if (justCompleted || (isNew && isNowComplete)) {
@@ -136,7 +151,7 @@ export default function GoalsPage() {
       fetchGoals(); // Refresh goals data
     } catch (err) {
       console.error('Error saving goal:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save goal');
+      addToast(err instanceof Error ? err.message : 'Failed to save goal', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -160,47 +175,32 @@ export default function GoalsPage() {
       }
       
       setSelectedGoal(null);
+      addToast('Goal deleted');
       fetchGoals(); // Refresh goals data
     } catch (err) {
       console.error('Error deleting goal:', err);
-      setError(err instanceof Error ? err.message : 'Failed to delete goal');
+      addToast(err instanceof Error ? err.message : 'Failed to delete goal', 'error');
     }
   };
 
-  if (error && goals.length === 0) {
+  if (fetchError && goals.length === 0) {
     return (
       <main className="min-h-screen bg-[#202020]">
-        {/* Desktop Header */}
         <div className="hidden md:block">
-          <DashboardHeader 
-            pageName="Goals"
-            actionButton={{
-              label: 'Add Goal',
-              onClick: handleAddGoalClick,
-            }}
-          />
+          <DashboardHeader pageName="Goals" actionButton={{ label: 'Add Goal', onClick: handleAddGoalClick }} />
         </div>
-
-        {/* Mobile Navbar */}
         <div className="md:hidden">
-          <MobileNavbar 
-            pageName="Goals" 
-            timePeriod={timePeriod} 
-            onTimePeriodChange={setTimePeriod}
-            activeSection="goals"
-          />
+          <MobileNavbar pageName="Goals" timePeriod={timePeriod} onTimePeriodChange={setTimePeriod} activeSection="goals" />
         </div>
-
-        {/* Error State */}
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
-          <div className="text-body opacity-70 text-center">{error}</div>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => fetchGoals()}
             className="px-4 py-2 rounded-full bg-[#AC66DA] text-[#E7E4E4] text-body font-medium hover:opacity-90 transition-opacity"
           >
             Retry
           </button>
         </div>
+        <ToastContainer toasts={toasts} onRemove={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
       </main>
     );
   }
@@ -229,31 +229,23 @@ export default function GoalsPage() {
       </div>
 
       {/* Error Banner */}
-      {error && (
-        <div className="px-4 md:px-6 pt-4">
-          <div className="bg-[#D93F3F] text-[#E7E4E4] px-4 py-2 rounded-xl text-sm">
-            {error}
-          </div>
-        </div>
-      )}
-
       {/* Content — same layout when loading; cards show skeleton internally */}
       {/* Mobile: stacked (prioritize goals first) */}
       <div className="md:hidden flex flex-col gap-4 px-4 pb-4">
-        <GoalsList goals={goals} onGoalClick={handleEditGoal} loading={loading} />
+        <GoalsList goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} loading={loading} />
         <GoalsSummary goals={goals} compact loading={loading} />
       </div>
 
       {/* Tablet & small desktop (< xl): vertical flow with goals first */}
       <div className="hidden md:flex xl:hidden flex-col gap-4 md:px-6 md:pb-6">
-        <GoalsList goals={goals} onGoalClick={handleEditGoal} loading={loading} />
+        <GoalsList goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} loading={loading} />
         <GoalsSummary goals={goals} compact loading={loading} />
       </div>
 
       {/* Desktop: generous canvas */}
       <div className="hidden xl:grid xl:grid-cols-3 xl:gap-4 xl:px-6 xl:pb-6">
         <div className="col-span-2 min-h-0 flex flex-col">
-          <GoalsList goals={goals} onGoalClick={handleEditGoal} loading={loading} />
+          <GoalsList goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} loading={loading} />
         </div>
         <div className="min-h-0 flex flex-col">
           <GoalsSummary goals={goals} loading={loading} />
@@ -261,10 +253,11 @@ export default function GoalsPage() {
       </div>
 
       {/* Goal Modal */}
-      {selectedGoal && (
+      {selectedGoal && currencyOptions.length > 0 && (
         <GoalModal
           goal={selectedGoal}
           mode={modalMode}
+          currencyOptions={currencyOptions}
           onClose={handleCloseModal}
           onSave={handleSave}
           onDelete={handleDelete}
@@ -276,6 +269,8 @@ export default function GoalsPage() {
       {showConfetti && (
         <Confetti onComplete={() => setShowConfetti(false)} />
       )}
+
+      <ToastContainer toasts={toasts} onRemove={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
     </main>
   );
 }

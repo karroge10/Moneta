@@ -11,6 +11,7 @@ import CategoryFilter from '@/components/transactions/shared/CategoryFilter';
 import TypeFilter from '@/components/transactions/shared/TypeFilter';
 import MonthFilter from '@/components/transactions/shared/MonthFilter';
 import Card from '@/components/ui/Card';
+import { ToastContainer, type ToastType } from '@/components/ui/Toast';
 import { Transaction, Category, RecurringItem, RecurringRow } from '@/types/dashboard';
 import { Upload, Reports, NavArrowUp, NavArrowDown } from 'iconoir-react';
 import { getIcon } from '@/lib/iconMapping';
@@ -45,7 +46,12 @@ export default function TransactionsPage() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type?: ToastType }>>([]);
+
+  const addToast = useCallback((message: string, type: ToastType = 'success') => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    setToasts((prev) => [...prev, { id, message, type }]);
+  }, []);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -122,7 +128,6 @@ export default function TransactionsPage() {
   const fetchTransactions = useCallback(async (page: number = 1) => {
     try {
       setLoading(true);
-      setError(null);
       
       const params = new URLSearchParams({
         page: page.toString(),
@@ -165,11 +170,11 @@ export default function TransactionsPage() {
       setCurrentPage(data.page || 1);
     } catch (err) {
       console.error('Error fetching transactions:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load transactions');
+      addToast(err instanceof Error ? err.message : 'Failed to load transactions', 'error');
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearchQuery, categoryFilter, typeFilter, monthFilter, pageSize, sortColumn, sortOrder]);
+  }, [debouncedSearchQuery, categoryFilter, typeFilter, monthFilter, pageSize, sortColumn, sortOrder, addToast]);
 
   // Fetch categories
   useEffect(() => {
@@ -207,19 +212,18 @@ export default function TransactionsPage() {
   const fetchRecurring = useCallback(async () => {
     try {
       setRecurringLoading(true);
-      setError(null);
       const response = await fetch('/api/recurring');
       if (!response.ok) throw new Error('Failed to fetch recurring items');
       const data = await response.json();
       setRecurringItems(data.items || []);
     } catch (err) {
       console.error('Error fetching recurring:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load recurring items');
+      addToast(err instanceof Error ? err.message : 'Failed to load recurring items', 'error');
       setRecurringItems([]);
     } finally {
       setRecurringLoading(false);
     }
-  }, []);
+  }, [addToast]);
 
   // Fetch transactions when filters, page size, or page change (past view only)
   useEffect(() => {
@@ -302,7 +306,6 @@ export default function TransactionsPage() {
     const item = recurringItems.find((i) => i.id === recurringId);
     if (!item) return;
     try {
-      setError(null);
       setIsSaving(true);
       const response = await fetch('/api/recurring', {
         method: 'PUT',
@@ -329,9 +332,10 @@ export default function TransactionsPage() {
           ? { ...prev, recurring: prev.recurring ? { ...prev.recurring, isActive } : { isRecurring: true, isActive, frequencyUnit: 'month', frequencyInterval: 1, startDate: '' } }
           : prev
       );
+      addToast(isActive ? 'Recurring item resumed' : 'Recurring item paused');
     } catch (err) {
       console.error('Error pausing/resuming recurring:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update');
+      addToast(err instanceof Error ? err.message : 'Failed to update', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -348,7 +352,6 @@ export default function TransactionsPage() {
 
   const handleSave = async (updatedTransaction: Transaction) => {
     try {
-      setError(null);
       setIsSaving(true);
 
       if (updatedTransaction.recurringId !== undefined) {
@@ -376,6 +379,7 @@ export default function TransactionsPage() {
           throw new Error(errorData.error || 'Failed to save recurring');
         }
         setSelectedTransaction(null);
+        addToast('Recurring item saved');
         fetchRecurring();
         return;
       }
@@ -413,10 +417,11 @@ export default function TransactionsPage() {
       });
 
       setSelectedTransaction(null);
+      addToast('Transaction saved');
       fetchTransactions(currentPage);
     } catch (err) {
       console.error('Error saving transaction:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save transaction');
+      addToast(err instanceof Error ? err.message : 'Failed to save transaction', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -439,6 +444,7 @@ export default function TransactionsPage() {
           throw new Error(errorData.error || 'Failed to delete recurring');
         }
         setSelectedTransaction(null);
+        addToast('Recurring item deleted');
         fetchRecurring();
         return;
       }
@@ -453,10 +459,11 @@ export default function TransactionsPage() {
       }
 
       setSelectedTransaction(null);
+      addToast('Transaction deleted');
       fetchTransactions(currentPage);
     } catch (err) {
       console.error('Error deleting transaction:', err);
-      setError(err instanceof Error ? err.message : 'Failed to delete transaction');
+      addToast(err instanceof Error ? err.message : 'Failed to delete transaction', 'error');
     }
   };
 
@@ -623,27 +630,31 @@ export default function TransactionsPage() {
       {/* Content */}
       <div className="px-4 md:px-6 lg:px-8 pb-6 flex flex-col min-h-[calc(100vh-120px)]">
         <Card
-          title="History"
+          title={viewMode === 'past' ? 'History' : 'Upcoming'}
           onAdd={handleAddTransactionClick}
           className="flex-1 flex flex-col"
           customHeader={
             <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="text-card-header">History</h2>
-              <div className="flex rounded-full p-1 border border-[#3a3a3a]" style={{ backgroundColor: '#202020' }}>
+              <h2 className="text-card-header">{viewMode === 'past' ? 'History' : 'Upcoming'}</h2>
+              <div className="flex rounded-full p-1 border border-[#3a3a3a]" style={{ backgroundColor: '#202020' }} role="tablist" aria-label="Time range">
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'past'}
                   onClick={() => setViewModeAndUrl('past')}
                   className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer ${
-                    viewMode === 'past' ? 'bg-[#AC66DA] text-[#E7E4E4]' : 'text-[#E7E4E4] hover:opacity-80'
+                    viewMode === 'past' ? 'bg-[#E7E4E4] text-[#282828]' : 'text-[#E7E4E4] hover:opacity-80'
                   }`}
                 >
                   Past
                 </button>
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'future'}
                   onClick={() => setViewModeAndUrl('future')}
                   className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer ${
-                    viewMode === 'future' ? 'bg-[#AC66DA] text-[#E7E4E4]' : 'text-[#E7E4E4] hover:opacity-80'
+                    viewMode === 'future' ? 'bg-[#E7E4E4] text-[#282828]' : 'text-[#E7E4E4] hover:opacity-80'
                   }`}
                 >
                   Future
@@ -684,13 +695,6 @@ export default function TransactionsPage() {
                 />
               </div>
             </div>
-
-            {/* Error message */}
-            {error && (
-              <div className="text-sm shrink-0" style={{ color: '#D93F3F' }}>
-                {error}
-              </div>
-            )}
 
             {/* Table */}
             <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020', minHeight: (viewMode === 'past' ? transactions.length === 0 : recurringRowsData.rows.length === 0) && !displayLoading ? 'calc(100vh - 400px)' : 'auto' }}>
@@ -1011,6 +1015,8 @@ export default function TransactionsPage() {
           onClose={() => setIsCategoryStatsOpen(false)}
         />
       )}
+
+      <ToastContainer toasts={toasts} onRemove={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
     </main>
   );
 }
