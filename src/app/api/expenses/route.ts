@@ -36,9 +36,10 @@ function formatMonthShort(date: Date): string {
   return `${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-// Format day for daily performance data - just return day number for single month views
-function formatDay(date: Date): string {
-  return date.getDate().toString();
+// Format day for daily performance data (single month) - e.g. "Jan 1", "Dec 15"
+function formatDayWithMonth(date: Date): string {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${months[date.getMonth()]} ${date.getDate()}`;
 }
 
 // Get icon based on category name
@@ -92,24 +93,6 @@ function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; en
         end: new Date(year, month, 0, 23, 59, 59, 999),
       };
     
-    case 'This Quarter': {
-      const quarter = Math.floor(month / 3);
-      return {
-        start: new Date(year, quarter * 3, 1),
-        end: new Date(year, (quarter + 1) * 3, 0, 23, 59, 59, 999),
-      };
-    }
-    
-    case 'Last Quarter': {
-      const quarter = Math.floor(month / 3);
-      const lastQuarter = quarter === 0 ? 3 : quarter - 1;
-      const lastQuarterYear = quarter === 0 ? year - 1 : year;
-      return {
-        start: new Date(lastQuarterYear, lastQuarter * 3, 1),
-        end: new Date(lastQuarterYear, (lastQuarter + 1) * 3, 0, 23, 59, 59, 999),
-      };
-    }
-    
     case 'This Year':
       return {
         start: new Date(year, 0, 1),
@@ -156,32 +139,16 @@ function getComparisonDateRange(period: TimePeriod, now: Date): { start: Date; e
         end: new Date(year, month - 1, 0, 23, 59, 59, 999),
       };
     
-    case 'This Quarter': {
-      const quarter = Math.floor(month / 3);
-      const lastQuarter = quarter === 0 ? 3 : quarter - 1;
-      const lastQuarterYear = quarter === 0 ? year - 1 : year;
-      return {
-        start: new Date(lastQuarterYear, lastQuarter * 3, 1),
-        end: new Date(lastQuarterYear, (lastQuarter + 1) * 3, 0, 23, 59, 59, 999),
-      };
-    }
-    
-    case 'Last Quarter': {
-      const quarter = Math.floor(month / 3);
-      const twoQuartersAgo = quarter === 0 ? 2 : quarter === 1 ? 3 : quarter - 2;
-      const twoQuartersAgoYear = quarter <= 1 ? year - 1 : year;
-      return {
-        start: new Date(twoQuartersAgoYear, twoQuartersAgo * 3, 1),
-        end: new Date(twoQuartersAgoYear, (twoQuartersAgo + 1) * 3, 0, 23, 59, 59, 999),
-      };
-    }
-    
-    case 'This Year':
+    case 'This Year': {
+      // Compare YTD to same YTD last year (e.g. Jan 1–Jan 31 2025 vs Jan 1–Jan 31 2024)
+      const lastYearSameMonthLastDay = new Date(year - 1, now.getMonth() + 1, 0).getDate();
+      const day = Math.min(now.getDate(), lastYearSameMonthLastDay);
       return {
         start: new Date(year - 1, 0, 1),
-        end: new Date(year - 1, 11, 31, 23, 59, 59, 999),
+        end: new Date(year - 1, now.getMonth(), day, 23, 59, 59, 999),
       };
-    
+    }
+
     case 'Last Year':
       return {
         start: new Date(year - 2, 0, 1),
@@ -205,10 +172,6 @@ function getComparisonLabel(period: TimePeriod): string {
       return 'from last month';
     case 'Last Month':
       return 'from 2 months ago';
-    case 'This Quarter':
-      return 'from last quarter';
-    case 'Last Quarter':
-      return 'from 2 quarters ago';
     case 'This Year':
       return 'from last year';
     case 'Last Year':
@@ -278,10 +241,16 @@ export async function GET(request: NextRequest) {
       }),
     );
     
-    // Helper function to check if a date is within a range
+    // Helper: normalize to calendar date (strip time) for consistent period bucketing across timezones
+    const toDateOnly = (d: Date): Date =>
+      new Date(new Date(d).getFullYear(), new Date(d).getMonth(), new Date(d).getDate());
+
+    // Helper function to check if a date is within a range (calendar-date comparison, not timestamp)
     const isInRange = (date: Date, start: Date, end: Date): boolean => {
-      const d = new Date(date);
-      return d >= start && d <= end;
+      const d = toDateOnly(date);
+      const s = toDateOnly(start);
+      const e = toDateOnly(end);
+      return d >= s && d <= e;
     };
     
     // Calculate selected period expenses
@@ -300,12 +269,47 @@ export async function GET(request: NextRequest) {
       comparisonExpenses = comparisonTransactions.reduce((sum: number, t) => sum + t.convertedAmount, 0);
     }
     
+    // Skip trend for "This Year" when only one month has passed (January) — not enough data for meaningful comparison
+    const skipComparison = timePeriod === 'This Year' && now.getMonth() === 0;
+
+    // For "All Time": growth since beginning (first month vs last month with data)
+    let allTimeTrend = 0;
+    let allTimeAverageTrend = 0;
+    if (timePeriod === 'All Time' && selectedPeriodTransactions.length > 0) {
+      const monthlyTotals = new Map<string, number>();
+      selectedPeriodTransactions.forEach((t) => {
+        const monthKey = formatMonthShort(t.date);
+        monthlyTotals.set(monthKey, (monthlyTotals.get(monthKey) ?? 0) + t.convertedAmount);
+      });
+      const monthsSorted = Array.from(monthlyTotals.keys()).sort(
+        (a, b) => new Date(a).getTime() - new Date(b).getTime()
+      );
+      if (monthsSorted.length >= 2) {
+        const firstMonthKey = monthsSorted[0];
+        const lastMonthKey = monthsSorted[monthsSorted.length - 1];
+        const firstMonthTotal = monthlyTotals.get(firstMonthKey) ?? 0;
+        const lastMonthTotal = monthlyTotals.get(lastMonthKey) ?? 0;
+        allTimeTrend =
+          firstMonthTotal > 0
+            ? Math.round(((lastMonthTotal - firstMonthTotal) / firstMonthTotal) * 100)
+            : lastMonthTotal > 0
+              ? 100
+              : 0;
+        allTimeAverageTrend = allTimeTrend;
+      }
+    }
+
     // Calculate trend
-    const expenseTrend = comparisonRange && comparisonExpenses > 0 
-      ? Math.round(((selectedPeriodExpenses - comparisonExpenses) / comparisonExpenses) * 100)
-      : comparisonRange && selectedPeriodExpenses > 0 
-        ? 100
-        : 0;
+    const expenseTrend =
+      timePeriod === 'All Time'
+        ? allTimeTrend
+        : skipComparison
+          ? 0
+          : comparisonRange && comparisonExpenses > 0
+            ? Math.round(((selectedPeriodExpenses - comparisonExpenses) / comparisonExpenses) * 100)
+            : comparisonRange && selectedPeriodExpenses > 0
+              ? 100
+              : 0;
     
     // Calculate top expense categories
     const categoryTotals = new Map<string, { amount: number; categoryId: number; categoryName: string }>();
@@ -382,7 +386,7 @@ export async function GET(request: NextRequest) {
     if (isMonthlyPeriod) {
       // Daily breakdown for monthly periods
       selectedPeriodTransactions.forEach((t) => {
-        const dayKey = formatDay(t.date);
+        const dayKey = formatDayWithMonth(t.date);
         if (!performanceTotals.has(dayKey)) {
           performanceTotals.set(dayKey, 0);
         }
@@ -405,9 +409,9 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => {
         // Parse date string to compare
         if (isMonthlyPeriod) {
-          // For daily: just day number (e.g., "1", "15")
-          const dayA = parseInt(a.date) || 1;
-          const dayB = parseInt(b.date) || 1;
+          // For daily-with-month: "Jan 1", "Dec 15" - extract day from "Mon D" or "Mon DD"
+          const dayA = parseInt(a.date.split(' ')[1] || '1') || 1;
+          const dayB = parseInt(b.date.split(' ')[1] || '1') || 1;
           return dayA - dayB;
         } else {
           // For monthly: "Jan 2025" -> parse to date object
@@ -415,73 +419,57 @@ export async function GET(request: NextRequest) {
         }
       });
     
+    // Average card: always compare current year vs previous year (average monthly across all months)
+    const currentYear = now.getFullYear();
+    const currentYearStart = new Date(currentYear, 0, 1);
+    const currentYearEnd = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+    const lastYearStart = new Date(currentYear - 1, 0, 1);
+    const lastYearEnd = new Date(currentYear - 1, 11, 31, 23, 59, 59, 999);
+    const totalCurrentYear = transactionsWithConverted
+      .filter((t) => isInRange(t.date, currentYearStart, currentYearEnd))
+      .reduce((sum, t) => sum + t.convertedAmount, 0);
+    const totalLastYear = transactionsWithConverted
+      .filter((t) => isInRange(t.date, lastYearStart, lastYearEnd))
+      .reduce((sum, t) => sum + t.convertedAmount, 0);
+    // Use months elapsed this year (1–12) so YTD isn't penalized (e.g. Jan only → divide by 1, not 12)
+    const monthsElapsedThisYear = Math.max(1, now.getMonth() + 1);
+    const avgMonthlyCurrentYear = totalCurrentYear / monthsElapsedThisYear;
+    const avgMonthlyLastYear = totalLastYear / 12;
+    const averageTrend =
+      avgMonthlyLastYear > 0
+        ? Math.round(((avgMonthlyCurrentYear - avgMonthlyLastYear) / avgMonthlyLastYear) * 100)
+        : avgMonthlyCurrentYear > 0
+          ? 100
+          : 0;
+
+
     // Calculate average monthly expenses (or average daily for single month periods)
     let averageMonthlyExpenses = 0;
     let averageDailyExpenses = 0;
-    let averageTrend = 0;
     
     if (isMonthlyPeriod) {
-      // For single month periods, calculate average daily
       const daysInPeriod = Math.ceil((selectedRange.end.getTime() - selectedRange.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       averageDailyExpenses = totalExpenses / daysInPeriod;
-      
-      // Calculate average daily trend (compare to previous month's average daily)
-      if (comparisonRange) {
-        const comparisonTransactions = transactionsWithConverted.filter((t) => 
-          isInRange(t.date, comparisonRange.start, comparisonRange.end)
-        );
-        const comparisonDays = Math.ceil((comparisonRange.end.getTime() - comparisonRange.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        const comparisonAverageDaily = comparisonExpenses / comparisonDays;
-        
-        if (comparisonAverageDaily > 0) {
-          averageTrend = Math.round(((averageDailyExpenses - comparisonAverageDaily) / comparisonAverageDaily) * 100);
-        } else if (averageDailyExpenses > 0) {
-          averageTrend = 100;
-        }
-      }
-      
-      // Also calculate monthly average for consistency (total / 1 month)
       averageMonthlyExpenses = totalExpenses;
     } else {
-      // For multi-month periods, calculate average monthly
       const numberOfMonths = performanceData.length || 1;
       averageMonthlyExpenses = totalExpenses / numberOfMonths;
-      
-      // Calculate average trend (compare to previous period average)
-      if (comparisonRange) {
-        const comparisonTransactions = transactionsWithConverted.filter((t) => 
-          isInRange(t.date, comparisonRange.start, comparisonRange.end)
-        );
-        
-        const comparisonMonthlyTotals = new Map<string, number>();
-        comparisonTransactions.forEach((t) => {
-          const monthKey = formatMonthShort(t.date);
-          if (!comparisonMonthlyTotals.has(monthKey)) {
-            comparisonMonthlyTotals.set(monthKey, 0);
-          }
-          comparisonMonthlyTotals.set(monthKey, comparisonMonthlyTotals.get(monthKey)! + t.convertedAmount);
-        });
-        
-        const comparisonNumberOfMonths = comparisonMonthlyTotals.size || 1;
-        const comparisonAverageMonthlyExpenses = comparisonExpenses / comparisonNumberOfMonths;
-        
-        if (comparisonAverageMonthlyExpenses > 0) {
-          averageTrend = Math.round(((averageMonthlyExpenses - comparisonAverageMonthlyExpenses) / comparisonAverageMonthlyExpenses) * 100);
-        } else if (averageMonthlyExpenses > 0) {
-          averageTrend = 100;
-        }
-      }
     }
     
     const comparisonLabel = getComparisonLabel(timePeriod);
     
     // Generate trend text for performance
     // For expenses: negative trend is good (spending less), positive is bad (spending more)
-    const trendText = expenseTrend > 0 
-      ? `Your expenses grew +${expenseTrend}% over selected time period`
-      : expenseTrend < 0
-        ? `Your expenses decreased ${Math.abs(expenseTrend)}% over selected time period`
-        : 'Your expenses remained stable over selected time period';
+    // No comparison when skipped; All Time uses growth since beginning
+    const noComparison = skipComparison || (timePeriod !== 'All Time' && !comparisonRange);
+    const periodSuffix = timePeriod === 'All Time' ? 'since beginning' : 'over selected time period';
+    const trendText = noComparison
+      ? 'Not enough data to compare yet'
+      : expenseTrend > 0
+        ? `Your expenses grew +${expenseTrend}% ${periodSuffix}`
+        : expenseTrend < 0
+          ? `Your expenses decreased ${Math.abs(expenseTrend)}% ${periodSuffix}`
+          : `Your expenses remained stable ${periodSuffix}`;
     
     // Calculate next month prediction (only for "This Month")
     let nextMonthPrediction = 0;

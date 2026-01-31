@@ -78,6 +78,8 @@ export default function ImportTransactionsPage() {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentProgressRef = useRef<number>(0);
+  /** Set to true when resuming an already-completed job so the first poll skips the "PDF processed!" toast. */
+  const skipCompletionToastRef = useRef(false);
 
   const filteredRows = useMemo(() => {
     const query = debouncedSearchQuery.toLowerCase();
@@ -401,8 +403,10 @@ export default function ImportTransactionsPage() {
           setStatusNote(null);
           setIsReviewLoading(false);
           
-          // Show toast notification when processing completes
-          if (!hasShownCompletionToast) {
+          // Show toast only when a job has just finished processing, not when viewing an old completed job
+          if (skipCompletionToastRef.current) {
+            skipCompletionToastRef.current = false;
+          } else if (!hasShownCompletionToast) {
             const transactionCount = normalized.length;
             const toastId = crypto.randomUUID();
             setToasts(prev => [...prev, {
@@ -621,12 +625,12 @@ export default function ImportTransactionsPage() {
 
   const handleResumeJob = useCallback((jobId: string, jobStatus: JobStatus) => {
     setCurrentJobId(jobId);
-    // Only reset toast flag for in-progress jobs (not completed ones)
-    // For completed jobs, we don't want to show "PDF processed!" toast when just viewing
-    if (jobStatus !== 'completed') {
-      setHasShownCompletionToast(false);
+    // For completed jobs, skip the "PDF processed!" toast when the first poll returns (ref is read synchronously in poll)
+    if (jobStatus === 'completed') {
+      skipCompletionToastRef.current = true;
+      setHasShownCompletionToast(true);
     } else {
-      setHasShownCompletionToast(true); // Prevent toast when viewing already-completed jobs
+      setHasShownCompletionToast(false);
     }
     setOptimisticJob(null); // Clear optimistic job when resuming
     if (jobStatus === 'failed') {
@@ -1106,8 +1110,8 @@ export default function ImportTransactionsPage() {
               </div>
 
               <div
-                className="relative w-full overflow-x-auto rounded-3xl border border-[#3a3a3a] flex-1"
-                style={{ backgroundColor: '#202020', overflowY: 'visible' }}
+                className="relative w-full overflow-x-auto overflow-y-auto rounded-3xl border border-[#3a3a3a] flex-1"
+                style={{ backgroundColor: '#202020' }}
                 aria-busy={isReviewLoading}
               >
                 {(isReviewLoading || isConfirming) && (

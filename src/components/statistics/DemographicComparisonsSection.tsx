@@ -36,19 +36,16 @@ export default function DemographicComparisonsSection({ comparisons, loading = f
 
   const textColor = isHovered ? '#AC66DA' : '#E7E4E4';
 
+  const contentMinHeight = 280;
+
   if (loading) {
     return (
       <Card
         title="Demographic Comparisons"
-        customHeader={
-          <div className="mb-4 flex items-center gap-3">
-            <div className="h-6 w-44 rounded animate-pulse" style={SKELETON_STYLE} />
-            <div className="h-5 w-20 rounded-full animate-pulse" style={SKELETON_STYLE} />
-          </div>
-        }
         showActions={false}
+        className="flex flex-col min-h-0 flex-1"
       >
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden" style={{ minHeight: contentMinHeight }}>
           <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ backgroundColor: '#202020' }}>
             <div className="w-4 h-4 rounded animate-pulse" style={SKELETON_STYLE} />
             <div className="h-4 w-14 rounded animate-pulse" style={SKELETON_STYLE} />
@@ -79,8 +76,9 @@ export default function DemographicComparisonsSection({ comparisons, loading = f
         </div>
       }
       showActions={false}
+      className="flex flex-col min-h-0 flex-1"
     >
-      <div className="flex flex-col gap-4" style={{ filter: 'blur(2px)' }}>
+      <div className="flex flex-col gap-4 flex-1 min-h-0" style={{ filter: 'blur(2px)', minHeight: contentMinHeight }}>
         <div className="mb-2">
           <div className="relative" ref={ref}>
             <button

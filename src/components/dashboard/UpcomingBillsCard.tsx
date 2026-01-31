@@ -10,9 +10,10 @@ import Link from 'next/link';
 
 interface UpcomingBillsCardProps {
   bills: Bill[];
+  onItemClick?: (bill: Bill) => void;
 }
 
-export default function UpcomingBillsCard({ bills }: UpcomingBillsCardProps) {
+export default function UpcomingBillsCard({ bills, onItemClick }: UpcomingBillsCardProps) {
   const { currency } = useCurrency();
   if (bills.length === 0) {
     return (
@@ -38,7 +39,12 @@ export default function UpcomingBillsCard({ bills }: UpcomingBillsCardProps) {
           {bills.map((bill) => {
             const Icon = getIcon(bill.icon);
             return (
-              <div key={bill.id} className="flex items-center gap-3 min-w-0">
+              <div
+                key={bill.id}
+                className={`flex items-center gap-3 min-w-0 ${bill.isActive === false ? 'opacity-70' : ''} ${onItemClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                onClick={onItemClick ? () => onItemClick(bill) : undefined}
+                role={onItemClick ? 'button' : undefined}
+              >
                 <div className="flex-shrink-0">
                   <div
                     className="w-12 h-12 rounded-full flex items-center justify-center"
@@ -51,14 +57,27 @@ export default function UpcomingBillsCard({ bills }: UpcomingBillsCardProps) {
                   <div className="text-body font-medium text-wrap-safe">{bill.name}</div>
                   <div className="text-helper">{bill.date}</div>
                 </div>
-                <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
-                  {currency.symbol}{formatNumber(bill.amount)}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {bill.isActive === false && (
+                    <span
+                      className="text-xs font-medium px-2 py-0.5 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: 'rgba(60, 60, 60, 0.6)',
+                        color: 'rgba(231, 228, 228, 0.7)',
+                      }}
+                    >
+                      Paused
+                    </span>
+                  )}
+                  <span className="text-body font-semibold whitespace-nowrap">
+                    {currency.symbol}{formatNumber(bill.amount)}
+                  </span>
                 </div>
               </div>
             );
           })}
         </div>
-        <Link href="/expenses" className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors">
+        <Link href="/transactions?view=future" className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors" onClick={(e) => e.stopPropagation()}>
           View All <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
         </Link>
       </div>

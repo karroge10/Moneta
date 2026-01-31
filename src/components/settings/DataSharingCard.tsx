@@ -8,15 +8,18 @@ interface DataSharingCardProps {
   isEnabled?: boolean;
   onToggle?: (enabled: boolean) => void;
   loading?: boolean;
+  /** When true, toggle is disabled (e.g. while saving). */
+  disabled?: boolean;
 }
 
-export default function DataSharingCard({ isEnabled = true, onToggle, loading = false }: DataSharingCardProps) {
+export default function DataSharingCard({ isEnabled = true, onToggle, loading = false, disabled = false }: DataSharingCardProps) {
   const [enabled, setEnabled] = useState(isEnabled);
   useEffect(() => {
     setEnabled(isEnabled);
   }, [isEnabled]);
 
   const handleToggle = () => {
+    if (disabled) return;
     const newValue = !enabled;
     setEnabled(newValue);
     onToggle?.(newValue);
@@ -54,9 +57,10 @@ export default function DataSharingCard({ isEnabled = true, onToggle, loading = 
           <button
             type="button"
             onClick={handleToggle}
-            className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${
-              enabled ? 'bg-[var(--accent-purple)]' : 'bg-[rgba(231,228,228,0.3)]'
-            }`}
+            disabled={disabled}
+            className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${
+              disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+            } ${enabled ? 'bg-[var(--accent-purple)]' : 'bg-[rgba(231,228,228,0.3)]'}`}
             aria-label={enabled ? 'Disable data sharing' : 'Enable data sharing'}
           >
             <div

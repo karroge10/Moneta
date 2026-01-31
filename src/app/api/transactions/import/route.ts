@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UploadedTransaction, TransactionUploadMetadata } from '@/types/dashboard';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { shouldCreateNotification } from '@/lib/notification-settings';
 import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, findMerchantByBaseWords, detectSpecialTransactionType } from '@/lib/merchant';
 
 export const runtime = 'nodejs';
@@ -590,17 +591,19 @@ export async function POST(request: NextRequest) {
 
     // Create notification about successful import
     try {
-      const now = new Date();
-      await db.notification.create({
-        data: {
-          userId: user.id,
-          type: 'PDF Processing',
-          text: `Successfully imported ${responseTransactions.length} transaction${responseTransactions.length !== 1 ? 's' : ''}!`,
-          date: now,
-          time: now.toTimeString().split(' ')[0],
-          read: false,
-        },
-      });
+      if (await shouldCreateNotification(user.id, 'PDF Processing')) {
+        const now = new Date();
+        await db.notification.create({
+          data: {
+            userId: user.id,
+            type: 'PDF Processing',
+            text: `Successfully imported ${responseTransactions.length} transaction${responseTransactions.length !== 1 ? 's' : ''}!`,
+            date: now,
+            time: now.toTimeString().split(' ')[0],
+            read: false,
+          },
+        });
+      }
     } catch (notifError) {
       console.error('[transactions/import] Failed to create notification:', notifError);
       // Don't fail the import if notification creation fails

@@ -26,8 +26,6 @@ interface DashboardHeaderProps {
 const TIME_PERIOD_OPTIONS: TimePeriod[] = [
   'This Month',
   'Last Month',
-  'This Quarter',
-  'Last Quarter',
   'This Year',
   'Last Year',
   'All Time',

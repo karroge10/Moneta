@@ -9,20 +9,24 @@ interface LineChartProps {
   currencySymbol?: string;
 }
 
-// Check if date string is just a day number (e.g., "1", "15") vs month format (e.g., "Jan 2025")
-const isDailyData = (dateStr: string): boolean => {
-  // If it's just a number, it's daily data
-  return /^\d+$/.test(dateStr.trim());
-};
+// Check if date string is just a day number (e.g., "1", "15") - legacy format
+const isLegacyDailyData = (dateStr: string): boolean => /^\d+$/.test(dateStr.trim());
 
-// Format date for x-axis: "Dec 2024" -> "Dec" on top, "2024" below, or just day number
+// Check if date is "Mon D" format (e.g., "Jan 1", "Dec 15") for monthly-period daily breakdown
+const isDailyWithMonth = (dateStr: string): boolean =>
+  /^[A-Za-z]{3} \d{1,2}$/.test(dateStr.trim());
+
+// Format date for x-axis: "Dec 2024", "Jan 1", or legacy "1"
 const formatXAxisLabel = (dateStr: string) => {
-  if (isDailyData(dateStr)) {
+  if (isLegacyDailyData(dateStr)) {
     return { day: dateStr, isDaily: true };
+  }
+  if (isDailyWithMonth(dateStr)) {
+    return { monDay: dateStr, isDailyWithMonth: true };
   }
   const parts = dateStr.split(' ');
   if (parts.length >= 2) {
-    const month = parts[0].substring(0, 3); // First 3 letters
+    const month = parts[0].substring(0, 3);
     const year = parts[1];
     return { month, year, isDaily: false };
   }
@@ -33,8 +37,18 @@ const formatXAxisLabel = (dateStr: string) => {
 const CustomXAxisTick = ({ x, y, payload }: any) => {
   const formatted = formatXAxisLabel(payload.value);
   
+  if ('isDailyWithMonth' in formatted && formatted.isDailyWithMonth) {
+    // For "Jan 1", "Dec 15" format
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text x={0} y={0} dy={16} textAnchor="middle" fill="rgba(231, 228, 228, 0.7)" fontSize={12}>
+          {formatted.monDay}
+        </text>
+      </g>
+    );
+  }
   if (formatted.isDaily) {
-    // For daily data, show just the day number
+    // Legacy: just day number
     return (
       <g transform={`translate(${x},${y})`}>
         <text x={0} y={0} dy={16} textAnchor="middle" fill="rgba(231, 228, 228, 0.7)" fontSize={12}>
@@ -63,16 +77,11 @@ const CustomTooltip = ({ active, payload, currencySymbol = '$' }: any) => {
     const data = payload[0].payload;
     const dateStr = data.date;
     const value = data.value;
-    const isDaily = isDailyData(dateStr);
     
-    // Format date for display
+    // Format date for display: "Jan 1" / "Dec 15" show as-is; legacy "1" shows "Day 1"; monthly as-is
     let displayDate = dateStr;
-    if (isDaily) {
-      // For daily data, show "Day X" or just the number
+    if (isLegacyDailyData(dateStr)) {
       displayDate = `Day ${dateStr}`;
-    } else {
-      // For monthly data, keep as is or format nicely
-      displayDate = dateStr;
     }
     
     return (
@@ -90,7 +99,7 @@ const CustomTooltip = ({ active, payload, currencySymbol = '$' }: any) => {
 const calculateInterval = (data: Array<{ date: string; value: number }>): number | 'preserveStartEnd' => {
   if (!data || data.length === 0) return 0;
   
-  const isDaily = isDailyData(data[0].date);
+  const isDaily = isLegacyDailyData(data[0].date) || isDailyWithMonth(data[0].date);
   const dataLength = data.length;
   
   if (isDaily) {

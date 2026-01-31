@@ -21,7 +21,7 @@ export default function MobileNavbar({ pageName, timePeriod, onTimePeriodChange,
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
-  const timePeriodOptions: TimePeriod[] = ['This Month', 'This Quarter', 'This Year', 'All Time'];
+  const timePeriodOptions: TimePeriod[] = ['This Month', 'This Year', 'All Time'];
   const { notifications, refresh } = useNotifications(5, true); // Fetch top 5 unread notifications
 
   // Update optimistic state when notifications change

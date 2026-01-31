@@ -73,24 +73,6 @@ function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; en
         end: new Date(year, month, 0, 23, 59, 59, 999),
       };
     
-    case 'This Quarter': {
-      const quarter = Math.floor(month / 3);
-      return {
-        start: new Date(year, quarter * 3, 1),
-        end: new Date(year, (quarter + 1) * 3, 0, 23, 59, 59, 999),
-      };
-    }
-    
-    case 'Last Quarter': {
-      const quarter = Math.floor(month / 3);
-      const lastQuarter = quarter === 0 ? 3 : quarter - 1;
-      const lastQuarterYear = quarter === 0 ? year - 1 : year;
-      return {
-        start: new Date(lastQuarterYear, lastQuarter * 3, 1),
-        end: new Date(lastQuarterYear, (lastQuarter + 1) * 3, 0, 23, 59, 59, 999),
-      };
-    }
-    
     case 'This Year':
       return {
         start: new Date(year, 0, 1),
@@ -123,8 +105,6 @@ function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; en
  * Get the comparison date range for trend calculation
  * For "This Month" -> compare to "Last Month"
  * For "Last Month" -> compare to "2 months ago" (the month before last month)
- * For "This Quarter" -> compare to "Last Quarter"
- * For "Last Quarter" -> compare to "2 quarters ago"
  * For "This Year" -> compare to "Last Year"
  * For "Last Year" -> compare to "2 years ago"
  * Returns null if no comparison should be made (e.g., All Time)
@@ -147,28 +127,6 @@ function getComparisonDateRange(period: TimePeriod, now: Date): { start: Date; e
         start: new Date(year, month - 2, 1),
         end: new Date(year, month - 1, 0, 23, 59, 59, 999),
       };
-    
-    case 'This Quarter': {
-      // Compare to Last Quarter
-      const quarter = Math.floor(month / 3);
-      const lastQuarter = quarter === 0 ? 3 : quarter - 1;
-      const lastQuarterYear = quarter === 0 ? year - 1 : year;
-      return {
-        start: new Date(lastQuarterYear, lastQuarter * 3, 1),
-        end: new Date(lastQuarterYear, (lastQuarter + 1) * 3, 0, 23, 59, 59, 999),
-      };
-    }
-    
-    case 'Last Quarter': {
-      // Compare to 2 quarters ago
-      const quarter = Math.floor(month / 3);
-      const twoQuartersAgo = quarter === 0 ? 2 : quarter === 1 ? 3 : quarter - 2;
-      const twoQuartersAgoYear = quarter <= 1 ? year - 1 : year;
-      return {
-        start: new Date(twoQuartersAgoYear, twoQuartersAgo * 3, 1),
-        end: new Date(twoQuartersAgoYear, (twoQuartersAgo + 1) * 3, 0, 23, 59, 59, 999),
-      };
-    }
     
     case 'This Year':
       // Compare to Last Year
@@ -201,10 +159,6 @@ function getComparisonLabel(period: TimePeriod): string {
       return 'from last month';
     case 'Last Month':
       return 'from 2 months ago';
-    case 'This Quarter':
-      return 'from last quarter';
-    case 'Last Quarter':
-      return 'from 2 quarters ago';
     case 'This Year':
       return 'from last year';
     case 'Last Year':
