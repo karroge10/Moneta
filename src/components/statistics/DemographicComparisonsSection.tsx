@@ -112,7 +112,7 @@ export default function DemographicComparisonsSection({
           <Link
             href="/settings"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-body transition-colors"
-            style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+            style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
           >
             <Settings width={18} height={18} strokeWidth={1.5} />
             Open Settings
@@ -142,7 +142,7 @@ export default function DemographicComparisonsSection({
               type="button"
               onClick={onRetry}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-body transition-colors"
-              style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+              style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
             >
               Try again
             </button>
@@ -244,9 +244,9 @@ export default function DemographicComparisonsSection({
                 >
                   <div
                     className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
+                    style={{ backgroundColor: `${comparison.iconColor}1a` }}
                   >
-                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: '#E7E4E4' }} />
+                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: comparison.iconColor }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-body font-medium text-wrap-safe wrap-break-word">{comparison.label}</div>

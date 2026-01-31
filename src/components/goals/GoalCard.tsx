@@ -5,14 +5,19 @@ import ProgressBar from '@/components/ui/ProgressBar';
 import { getEncouragingMessage, getGoalStatus } from '@/lib/goalUtils';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CheckCircle, XmarkCircle } from 'iconoir-react';
+import type { CurrencyOption } from '@/lib/currency-country-map';
 
 interface GoalCardProps {
   goal: Goal;
+  currencyOptions?: CurrencyOption[];
   onClick?: () => void;
 }
 
-export default function GoalCard({ goal, onClick }: GoalCardProps) {
-  const { currency } = useCurrency();
+export default function GoalCard({ goal, currencyOptions = [], onClick }: GoalCardProps) {
+  const { currency: userCurrency } = useCurrency();
+  const displayCurrency = goal.currencyId != null
+    ? (currencyOptions.find((c) => c.id === goal.currencyId) ?? userCurrency)
+    : userCurrency;
   const encouragingMessage = getEncouragingMessage(goal);
   const goalStatus = getGoalStatus(goal);
 
@@ -72,14 +77,14 @@ export default function GoalCard({ goal, onClick }: GoalCardProps) {
           }}
         >
           <span className="text-body font-semibold" style={{ color: 'var(--accent-purple)' }}>
-            {currency.symbol}{goal.targetAmount.toLocaleString('en-US')}
+            {displayCurrency.symbol}{goal.targetAmount.toLocaleString('en-US')}
           </span>
         </div>
       </div>
 
       {/* Third row: Large current amount */}
       <div className="flex items-baseline gap-2 mb-4 min-w-0 flex-wrap">
-        <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
+        <span className="text-card-currency flex-shrink-0">{displayCurrency.symbol}</span>
         <span className="text-card-value break-all min-w-0">
           {goal.currentAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>

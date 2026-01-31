@@ -2,6 +2,12 @@ import { Goal } from '@/types/dashboard';
 
 export type GoalStatus = 'active' | 'completed' | 'failed';
 
+/** Calculate progress percentage from current and target amounts. Used instead of storing in DB. */
+export function calculateGoalProgress(currentAmount: number, targetAmount: number): number {
+  if (targetAmount === 0) return 0;
+  return Math.min(100, Math.round((currentAmount / targetAmount) * 100 * 10) / 10);
+}
+
 /**
  * Parse a date string like "Dec 25th 2024" into a Date object
  */

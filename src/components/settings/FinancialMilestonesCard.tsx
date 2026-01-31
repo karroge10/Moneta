@@ -1,6 +1,7 @@
 'use client';
 
 import Card from '@/components/ui/Card';
+import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import { Achievement } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 
@@ -37,10 +38,19 @@ export default function FinancialMilestonesCard({ achievements, loading = false 
   }
 
   return (
-    <Card title="Financial Milestones" showActions={false}>
+    <Card
+      title="Financial Milestones"
+      showActions={false}
+      customHeader={
+        <div className="mb-4 flex items-center gap-3">
+          <h2 className="text-card-header">Financial Milestones</h2>
+          <ComingSoonBadge />
+        </div>
+      }
+    >
       <div
-        className="overflow-y-auto custom-scrollbar pr-2"
-        style={{ maxHeight }}
+        className="overflow-y-auto custom-scrollbar pr-2 select-none pointer-events-none"
+        style={{ maxHeight, filter: 'blur(2px)' }}
       >
         <div className="grid grid-cols-5 gap-4">
           {achievements.map((achievement) => {

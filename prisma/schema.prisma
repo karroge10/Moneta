@@ -93,18 +93,19 @@ model Transaction {
 
 // Goal table
 model Goal {
-  id           Int      @id @default(autoincrement())
-  userId       Int
-  name         String
-  targetDate   DateTime
-  targetAmount Float
-  currentAmount Float   @default(0)
-  progress     Float    @default(0) // Calculated field: (currentAmount / targetAmount) * 100
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  name          String
+  targetDate    DateTime
+  targetAmount  Float
+  currentAmount Float    @default(0)
+  currencyId    Int?     // null = user's default currency
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency Currency? @relation(fields: [currencyId], references: [id])
 
   @@index([userId])
 }
@@ -281,6 +282,7 @@ model Currency {
   transactions Transaction[]
   recurringTransactions RecurringTransaction[]
   investmentsPurchase Investment[] @relation("CurrencyToPurchaseInvestments")
+  goals   Goal[]
   baseRates  ExchangeRate[] @relation("BaseCurrencyRates")
   quoteRates ExchangeRate[] @relation("QuoteCurrencyRates")
 }

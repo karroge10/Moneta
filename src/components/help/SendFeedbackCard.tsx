@@ -126,7 +126,7 @@ export default function SendFeedbackCard() {
         <button
           type="submit"
           className="w-full px-6 py-3 rounded-full text-body font-semibold transition-colors cursor-pointer hover:opacity-90"
-          style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+          style={{ backgroundColor: 'var(--accent-purple)', color: '#E7E4E4' }}
         >
           Send Message
         </button>

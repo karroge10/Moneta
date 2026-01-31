@@ -51,7 +51,7 @@ export default function PricingPage() {
               <div className="shrink-0 mt-1">
                 <div 
                   className="w-6 h-6 rounded-full flex items-center justify-center text-sm font-semibold"
-                  style={{ backgroundColor: 'var(--accent-purple)', color: '#fff' }}
+                  style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
                 >
                   ?
                 </div>
@@ -85,7 +85,7 @@ export default function PricingPage() {
                   <div className="shrink-0 mt-1">
                     <div 
                       className="w-6 h-6 rounded-full flex items-center justify-center text-sm font-semibold"
-                      style={{ backgroundColor: 'var(--accent-purple)', color: '#fff' }}
+                      style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
                     >
                       ?
                     </div>
@@ -121,7 +121,7 @@ export default function PricingPage() {
                   <div className="shrink-0 mt-1">
                     <div 
                       className="w-6 h-6 rounded-full flex items-center justify-center text-sm font-semibold"
-                      style={{ backgroundColor: 'var(--accent-purple)', color: '#fff' }}
+                      style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
                     >
                       ?
                     </div>

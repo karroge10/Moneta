@@ -82,6 +82,7 @@ export interface Goal {
   targetAmount: number;
   currentAmount: number;
   progress: number;
+  currencyId?: number | null;
   createdAt?: string;
   updatedAt?: string;
 }

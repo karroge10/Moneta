@@ -77,7 +77,7 @@ export default function PricingTiers() {
                 {tier.isCurrentPlan && (
                   <div
                     className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold"
-                    style={{ backgroundColor: 'var(--accent-purple)', color: '#fff' }}
+                    style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
                   >
                     Current Plan
                   </div>
@@ -108,16 +108,16 @@ export default function PricingTiers() {
                   ))}
                 </ul>
 
-                {/* CTA Button */}
+                {/* CTA Button - Upgrade tiers stand out with ring */}
                 <button
                   className={`mt-4 py-3 px-6 rounded-lg text-body font-semibold transition-colors cursor-pointer ${
                     tier.id === 'basic'
                       ? 'bg-[#282828] hover:bg-[#393939]'
-                      : 'hover:opacity-90'
+                      : 'hover:opacity-90 ring-2 ring-[#AC66DA]/50 ring-offset-2 ring-offset-[#202020]'
                   }`}
                   style={{
                     backgroundColor: tier.id === 'basic' ? '#282828' : 'var(--accent-purple)',
-                    color: '#fff',
+                    color: tier.id === 'basic' ? '#E7E4E4' : '#E7E4E4',
                   }}
                 >
                   {tier.ctaText}

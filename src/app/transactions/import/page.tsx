@@ -1041,7 +1041,7 @@ export default function ImportTransactionsPage() {
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
                           className="flex items-center gap-2 rounded-full px-6 py-3 font-semibold transition-all cursor-pointer hover:opacity-90 active:scale-95"
-                          style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                          style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
                         >
                           Select PDF
                         </button>
@@ -1101,7 +1101,7 @@ export default function ImportTransactionsPage() {
                     onClick={() => parsedRows.length > 0 && setIsCategoryStatsOpen(true)}
                     disabled={parsedRows.length === 0}
                     className="flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
-                    style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                    style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
                   >
                     <Reports width={18} height={18} strokeWidth={1.5} />
                     Category Breakdown
@@ -1377,7 +1377,7 @@ export default function ImportTransactionsPage() {
                     disabled={isConfirming || parsedRows.length === 0 || !selectedCurrencyId}
                     onClick={handleConfirmImport}
                     className="rounded-full px-6 py-2.5 font-semibold transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap hover:scale-105 active:scale-95"
-                    style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                    style={{ backgroundColor: 'var(--accent-purple)', color: '#E7E4E4' }}
                   >
                     {isConfirming ? 'Saving…' : 'Confirm Import'}
                   </button>

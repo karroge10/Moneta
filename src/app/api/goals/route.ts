@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { calculateGoalProgress } from '@/lib/goalUtils';
 import { Goal } from '@/types/dashboard';
 
 export const runtime = 'nodejs';
@@ -40,12 +41,6 @@ function parseDate(dateStr: string): Date {
   }
 }
 
-// Calculate progress percentage
-function calculateProgress(currentAmount: number, targetAmount: number): number {
-  if (targetAmount === 0) return 0;
-  return Math.min(100, Math.round((currentAmount / targetAmount) * 100 * 10) / 10);
-}
-
 // GET - Fetch all goals for authenticated user
 export async function GET(request: NextRequest) {
   try {
@@ -66,7 +61,8 @@ export async function GET(request: NextRequest) {
       targetDate: formatDate(goal.targetDate),
       targetAmount: goal.targetAmount,
       currentAmount: goal.currentAmount,
-      progress: goal.progress,
+      progress: calculateGoalProgress(goal.currentAmount, goal.targetAmount),
+      currencyId: goal.currencyId ?? undefined,
       createdAt: goal.createdAt.toISOString(),
       updatedAt: goal.updatedAt.toISOString(),
     }));
@@ -87,7 +83,7 @@ export async function POST(request: NextRequest) {
     const user = await requireCurrentUser();
     const body = await request.json();
     
-    const { name, targetDate, targetAmount, currentAmount } = body;
+    const { name, targetDate, targetAmount, currentAmount, currencyId } = body;
     
     if (!name || !targetDate || targetAmount === undefined) {
       return NextResponse.json(
@@ -125,10 +121,6 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Calculate progress
-    const progress = calculateProgress(initialCurrentAmount, targetAmount);
-    
-    // Create goal
     const newGoal = await db.goal.create({
       data: {
         userId: user.id,
@@ -136,7 +128,7 @@ export async function POST(request: NextRequest) {
         targetDate: parsedDate,
         targetAmount,
         currentAmount: initialCurrentAmount,
-        progress,
+        currencyId: currencyId ?? null,
       },
     });
     
@@ -146,7 +138,8 @@ export async function POST(request: NextRequest) {
       targetDate: formatDate(newGoal.targetDate),
       targetAmount: newGoal.targetAmount,
       currentAmount: newGoal.currentAmount,
-      progress: newGoal.progress,
+      progress: calculateGoalProgress(newGoal.currentAmount, newGoal.targetAmount),
+      currencyId: newGoal.currencyId ?? undefined,
     };
     
     return NextResponse.json({ goal }, { status: 201 });
@@ -165,7 +158,7 @@ export async function PUT(request: NextRequest) {
     const user = await requireCurrentUser();
     const body = await request.json();
     
-    const { id, name, targetDate, targetAmount, currentAmount } = body;
+    const { id, name, targetDate, targetAmount, currentAmount, currencyId } = body;
     
     if (!id || !name || !targetDate || targetAmount === undefined || currentAmount === undefined) {
       return NextResponse.json(
@@ -217,10 +210,6 @@ export async function PUT(request: NextRequest) {
       );
     }
     
-    // Calculate progress
-    const progress = calculateProgress(currentAmount, targetAmount);
-    
-    // Update goal
     const updatedGoal = await db.goal.update({
       where: {
         id: parseInt(id),
@@ -230,7 +219,7 @@ export async function PUT(request: NextRequest) {
         targetDate: parsedDate,
         targetAmount,
         currentAmount,
-        progress,
+        currencyId: currencyId ?? null,
       },
     });
     
@@ -240,7 +229,8 @@ export async function PUT(request: NextRequest) {
       targetDate: formatDate(updatedGoal.targetDate),
       targetAmount: updatedGoal.targetAmount,
       currentAmount: updatedGoal.currentAmount,
-      progress: updatedGoal.progress,
+      progress: calculateGoalProgress(updatedGoal.currentAmount, updatedGoal.targetAmount),
+      currencyId: updatedGoal.currencyId ?? undefined,
     };
     
     return NextResponse.json({ goal });
