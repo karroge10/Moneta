@@ -88,3 +88,32 @@ export function getSearchTermsForCurrency(currencyAlias: string): string[] {
   const upper = currencyAlias.toUpperCase();
   return CURRENCY_SEARCH_TERMS[upper] ?? [];
 }
+
+export type CurrencyOption = {
+  id: number;
+  name: string;
+  symbol: string;
+  alias: string;
+};
+
+export type CurrencyTypeaheadOption = {
+  value: string;
+  label: string;
+  symbol?: string;
+  countryCode?: string;
+  searchTerms?: string[];
+};
+
+/** Builds unified TypeaheadOption format for currency selectors: [flag] [symbol] Display Name (ALIAS) */
+export function buildCurrencyTypeaheadOptions(
+  currencyOptions: CurrencyOption[],
+  valueFormat: 'id' | 'display' = 'id'
+): CurrencyTypeaheadOption[] {
+  return currencyOptions.map((c) => ({
+    value: valueFormat === 'id' ? c.id.toString() : `${c.symbol} ${c.alias}`,
+    label: `${getDisplayNameForCurrency(c.alias) ?? c.name} (${c.alias})`,
+    symbol: c.symbol,
+    countryCode: getCountryCodeForCurrency(c.alias),
+    searchTerms: [c.name, c.alias, ...getSearchTermsForCurrency(c.alias)],
+  }));
+}

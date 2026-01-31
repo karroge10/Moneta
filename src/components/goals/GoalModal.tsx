@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Xmark } from 'iconoir-react';
 import { Goal } from '@/types/dashboard';
 import GoalForm from './GoalForm';
+import type { CurrencyOption } from '@/lib/currency-country-map';
 
 interface GoalModalProps {
   goal: Goal | null;
   mode?: 'add' | 'edit';
+  currencyOptions: CurrencyOption[];
   onClose: () => void;
   onSave: (goal: Goal) => void;
   onDelete?: () => void;
@@ -17,6 +19,7 @@ interface GoalModalProps {
 export default function GoalModal({
   goal,
   mode = 'edit',
+  currencyOptions,
   onClose,
   onSave,
   onDelete,
@@ -93,6 +96,7 @@ export default function GoalModal({
               <GoalForm
                 goal={goal}
                 mode={mode}
+                currencyOptions={currencyOptions}
                 onSave={onSave}
                 onCancel={onClose}
                 onDelete={onDelete}

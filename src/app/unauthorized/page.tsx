@@ -63,7 +63,7 @@ function UnauthorizedContent() {
           <button 
             type="button" 
             onClick={handleSignIn}
-            className="px-8 py-3.5 rounded-full bg-[#AC66DA] text-[#E7E4E4] font-semibold text-body hover:opacity-90 transition-opacity w-full sm:w-auto flex items-center justify-center gap-2"
+            className="px-8 py-3.5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity w-full sm:w-auto flex items-center justify-center gap-2"
           >
             Sign In
           </button>

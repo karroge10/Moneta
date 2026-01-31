@@ -5,6 +5,8 @@ import { formatNumber } from '@/lib/utils';
 import { MonthlySummaryRow } from '@/types/dashboard';
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useCategories } from '@/hooks/useCategories';
+import { getIcon } from '@/lib/iconMapping';
 
 const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
 const SKELETON_ROW_COUNT = 5;
@@ -19,6 +21,7 @@ interface MonthlySummaryTableProps {
 
 export default function MonthlySummaryTable({ data, loading = false, error = null, onRetry }: MonthlySummaryTableProps) {
   const { currency } = useCurrency();
+  const { categories } = useCategories();
   const isEmpty = !loading && !error && data.length === 0;
   const showComingSoon = !loading && !error && isEmpty;
   const showError = !loading && !!error;
@@ -83,7 +86,7 @@ export default function MonthlySummaryTable({ data, loading = false, error = nul
                         type="button"
                         onClick={onRetry}
                         className="px-4 py-2 rounded-full text-body font-semibold cursor-pointer transition-opacity hover:opacity-90"
-                        style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                        style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
                       >
                         Try again
                       </button>
@@ -119,9 +122,21 @@ export default function MonthlySummaryTable({ data, loading = false, error = nul
                       <span className="text-sm">{currency.symbol} {formatNumber(row.savings)}</span>
                     </td>
                     <td className="px-5 py-4 align-top">
-                      <span className="text-sm">
-                        {row.topCategory.name} ({row.topCategory.percentage}%)
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const categoryObj = categories.find(c => c.name === row.topCategory.name);
+                          const CategoryIcon = categoryObj ? getIcon(categoryObj.icon) : getIcon('HelpCircle');
+                          const iconColor = categoryObj?.color ?? '#E7E4E4';
+                          return (
+                            <>
+                              <CategoryIcon width={16} height={16} strokeWidth={1.5} style={{ color: iconColor, flexShrink: 0 }} />
+                              <span className="text-sm">
+                                {row.topCategory.name} ({row.topCategory.percentage}%)
+                              </span>
+                            </>
+                          );
+                        })()}
+                      </div>
                     </td>
                   </tr>
                 ))

@@ -12,7 +12,7 @@ function FieldRowSkeleton({ labelWidth = 'w-24' }: { labelWidth?: string }) {
   return (
     <div className="flex flex-col gap-2">
       <div className={`h-4 rounded animate-pulse ${labelWidth}`} style={SKELETON_STYLE} />
-      <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ backgroundColor: '#202020' }}>
+      <div className="flex items-center gap-3 px-4 py-2 rounded-xl" style={{ backgroundColor: '#202020' }}>
         <div className="w-5 h-5 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
         <div className="h-4 flex-1 min-w-0 rounded animate-pulse max-w-[180px]" style={SKELETON_STYLE} />
       </div>
@@ -60,7 +60,7 @@ export default function SecurityDetailsCard({
           <FieldRowSkeleton labelWidth="w-20" />
           <div className="flex flex-col gap-2">
             <div className="h-4 w-12 rounded animate-pulse" style={SKELETON_STYLE} />
-            <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ backgroundColor: '#202020' }}>
+            <div className="flex items-center gap-3 px-4 py-2 rounded-xl" style={{ backgroundColor: '#202020' }}>
               <div className="w-5 h-5 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
               <div className="h-4 flex-1 max-w-[200px] rounded animate-pulse" style={SKELETON_STYLE} />
               <div className="h-4 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
@@ -68,7 +68,7 @@ export default function SecurityDetailsCard({
           </div>
           <div className="flex flex-col gap-2">
             <div className="h-4 w-20 rounded animate-pulse" style={SKELETON_STYLE} />
-            <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ backgroundColor: '#202020' }}>
+            <div className="flex items-center gap-3 px-4 py-2 rounded-xl" style={{ backgroundColor: '#202020' }}>
               <div className="w-5 h-5 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
               <div className="h-4 flex-1 max-w-[120px] rounded animate-pulse" style={SKELETON_STYLE} />
               <div className="h-4 w-28 rounded animate-pulse" style={SKELETON_STYLE} />
@@ -108,7 +108,7 @@ export default function SecurityDetailsCard({
           <label className="text-body" style={{ color: '#E7E4E4' }}>
             Email
           </label>
-          <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-[#3a3a3a]" style={{ backgroundColor: '#202020', color: '#B9B9B9' }}>
+          <div className="flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a]" style={{ backgroundColor: '#202020', color: '#B9B9B9' }}>
             <Mail width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />
             <span className="flex-1 text-body" style={{ color: settings.email ? undefined : 'rgba(231, 228, 228, 0.5)' }}>
               {settings.email || 'No email set'}
@@ -129,7 +129,7 @@ export default function SecurityDetailsCard({
           <label className="text-body" style={{ color: '#E7E4E4' }}>
             Password
           </label>
-          <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-[#3a3a3a]" style={{ backgroundColor: '#202020', color: '#B9B9B9' }}>
+          <div className="flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a]" style={{ backgroundColor: '#202020', color: '#B9B9B9' }}>
             <Lock width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />
             <span className="flex-1 text-body">••••••••••••</span>
             {openProfile && (

@@ -1,7 +1,7 @@
 'use client';
 
 import { StatisticsSummaryItem } from '@/types/dashboard';
-import { MoreHoriz, NavArrowRight } from 'iconoir-react';
+import { NavArrowRight } from 'iconoir-react';
 import Card from '@/components/ui/Card';
 import { getIcon } from '@/lib/iconMapping';
 import { formatNumber } from '@/lib/utils';
@@ -61,20 +61,10 @@ export default function StatisticsSummary({ items, loading = false }: Statistics
   }
 
   return (
-    <Card 
-      title="Summary" 
+    <Card
+      title="Summary"
       className="h-full flex flex-col"
-      customHeader={
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-card-header">Summary</h2>
-          <button
-            className="p-1 hover:opacity-70 transition-opacity cursor-pointer"
-            aria-label="More options"
-          >
-            <MoreHoriz width={20} height={20} strokeWidth={1.5} style={{ color: '#E7E4E4' }} />
-          </button>
-        </div>
-      }
+      showActions={false}
     >
       <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0" style={{ filter: 'none', minHeight: contentMinHeight }}>
         <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 space-y-3 pr-2">
@@ -106,7 +96,7 @@ export default function StatisticsSummary({ items, loading = false }: Statistics
               >
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-                  style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
+                  style={{ backgroundColor: `${largeItem.iconColor}1a` }}
                 >
                   {(() => {
                     const Icon = getIcon(largeItem.icon);
@@ -115,7 +105,7 @@ export default function StatisticsSummary({ items, loading = false }: Statistics
                         width={32}
                         height={32}
                         strokeWidth={1.5}
-                        style={{ color: '#E7E4E4' }}
+                        style={{ color: largeItem.iconColor }}
                       />
                     );
                   })()}
@@ -175,9 +165,9 @@ function SummaryItem({ item, currency }: { item: StatisticsSummaryItem; currency
     >
       <div
         className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
-        style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
+        style={{ backgroundColor: `${item.iconColor}1a` }}
       >
-        <Icon width={24} height={24} strokeWidth={1.5} style={{ color: '#E7E4E4' }} />
+        <Icon width={24} height={24} strokeWidth={1.5} style={{ color: item.iconColor }} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-body font-medium text-wrap-safe break-words">{item.label}</div>

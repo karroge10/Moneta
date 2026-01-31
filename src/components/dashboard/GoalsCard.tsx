@@ -8,14 +8,16 @@ import { Goal } from '@/types/dashboard';
 import { getGoalStatus } from '@/lib/goalUtils';
 import { InfoCircle, CheckCircle, XmarkCircle } from 'iconoir-react';
 import { useCurrency } from '@/hooks/useCurrency';
+import type { CurrencyOption } from '@/lib/currency-country-map';
 
 interface GoalsCardProps {
   goals: Goal[];
+  currencyOptions?: CurrencyOption[];
   onGoalClick?: (goal: Goal) => void;
 }
 
-export default function GoalsCard({ goals, onGoalClick }: GoalsCardProps) {
-  const { currency } = useCurrency();
+export default function GoalsCard({ goals, currencyOptions = [], onGoalClick }: GoalsCardProps) {
+  const { currency: userCurrency } = useCurrency();
   const [activeIndex, setActiveIndex] = useState(0);
   
   if (goals.length === 0) {
@@ -44,6 +46,9 @@ export default function GoalsCard({ goals, onGoalClick }: GoalsCardProps) {
   const safeIndex = Math.min(activeIndex, goals.length - 1);
   const goal = goals[safeIndex];
   const goalStatus = getGoalStatus(goal);
+  const displayCurrency = goal.currencyId != null
+    ? (currencyOptions.find((c) => c.id === goal.currencyId) ?? userCurrency)
+    : userCurrency;
 
   return (
     <Card 
@@ -108,14 +113,14 @@ export default function GoalsCard({ goals, onGoalClick }: GoalsCardProps) {
               }}
             >
               <span className="text-body font-semibold" style={{ color: 'var(--accent-purple)' }}>
-                {currency.symbol}{goal.targetAmount.toLocaleString('en-US')}
+                {displayCurrency.symbol}{goal.targetAmount.toLocaleString('en-US')}
               </span>
             </div>
           </div>
           
           {/* Current amount */}
           <div className="flex items-baseline gap-2 mb-4 min-w-0 flex-wrap">
-            <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
+            <span className="text-card-currency flex-shrink-0">{displayCurrency.symbol}</span>
             <span className="text-card-value break-all min-w-0">
               {goal.currentAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
@@ -130,7 +135,7 @@ export default function GoalsCard({ goals, onGoalClick }: GoalsCardProps) {
           <div className="flex items-start gap-2 mt-4 text-sm min-w-0" style={{ color: 'var(--accent-purple)' }}>
             <InfoCircle width={18} height={18} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" />
             <span className="text-wrap-safe break-words leading-tight">
-              Save {currency.symbol}{(goal.targetAmount - goal.currentAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} more to reach your goal!
+              Save {displayCurrency.symbol}{(goal.targetAmount - goal.currentAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} more to reach your goal!
             </span>
           </div>
         )}

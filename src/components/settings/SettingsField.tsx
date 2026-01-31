@@ -23,7 +23,7 @@ export interface SelectOptionItem {
 }
 
 const DROPDOWN_OPTION_STYLE = {
-  row: 'w-full text-left px-4 py-3 flex items-center gap-3 text-body cursor-pointer transition-colors hover:bg-[#2a2a2a]',
+  row: 'w-full text-left px-4 py-2 flex items-center gap-3 text-body cursor-pointer transition-colors hover:bg-[#2a2a2a]',
   iconSize: 18,
   currencySymbolColor: '#C9A227',
   textColor: 'var(--text-primary)',
@@ -59,6 +59,7 @@ function toTypeaheadOptions(items: SelectOptionItem[]): TypeaheadOption[] {
     icon: item.icon,
     searchTerms: item.searchTerms,
     suffix: item.suffix,
+    symbol: item.symbol,
   }));
 }
 
@@ -131,7 +132,7 @@ export default function SettingsField({
         <label className="text-body" style={{ color: '#E7E4E4' }}>
           {label}
         </label>
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-[#3a3a3a]" style={{ backgroundColor: '#202020' }}>
+        <div className="flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a]" style={{ backgroundColor: '#202020' }}>
           <div className="shrink-0">{icon}</div>
           <div className="flex-1 min-w-0">
             <ReviewDatePicker
@@ -178,7 +179,7 @@ export default function SettingsField({
       <div className="relative" ref={ref}>
         {isEditableInput ? (
           <div
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg border border-[#3a3a3a] ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+            className={`flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a] ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
             style={{ backgroundColor: '#202020', color: '#B9B9B9' }}
           >
             <div className="shrink-0">{icon}</div>
@@ -203,7 +204,7 @@ export default function SettingsField({
           </div>
         ) : (
           <div
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg border border-[#3a3a3a] ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+            className={`flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a] ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
             style={{ backgroundColor: '#202020', color: '#B9B9B9' }}
             onClick={() => {
               if (disabled) return;
@@ -259,7 +260,7 @@ export default function SettingsField({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.stopPropagation()}
                   placeholder="Search..."
-                  className="w-full px-3 py-2 rounded-lg text-body bg-[#282828] border border-[#3a3a3a] outline-none focus:border-[var(--accent-purple)]"
+                  className="w-full px-3 py-2 rounded-xl text-body bg-[#282828] border border-[#3a3a3a] outline-none focus:border-[var(--accent-purple)]"
                   style={{ color: 'var(--text-primary)' }}
                 />
               </div>
