@@ -78,7 +78,8 @@ export default function ExpensesPage() {
       const response = await fetch(`/api/expenses?${params.toString()}`);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch expenses data');
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error ?? 'Failed to fetch expenses data');
       }
       
       const data = await response.json();
@@ -445,6 +446,21 @@ export default function ExpensesPage() {
 
         {/* Loading State with Skeletons */}
         {renderSkeletonLayout()}
+
+        {/* Transaction Modal (available even while loading) */}
+        {selectedTransaction && (
+          <TransactionModal
+            transaction={selectedTransaction}
+            mode={modalMode}
+            onClose={handleCloseModal}
+            onSave={handleSave}
+            onDelete={handleDelete}
+            onPauseResume={selectedTransaction.recurringId !== undefined ? handlePauseResume : undefined}
+            isSaving={isSaving}
+            categories={categories}
+            currencyOptions={currencyOptions}
+          />
+        )}
       </main>
     );
   }
@@ -485,6 +501,21 @@ export default function ExpensesPage() {
             Retry
           </button>
         </div>
+
+        {/* Transaction Modal (available in error state too) */}
+        {selectedTransaction && (
+          <TransactionModal
+            transaction={selectedTransaction}
+            mode={modalMode}
+            onClose={handleCloseModal}
+            onSave={handleSave}
+            onDelete={handleDelete}
+            onPauseResume={selectedTransaction.recurringId !== undefined ? handlePauseResume : undefined}
+            isSaving={isSaving}
+            categories={categories}
+            currencyOptions={currencyOptions}
+          />
+        )}
       </main>
     );
   }

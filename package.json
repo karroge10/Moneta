@@ -9,6 +9,7 @@
     "lint": "eslint",
     "type-check": "tsc --noEmit --pretty",
     "seed": "tsx prisma/seed.ts",
+    "seed:demographic": "tsx scripts/seed-demographic-data.ts",
     "seed:merchants": "tsx prisma/seed-merchants.ts",
     "setup": "npm install && node scripts/setup-python.js",
     "postinstall": "prisma generate && node scripts/setup-python.js",

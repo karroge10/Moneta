@@ -86,11 +86,10 @@ export default function TaxSettingsCard({ incomeTaxRate, onUpdate }: TaxSettings
               value={rateInput}
               onChange={(e) => setRateInput(e.target.value)}
               onBlur={handleBlur}
-              className="px-4 py-3 rounded-lg text-body w-full max-w-[140px]"
+              className="px-4 py-3 rounded-lg text-body w-full max-w-[140px] border border-[#3a3a3a]"
               style={{
                 backgroundColor: '#202020',
                 color: '#E7E4E4',
-                border: '1px solid rgba(231, 228, 228, 0.2)',
               }}
               aria-label="Income tax rate percentage"
             />

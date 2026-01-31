@@ -131,7 +131,7 @@ export default function SettingsField({
         <label className="text-body" style={{ color: '#E7E4E4' }}>
           {label}
         </label>
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ backgroundColor: '#202020' }}>
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-[#3a3a3a]" style={{ backgroundColor: '#202020' }}>
           <div className="shrink-0">{icon}</div>
           <div className="flex-1 min-w-0">
             <ReviewDatePicker
@@ -178,7 +178,7 @@ export default function SettingsField({
       <div className="relative" ref={ref}>
         {isEditableInput ? (
           <div
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg border border-[#3a3a3a] ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
             style={{ backgroundColor: '#202020', color: '#B9B9B9' }}
           >
             <div className="shrink-0">{icon}</div>
@@ -203,7 +203,7 @@ export default function SettingsField({
           </div>
         ) : (
           <div
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg border border-[#3a3a3a] ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
             style={{ backgroundColor: '#202020', color: '#B9B9B9' }}
             onClick={() => {
               if (disabled) return;

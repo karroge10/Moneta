@@ -384,7 +384,7 @@ export default function PersonalInformationCard({
             {taxEnabled && (
               <div className="flex flex-col gap-2">
                 <div
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg w-full"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg w-full border border-[#3a3a3a]"
                   style={{ backgroundColor: '#202020' }}
                 >
                   <input
