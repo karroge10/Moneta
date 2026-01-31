@@ -30,10 +30,9 @@ export default function MonthFilter({ value, onChange, availableMonths, formatMo
   let displayValue = 'All Time';
   if (value) {
     // Check if it's a time period or a month
-    if (value === 'this_month' || value === 'this_quarter' || value === 'this_year') {
+    if (value === 'this_month' || value === 'this_year') {
       const periodMap: Record<string, string> = {
         'this_month': 'This Month',
-        'this_quarter': 'This Quarter',
         'this_year': 'This Year',
       };
       displayValue = periodMap[value] || 'All Time';
@@ -48,7 +47,6 @@ export default function MonthFilter({ value, onChange, availableMonths, formatMo
   const timePeriodOptions = [
     { value: '', label: 'All Time' },
     { value: 'this_month', label: 'This Month' },
-    { value: 'this_quarter', label: 'This Quarter' },
     { value: 'this_year', label: 'This Year' },
   ];
 

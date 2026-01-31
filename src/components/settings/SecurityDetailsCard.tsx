@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Card from '@/components/ui/Card';
 import SettingsField from './SettingsField';
 import { UserSettings } from '@/types/dashboard';
@@ -24,9 +25,12 @@ interface SecurityDetailsCardProps {
   onEdit?: (field: string) => void;
   onChange?: (field: string, value: string) => void;
   onOpenAccountProfile?: () => void;
-  onSetup2FA?: () => void;
   onDeleteAccount?: () => void;
   loading?: boolean;
+  /** When true, fields are disabled (e.g. while saving). */
+  disabled?: boolean;
+  /** Error message from username update (e.g. "Username is already taken"). */
+  usernameError?: string | null;
 }
 
 export default function SecurityDetailsCard({
@@ -34,11 +38,20 @@ export default function SecurityDetailsCard({
   onEdit,
   onChange,
   onOpenAccountProfile,
-  onSetup2FA,
   onDeleteAccount,
   loading = false,
+  disabled = false,
+  usernameError = null,
 }: SecurityDetailsCardProps) {
-  const openProfile = onOpenAccountProfile ?? onSetup2FA;
+  const openProfile = onOpenAccountProfile;
+  // Username: only reflect saved value from server; local state for typing, synced on success or error
+  const [usernameInput, setUsernameInput] = useState(settings.username);
+  useEffect(() => {
+    setUsernameInput(settings.username);
+  }, [settings.username]);
+  useEffect(() => {
+    if (usernameError) setUsernameInput(settings.username);
+  }, [usernameError, settings.username]);
 
   if (loading) {
     return (
@@ -62,9 +75,7 @@ export default function SecurityDetailsCard({
             </div>
           </div>
           <div className="flex flex-col gap-3 mt-2">
-            <div className="h-4 w-48 rounded animate-pulse" style={SKELETON_STYLE} />
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="h-9 w-24 rounded-full animate-pulse" style={SKELETON_STYLE} />
               <div className="h-9 w-32 rounded-full animate-pulse" style={SKELETON_STYLE} />
             </div>
           </div>
@@ -78,12 +89,21 @@ export default function SecurityDetailsCard({
       <div className="flex flex-col gap-4">
         <SettingsField
           label="Username"
-          value={settings.username}
+          value={usernameInput}
           icon={<User width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
           type="input"
           placeholder="Username"
-          onChange={(value) => onChange?.('username', value)}
+          disabled={disabled}
+          onChange={(value) => {
+            setUsernameInput(value);
+            onChange?.('username', value);
+          }}
         />
+        {usernameError ? (
+          <p className="text-helper" style={{ color: 'var(--error)' }}>
+            {usernameError}
+          </p>
+        ) : null}
         <div className="flex flex-col gap-2">
           <label className="text-body" style={{ color: '#E7E4E4' }}>
             Email
@@ -97,7 +117,7 @@ export default function SecurityDetailsCard({
               <button
                 type="button"
                 onClick={openProfile}
-                className="text-body font-semibold transition-opacity hover:opacity-90"
+                className="text-body font-semibold transition-opacity hover:opacity-90 cursor-pointer"
                 style={{ color: 'var(--accent-purple)' }}
               >
                 Change email
@@ -116,7 +136,7 @@ export default function SecurityDetailsCard({
               <button
                 type="button"
                 onClick={openProfile}
-                className="text-body font-semibold transition-opacity hover:opacity-90"
+                className="text-body font-semibold transition-opacity hover:opacity-90 cursor-pointer"
                 style={{ color: 'var(--accent-purple)' }}
               >
                 Change password
@@ -126,24 +146,11 @@ export default function SecurityDetailsCard({
         </div>
 
         <div className="flex flex-col gap-3 mt-2">
-          <div className="text-body" style={{ color: '#E7E4E4' }}>
-            Two-Factor Authentication
-          </div>
           <div className="flex items-center gap-3 flex-wrap">
-            {openProfile && (
-              <button
-                type="button"
-                onClick={openProfile}
-                className="px-4 py-2 rounded-full text-body transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#282828', color: '#E7E4E4' }}
-              >
-                Set up 2FA
-              </button>
-            )}
             <button
               type="button"
               onClick={onDeleteAccount}
-              className="px-4 py-2 rounded-full text-body font-semibold transition-opacity hover:opacity-90"
+              className="px-4 py-2 rounded-full text-body font-semibold transition-opacity hover:opacity-90 cursor-pointer"
               style={{ backgroundColor: '#D93F3F', color: '#E7E4E4' }}
             >
               Delete Account

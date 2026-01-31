@@ -53,38 +53,20 @@ export default function NotificationSettingsForm({
             <span className="text-body" style={{ color: '#E7E4E4' }}>
               {row.label}
             </span>
-            <div className={`theme-toggle ${isEnabled ? 'is-enabled' : 'is-disabled'}`}>
-              <span className="theme-toggle-indicator" aria-hidden="true" />
-              <button
-                type="button"
-                className={`theme-toggle-button ${!isEnabled ? 'active' : ''}`}
-                aria-label={`Disable ${row.label}`}
-                onClick={() => handleToggle(row.key, false)}
-              >
-                <div
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: '#B9B9B9' }}
-                />
-              </button>
-              <button
-                type="button"
-                className={`theme-toggle-button ${isEnabled ? 'active' : ''}`}
-                aria-label={`Enable ${row.label}`}
-                onClick={() => handleToggle(row.key, true)}
-              >
-                <div className="relative inline-flex items-center justify-center">
-                  <div
-                    className="blinking-dot"
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      backgroundColor: '#AC66DA',
-                      borderRadius: '50%',
-                    }}
-                  />
-                </div>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => handleToggle(row.key, !isEnabled)}
+              className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${
+                isEnabled ? 'bg-[var(--accent-purple)]' : 'bg-[rgba(231,228,228,0.3)]'
+              }`}
+              aria-label={isEnabled ? `Disable ${row.label}` : `Enable ${row.label}`}
+            >
+              <div
+                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 ease-in-out ${
+                  isEnabled ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
         );
       })}

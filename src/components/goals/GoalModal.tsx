@@ -23,6 +23,8 @@ export default function GoalModal({
   isSaving = false,
 }: GoalModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const pointerDownOnOverlay = useRef(false);
   const [isFloatingPanelOpen, setIsFloatingPanelOpen] = useState(false);
 
   useEffect(() => {
@@ -48,21 +50,28 @@ export default function GoalModal({
   return (
     <>
       <div
+        ref={overlayRef}
         className="fixed inset-0 bg-black/60 z-50 animate-in fade-in duration-200"
-        onClick={onClose}
+        onMouseDown={() => {
+          pointerDownOnOverlay.current = true;
+        }}
+        onMouseUp={() => {
+          if (pointerDownOnOverlay.current && overlayRef.current) {
+            onClose();
+          }
+          pointerDownOnOverlay.current = false;
+        }}
       />
       <div
         ref={modalRef}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in zoom-in-95 duration-200"
-        onClick={event => {
-          if (event.target === event.currentTarget) {
-            onClose();
-          }
-        }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in zoom-in-95 duration-200 pointer-events-none"
       >
         <div
-          className="w-full max-w-2xl max-h-[94vh] rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300 overflow-hidden flex flex-col"
+          className="w-full max-w-2xl max-h-[94vh] rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300 overflow-hidden flex flex-col pointer-events-auto"
           style={{ backgroundColor: 'var(--bg-surface)' }}
+          onMouseDown={() => {
+            pointerDownOnOverlay.current = false;
+          }}
         >
           <div
             className="flex items-center justify-between p-6 border-b border-[#3a3a3a]"

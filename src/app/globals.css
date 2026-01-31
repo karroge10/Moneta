@@ -317,6 +317,24 @@ body.sidebar-collapsed {
 .sidebar-logout:hover { background: #202020; color: var(--accent-purple); }
 .sidebar-logout svg { stroke: currentColor; }
 
+/* Fixed avatar slot so skeleton and UserButton match (no layout shift) */
+.sidebar-account-avatar-slot {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+/* Force Clerk UserButton avatar to match skeleton (20px) */
+.sidebar-logout .cl-avatarBox {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px;
+  min-height: 20px;
+}
+
 .theme-toggle {
   display: flex;
   position: relative;

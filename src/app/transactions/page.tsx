@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import TransactionModal from '@/components/transactions/TransactionModal';
@@ -11,10 +11,12 @@ import CategoryFilter from '@/components/transactions/shared/CategoryFilter';
 import TypeFilter from '@/components/transactions/shared/TypeFilter';
 import MonthFilter from '@/components/transactions/shared/MonthFilter';
 import Card from '@/components/ui/Card';
-import { Transaction, Category } from '@/types/dashboard';
+import { Transaction, Category, RecurringItem, RecurringRow } from '@/types/dashboard';
 import { Upload, Reports, NavArrowUp, NavArrowDown } from 'iconoir-react';
 import { getIcon } from '@/lib/iconMapping';
 import { formatNumber } from '@/lib/utils';
+import { formatDateForDisplay } from '@/lib/dateFormatting';
+import { buildTransactionFromRecurring } from '@/lib/recurring-utils';
 import { useCurrency } from '@/hooks/useCurrency';
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -25,9 +27,17 @@ function truncateName(name: string, maxLength: number): string {
   return name.substring(0, maxLength) + '...';
 }
 
+type ViewMode = 'past' | 'future';
+
 export default function TransactionsPage() {
   const { currency } = useCurrency();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const view = searchParams.get('view');
+    if (view === 'future') return 'future';
+    return 'past';
+  });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [currencyOptions, setCurrencyOptions] = useState<Array<{ id: number; name: string; symbol: string; alias: string }>>([]);
@@ -49,7 +59,7 @@ export default function TransactionsPage() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>(''); // 'expense' | 'income' | ''
-  const [monthFilter, setMonthFilter] = useState<string>(''); // 'this_month' | 'this_quarter' | 'this_year' | month string | ''
+  const [monthFilter, setMonthFilter] = useState<string>(''); // 'this_month' | 'this_year' | month string | ''
   
   // Sorting
   type SortColumn = 'date' | 'description' | 'type' | 'amount' | 'category';
@@ -59,6 +69,45 @@ export default function TransactionsPage() {
   
   // Modals
   const [isCategoryStatsOpen, setIsCategoryStatsOpen] = useState(false);
+
+  // Per-page dropdown
+  const [isPerPageOpen, setIsPerPageOpen] = useState(false);
+  const perPageRef = useRef<HTMLDivElement>(null);
+
+  // Future (recurring) view
+  const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
+  const [recurringLoading, setRecurringLoading] = useState(false);
+
+  // Sync viewMode from URL on mount / when searchParams change (e.g. back/forward or View All link)
+  useEffect(() => {
+    const view = searchParams.get('view');
+    setViewMode(view === 'future' ? 'future' : 'past');
+  }, [searchParams]);
+
+  // Close per-page dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (perPageRef.current && !perPageRef.current.contains(e.target as Node)) {
+        setIsPerPageOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const setViewModeAndUrl = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    setCurrentPage(1);
+    setPageInput('1');
+    if (mode === 'past') {
+      setSelectedTransaction(null);
+    }
+    if (mode === 'future') {
+      router.replace('/transactions?view=future', { scroll: false });
+    } else {
+      router.replace('/transactions', { scroll: false });
+    }
+  }, [router]);
 
   // Debounce search query
   useEffect(() => {
@@ -89,11 +138,10 @@ export default function TransactionsPage() {
       
       // Handle time period filters
       if (monthFilter) {
-        if (monthFilter === 'this_month' || monthFilter === 'this_quarter' || monthFilter === 'this_year') {
+        if (monthFilter === 'this_month' || monthFilter === 'this_year') {
           // Convert to timePeriod format
           const periodMap: Record<string, string> = {
             'this_month': 'This Month',
-            'this_quarter': 'This Quarter',
             'this_year': 'This Year',
           };
           params.set('timePeriod', periodMap[monthFilter]);
@@ -155,10 +203,37 @@ export default function TransactionsPage() {
     fetchCurrencies();
   }, []);
 
-  // Fetch transactions when filters, page size, or page change
+  // Fetch recurring items for future view
+  const fetchRecurring = useCallback(async () => {
+    try {
+      setRecurringLoading(true);
+      setError(null);
+      const response = await fetch('/api/recurring');
+      if (!response.ok) throw new Error('Failed to fetch recurring items');
+      const data = await response.json();
+      setRecurringItems(data.items || []);
+    } catch (err) {
+      console.error('Error fetching recurring:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load recurring items');
+      setRecurringItems([]);
+    } finally {
+      setRecurringLoading(false);
+    }
+  }, []);
+
+  // Fetch transactions when filters, page size, or page change (past view only)
   useEffect(() => {
-    fetchTransactions(1);
-  }, [fetchTransactions]);
+    if (viewMode === 'past') {
+      fetchTransactions(1);
+    }
+  }, [viewMode, fetchTransactions]);
+
+  // Fetch recurring when switching to future view
+  useEffect(() => {
+    if (viewMode === 'future') {
+      fetchRecurring();
+    }
+  }, [viewMode, fetchRecurring]);
 
   // Get available months - fetch from API
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
@@ -210,6 +285,58 @@ export default function TransactionsPage() {
     setSelectedTransaction(transaction);
   };
 
+  const buildTxFromRecurring = useCallback(
+    (item: RecurringItem) => buildTransactionFromRecurring(item, categories),
+    [categories]
+  );
+
+  const handleRecurringRowClick = (row: RecurringRow) => {
+    const item = recurringItems.find((i) => i.id === row.recurringId);
+    if (item) {
+      setModalMode('edit');
+      setSelectedTransaction(buildTxFromRecurring(item));
+    }
+  };
+
+  const handlePauseResume = async (recurringId: number, isActive: boolean) => {
+    const item = recurringItems.find((i) => i.id === recurringId);
+    if (!item) return;
+    try {
+      setError(null);
+      setIsSaving(true);
+      const response = await fetch('/api/recurring', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: item.id,
+          name: item.name,
+          amount: item.amount,
+          type: item.type,
+          category: item.category ?? null,
+          startDate: item.startDate,
+          endDate: item.endDate ?? null,
+          frequencyUnit: item.frequencyUnit,
+          frequencyInterval: item.frequencyInterval,
+          isActive,
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to update');
+      setRecurringItems((prev) =>
+        prev.map((i) => (i.id === recurringId ? { ...i, isActive } : i))
+      );
+      setSelectedTransaction((prev) =>
+        prev && prev.recurringId === recurringId
+          ? { ...prev, recurring: prev.recurring ? { ...prev.recurring, isActive } : { isRecurring: true, isActive, frequencyUnit: 'month', frequencyInterval: 1, startDate: '' } }
+          : prev
+      );
+    } catch (err) {
+      console.error('Error pausing/resuming recurring:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleAddTransactionClick = () => {
     setModalMode('add');
     setSelectedTransaction(createDraftTransaction());
@@ -223,10 +350,37 @@ export default function TransactionsPage() {
     try {
       setError(null);
       setIsSaving(true);
-      
-      // Use modalMode to determine if this is a new transaction or edit
+
+      if (updatedTransaction.recurringId !== undefined) {
+        const rec = updatedTransaction.recurring;
+        if (!rec) throw new Error('Missing recurring data');
+        const response = await fetch('/api/recurring', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: updatedTransaction.recurringId,
+            name: updatedTransaction.name,
+            amount: Math.abs(updatedTransaction.amount),
+            type: updatedTransaction.amount < 0 ? 'expense' : 'income',
+            startDate: rec.startDate,
+            endDate: rec.endDate ?? null,
+            frequencyUnit: rec.frequencyUnit,
+            frequencyInterval: rec.frequencyInterval,
+            isActive: rec.isActive ?? true,
+            currencyId: updatedTransaction.currencyId,
+            category: updatedTransaction.category,
+          }),
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to save recurring');
+        }
+        setSelectedTransaction(null);
+        fetchRecurring();
+        return;
+      }
+
       const isNew = modalMode === 'add';
-      
       let response: Response;
       if (isNew) {
         response = await fetch('/api/transactions', {
@@ -241,15 +395,15 @@ export default function TransactionsPage() {
           body: JSON.stringify(updatedTransaction),
         });
       }
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to save transaction');
       }
-      
+
       const data = await response.json();
       const savedTransaction = data.transaction;
-      
+
       setTransactions(prev => {
         const exists = prev.some(t => t.id === savedTransaction.id);
         if (exists) {
@@ -257,9 +411,9 @@ export default function TransactionsPage() {
         }
         return [savedTransaction, ...prev];
       });
-      
+
       setSelectedTransaction(null);
-      fetchTransactions(currentPage); // Refresh current page
+      fetchTransactions(currentPage);
     } catch (err) {
       console.error('Error saving transaction:', err);
       setError(err instanceof Error ? err.message : 'Failed to save transaction');
@@ -274,19 +428,32 @@ export default function TransactionsPage() {
 
   const handleDelete = async () => {
     if (!selectedTransaction) return;
-    
+
     try {
+      if (selectedTransaction.recurringId !== undefined) {
+        const response = await fetch(`/api/recurring?id=${selectedTransaction.recurringId}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to delete recurring');
+        }
+        setSelectedTransaction(null);
+        fetchRecurring();
+        return;
+      }
+
       const response = await fetch(`/api/transactions?id=${selectedTransaction.id}`, {
         method: 'DELETE',
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to delete transaction');
       }
-      
+
       setSelectedTransaction(null);
-      fetchTransactions(currentPage); // Refresh current page
+      fetchTransactions(currentPage);
     } catch (err) {
       console.error('Error deleting transaction:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete transaction');
@@ -346,6 +513,80 @@ export default function TransactionsPage() {
     );
   };
 
+  // Map and filter recurring items for future view; sort and paginate
+  const recurringRowsData = useMemo(() => {
+    if (viewMode !== 'future') return { rows: [] as RecurringRow[], total: 0, totalPages: 0 };
+    const q = debouncedSearchQuery.toLowerCase().trim();
+    let filtered = recurringItems.filter((item) => {
+      if (q && !item.name.toLowerCase().includes(q)) return false;
+      if (categoryFilter && item.category !== categoryFilter) return false;
+      if (typeFilter && item.type !== typeFilter) return false;
+      if (monthFilter) {
+        const due = item.nextDueDate.slice(0, 7);
+        if (monthFilter === 'this_month' || monthFilter === 'this_year') {
+          const now = new Date();
+          const y = now.getFullYear();
+          const m = String(now.getMonth() + 1).padStart(2, '0');
+          if (monthFilter === 'this_month' && due !== `${y}-${m}`) return false;
+          if (monthFilter === 'this_year' && due.slice(0, 4) !== String(y)) return false;
+        } else if (due !== monthFilter) return false;
+      }
+      return true;
+    });
+    const mapped: RecurringRow[] = filtered.map((item) => {
+      const amount = item.type === 'expense' ? -(item.convertedAmount ?? item.amount) : (item.convertedAmount ?? item.amount);
+      const categoryObj = categories.find((c) => c.name === item.category);
+      return {
+        id: `recurring-${item.id}`,
+        name: item.name,
+        date: formatDateForDisplay(item.nextDueDate),
+        dateRaw: item.nextDueDate.slice(0, 10),
+        amount,
+        category: item.category,
+        icon: categoryObj?.icon ?? 'HelpCircle',
+        isRecurring: true as const,
+        recurringId: item.id,
+        isActive: item.isActive,
+      };
+    });
+    const sortKey = sortColumn === 'description' ? 'name' : sortColumn === 'date' ? 'dateRaw' : sortColumn;
+    mapped.sort((a, b) => {
+      const aVal = a[sortKey as keyof RecurringRow];
+      const bVal = b[sortKey as keyof RecurringRow];
+      if (sortColumn === 'date' || sortColumn === 'dateRaw') {
+        const cmp = String(aVal).localeCompare(String(bVal));
+        return sortOrder === 'asc' ? cmp : -cmp;
+      }
+      if (sortColumn === 'amount') {
+        const cmp = (a.amount as number) - (b.amount as number);
+        return sortOrder === 'asc' ? cmp : -cmp;
+      }
+      const cmp = String(aVal).localeCompare(String(bVal));
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+    const total = mapped.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const start = (currentPage - 1) * pageSize;
+    const rows = mapped.slice(start, start + pageSize);
+    return { rows, total, totalPages };
+  }, [
+    viewMode,
+    recurringItems,
+    debouncedSearchQuery,
+    categoryFilter,
+    typeFilter,
+    monthFilter,
+    categories,
+    sortColumn,
+    sortOrder,
+    currentPage,
+    pageSize,
+  ]);
+
+  const displayLoading = viewMode === 'past' ? loading : recurringLoading;
+  const displayTotal = viewMode === 'past' ? total : recurringRowsData.total;
+  const displayTotalPages = viewMode === 'past' ? totalPages : recurringRowsData.totalPages;
+
   return (
     <main className="min-h-screen bg-[#202020]">
       {/* Desktop Header */}
@@ -380,11 +621,40 @@ export default function TransactionsPage() {
       </div>
 
       {/* Content */}
-      <div className="px-4 md:px-6 pb-6 flex flex-col min-h-[calc(100vh-120px)] max-w-screen-2xl mx-auto w-full">
-        <Card title="History" onAdd={handleAddTransactionClick} className="flex-1 flex flex-col">
+      <div className="px-4 md:px-6 lg:px-8 pb-6 flex flex-col min-h-[calc(100vh-120px)]">
+        <Card
+          title="History"
+          onAdd={handleAddTransactionClick}
+          className="flex-1 flex flex-col"
+          customHeader={
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <h2 className="text-card-header">History</h2>
+              <div className="flex rounded-full p-1 border border-[#3a3a3a]" style={{ backgroundColor: '#202020' }}>
+                <button
+                  type="button"
+                  onClick={() => setViewModeAndUrl('past')}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer ${
+                    viewMode === 'past' ? 'bg-[#AC66DA] text-[#E7E4E4]' : 'text-[#E7E4E4] hover:opacity-80'
+                  }`}
+                >
+                  Past
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewModeAndUrl('future')}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer ${
+                    viewMode === 'future' ? 'bg-[#AC66DA] text-[#E7E4E4]' : 'text-[#E7E4E4] hover:opacity-80'
+                  }`}
+                >
+                  Future
+                </button>
+              </div>
+            </div>
+          }
+        >
           <div className="flex flex-col gap-4 flex-1 min-h-0">
             {/* Filters */}
-            <div className={`flex flex-col md:flex-row md:items-center gap-3 shrink-0 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className={`flex flex-col md:flex-row md:items-center gap-3 shrink-0 ${displayLoading ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="flex-[0.6]">
                 <SearchBar
                   placeholder="Search transactions..."
@@ -423,9 +693,9 @@ export default function TransactionsPage() {
             )}
 
             {/* Table */}
-            <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020', minHeight: transactions.length === 0 && !loading ? 'calc(100vh - 400px)' : 'auto' }}>
+            <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020', minHeight: (viewMode === 'past' ? transactions.length === 0 : recurringRowsData.rows.length === 0) && !displayLoading ? 'calc(100vh - 400px)' : 'auto' }}>
               <div className="flex-1 overflow-x-auto">
-                <table className="min-w-full" style={{ height: transactions.length === 0 && !loading ? '100%' : 'auto' }}>
+                <table className="min-w-full" style={{ height: (viewMode === 'past' ? transactions.length === 0 : recurringRowsData.rows.length === 0) && !displayLoading ? '100%' : 'auto' }}>
                       <thead>
                         <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
                           <th 
@@ -473,10 +743,15 @@ export default function TransactionsPage() {
                               <SortIcon column="category" />
                             </span>
                           </th>
+                          {viewMode === 'future' && (
+                            <th className="px-5 py-3 align-top" style={{ color: '#9CA3AF' }}>
+                              Status
+                            </th>
+                          )}
                         </tr>
                       </thead>
                   <tbody>
-                    {loading ? (
+                    {displayLoading ? (
                       <>
                         {/* Loading skeleton rows */}
                         {Array.from({ length: pageSize }).map((_, index) => (
@@ -496,18 +771,31 @@ export default function TransactionsPage() {
                             <td className="px-5 py-4">
                               <div className="h-4 w-32 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
                             </td>
+                            {viewMode === 'future' && (
+                              <td className="px-5 py-4">
+                                <div className="h-4 w-16 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </>
-                    ) : transactions.length === 0 ? (
+                    ) : viewMode === 'past' && transactions.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)', height: '100%' }}>
+                        <td colSpan={viewMode === 'future' ? 6 : 5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)', height: '100%' }}>
                           <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 500px)' }}>
                             No transactions found. Try adjusting your filters.
                           </div>
                         </td>
                       </tr>
-                    ) : (
+                    ) : viewMode === 'future' && recurringRowsData.rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)', height: '100%' }}>
+                          <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 500px)' }}>
+                            No upcoming recurring transactions.
+                          </div>
+                        </td>
+                      </tr>
+                    ) : viewMode === 'past' ? (
                       transactions.map(transaction => {
                         const isExpense = transaction.amount < 0;
                         const absoluteAmount = Math.abs(transaction.amount);
@@ -550,6 +838,59 @@ export default function TransactionsPage() {
                           </tr>
                         );
                       })
+                    ) : (
+                      recurringRowsData.rows.map(row => {
+                        const isExpense = row.amount < 0;
+                        const absoluteAmount = Math.abs(row.amount);
+                        const truncatedName = truncateName(row.name, MAX_NAME_LENGTH);
+                        const categoryObj = categories.find(c => c.name === row.category);
+                        const CategoryIcon = categoryObj ? getIcon(categoryObj.icon) : null;
+                        return (
+                          <tr
+                            key={row.id}
+                            className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => handleRecurringRowClick(row)}
+                          >
+                            <td className="px-5 py-4 align-top">
+                              <span className="text-sm">{row.date}</span>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <div className="text-sm" title={row.name.length > MAX_NAME_LENGTH ? row.name : undefined}>
+                                {truncatedName}
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <span className="text-sm font-semibold" style={{ color: isExpense ? '#D93F3F' : '#74C648' }}>
+                                {isExpense ? 'Expense' : 'Income'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <span className="text-sm font-semibold">
+                                {currency.symbol}{formatNumber(absoluteAmount)}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <div className="flex items-center gap-2">
+                                {CategoryIcon && (
+                                  <CategoryIcon width={16} height={16} strokeWidth={1.5} style={{ color: categoryObj?.color || '#E7E4E4' }} />
+                                )}
+                                <span className="text-sm">{row.category || 'Uncategorized'}</span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <span
+                                className="text-xs font-medium px-2 py-1 rounded-full"
+                                style={{
+                                  backgroundColor: row.isActive ? 'rgba(116, 198, 72, 0.2)' : 'rgba(60, 60, 60, 0.6)',
+                                  color: row.isActive ? '#74C648' : 'rgba(231, 228, 228, 0.7)',
+                                }}
+                              >
+                                {row.isActive ? 'Active' : 'Paused'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -559,20 +900,45 @@ export default function TransactionsPage() {
             {/* Pagination */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2 shrink-0">
               <div className="flex items-center gap-3">
-                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  Showing {transactions.length} of {total} transactions
+                <span className="text-xs" style={{ color: 'rgba(231, 228, 228, 0.7)' }}>
+                  Showing {viewMode === 'past' ? transactions.length : recurringRowsData.rows.length} of {displayTotal} {viewMode === 'past' ? 'transactions' : 'recurring'}
                 </span>
-                <select
-                  value={pageSize}
-                  onChange={e => handlePageSizeChange(parseInt(e.target.value, 10))}
-                  className="rounded-full border-none px-3 py-1 text-xs font-semibold transition-colors cursor-pointer"
-                  style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
-                >
-                  <option value="10">10 per page</option>
-                  <option value="20">20 per page</option>
-                  <option value="50">50 per page</option>
-                  <option value="100">100 per page</option>
-                </select>
+                <div className="relative" ref={perPageRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsPerPageOpen(o => !o)}
+                    className="flex items-center rounded-full py-1 pl-2 pr-4 text-xs font-semibold transition-colors cursor-pointer hover:opacity-90"
+                    style={{ backgroundColor: '#282828', color: 'var(--text-primary)' }}
+                  >
+                    <span>{pageSize} per page</span>
+                    <span className="ml-2 shrink-0">
+                      <NavArrowDown width={14} height={14} strokeWidth={2} />
+                    </span>
+                  </button>
+                  {isPerPageOpen && (
+                    <div
+                      className="absolute bottom-full left-0 mb-2 rounded-2xl shadow-lg overflow-hidden z-10 min-w-[120px]"
+                      style={{ backgroundColor: 'var(--bg-surface)' }}
+                    >
+                      {[10, 20, 50, 100].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => {
+                            handlePageSizeChange(n);
+                            setIsPerPageOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer hover:bg-[#2a2a2a]"
+                          style={{
+                            color: pageSize === n ? 'var(--accent-purple)' : 'var(--text-primary)',
+                          }}
+                        >
+                          {n} per page
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -622,7 +988,7 @@ export default function TransactionsPage() {
         </Card>
       </div>
 
-      {/* Transaction Modal */}
+      {/* Transaction Modal (past transactions and future recurring - same form, Pause for recurring) */}
       {selectedTransaction && (
         <TransactionModal
           transaction={selectedTransaction}
@@ -630,6 +996,7 @@ export default function TransactionsPage() {
           onClose={handleCloseModal}
           onSave={handleSave}
           onDelete={handleDelete}
+          onPauseResume={selectedTransaction.recurringId !== undefined ? handlePauseResume : undefined}
           isSaving={isSaving}
           categories={categories}
           currencyOptions={currencyOptions}

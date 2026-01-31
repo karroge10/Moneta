@@ -4,16 +4,62 @@ import { useState, useRef, useEffect } from 'react';
 import { NavArrowDown, Edit } from 'iconoir-react';
 import { ReactNode } from 'react';
 import ReviewDatePicker from '@/components/transactions/shared/ReviewDatePicker';
+import TypeaheadSelect, { type TypeaheadOption } from '@/components/ui/TypeaheadSelect';
+
+/** Unified option with optional icon/symbol for dropdowns */
+export interface SelectOptionItem {
+  value: string;
+  label: string;
+  symbol?: string;
+  /** When symbol is present, display text next to it (e.g. "USD" for "$ USD") */
+  alias?: string;
+  icon?: ReactNode;
+  /** ISO 3166-1 alpha-2 for flags (typeahead). */
+  countryCode?: string;
+  /** Extra search terms (typeahead). */
+  searchTerms?: string[];
+  /** Additional display text on the right, e.g. currency symbol. */
+  suffix?: string;
+}
+
+const DROPDOWN_OPTION_STYLE = {
+  row: 'w-full text-left px-4 py-3 flex items-center gap-3 text-body cursor-pointer transition-colors hover:bg-[#2a2a2a]',
+  iconSize: 18,
+  currencySymbolColor: '#C9A227',
+  textColor: 'var(--text-primary)',
+  selectedColor: 'var(--accent-purple)',
+} as const;
 
 interface SettingsFieldProps {
   label: string;
   value: string;
   icon: ReactNode;
-  type: 'input' | 'select' | 'date';
+  type: 'input' | 'select' | 'date' | 'typeahead';
   options?: string[];
+  /** When provided, used for select with optional icons/symbols; overrides options for display */
+  optionItems?: SelectOptionItem[];
   placeholder?: string;
+  /** Enable type-ahead filter (e.g. for currency) - only for type="select" */
+  searchable?: boolean;
+  /** Search input placeholder for typeahead. */
+  searchPlaceholder?: string;
+  /** When true (typeahead only), render dropdown in a portal so it is not clipped. */
+  dropdownInPortal?: boolean;
+  /** When true, field is disabled (e.g. while saving). */
+  disabled?: boolean;
   onEdit?: () => void;
   onChange?: (value: string) => void;
+}
+
+function toTypeaheadOptions(items: SelectOptionItem[]): TypeaheadOption[] {
+  return items.map((item) => ({
+    value: item.value,
+    label: item.label,
+    countryCode: item.countryCode,
+    icon: item.icon,
+    searchTerms: item.searchTerms,
+    suffix: item.suffix,
+  }));
 }
 
 export default function SettingsField({
@@ -22,14 +68,21 @@ export default function SettingsField({
   icon,
   type,
   options = [],
+  optionItems,
   placeholder,
+  searchable = false,
+  searchPlaceholder = 'Search...',
+  dropdownInPortal = false,
+  disabled = false,
   onEdit,
   onChange,
 }: SettingsFieldProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedValue, setSelectedValue] = useState(value);
   const [inputValue, setInputValue] = useState(value);
+  const [searchQuery, setSearchQuery] = useState('');
   const ref = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setSelectedValue(value);
@@ -47,13 +100,30 @@ export default function SettingsField({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSelect = (option: string) => {
-    setSelectedValue(option);
-    onChange?.(option);
+  useEffect(() => {
+    if (isOpen && searchable) {
+      setSearchQuery('');
+      setTimeout(() => searchInputRef.current?.focus(), 0);
+    }
+  }, [isOpen, searchable]);
+
+  const handleSelect = (optionValue: string) => {
+    setSelectedValue(optionValue);
+    onChange?.(optionValue);
     setIsOpen(false);
   };
 
   const isEditableInput = type === 'input' && onChange;
+
+  const effectiveOptions: SelectOptionItem[] =
+    optionItems ?? options.map((o) => ({ value: o, label: o }));
+  const filteredOptions = searchable && searchQuery.trim()
+    ? effectiveOptions.filter(
+        (item) =>
+          item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.value.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : effectiveOptions;
 
   if (type === 'date') {
     return (
@@ -68,8 +138,33 @@ export default function SettingsField({
               value={value || ''}
               onChange={(v) => onChange?.(v)}
               placeholder={placeholder ?? 'Select date'}
+              disabled={disabled}
             />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'typeahead') {
+    const typeaheadItems = optionItems ?? options.map((o) => ({ value: o, label: o }));
+    return (
+      <div className="flex flex-col gap-2">
+        <label className="text-body" style={{ color: '#E7E4E4' }}>
+          {label}
+        </label>
+        <div className="flex-1 min-w-0">
+          <TypeaheadSelect
+            options={toTypeaheadOptions(typeaheadItems)}
+            value={value}
+            onChange={(v) => onChange?.(v)}
+            placeholder={placeholder ?? 'Select...'}
+            searchPlaceholder={searchPlaceholder}
+            aria-label={label}
+            placeholderIcon={icon}
+            dropdownInPortal={dropdownInPortal}
+            disabled={disabled}
+          />
         </div>
       </div>
     );
@@ -83,7 +178,7 @@ export default function SettingsField({
       <div className="relative" ref={ref}>
         {isEditableInput ? (
           <div
-            className="flex items-center gap-3 px-4 py-3 rounded-lg"
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
             style={{ backgroundColor: '#202020', color: '#B9B9B9' }}
           >
             <div className="shrink-0">{icon}</div>
@@ -100,16 +195,18 @@ export default function SettingsField({
                 }
               }}
               placeholder={placeholder}
-              className="flex-1 text-body bg-transparent border-none outline-none min-w-0 placeholder:opacity-70"
+              disabled={disabled}
+              className="flex-1 text-body bg-transparent border-none outline-none min-w-0 placeholder:[color:var(--text-secondary)] disabled:cursor-not-allowed"
               style={{ color: '#E7E4E4' }}
               aria-label={label}
             />
           </div>
         ) : (
           <div
-            className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer"
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
             style={{ backgroundColor: '#202020', color: '#B9B9B9' }}
             onClick={() => {
+              if (disabled) return;
               if (type === 'select') {
                 setIsOpen(!isOpen);
               } else if (onEdit) {
@@ -118,7 +215,7 @@ export default function SettingsField({
             }}
           >
             <div className="shrink-0">{icon}</div>
-            <span className="flex-1 text-body" style={{ color: (type === 'select' ? selectedValue : value) ? '#B9B9B9' : 'rgba(231, 228, 228, 0.5)' }}>
+            <span className="flex-1 text-body" style={{ color: (type === 'select' ? selectedValue : value) ? '#B9B9B9' : 'var(--text-secondary)' }}>
               {type === 'select' ? (selectedValue || placeholder || '') : (value || placeholder || '')}
             </span>
             {type === 'select' ? (
@@ -130,11 +227,12 @@ export default function SettingsField({
               />
             ) : onEdit ? (
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit();
                 }}
-                className="shrink-0 hover:opacity-70 transition-opacity"
+                className="shrink-0 hover:opacity-70 transition-opacity cursor-pointer"
               >
                 <Edit
                   width={16}
@@ -149,22 +247,60 @@ export default function SettingsField({
 
         {type === 'select' && isOpen && (
           <div
-            className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10 max-h-[240px] overflow-y-auto"
+            className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10 border border-[#3a3a3a]"
             style={{ backgroundColor: '#202020' }}
           >
-            {options.map((option) => (
-              <button
-                key={option}
-                onClick={() => handleSelect(option)}
-                className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
-                style={{
-                  backgroundColor: 'transparent',
-                  color: selectedValue === option ? 'var(--accent-purple)' : 'var(--text-primary)',
-                }}
-              >
-                <span>{option}</span>
-              </button>
-            ))}
+            {searchable && (
+              <div className="p-2 border-b border-[#2A2A2A]">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  placeholder="Search..."
+                  className="w-full px-3 py-2 rounded-lg text-body bg-[#282828] border border-[#3a3a3a] outline-none focus:border-[var(--accent-purple)]"
+                  style={{ color: 'var(--text-primary)' }}
+                />
+              </div>
+            )}
+            <div className="max-h-[240px] overflow-y-auto custom-scrollbar">
+              {filteredOptions.map((item) => {
+                const isSelected = selectedValue === item.value;
+                return (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => handleSelect(item.value)}
+                    className={DROPDOWN_OPTION_STYLE.row}
+                    style={{
+                      backgroundColor: 'transparent',
+                      color: isSelected ? DROPDOWN_OPTION_STYLE.selectedColor : DROPDOWN_OPTION_STYLE.textColor,
+                    }}
+                  >
+                    {item.symbol != null ? (
+                      <span
+                        className="shrink-0 font-semibold"
+                        style={{
+                          fontSize: DROPDOWN_OPTION_STYLE.iconSize,
+                          lineHeight: 1,
+                          color: DROPDOWN_OPTION_STYLE.currencySymbolColor,
+                        }}
+                      >
+                        {item.symbol}
+                      </span>
+                    ) : item.icon ? (
+                      <span className="shrink-0 flex items-center justify-center" style={{ width: DROPDOWN_OPTION_STYLE.iconSize, height: DROPDOWN_OPTION_STYLE.iconSize }}>
+                        {item.icon}
+                      </span>
+                    ) : null}
+                    <span className="flex-1 min-w-0 truncate">
+                      {item.symbol != null && item.alias != null ? item.alias : item.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

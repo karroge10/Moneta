@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import UpdateCard from '@/components/dashboard/UpdateCard';
@@ -15,9 +15,14 @@ import InsightCard from '@/components/dashboard/InsightCard';
 import TopExpensesCard from '@/components/dashboard/TopExpensesCard';
 import CardSkeleton from '@/components/dashboard/CardSkeleton';
 import GoalModal from '@/components/goals/GoalModal';
+import TransactionModal from '@/components/transactions/TransactionModal';
 import Confetti from '@/components/ui/Confetti';
 import { getGoalStatus } from '@/lib/goalUtils';
-import { Transaction, ExpenseCategory, TimePeriod, Goal, Investment, Bill } from '@/types/dashboard';
+import { buildTransactionFromRecurring } from '@/lib/recurring-utils';
+import { formatDateForDisplay } from '@/lib/dateFormatting';
+import { Transaction, ExpenseCategory, TimePeriod, Goal, Investment, Bill, RecurringItem } from '@/types/dashboard';
+import { useCategories } from '@/hooks/useCategories';
+import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 import {
   mockUpdate,
   mockFinancialHealth,
@@ -30,7 +35,7 @@ export default function DashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [topExpenses, setTopExpenses] = useState<ExpenseCategory[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
-  const [upcomingBills, setUpcomingBills] = useState<Bill[]>([]);
+  const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +46,27 @@ export default function DashboardPage() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
   const [isSaving, setIsSaving] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+
+  // Transaction modal state (for recurring from Upcoming Bills)
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const { categories } = useCategories();
+  const { currencyOptions } = useCurrencyOptions();
+
+  // Derive upcoming bills for the card from full recurring items (include paused, show Paused badge)
+  const upcomingBills = useMemo((): Bill[] => {
+    return recurringItems
+      .filter((i) => i.nextDueDate)
+      .sort((a, b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime())
+      .map((item) => ({
+        id: String(item.id),
+        name: item.name,
+        date: formatDateForDisplay(item.nextDueDate),
+        amount: item.convertedAmount ?? item.amount,
+        category: item.category ?? 'Uncategorized',
+        icon: categories.find((c) => c.name === item.category)?.icon ?? 'HelpCircle',
+        isActive: item.isActive,
+      }));
+  }, [recurringItems, categories]);
   
   // Keep mock data for other components (not requested to be changed)
   const update = mockUpdate;
@@ -78,20 +104,12 @@ export default function DashboardPage() {
       setTopExpenses(data.topExpenses || []);
       setInvestments(data.investments || []);
 
-      const upcomingResponse = await fetch('/api/recurring?type=expense&upcoming=true');
-      if (upcomingResponse.ok) {
-        const upcomingData = await upcomingResponse.json();
-        const normalizedBills: Bill[] = (upcomingData.upcoming || []).map((bill: any) => ({
-          id: bill.id,
-          name: bill.name,
-          date: bill.date,
-          amount: bill.amount,
-          category: bill.category || 'Uncategorized',
-          icon: bill.icon || 'HelpCircle',
-        }));
-        setUpcomingBills(normalizedBills);
+      const recurringResponse = await fetch('/api/recurring?type=expense');
+      if (recurringResponse.ok) {
+        const recurringData = await recurringResponse.json();
+        setRecurringItems(recurringData.items ?? []);
       } else {
-        setUpcomingBills([]);
+        setRecurringItems([]);
       }
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -102,7 +120,7 @@ export default function DashboardPage() {
       setTransactions([]);
       setTopExpenses([]);
       setInvestments([]);
-      setUpcomingBills([]);
+      setRecurringItems([]);
     } finally {
       setLoading(false);
     }
@@ -200,6 +218,108 @@ export default function DashboardPage() {
   const handleCloseModal = () => {
     setSelectedGoal(null);
   };
+
+  const handleUpcomingBillClick = (bill: Bill) => {
+    const item = recurringItems.find((i) => i.id === Number(bill.id));
+    if (item && categories.length > 0) {
+      setSelectedTransaction(buildTransactionFromRecurring(item, categories));
+    }
+  };
+
+  const handleTransactionCloseModal = () => {
+    setSelectedTransaction(null);
+  };
+
+  const handleTransactionSave = async (updatedTransaction: Transaction) => {
+    if (!selectedTransaction || selectedTransaction.recurringId === undefined) return;
+    try {
+      setIsSaving(true);
+      const rec = updatedTransaction.recurring;
+      if (!rec) throw new Error('Missing recurring data');
+      const response = await fetch('/api/recurring', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: updatedTransaction.recurringId,
+          name: updatedTransaction.name,
+          amount: Math.abs(updatedTransaction.amount),
+          type: 'expense',
+          startDate: rec.startDate,
+          endDate: rec.endDate ?? null,
+          frequencyUnit: rec.frequencyUnit,
+          frequencyInterval: rec.frequencyInterval,
+          isActive: rec.isActive ?? true,
+          currencyId: updatedTransaction.currencyId,
+          category: updatedTransaction.category,
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save recurring');
+      }
+      setSelectedTransaction(null);
+      fetchDashboardData();
+    } catch (err) {
+      console.error('Error saving recurring:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleTransactionDelete = async () => {
+    if (!selectedTransaction || selectedTransaction.recurringId === undefined) return;
+    try {
+      const response = await fetch(`/api/recurring?id=${selectedTransaction.recurringId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete recurring');
+      }
+      setSelectedTransaction(null);
+      fetchDashboardData();
+    } catch (err) {
+      console.error('Error deleting recurring:', err);
+    }
+  };
+
+  const handlePauseResume = useCallback(
+    async (recurringId: number, isActive: boolean) => {
+      const item = recurringItems.find((i) => i.id === recurringId);
+      if (!item) return;
+      try {
+        setIsSaving(true);
+        const response = await fetch('/api/recurring', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: item.id,
+            name: item.name,
+            amount: item.amount,
+            type: item.type,
+            category: item.category ?? null,
+            startDate: item.startDate,
+            endDate: item.endDate ?? null,
+            frequencyUnit: item.frequencyUnit,
+            frequencyInterval: item.frequencyInterval,
+            isActive,
+          }),
+        });
+        if (!response.ok) throw new Error('Failed to update');
+        setSelectedTransaction((prev) =>
+          prev && prev.recurringId === recurringId && prev.recurring
+            ? { ...prev, recurring: { ...prev.recurring, isActive } }
+            : prev
+        );
+        fetchDashboardData();
+      } catch (err) {
+        console.error('Error pausing/resuming recurring:', err);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [recurringItems, fetchDashboardData]
+  );
 
   const handleDelete = async () => {
     if (!selectedGoal) return;
@@ -401,7 +521,7 @@ export default function DashboardPage() {
         <FinancialHealthCard score={financialHealth} mobile />
 
         {/* Upcoming Bills full width */}
-        <UpcomingBillsCard bills={upcomingBills} />
+        <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
 
         {/* Transactions full width */}
         <TransactionsCard transactions={transactions} onRefresh={fetchDashboardData} />
@@ -446,7 +566,7 @@ export default function DashboardPage() {
         />
         <FinancialHealthCard score={financialHealth} minimal />
         <GoalsCard goals={goals} onGoalClick={handleEditGoal} />
-        <UpcomingBillsCard bills={upcomingBills} />
+        <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
         <TransactionsCard transactions={transactions} onRefresh={fetchDashboardData} />
         <TopExpensesCard expenses={topExpenses} />
         <div className="col-span-2">
@@ -517,7 +637,7 @@ export default function DashboardPage() {
         {/* Grid 2: Right side (1 column) - Upcoming Bills + Top Expenses */}
         <div className="col-span-1 flex flex-col gap-4">
           <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-            <UpcomingBillsCard bills={upcomingBills} />
+            <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
           </div>
           <div className="flex-1 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
             <TopExpensesCard expenses={topExpenses} />
@@ -534,6 +654,21 @@ export default function DashboardPage() {
           onSave={handleSave}
           onDelete={handleDelete}
           isSaving={isSaving}
+        />
+      )}
+
+      {/* Transaction Modal (recurring from Upcoming Bills) */}
+      {selectedTransaction && categories.length > 0 && currencyOptions.length > 0 && (
+        <TransactionModal
+          transaction={selectedTransaction}
+          mode="edit"
+          onClose={handleTransactionCloseModal}
+          onSave={handleTransactionSave}
+          onDelete={handleTransactionDelete}
+          onPauseResume={handlePauseResume}
+          isSaving={isSaving}
+          categories={categories}
+          currencyOptions={currencyOptions}
         />
       )}
 

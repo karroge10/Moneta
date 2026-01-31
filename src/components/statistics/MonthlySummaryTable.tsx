@@ -8,73 +8,26 @@ import { useCurrency } from '@/hooks/useCurrency';
 
 const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
 const SKELETON_ROW_COUNT = 5;
-const maxHeight = '288px';
+const COL_COUNT = 5;
 
 interface MonthlySummaryTableProps {
   data: MonthlySummaryRow[];
   loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
-export default function MonthlySummaryTable({ data, loading = false }: MonthlySummaryTableProps) {
+export default function MonthlySummaryTable({ data, loading = false, error = null, onRetry }: MonthlySummaryTableProps) {
   const { currency } = useCurrency();
-  const isEmpty = data.length === 0;
+  const isEmpty = !loading && !error && data.length === 0;
+  const showComingSoon = !loading && !error && isEmpty;
+  const showError = !loading && !!error;
 
-  if (loading) {
-    return (
-      <Card title="Monthly Summary" showActions={false}>
-        <div className="mt-2">
-          <div className="overflow-hidden">
-            <table className="w-full table-fixed">
-              <colgroup>
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-              </colgroup>
-              <thead>
-                <tr style={{ backgroundColor: '#202020' }}>
-                  <th className="text-center text-helper font-semibold py-3 px-2 rounded-l-xl" style={{ backgroundColor: '#202020' }}>Month</th>
-                  <th className="text-center text-helper font-semibold py-3 px-2" style={{ backgroundColor: '#202020' }}>Income</th>
-                  <th className="text-center text-helper font-semibold py-3 px-2" style={{ backgroundColor: '#202020' }}>Expenses</th>
-                  <th className="text-center text-helper font-semibold py-3 px-2" style={{ backgroundColor: '#202020' }}>Savings</th>
-                  <th className="text-center text-helper font-semibold py-3 px-2 rounded-r-xl" style={{ backgroundColor: '#202020' }}>Top Category</th>
-                </tr>
-              </thead>
-            </table>
-          </div>
-          <div className="overflow-y-auto custom-scrollbar pr-2" style={{ maxHeight }}>
-            <table className="w-full table-fixed">
-              <colgroup>
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-              </colgroup>
-              <tbody>
-                {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
-                  <tr key={i} className="border-b" style={{ borderColor: 'rgba(231, 228, 228, 0.05)' }}>
-                    <td className="py-3 px-2 text-center"><div className="h-4 w-10 rounded animate-pulse mx-auto" style={SKELETON_STYLE} /></td>
-                    <td className="py-3 px-2 text-center"><div className="h-4 w-12 rounded animate-pulse mx-auto" style={SKELETON_STYLE} /></td>
-                    <td className="py-3 px-2 text-center"><div className="h-4 w-12 rounded animate-pulse mx-auto" style={SKELETON_STYLE} /></td>
-                    <td className="py-3 px-2 text-center"><div className="h-4 w-12 rounded animate-pulse mx-auto" style={SKELETON_STYLE} /></td>
-                    <td className="py-3 px-2 text-center"><div className="h-4 w-16 rounded animate-pulse mx-auto" style={SKELETON_STYLE} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </Card>
-    );
-  }
-  
   return (
-    <Card 
-      title="Monthly Summary" 
+    <Card
+      title="Monthly Summary"
       customHeader={
-        isEmpty ? (
+        showComingSoon ? (
           <div className="mb-4 flex items-center gap-3">
             <h2 className="text-card-header">Monthly Summary</h2>
             <ComingSoonBadge />
@@ -82,96 +35,101 @@ export default function MonthlySummaryTable({ data, loading = false }: MonthlySu
         ) : undefined
       }
       showActions={false}
+      className="flex flex-col min-h-0 flex-1"
     >
-      {isEmpty ? (
-        <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8" style={{ filter: 'blur(2px)' }}>
-          <div className="text-body text-center mb-2 opacity-70">Add transactions to see monthly summaries</div>
-          <div className="text-helper text-center">Monthly breakdowns will appear here</div>
-        </div>
-      ) : (
-        <div className="mt-2">
-          <div className="overflow-hidden">
-            <table className="w-full table-fixed">
-              <colgroup>
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-              </colgroup>
-              <thead>
-                <tr style={{ backgroundColor: '#202020' }}>
-                  <th 
-                    className="text-center text-helper font-semibold py-3 px-2"
-                    style={{ 
-                      backgroundColor: '#202020',
-                      borderRadius: '10px 0 0 10px'
-                    }}
-                  >
-                    Month
-                  </th>
-                  <th 
-                    className="text-center text-helper font-semibold py-3 px-2"
-                    style={{ backgroundColor: '#202020' }}
-                  >
-                    Income
-                  </th>
-                  <th 
-                    className="text-center text-helper font-semibold py-3 px-2"
-                    style={{ backgroundColor: '#202020' }}
-                  >
-                    Expenses
-                  </th>
-                  <th 
-                    className="text-center text-helper font-semibold py-3 px-2"
-                    style={{ backgroundColor: '#202020' }}
-                  >
-                    Savings
-                  </th>
-                  <th 
-                    className="text-center text-helper font-semibold py-3 px-2"
-                    style={{ 
-                      backgroundColor: '#202020',
-                      borderRadius: '0 10px 10px 0'
-                    }}
-                  >
-                    Top Category
-                  </th>
-                </tr>
-              </thead>
-            </table>
-          </div>
-          <div className="overflow-y-auto custom-scrollbar pr-2" style={{ maxHeight }}>
-            <table className="w-full table-fixed">
-              <colgroup>
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-              </colgroup>
-              <tbody>
-                {data.map((row, index) => (
-                  <tr
-                    key={index}
-                    className="border-b hover:opacity-80 transition-opacity"
-                    style={{ borderColor: 'rgba(231, 228, 228, 0.05)' }}
-                  >
-                  <td className="text-body text-center py-3 px-2">{row.month}</td>
-                  <td className="text-body text-center py-3 px-2">{currency.symbol} {formatNumber(row.income)}</td>
-                  <td className="text-body text-center py-3 px-2">{currency.symbol} {formatNumber(row.expenses)}</td>
-                  <td className="text-body text-center py-3 px-2">{currency.symbol} {formatNumber(row.savings)}</td>
-                    <td className="text-body text-center py-3 px-2">
-                      {row.topCategory.name} ({row.topCategory.percentage}%)
+      <div className="mt-2 flex-1 flex flex-col min-h-[288px] rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020' }}>
+        <div className="flex-1 min-h-0 overflow-auto">
+          <table className="min-w-full">
+            <thead className="sticky top-0 z-10" style={{ backgroundColor: '#202020' }}>
+              <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+                <th className="px-5 py-3 align-top">Month</th>
+                <th className="px-5 py-3 align-top">Income</th>
+                <th className="px-5 py-3 align-top">Expenses</th>
+                <th className="px-5 py-3 align-top">Savings</th>
+                <th className="px-5 py-3 align-top">Top Category</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) =>
+                  <tr key={i} className="border-t border-[#2A2A2A]">
+                    <td className="px-5 py-4 align-top">
+                      <div className="h-4 w-20 rounded animate-pulse" style={SKELETON_STYLE} />
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <div className="h-4 w-16 rounded animate-pulse" style={SKELETON_STYLE} />
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <div className="h-4 w-16 rounded animate-pulse" style={SKELETON_STYLE} />
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <div className="h-4 w-16 rounded animate-pulse" style={SKELETON_STYLE} />
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <div className="h-4 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                )) : showError ? (
+                <tr>
+                  <td
+                    colSpan={COL_COUNT}
+                    className="px-5 py-12 text-center"
+                  >
+                    <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
+                      {error}
+                    </p>
+                    {onRetry && (
+                      <button
+                        type="button"
+                        onClick={onRetry}
+                        className="px-4 py-2 rounded-full text-body font-semibold cursor-pointer transition-opacity hover:opacity-90"
+                        style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                      >
+                        Try again
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ) : showComingSoon ? (
+                <tr>
+                  <td
+                    colSpan={COL_COUNT}
+                    className="px-5 py-12 text-center text-sm"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    Add transactions to see monthly summaries.
+                  </td>
+                </tr>
+              ) : (
+                data.map((row, index) => (
+                  <tr
+                    key={index}
+                    className="border-t border-[#2A2A2A] hover:opacity-80 transition-opacity"
+                  >
+                    <td className="px-5 py-4 align-top">
+                      <span className="text-sm">{row.month}</span>
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <span className="text-sm">{currency.symbol} {formatNumber(row.income)}</span>
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <span className="text-sm">{currency.symbol} {formatNumber(row.expenses)}</span>
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <span className="text-sm">{currency.symbol} {formatNumber(row.savings)}</span>
+                    </td>
+                    <td className="px-5 py-4 align-top">
+                      <span className="text-sm">
+                        {row.topCategory.name} ({row.topCategory.percentage}%)
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
     </Card>
   );
 }
-
