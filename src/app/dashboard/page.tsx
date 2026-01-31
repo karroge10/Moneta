@@ -479,7 +479,7 @@ export default function DashboardPage() {
           <div className="text-body opacity-70 text-center">{error}</div>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded-full bg-[#AC66DA] text-[#E7E4E4] text-body font-medium hover:opacity-90 transition-opacity"
+            className="px-4 py-2 rounded-full bg-[#E7E4E4] text-[#282828] text-body font-medium hover:opacity-90 transition-opacity"
           >
             Retry
           </button>
@@ -515,7 +515,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Goals full width */}
-        <GoalsCard goals={goals} onGoalClick={handleEditGoal} />
+        <GoalsCard goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} />
 
         {/* Financial Health short row */}
         <FinancialHealthCard score={financialHealth} mobile />
@@ -565,7 +565,7 @@ export default function DashboardPage() {
           minimal
         />
         <FinancialHealthCard score={financialHealth} minimal />
-        <GoalsCard goals={goals} onGoalClick={handleEditGoal} />
+        <GoalsCard goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} />
         <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
         <TransactionsCard transactions={transactions} onRefresh={fetchDashboardData} />
         <TopExpensesCard expenses={topExpenses} />
@@ -619,7 +619,7 @@ export default function DashboardPage() {
               {/* Top row: Goals + Financial Health side-by-side */}
               <div className="grid grid-cols-5 gap-4">
                 <div className="col-span-3 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  <GoalsCard goals={goals} onGoalClick={handleEditGoal} />
+                  <GoalsCard goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} />
                 </div>
                 <div className="col-span-2 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                   <FinancialHealthCard score={financialHealth} />
@@ -646,10 +646,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Goal Modal */}
-      {selectedGoal && (
+      {selectedGoal && currencyOptions.length > 0 && (
         <GoalModal
           goal={selectedGoal}
           mode={modalMode}
+          currencyOptions={currencyOptions}
           onClose={handleCloseModal}
           onSave={handleSave}
           onDelete={handleDelete}

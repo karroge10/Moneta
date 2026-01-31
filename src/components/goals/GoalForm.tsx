@@ -6,12 +6,15 @@ import { NavArrowDown, Trash } from 'iconoir-react';
 import { Goal } from '@/types/dashboard';
 import { useCurrency } from '@/hooks/useCurrency';
 import Spinner from '@/components/ui/Spinner';
+import CurrencySelector from '@/components/transactions/import/CurrencySelector';
 import { CalendarPanel } from '@/components/transactions/shared/CalendarPanel';
 import { formatDateForDisplay, formatDateToInput } from '@/lib/dateFormatting';
+import type { CurrencyOption } from '@/lib/currency-country-map';
 
 interface GoalFormProps {
   goal: Goal;
   mode: 'add' | 'edit';
+  currencyOptions: CurrencyOption[];
   onSave: (goal: Goal) => void;
   onCancel: () => void;
   onDelete?: () => void;
@@ -22,14 +25,18 @@ interface GoalFormProps {
 export default function GoalForm({
   goal,
   mode,
+  currencyOptions,
   onSave,
   onCancel,
   onDelete,
   onFloatingPanelToggle,
   isSaving = false,
 }: GoalFormProps) {
-  const { currency } = useCurrency();
+  const { currency: userCurrency } = useCurrency();
   const [formData, setFormData] = useState<Goal>(goal);
+  const displayCurrency = formData.currencyId != null
+    ? (currencyOptions.find((c) => c.id === formData.currencyId) ?? userCurrency)
+    : userCurrency;
   const [isDateOpen, setIsDateOpen] = useState(false);
   const [dateInput, setDateInput] = useState('');
   const dateDropdownRef = useRef<HTMLDivElement>(null);
@@ -156,6 +163,7 @@ export default function GoalForm({
       ...formData,
       targetAmount,
       currentAmount,
+      currencyId: formData.currencyId ?? undefined,
     });
   };
 
@@ -175,6 +183,13 @@ export default function GoalForm({
       setCurrentMonth(new Date(value));
     }
     setIsDateOpen(false);
+  };
+
+  const handleCurrencySelect = (currencyId: number | null) => {
+    setFormData(prev => ({
+      ...prev,
+      currencyId: currencyId ?? undefined,
+    }));
   };
 
   return (
@@ -242,6 +257,16 @@ export default function GoalForm({
         </div>
       </div>
 
+      <div>
+        <label className="block text-body font-medium mb-2">Currency</label>
+        <CurrencySelector
+          options={currencyOptions}
+          selectedCurrencyId={formData.currencyId ?? null}
+          onSelect={handleCurrencySelect}
+          disabled={isSaving}
+        />
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-body font-medium mb-2">Target Amount</label>
@@ -250,7 +275,7 @@ export default function GoalForm({
               className="absolute left-4 top-1/2 -translate-y-1/2 text-body font-semibold"
               style={{ color: 'var(--text-primary)' }}
             >
-              {currency.symbol}
+              {displayCurrency.symbol}
             </span>
             <input
               type="text"
@@ -283,7 +308,7 @@ export default function GoalForm({
               className="absolute left-4 top-1/2 -translate-y-1/2 text-body font-semibold"
               style={{ color: 'var(--text-primary)' }}
             >
-              {currency.symbol}
+              {displayCurrency.symbol}
             </span>
             <input
               type="text"
@@ -353,7 +378,7 @@ export default function GoalForm({
             type="submit"
             disabled={isSaving}
             className="px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+            style={{ backgroundColor: 'var(--accent-purple)', color: '#E7E4E4' }}
             onMouseEnter={(e) => {
               if (!isSaving) {
                 e.currentTarget.style.backgroundColor = '#9A4FB8';

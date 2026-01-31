@@ -71,7 +71,7 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
               <div className="w-32 h-32 rounded-full animate-pulse" style={SKELETON_STYLE} />
             </div>
             <div
-              className="overflow-y-auto scrollbar-hide mt-4 pr-2 flex-1 min-h-0"
+              className="overflow-hidden mt-4 pr-2 flex-1 min-h-0"
               style={{ maxHeight: LIST_MAX_HEIGHT, minHeight: LIST_MAX_HEIGHT }}
             >
               <div className="flex flex-col gap-3">
@@ -99,7 +99,7 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
                 type="button"
                 onClick={onRetry}
                 className="px-4 py-2 rounded-full text-body font-semibold cursor-pointer transition-opacity hover:opacity-90"
-                style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
               >
                 Try again
               </button>
