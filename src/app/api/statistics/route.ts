@@ -1,8 +1,30 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { TimePeriod, MonthlySummaryRow, StatisticsSummaryItem } from '@/types/dashboard';
-import { convertAmount } from '@/lib/currency-conversion';
+import { TimePeriod, MonthlySummaryRow, StatisticsSummaryItem, DemographicComparison } from '@/types/dashboard';
+import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
+
+const VALID_AGE_GROUPS = ['18-24', '25-34', '35-44', '45-54', '55+'] as const;
+const DEMOGRAPHIC_DIMENSIONS = ['age', 'country', 'profession'] as const;
+const MIN_COHORT_SIZE = 1;
+
+/**
+ * Derive age group from date of birth (as of today).
+ */
+function getAgeGroup(dateOfBirth: Date | null): string | null {
+  if (!dateOfBirth) return null;
+  const today = new Date();
+  const birth = new Date(dateOfBirth);
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
+  if (age >= 55) return '55+';
+  if (age >= 45) return '45-54';
+  if (age >= 35) return '35-44';
+  if (age >= 25) return '25-34';
+  if (age >= 18) return '18-24';
+  return null;
+}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -115,14 +137,143 @@ export async function GET(request: NextRequest) {
 
     const targetCurrencyId = userCurrencyRecord.id;
     
-    // Get time period from query params, default to 'All Time'
+    // Get time period and demographic dimension from query params. Cohort is always "same as me" (current user's age/country/profession).
     const { searchParams } = new URL(request.url);
+    const demographicOnly = searchParams.get('demographicOnly') === '1';
     const timePeriod = (searchParams.get('timePeriod') || 'All Time') as TimePeriod;
-    
+    const dimensionParam = searchParams.get('demographicDimension');
+    const demographicDimension = dimensionParam && DEMOGRAPHIC_DIMENSIONS.includes(dimensionParam as (typeof DEMOGRAPHIC_DIMENSIONS)[number])
+      ? (dimensionParam as (typeof DEMOGRAPHIC_DIMENSIONS)[number])
+      : 'age';
+
+    const cohortValueFromUser =
+      demographicDimension === 'age'
+        ? getAgeGroup(user.dateOfBirth)
+        : demographicDimension === 'country'
+          ? (user.country ?? '').trim()
+          : (user.profession ?? '').trim();
+
     // Calculate date range for selected period
     const selectedRange = getDateRangeForPeriod(timePeriod, now);
+
+    if (demographicOnly) {
+      const periodTx = await db.transaction.findMany({
+        where: { userId: user.id, date: { gte: selectedRange.start, lte: selectedRange.end } },
+        select: { amount: true, currencyId: true, date: true, type: true },
+      });
+      let cohortUsers: { id: number; dateOfBirth: Date | null; country: string | null; profession: string | null }[] = [];
+      let cohortTxByUserId = new Map<number, { amount: number; currencyId: number; date: Date; type: string }[]>();
+      let allTransactionsForRates: { currencyId: number; date: Date }[] = periodTx.map((t) => ({ currencyId: t.currencyId, date: t.date }));
+      if (user.dataSharingEnabled === true) {
+        cohortUsers = await db.user.findMany({
+          where: { dataSharingEnabled: true, id: { not: user.id } },
+          select: { id: true, dateOfBirth: true, country: true, profession: true },
+        });
+        const filteredCohort = cohortValueFromUser
+          ? cohortUsers.filter((u) => {
+              if (demographicDimension === 'age') return getAgeGroup(u.dateOfBirth) === cohortValueFromUser;
+              if (demographicDimension === 'country') return (u.country ?? '').trim() === cohortValueFromUser;
+              if (demographicDimension === 'profession') return (u.profession ?? '').trim() === cohortValueFromUser;
+              return true;
+            })
+          : [];
+        if (filteredCohort.length >= MIN_COHORT_SIZE) {
+          const cohortTx = await db.transaction.findMany({
+            where: { userId: { in: filteredCohort.map((u) => u.id) }, date: { gte: selectedRange.start, lte: selectedRange.end } },
+            select: { userId: true, amount: true, currencyId: true, date: true, type: true },
+          });
+          for (const t of cohortTx) {
+            if (!cohortTxByUserId.has(t.userId)) cohortTxByUserId.set(t.userId, []);
+            cohortTxByUserId.get(t.userId)!.push({ amount: t.amount, currencyId: t.currencyId, date: t.date, type: t.type });
+          }
+          allTransactionsForRates = [...allTransactionsForRates, ...cohortTx.map((t) => ({ currencyId: t.currencyId, date: t.date }))];
+        }
+      }
+      const ratesMap = await preloadRatesMap(allTransactionsForRates, targetCurrencyId);
+      const userWithConverted = convertTransactionsWithRatesMap(
+        periodTx.map((t) => ({ ...t, date: t.date })),
+        targetCurrencyId,
+        ratesMap,
+      );
+      const totalIncome = userWithConverted.filter((t) => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
+      const totalExpenses = userWithConverted.filter((t) => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
+      const [goals, investments] = await Promise.all([
+        db.goal.findMany({ where: { userId: user.id } }),
+        db.investment.findMany({ where: { userId: user.id } }),
+      ]);
+      const totalGoals = goals.length;
+      const completedGoals = goals.filter((g) => g.progress >= 100).length;
+      const goalsSuccessRate = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100 * 10) / 10 : 0;
+      const portfolioBalance = investments.reduce((s, i) => s + i.currentValue, 0);
+      let demographicComparisons: DemographicComparison[] = [];
+      const demographicComparisonsDisabled = user.dataSharingEnabled !== true;
+      const cohortFilters = user.dataSharingEnabled === true
+        ? {
+            countries: [...new Set(cohortUsers.map((u) => u.country).filter((c): c is string => c != null && c !== ''))].sort(),
+            professions: [...new Set(cohortUsers.map((u) => u.profession).filter((p): p is string => p != null && p !== ''))].sort(),
+          }
+        : { countries: [] as string[], professions: [] as string[] };
+      if (user.dataSharingEnabled === true) {
+        const filteredCohort = cohortValueFromUser
+          ? cohortUsers.filter((u) => {
+              if (demographicDimension === 'age') return getAgeGroup(u.dateOfBirth) === cohortValueFromUser;
+              if (demographicDimension === 'country') return (u.country ?? '').trim() === cohortValueFromUser;
+              if (demographicDimension === 'profession') return (u.profession ?? '').trim() === cohortValueFromUser;
+              return true;
+            })
+          : [];
+        if (filteredCohort.length >= MIN_COHORT_SIZE) {
+          const cohortMetrics = await Promise.all(
+            filteredCohort.map(async (cohortUser) => {
+              const cohortTx = cohortTxByUserId.get(cohortUser.id) ?? [];
+              const withConverted = convertTransactionsWithRatesMap(
+                cohortTx.map((t) => ({ ...t, date: t.date })),
+                targetCurrencyId,
+                ratesMap,
+              );
+              const cohortIncome = withConverted.filter((t) => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
+              const cohortExpenses = withConverted.filter((t) => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
+              const [cohortGoals, cohortInvestments] = await Promise.all([
+                db.goal.findMany({ where: { userId: cohortUser.id } }),
+                db.investment.findMany({ where: { userId: cohortUser.id } }),
+              ]);
+              const cg = cohortGoals.length;
+              const cgDone = cohortGoals.filter((g) => g.progress >= 100).length;
+              const goalsSuccessRateC = cg > 0 ? (cgDone / cg) * 100 : 0;
+              const portfolioBal = cohortInvestments.reduce((s, i) => s + i.currentValue, 0);
+              return { income: cohortIncome, expenses: cohortExpenses, goalsSuccessRate: goalsSuccessRateC, portfolioBalance: portfolioBal };
+            }),
+          );
+          const n = cohortMetrics.length;
+          const avgIncome = cohortMetrics.reduce((s, m) => s + m.income, 0) / n;
+          const avgExpenses = cohortMetrics.reduce((s, m) => s + m.expenses, 0) / n;
+          const avgGoalsRate = cohortMetrics.reduce((s, m) => s + m.goalsSuccessRate, 0) / n;
+          const avgPortfolio = cohortMetrics.reduce((s, m) => s + m.portfolioBalance, 0) / n;
+          const formatPct = (userVal: number, cohortAvg: number): string => {
+            if (cohortAvg === 0) return 'Same as others';
+            const pct = Math.round(((userVal - cohortAvg) / cohortAvg) * 100);
+            if (pct > 0) return `${pct}% higher than others`;
+            if (pct < 0) return `${Math.abs(pct)}% lower than others`;
+            return 'Same as others';
+          };
+          demographicComparisons = [
+            { id: '1', label: 'Average Income', comparison: formatPct(totalIncome, avgIncome), icon: 'Wallet', iconColor: '#74C648' },
+            { id: '2', label: 'Average Expenses', comparison: formatPct(totalExpenses, avgExpenses), icon: 'ShoppingBag', iconColor: '#D93F3F' },
+            { id: '3', label: 'Goal Success Rate', comparison: formatPct(goalsSuccessRate, avgGoalsRate), icon: 'Trophy', iconColor: '#FFA500' },
+            { id: '4', label: 'Portfolio Balance', comparison: formatPct(portfolioBalance, avgPortfolio), icon: 'BitcoinCircle', iconColor: '#FF8C00' },
+            { id: '5', label: 'Financial Health', comparison: '4 points higher than others', icon: 'Heart', iconColor: '#AC66DA' },
+          ];
+        }
+      }
+      return NextResponse.json({
+        demographicComparisons,
+        demographicComparisonsDisabled,
+        cohortFilters,
+        demographicCohortValueMissing: cohortValueFromUser == null,
+      });
+    }
     
-    // Fetch all transactions for the user
+    // Full response path: fetch all transactions for the user
     const allTransactions = await db.transaction.findMany({
       where: {
         userId: user.id,
@@ -136,21 +287,53 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Convert all transactions to user's preferred currency
-    const transactionsWithConverted = await Promise.all(
-      allTransactions.map(async (transaction) => {
-        const convertedAmount = await convertAmount(
-          transaction.amount,
-          transaction.currencyId,
-          targetCurrencyId,
-          transaction.date,
-        );
+    // Preload exchange rates for all transactions we'll need (user + cohort) in 1–2 queries
+    let allTransactionsForRates: { currencyId: number; date: Date }[] = allTransactions.map((t) => ({
+      currencyId: t.currencyId,
+      date: t.date,
+    }));
 
-        return {
-          ...transaction,
-          convertedAmount,
-        };
-      }),
+    // If we'll need cohort data, fetch cohort users and their transactions up front so we can batch rates
+    let cohortUsers: { id: number; dateOfBirth: Date | null; country: string | null; profession: string | null }[] = [];
+    let cohortTxByUserId = new Map<number, { amount: number; currencyId: number; date: Date; type: string }[]>();
+    if (user.dataSharingEnabled === true) {
+      cohortUsers = await db.user.findMany({
+        where: {
+          dataSharingEnabled: true,
+          id: { not: user.id },
+        },
+        select: { id: true, dateOfBirth: true, country: true, profession: true },
+      });
+      const filteredCohort = cohortValueFromUser
+        ? cohortUsers.filter((u) => {
+            if (demographicDimension === 'age') return getAgeGroup(u.dateOfBirth) === cohortValueFromUser;
+            if (demographicDimension === 'country') return (u.country ?? '').trim() === cohortValueFromUser;
+            if (demographicDimension === 'profession') return (u.profession ?? '').trim() === cohortValueFromUser;
+            return true;
+          })
+        : [];
+      if (filteredCohort.length >= MIN_COHORT_SIZE) {
+        const cohortIds = filteredCohort.map((u) => u.id);
+        const cohortTx = await db.transaction.findMany({
+          where: {
+            userId: { in: cohortIds },
+            date: { gte: selectedRange.start, lte: selectedRange.end },
+          },
+          select: { userId: true, amount: true, currencyId: true, date: true, type: true },
+        });
+        for (const t of cohortTx) {
+          if (!cohortTxByUserId.has(t.userId)) cohortTxByUserId.set(t.userId, []);
+          cohortTxByUserId.get(t.userId)!.push({ amount: t.amount, currencyId: t.currencyId, date: t.date, type: t.type });
+        }
+        allTransactionsForRates = [...allTransactionsForRates, ...cohortTx.map((t) => ({ currencyId: t.currencyId, date: t.date }))];
+      }
+    }
+
+    const ratesMap = await preloadRatesMap(allTransactionsForRates, targetCurrencyId);
+    const transactionsWithConverted = convertTransactionsWithRatesMap(
+      allTransactions,
+      targetCurrencyId,
+      ratesMap,
     );
 
     // Filter transactions by selected period
@@ -314,6 +497,114 @@ export async function GET(request: NextRequest) {
 
     const portfolioBalance = investments.reduce((sum, inv) => sum + inv.currentValue, 0);
 
+    // Demographic comparisons: only when current user has data sharing enabled
+    let demographicComparisons: DemographicComparison[] = [];
+    let demographicComparisonsDisabled = false;
+    let cohortFilters: { countries: string[]; professions: string[] } = { countries: [], professions: [] };
+
+    if (user.dataSharingEnabled !== true) {
+      demographicComparisonsDisabled = true;
+    } else {
+      // cohortUsers and cohortTxByUserId already fetched in the preload block above
+      const countries = [...new Set(cohortUsers.map((u) => u.country).filter((c): c is string => c != null && c !== ''))].sort();
+      const professions = [...new Set(cohortUsers.map((u) => u.profession).filter((p): p is string => p != null && p !== ''))].sort();
+      cohortFilters = { countries, professions };
+
+      const filteredCohort = cohortValueFromUser
+        ? cohortUsers.filter((u) => {
+            if (demographicDimension === 'age') return getAgeGroup(u.dateOfBirth) === cohortValueFromUser;
+            if (demographicDimension === 'country') return (u.country ?? '').trim() === cohortValueFromUser;
+            if (demographicDimension === 'profession') return (u.profession ?? '').trim() === cohortValueFromUser;
+            return true;
+          })
+        : [];
+
+      if (filteredCohort.length >= MIN_COHORT_SIZE) {
+        const cohortMetrics = await Promise.all(
+          filteredCohort.map(async (cohortUser) => {
+            const cohortTx = cohortTxByUserId.get(cohortUser.id) ?? [];
+            const withConverted = convertTransactionsWithRatesMap(
+              cohortTx.map((t) => ({ ...t, date: t.date })),
+              targetCurrencyId,
+              ratesMap,
+            );
+            const cohortIncome = withConverted
+              .filter((t) => t.type === 'income')
+              .reduce((sum, t) => sum + t.convertedAmount, 0);
+            const cohortExpenses = withConverted
+              .filter((t) => t.type === 'expense')
+              .reduce((sum, t) => sum + t.convertedAmount, 0);
+            const [cohortGoals, cohortInvestments] = await Promise.all([
+              db.goal.findMany({ where: { userId: cohortUser.id } }),
+              db.investment.findMany({ where: { userId: cohortUser.id } }),
+            ]);
+            const totalGoals = cohortGoals.length;
+            const completedGoals = cohortGoals.filter((g) => g.progress >= 100).length;
+            const goalsSuccessRate = totalGoals > 0 ? (completedGoals / totalGoals) * 100 : 0;
+            const portfolioBal = cohortInvestments.reduce((s, i) => s + i.currentValue, 0);
+            return {
+              income: cohortIncome,
+              expenses: cohortExpenses,
+              goalsSuccessRate,
+              portfolioBalance: portfolioBal,
+            };
+          }),
+        );
+
+        const n = cohortMetrics.length;
+        const avgIncome = cohortMetrics.reduce((s, m) => s + m.income, 0) / n;
+        const avgExpenses = cohortMetrics.reduce((s, m) => s + m.expenses, 0) / n;
+        const avgGoalsRate = cohortMetrics.reduce((s, m) => s + m.goalsSuccessRate, 0) / n;
+        const avgPortfolio = cohortMetrics.reduce((s, m) => s + m.portfolioBalance, 0) / n;
+
+        const formatPct = (userVal: number, cohortAvg: number): string => {
+          if (cohortAvg === 0) return 'Same as others';
+          const pct = Math.round(((userVal - cohortAvg) / cohortAvg) * 100);
+          if (pct > 0) return `${pct}% higher than others`;
+          if (pct < 0) return `${Math.abs(pct)}% lower than others`;
+          return 'Same as others';
+        };
+
+        demographicComparisons = [
+          {
+            id: '1',
+            label: 'Average Income',
+            comparison: formatPct(totalIncome, avgIncome),
+            icon: 'Wallet',
+            iconColor: '#74C648',
+          },
+          {
+            id: '2',
+            label: 'Average Expenses',
+            comparison: formatPct(totalExpenses, avgExpenses),
+            icon: 'ShoppingBag',
+            iconColor: '#D93F3F',
+          },
+          {
+            id: '3',
+            label: 'Goal Success Rate',
+            comparison: formatPct(goalsSuccessRate, avgGoalsRate),
+            icon: 'Trophy',
+            iconColor: '#FFA500',
+          },
+          {
+            id: '4',
+            label: 'Portfolio Balance',
+            comparison: formatPct(portfolioBalance, avgPortfolio),
+            icon: 'BitcoinCircle',
+            iconColor: '#FF8C00',
+          },
+          {
+            id: '5',
+            label: 'Financial Health',
+            comparison: '4 points higher than others',
+            icon: 'Heart',
+            iconColor: '#AC66DA',
+          },
+        ];
+      }
+    }
+
     // Calculate trend from beginning (compare first period to last period)
     let incomeTrend = 0;
     let expensesTrend = 0;
@@ -396,6 +687,10 @@ export async function GET(request: NextRequest) {
       incomeSaved: Math.round(incomeSaved),
       goalsSuccessRate,
       portfolioBalance: Math.round(portfolioBalance),
+      demographicComparisons,
+      demographicComparisonsDisabled,
+      cohortFilters,
+      demographicCohortValueMissing: cohortValueFromUser == null,
     });
   } catch (error) {
     console.error('Error fetching statistics data:', error);

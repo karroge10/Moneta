@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import FinancialMilestonesCard from '@/components/statistics/FinancialMilestonesCard';
@@ -9,7 +9,10 @@ import AverageExpensesCard from '@/components/statistics/AverageExpensesCard';
 import MonthlySummaryTable from '@/components/statistics/MonthlySummaryTable';
 import StatisticsSummary from '@/components/statistics/StatisticsSummary';
 import { mockStatisticsPage } from '@/lib/mockData';
-import { TimePeriod, MonthlySummaryRow, StatisticsSummaryItem } from '@/types/dashboard';
+import { MonthlySummaryRow, StatisticsSummaryItem, DemographicComparison } from '@/types/dashboard';
+
+/** Statistics always use All Time; no period selector. */
+const STATISTICS_TIME_PERIOD = 'All Time';
 
 interface AverageExpense {
   id: string;
@@ -20,43 +23,85 @@ interface AverageExpense {
   percentage?: number;
 }
 
+export type DemographicDimension = 'age' | 'country' | 'profession';
+
 export default function StatisticsPage() {
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>('All Time');
-  const [loading, setLoading] = useState(true);
+  const [demographicDimension, setDemographicDimension] = useState<DemographicDimension>('age');
+  const [loadingPersonal, setLoadingPersonal] = useState(true);
+  const [loadingDemographic, setLoadingDemographic] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [demographicError, setDemographicError] = useState<string | null>(null);
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummaryRow[]>([]);
   const [averageExpenses, setAverageExpenses] = useState<AverageExpense[]>([]);
   const [summaryItems, setSummaryItems] = useState<StatisticsSummaryItem[]>([]);
+  const [demographicComparisons, setDemographicComparisons] = useState<DemographicComparison[]>([]);
+  const [demographicComparisonsDisabled, setDemographicComparisonsDisabled] = useState(false);
+  const [demographicCohortValueMissing, setDemographicCohortValueMissing] = useState(false);
+  const prevDimensionRef = useRef<DemographicDimension | null>(null);
 
-  const fetchStatisticsData = useCallback(async () => {
+  const fetchFull = useCallback(async () => {
     try {
-      setLoading(true);
+      setLoadingPersonal(true);
       setError(null);
-      const params = new URLSearchParams({ timePeriod });
+      setDemographicError(null);
+      const params = new URLSearchParams({ timePeriod: STATISTICS_TIME_PERIOD, demographicDimension });
       const response = await fetch(`/api/statistics?${params.toString()}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch statistics data');
-      }
-      
+      if (!response.ok) throw new Error('Failed to fetch statistics data');
       const data = await response.json();
       setMonthlySummary(data.monthlySummary || []);
       setAverageExpenses(data.averageExpenses || []);
       setSummaryItems(data.summary?.items || []);
+      setDemographicComparisons(data.demographicComparisons ?? []);
+      setDemographicComparisonsDisabled(data.demographicComparisonsDisabled === true);
+      setDemographicCohortValueMissing(data.demographicCohortValueMissing === true);
     } catch (err) {
       console.error('Error fetching statistics data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load statistics data');
       setMonthlySummary([]);
       setAverageExpenses([]);
       setSummaryItems([]);
+      setDemographicComparisons([]);
+      setDemographicComparisonsDisabled(false);
     } finally {
-      setLoading(false);
+      setLoadingPersonal(false);
     }
-  }, [timePeriod]);
+  }, [demographicDimension]);
+
+  const fetchDemographicOnly = useCallback(async () => {
+    try {
+      setLoadingDemographic(true);
+      setDemographicError(null);
+      const params = new URLSearchParams({
+        timePeriod: STATISTICS_TIME_PERIOD,
+        demographicDimension,
+        demographicOnly: '1',
+      });
+      const response = await fetch(`/api/statistics?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch demographic data');
+      const data = await response.json();
+      setDemographicComparisons(data.demographicComparisons ?? []);
+      setDemographicComparisonsDisabled(data.demographicComparisonsDisabled === true);
+      setDemographicCohortValueMissing(data.demographicCohortValueMissing === true);
+    } catch (err) {
+      console.error('Error fetching demographic data:', err);
+      setDemographicError(err instanceof Error ? err.message : 'Failed to load demographic data');
+      setDemographicComparisons([]);
+      setDemographicComparisonsDisabled(false);
+    } finally {
+      setLoadingDemographic(false);
+    }
+  }, [demographicDimension]);
 
   useEffect(() => {
-    fetchStatisticsData();
-  }, [fetchStatisticsData]);
+    const isInitial = prevDimensionRef.current === null;
+    const dimensionChanged = prevDimensionRef.current !== demographicDimension;
+    prevDimensionRef.current = demographicDimension;
+    if (isInitial) {
+      fetchFull();
+    } else if (dimensionChanged) {
+      fetchDemographicOnly();
+    }
+  }, [demographicDimension, fetchFull, fetchDemographicOnly]);
 
   const summaryItemsToShow = summaryItems.length > 0 ? summaryItems : (error ? mockStatisticsPage.summary.items : []);
 
@@ -67,14 +112,9 @@ export default function StatisticsPage() {
         <DashboardHeader pageName="Statistics" />
       </div>
 
-      {/* Mobile Navbar */}
+      {/* Mobile Navbar — no time period selector; statistics are always All Time */}
       <div className="md:hidden">
-        <MobileNavbar
-          pageName="Statistics"
-          timePeriod={timePeriod}
-          onTimePeriodChange={setTimePeriod}
-          activeSection="statistics"
-        />
+        <MobileNavbar pageName="Statistics" activeSection="statistics" />
       </div>
 
       {/* Content — same layout when loading; cards show skeleton internally */}
@@ -82,27 +122,33 @@ export default function StatisticsPage() {
       <div className="md:hidden flex flex-col gap-4 px-4 pb-4">
         <FinancialMilestonesCard
           milestone={mockStatisticsPage.milestone}
-          loading={loading || !!error}
+          loading={loadingPersonal || !!error}
         />
         <DemographicComparisonsSection
-          comparisons={mockStatisticsPage.demographicComparisons}
-          loading={loading || !!error}
+          comparisons={demographicComparisons}
+          loading={loadingDemographic || (loadingPersonal || !!error)}
+          demographicComparisonsDisabled={demographicComparisonsDisabled}
+          demographicCohortValueMissing={demographicCohortValueMissing}
+          demographicDimension={demographicDimension}
+          onDemographicChange={setDemographicDimension}
+          error={demographicError}
+          onRetry={fetchDemographicOnly}
         />
         <AverageExpensesCard
           expenses={averageExpenses}
-          loading={loading}
+          loading={loadingPersonal}
           error={error}
-          onRetry={fetchStatisticsData}
+          onRetry={fetchFull}
         />
         <MonthlySummaryTable
           data={monthlySummary}
-          loading={loading}
+          loading={loadingPersonal}
           error={error}
-          onRetry={fetchStatisticsData}
+          onRetry={fetchFull}
         />
         <StatisticsSummary
           items={summaryItemsToShow}
-          loading={loading || !!error}
+          loading={loadingPersonal || !!error}
         />
       </div>
 
@@ -113,37 +159,43 @@ export default function StatisticsPage() {
           <div className="flex flex-col gap-4 min-h-0 h-full">
             <FinancialMilestonesCard
               milestone={mockStatisticsPage.milestone}
-              loading={loading || !!error}
+              loading={loadingPersonal || !!error}
             />
             <DemographicComparisonsSection
-              comparisons={mockStatisticsPage.demographicComparisons}
-              loading={loading || !!error}
+              comparisons={demographicComparisons}
+              loading={loadingDemographic || (loadingPersonal || !!error)}
+              demographicComparisonsDisabled={demographicComparisonsDisabled}
+              demographicCohortValueMissing={demographicCohortValueMissing}
+              demographicDimension={demographicDimension}
+              onDemographicChange={setDemographicDimension}
+              error={demographicError}
+              onRetry={fetchDemographicOnly}
             />
           </div>
           <div className="flex flex-col min-h-0 min-w-0 h-full">
             <AverageExpensesCard
-          expenses={averageExpenses}
-          loading={loading}
-          error={error}
-          onRetry={fetchStatisticsData}
-        />
+              expenses={averageExpenses}
+              loading={loadingPersonal}
+              error={error}
+              onRetry={fetchFull}
+            />
           </div>
           <div className="flex flex-col min-h-0 min-w-0 h-full">
             <StatisticsSummary
-            items={summaryItemsToShow}
-            loading={loading || !!error}
-          />
+              items={summaryItemsToShow}
+              loading={loadingPersonal || !!error}
+            />
           </div>
         </div>
 
         {/* Bottom row: Monthly Summary — full width */}
         <div className="flex-1 flex flex-col min-h-[320px]">
           <MonthlySummaryTable
-          data={monthlySummary}
-          loading={loading}
-          error={error}
-          onRetry={fetchStatisticsData}
-        />
+            data={monthlySummary}
+            loading={loadingPersonal}
+            error={error}
+            onRetry={fetchFull}
+          />
         </div>
       </div>
     </main>

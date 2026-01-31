@@ -108,7 +108,7 @@ export default function SecurityDetailsCard({
           <label className="text-body" style={{ color: '#E7E4E4' }}>
             Email
           </label>
-          <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ backgroundColor: '#202020', color: '#B9B9B9' }}>
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-[#3a3a3a]" style={{ backgroundColor: '#202020', color: '#B9B9B9' }}>
             <Mail width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />
             <span className="flex-1 text-body" style={{ color: settings.email ? undefined : 'rgba(231, 228, 228, 0.5)' }}>
               {settings.email || 'No email set'}
@@ -129,7 +129,7 @@ export default function SecurityDetailsCard({
           <label className="text-body" style={{ color: '#E7E4E4' }}>
             Password
           </label>
-          <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ backgroundColor: '#202020', color: '#B9B9B9' }}>
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-[#3a3a3a]" style={{ backgroundColor: '#202020', color: '#B9B9B9' }}>
             <Lock width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />
             <span className="flex-1 text-body">••••••••••••</span>
             {openProfile && (
