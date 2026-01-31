@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { shouldCreateNotification } from '@/lib/notification-settings';
 import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, findMerchantByBaseWords, detectSpecialTransactionType } from '@/lib/merchant';
 import { UploadedTransaction } from '@/types/dashboard';
 
@@ -317,7 +318,7 @@ export async function POST(
           select: { userId: true, fileName: true },
         });
 
-        if (job) {
+        if (job && (await shouldCreateNotification(job.userId, 'PDF Processing'))) {
           // Create notification for completed job
           // No duplicate check needed - each job only completes once
           const now = new Date();
@@ -349,7 +350,7 @@ export async function POST(
           select: { userId: true, fileName: true, error: true },
         });
 
-        if (job) {
+        if (job && (await shouldCreateNotification(job.userId, 'PDF Processing'))) {
           const now = new Date();
           const errorMessage = job.error || 'Unknown error occurred';
           

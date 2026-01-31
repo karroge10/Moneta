@@ -102,9 +102,6 @@ export async function GET(request: NextRequest) {
       dateFilter.lte = new Date(year, monthNum, 0, 23, 59, 59);
     } else if (timePeriod === 'This Month') {
       dateFilter.gte = new Date(now.getFullYear(), now.getMonth(), 1);
-    } else if (timePeriod === 'This Quarter') {
-      const quarter = Math.floor(now.getMonth() / 3);
-      dateFilter.gte = new Date(now.getFullYear(), quarter * 3, 1);
     } else if (timePeriod === 'This Year') {
       dateFilter.gte = new Date(now.getFullYear(), 0, 1);
     }

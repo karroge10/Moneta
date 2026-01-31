@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useUser } from '@clerk/nextjs';
 import { idbGet, idbSet } from '@/lib/idb';
 
 interface Currency {
@@ -24,73 +25,91 @@ const DEFAULT_CURRENCY: Currency = {
   alias: 'USD',
 };
 
-const CACHE_KEY = 'user-currency';
+const CACHE_KEY_PREFIX = 'user-currency-';
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12h
+
+function getCacheKey(userId: string | undefined): string | null {
+  return userId ? `${CACHE_KEY_PREFIX}${userId}` : null;
+}
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
+  const { user } = useUser();
+  const userId = user?.id;
+
   const [currency, setCurrency] = useState<Currency>(DEFAULT_CURRENCY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchCurrency = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch('/api/user/settings');
+  const fetchCurrency = useCallback(
+    async (background = false) => {
+      const cacheKey = getCacheKey(userId ?? undefined);
 
-      if (response.status === 401) {
-        setCurrency(DEFAULT_CURRENCY);
-        return;
-      }
+      try {
+        if (!background) {
+          setLoading(true);
+        }
+        setError(null);
+        const response = await fetch('/api/user/settings');
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.currency) {
-          setCurrency({
-            id: data.currency.id,
-            name: data.currency.name,
-            symbol: data.currency.symbol,
-            alias: data.currency.alias,
-          });
-          idbSet(CACHE_KEY, { currency: data.currency, timestamp: Date.now() });
+        if (response.status === 401) {
+          setCurrency(DEFAULT_CURRENCY);
+          return;
+        }
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.currency) {
+            const next = {
+              id: data.currency.id,
+              name: data.currency.name,
+              symbol: data.currency.symbol,
+              alias: data.currency.alias,
+            };
+            setCurrency(next);
+            if (cacheKey) {
+              idbSet(cacheKey, { currency: next, timestamp: Date.now() });
+            }
+          } else {
+            setCurrency(DEFAULT_CURRENCY);
+          }
         } else {
           setCurrency(DEFAULT_CURRENCY);
+          setError(new Error('Failed to fetch currency settings'));
         }
-      } else {
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error('Unknown error');
+        setError(error);
+        console.error('Error fetching currency:', error);
         setCurrency(DEFAULT_CURRENCY);
-        setError(new Error('Failed to fetch currency settings'));
+      } finally {
+        if (!background) {
+          setLoading(false);
+        }
       }
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error('Unknown error');
-      setError(error);
-      console.error('Error fetching currency:', error);
-      setCurrency(DEFAULT_CURRENCY);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [userId]
+  );
 
   useEffect(() => {
     let cancelled = false;
+    const cacheKey = getCacheKey(userId ?? undefined);
 
     const hydrate = async () => {
       try {
-        const cached = await idbGet<{ currency: Currency; timestamp: number }>(CACHE_KEY);
-        const isStale = !cached || Date.now() - cached.timestamp > CACHE_TTL_MS;
-
-        if (cached?.currency && !cancelled) {
-          setCurrency(cached.currency);
-          setError(null);
-          if (!isStale) {
-            setLoading(false);
-            return;
+        if (cacheKey) {
+          const cached = await idbGet<{ currency: Currency; timestamp: number }>(cacheKey);
+          if (cached?.currency && !cancelled) {
+            setCurrency(cached.currency);
+            setError(null);
           }
-        }
-
-        if (!cancelled) {
-          await fetchCurrency();
+          if (!cancelled) {
+            await fetchCurrency(true);
+          }
+        } else {
+          setCurrency(DEFAULT_CURRENCY);
+          setError(null);
         }
       } catch (err) {
         if (cancelled) return;
@@ -107,10 +126,12 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId, fetchCurrency]);
+
+  const refetch = useCallback(() => fetchCurrency(false), [fetchCurrency]);
 
   return (
-    <CurrencyContext.Provider value={{ currency, loading, error, refetch: fetchCurrency }}>
+    <CurrencyContext.Provider value={{ currency, loading, error, refetch }}>
       {children}
     </CurrencyContext.Provider>
   );

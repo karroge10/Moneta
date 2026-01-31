@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TransactionUploadResponse, UploadedTransaction } from '@/types/dashboard';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { shouldCreateNotification } from '@/lib/notification-settings';
 import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, findMerchantByBaseWords, detectSpecialTransactionType } from '@/lib/merchant';
 
 export const runtime = 'nodejs';
@@ -119,7 +120,7 @@ async function updateJobStatus(
           select: { userId: true, fileName: true },
         });
 
-        if (job) {
+        if (job && (await shouldCreateNotification(job.userId, 'PDF Processing'))) {
           // Create notification for completed job
           // No duplicate check needed - each job only completes once
           const now = new Date();
@@ -150,7 +151,7 @@ async function updateJobStatus(
           select: { userId: true, fileName: true },
         });
 
-        if (job) {
+        if (job && (await shouldCreateNotification(job.userId, 'PDF Processing'))) {
           const now = new Date();
           
           await db.notification.create({

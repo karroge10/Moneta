@@ -14,7 +14,19 @@ import {
   Calendar,
   HomeSimpleDoor,
   Crown,
+  Reports,
+  LotOfCash,
+  CalendarCheck,
+  BitcoinCircle,
 } from 'iconoir-react';
+import type { SelectOptionItem } from './SettingsField';
+import { COUNTRIES } from '@/lib/countries';
+import {
+  getCountryCodeForCurrency,
+  getSearchTermsForCurrency,
+  getDisplayNameForCurrency,
+} from '@/lib/currency-country-map';
+import { getCountryCodeForLanguage } from '@/lib/language-country-map';
 
 const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
 
@@ -36,10 +48,13 @@ interface PersonalInformationCardProps {
   onChange?: (field: string, value: string) => void;
   incomeTaxRate?: number | null;
   onTaxUpdate?: (incomeTaxRate: number | null) => void;
-  languageOptions?: { id: number; name: string }[];
-  currencyOptions?: { id: number; symbol: string; alias: string }[];
+  languageOptions?: { id: number; name: string; alias: string }[];
+  currencyOptions?: { id: number; name: string; symbol: string; alias: string }[];
   userImageUrl?: string | null;
+  onOpenAccountProfile?: () => void;
   loading?: boolean;
+  /** When true, fields are disabled (e.g. while saving). */
+  disabled?: boolean;
 }
 
 export default function PersonalInformationCard({
@@ -51,15 +66,51 @@ export default function PersonalInformationCard({
   languageOptions: languageOptionsProp,
   currencyOptions: currencyOptionsProp,
   userImageUrl = null,
+  onOpenAccountProfile,
   loading = false,
+  disabled = false,
 }: PersonalInformationCardProps) {
-  const languageOptions = languageOptionsProp?.length
-    ? languageOptionsProp.map((l) => l.name)
-    : [settings.language].filter(Boolean);
-  const currencyOptions = currencyOptionsProp?.length
-    ? currencyOptionsProp.map((c) => `${c.symbol} ${c.alias}`)
-    : [settings.currency].filter(Boolean);
-  const defaultPageOptions = ['Dashboard', 'Statistics', 'Transactions', 'Goals', 'Investments'];
+  const ICON_STYLE = { width: 18, height: 18, strokeWidth: 1.5, style: { color: '#B9B9B9' } };
+  const countryOptionItems: SelectOptionItem[] = COUNTRIES.map((c) => ({
+    value: c.name,
+    label: c.name,
+    countryCode: c.code,
+    searchTerms: [c.name, c.code],
+  }));
+  const languageOptionItems: SelectOptionItem[] = languageOptionsProp?.length
+    ? languageOptionsProp
+        .filter((l) => l.name !== 'Georgian')
+        .map((l) => {
+          const countryCode = getCountryCodeForLanguage(l.alias ?? l.name);
+          return {
+            value: l.name,
+            label: l.name,
+            countryCode,
+            searchTerms: [l.name, l.alias ?? ''],
+            ...(countryCode ? {} : { icon: <Globe {...ICON_STYLE} /> }),
+          };
+        })
+    : settings.language
+      ? [{ value: settings.language, label: settings.language, icon: <Globe {...ICON_STYLE} /> }]
+      : [];
+  const currencyOptionItems: SelectOptionItem[] = currencyOptionsProp?.length
+    ? currencyOptionsProp.map((c) => ({
+        value: `${c.symbol} ${c.alias}`,
+        label: getDisplayNameForCurrency(c.alias) ?? c.name,
+        countryCode: getCountryCodeForCurrency(c.alias),
+        searchTerms: [c.name, c.alias, ...getSearchTermsForCurrency(c.alias)],
+        suffix: c.symbol,
+      }))
+    : settings.currency
+      ? [{ value: settings.currency, label: settings.currency, symbol: settings.currency.split(' ')[0] ?? '', alias: settings.currency.split(' ')[1] ?? settings.currency }]
+      : [];
+  const defaultPageOptionItems: SelectOptionItem[] = [
+    { value: 'Dashboard', label: 'Dashboard', icon: <HomeSimpleDoor {...ICON_STYLE} /> },
+    { value: 'Statistics', label: 'Statistics', icon: <Reports {...ICON_STYLE} /> },
+    { value: 'Transactions', label: 'Transactions', icon: <LotOfCash {...ICON_STYLE} /> },
+    { value: 'Goals', label: 'Goals', icon: <CalendarCheck {...ICON_STYLE} /> },
+    { value: 'Investments', label: 'Investments', icon: <BitcoinCircle {...ICON_STYLE} /> },
+  ];
 
   const taxEnabled = incomeTaxRate !== null;
   const [taxRateInput, setTaxRateInput] = useState(
@@ -152,25 +203,50 @@ export default function PersonalInformationCard({
         {/* Profile Section */}
         <div className="flex items-start gap-4">
           <div className="shrink-0">
-            <div
-              className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center"
-              style={{ backgroundColor: 'rgba(163, 102, 203, 0.2)' }}
-            >
-              {userImageUrl ? (
-                <img
-                  src={userImageUrl}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <User
-                  width={40}
-                  height={40}
-                  strokeWidth={1.5}
-                  style={{ color: '#AC66DA' }}
-                />
-              )}
-            </div>
+            {onOpenAccountProfile ? (
+              <button
+                type="button"
+                onClick={onOpenAccountProfile}
+                className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center cursor-pointer transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--accent-purple)] focus:ring-offset-2 focus:ring-offset-[#282828]"
+                style={{ backgroundColor: 'rgba(163, 102, 203, 0.2)' }}
+                aria-label="Change profile photo"
+              >
+                {userImageUrl ? (
+                  <img
+                    src={userImageUrl}
+                    alt=""
+                    className="w-full h-full object-cover pointer-events-none"
+                  />
+                ) : (
+                  <User
+                    width={40}
+                    height={40}
+                    strokeWidth={1.5}
+                    style={{ color: '#AC66DA' }}
+                  />
+                )}
+              </button>
+            ) : (
+              <div
+                className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center"
+                style={{ backgroundColor: 'rgba(163, 102, 203, 0.2)' }}
+              >
+                {userImageUrl ? (
+                  <img
+                    src={userImageUrl}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User
+                    width={40}
+                    height={40}
+                    strokeWidth={1.5}
+                    style={{ color: '#AC66DA' }}
+                  />
+                )}
+              </div>
+            )}
           </div>
           <div className="flex-1 flex flex-col gap-2">
             <span className="text-body font-semibold" style={{ color: '#E7E4E4' }}>
@@ -188,39 +264,66 @@ export default function PersonalInformationCard({
                 </span>
               </div>
             ) : null}
-            <div className="flex items-center gap-2 text-body" style={{ color: '#B9B9B9' }}>
-              <Pin width={18} height={18} strokeWidth={1.5} />
-              <span>{[settings.city, settings.country].filter(Boolean).join(', ') || 'Unknown'}</span>
-            </div>
+            {settings.country ? (
+              <div className="flex items-center gap-2 text-body" style={{ color: '#B9B9B9' }}>
+                <Pin width={18} height={18} strokeWidth={1.5} />
+                <span>{settings.country}</span>
+              </div>
+            ) : null}
           </div>
         </div>
 
         {/* Input/Select Fields */}
         <div className="flex flex-col gap-4">
           <SettingsField
+            label="First name"
+            value={settings.firstName}
+            icon={<User width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
+            type="input"
+            placeholder="First name"
+            disabled={disabled}
+            onChange={(value) => onChange?.('firstName', value)}
+          />
+          <SettingsField
+            label="Last name"
+            value={settings.lastName}
+            icon={<User width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
+            type="input"
+            placeholder="Last name"
+            disabled={disabled}
+            onChange={(value) => onChange?.('lastName', value)}
+          />
+          <SettingsField
             label="Country"
             value={settings.country}
             icon={<Pin width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
-            type="input"
-            placeholder="e.g. United States"
+            type="typeahead"
+            optionItems={countryOptionItems}
+            placeholder="Select country"
+            searchPlaceholder="Search countries..."
+            disabled={disabled}
             onChange={(value) => onChange?.('country', value)}
           />
           <SettingsField
             label="Language"
             value={settings.language}
             icon={<Globe width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
-            type="select"
-            options={languageOptions}
+            type="typeahead"
+            optionItems={languageOptionItems}
             placeholder="Select language"
+            searchPlaceholder="Search languages..."
+            disabled={disabled}
             onChange={(value) => onChange?.('language', value)}
           />
           <SettingsField
             label="Currency"
             value={settings.currency}
             icon={<Cash width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
-            type="select"
-            options={currencyOptions}
+            type="typeahead"
+            optionItems={currencyOptionItems}
             placeholder="Select currency"
+            searchPlaceholder="Search currencies (e.g. United States, USD)..."
+            disabled={disabled}
             onChange={(value) => onChange?.('currency', value)}
           />
           <SettingsField
@@ -229,6 +332,7 @@ export default function PersonalInformationCard({
             icon={<Calendar width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
             type="date"
             placeholder="Select date"
+            disabled={disabled}
             onChange={(value) => onChange?.('dateOfBirth', value)}
           />
           <SettingsField
@@ -237,15 +341,19 @@ export default function PersonalInformationCard({
             icon={<Suitcase width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
             type="input"
             placeholder="e.g. Developer"
+            disabled={disabled}
             onChange={(value) => onChange?.('profession', value)}
           />
           <SettingsField
             label="Default Page"
             value={settings.defaultPage}
             icon={<HomeSimpleDoor width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
-            type="select"
-            options={defaultPageOptions}
+            type="typeahead"
+            optionItems={defaultPageOptionItems}
             placeholder="Select default page"
+            searchPlaceholder="Search default page..."
+            dropdownInPortal
+            disabled={disabled}
             onChange={(value) => onChange?.('defaultPage', value)}
           />
         </div>
@@ -253,16 +361,17 @@ export default function PersonalInformationCard({
         {/* Tax: label + switch on one row; when enabled, number input only */}
         {onTaxUpdate && (
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
               <label className="text-body" style={{ color: '#E7E4E4' }}>
                 Enable tax estimation
               </label>
               <button
                 type="button"
                 onClick={handleTaxToggle}
-                className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${
-                  taxEnabled ? 'bg-[var(--accent-purple)]' : 'bg-[rgba(231,228,228,0.3)]'
-                }`}
+                disabled={disabled}
+                className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${
+                  disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                } ${taxEnabled ? 'bg-[var(--accent-purple)]' : 'bg-[rgba(231,228,228,0.3)]'}`}
                 aria-label="Toggle tax estimation"
               >
                 <div
@@ -287,7 +396,8 @@ export default function PersonalInformationCard({
                     value={taxRateInput}
                     onChange={(e) => setTaxRateInput(e.target.value)}
                     onBlur={handleTaxBlur}
-                    className="flex-1 text-body bg-transparent border-none outline-none min-w-0"
+                    disabled={disabled}
+                    className="flex-1 text-body bg-transparent border-none outline-none min-w-0 disabled:cursor-not-allowed disabled:opacity-60"
                     style={{ color: '#E7E4E4' }}
                     aria-label="Income tax rate percentage"
                   />
@@ -306,17 +416,17 @@ export default function PersonalInformationCard({
             <div className="text-body" style={{ color: '#E7E4E4' }}>
               Current Plan
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                className="flex items-center gap-2 px-4 py-2 rounded-full"
+            <div className="flex items-center gap-3 flex-wrap">
+              <span
+                className="inline-flex items-center gap-2 pl-0 pr-4 py-2 rounded-full cursor-default"
                 style={{ backgroundColor: '#282828', color: '#E7E4E4' }}
               >
                 <Crown width={18} height={18} strokeWidth={1.5} />
                 <span className="text-body">Basic Tier</span>
-              </button>
+              </span>
               <Link
                 href="/pricing"
-                className="px-6 py-2 rounded-full text-body font-semibold transition-opacity hover:opacity-90"
+                className="px-6 py-2 rounded-full text-body font-semibold transition-opacity hover:opacity-90 cursor-pointer"
                 style={{ backgroundColor: '#E7E4E4', color: '#202020' }}
               >
                 Upgrade to Premium

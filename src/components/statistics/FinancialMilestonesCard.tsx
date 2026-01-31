@@ -12,21 +12,16 @@ interface FinancialMilestonesCardProps {
 }
 
 export default function FinancialMilestonesCard({ milestone, loading = false }: FinancialMilestonesCardProps) {
+  const contentMinHeight = 200;
+
   if (loading) {
     return (
       <Card
         title="Financial Milestones"
-        customHeader={
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-6 w-40 rounded animate-pulse" style={SKELETON_STYLE} />
-              <div className="h-5 w-20 rounded-full animate-pulse" style={SKELETON_STYLE} />
-            </div>
-            <div className="w-8 h-8 rounded-full animate-pulse" style={SKELETON_STYLE} />
-          </div>
-        }
+        showActions={false}
+        className="flex flex-col shrink-0"
       >
-        <div className="flex flex-col flex-1 min-h-0">
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden" style={{ minHeight: contentMinHeight }}>
           <div className="p-3 mb-4 rounded-2xl" style={{ backgroundColor: '#202020' }}>
             <div className="h-3 w-16 rounded animate-pulse mb-2" style={SKELETON_STYLE} />
             <div className="flex items-start gap-3">
@@ -47,6 +42,7 @@ export default function FinancialMilestonesCard({ milestone, loading = false }: 
   return (
     <Card 
       title="Financial Milestones"
+      className="flex flex-col shrink-0"
       customHeader={
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -62,7 +58,7 @@ export default function FinancialMilestonesCard({ milestone, loading = false }: 
         </div>
       }
     >
-      <div className="flex flex-col flex-1 min-h-0" style={{ filter: 'blur(2px)' }}>
+      <div className="flex flex-col flex-1 min-h-0" style={{ filter: 'blur(2px)', minHeight: 200 }}>
         <div className="flex-1 min-h-0">
           <div 
             className="p-3 mb-4"

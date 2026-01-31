@@ -10,9 +10,10 @@ import Link from 'next/link';
 
 interface UpcomingIncomesCardProps {
   incomes: Transaction[];
+  onItemClick?: (income: Transaction) => void;
 }
 
-export default function UpcomingIncomesCard({ incomes }: UpcomingIncomesCardProps) {
+export default function UpcomingIncomesCard({ incomes, onItemClick }: UpcomingIncomesCardProps) {
   const { currency } = useCurrency();
   if (incomes.length === 0) {
     return (
@@ -36,7 +37,12 @@ export default function UpcomingIncomesCard({ incomes }: UpcomingIncomesCardProp
           {incomes.map((income) => {
             const Icon = getIcon(income.icon);
             return (
-              <div key={income.id} className="flex items-center gap-3 min-w-0">
+              <div
+                key={income.id}
+                className={`flex items-center gap-3 min-w-0 ${income.isActive === false ? 'opacity-70' : ''} ${onItemClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                onClick={onItemClick ? () => onItemClick(income) : undefined}
+                role={onItemClick ? 'button' : undefined}
+              >
                 <div className="flex-shrink-0">
                   <div
                     className="w-12 h-12 rounded-full flex items-center justify-center"
@@ -49,14 +55,27 @@ export default function UpcomingIncomesCard({ incomes }: UpcomingIncomesCardProp
                   <div className="text-body font-medium text-wrap-safe">{income.name}</div>
                   <div className="text-helper">{income.date}</div>
                 </div>
-                <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
-                  {currency.symbol}{formatNumber(income.amount)}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {income.isActive === false && (
+                    <span
+                      className="text-xs font-medium px-2 py-0.5 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: 'rgba(60, 60, 60, 0.6)',
+                        color: 'rgba(231, 228, 228, 0.7)',
+                      }}
+                    >
+                      Paused
+                    </span>
+                  )}
+                  <span className="text-body font-semibold whitespace-nowrap">
+                    {currency.symbol}{formatNumber(income.amount)}
+                  </span>
                 </div>
               </div>
             );
           })}
         </div>
-        <Link href="/income" className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors">
+        <Link href="/transactions?view=future" className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors" onClick={(e) => e.stopPropagation()}>
           View All <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
         </Link>
       </div>

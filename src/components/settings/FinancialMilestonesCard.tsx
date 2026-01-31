@@ -5,7 +5,7 @@ import { Achievement } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 
 const SKELETON_ITEMS = 10; // 2 rows × 5 cols, same as loaded view
-const maxHeight = '160px';
+const maxHeight = '220px';
 
 interface FinancialMilestonesCardProps {
   achievements: Achievement[];

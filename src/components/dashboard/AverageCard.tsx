@@ -9,9 +9,10 @@ interface AverageCardProps {
   amount: number;
   trend: number;
   subtitle?: string;
+  trendLabel?: string;
 }
 
-export default function AverageCard({ amount, trend, subtitle }: AverageCardProps) {
+export default function AverageCard({ amount, trend, subtitle, trendLabel = 'from last year' }: AverageCardProps) {
   const { currency } = useCurrency();
   return (
     <Card title="Average">
@@ -23,7 +24,7 @@ export default function AverageCard({ amount, trend, subtitle }: AverageCardProp
           <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
           <span className="text-card-value break-all min-w-0">{formatNumber(amount)}</span>
         </div>
-        <TrendIndicator value={trend} label="from last year" />
+        <TrendIndicator value={trend} label={trendLabel} />
       </div>
     </Card>
   );
