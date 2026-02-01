@@ -1,18 +1,26 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useUser } from '@clerk/nextjs';
 import { Mail, WarningTriangle, InfoCircle, NavArrowDown } from 'iconoir-react';
 import Card from '@/components/ui/Card';
-import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 
 export default function SendFeedbackCard() {
-  const [email, setEmail] = useState('egorkabantsov@gmail.com');
+  const { user } = useUser();
+  const [email, setEmail] = useState('');
   const [category, setCategory] = useState('Bug Report');
   const [message, setMessage] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const categoryOptions = ['Bug Report', 'Feature Request', 'Other'];
+
+  useEffect(() => {
+    setEmail(user?.primaryEmailAddress?.emailAddress ?? '');
+  }, [user?.primaryEmailAddress?.emailAddress]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -25,11 +33,29 @@ export default function SendFeedbackCard() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Feedback submitted:', { email, category, message });
-    // TODO: Implement actual form submission
-    setMessage('');
+    setError(null);
+    setSuccess(false);
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, category, message }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error ?? 'Failed to send feedback');
+        return;
+      }
+      setSuccess(true);
+      setMessage('');
+    } catch {
+      setError('Failed to send feedback');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -37,13 +63,22 @@ export default function SendFeedbackCard() {
       title="Send Feedback"
       showActions={false}
       customHeader={
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-4">
           <h2 className="text-card-header">Send Feedback</h2>
-          <ComingSoonBadge />
         </div>
       }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {success && (
+          <p className="text-body" style={{ color: 'var(--accent-green)' }}>
+            Thank you! Your feedback has been saved.
+          </p>
+        )}
+        {error && (
+          <p className="text-body" style={{ color: 'var(--error)' }}>
+            {error}
+          </p>
+        )}
         {/* Email Input */}
         <div>
           <label className="block text-body font-medium mb-2">Your Email</label>
@@ -125,10 +160,11 @@ export default function SendFeedbackCard() {
         {/* Submit Button */}
         <button
           type="submit"
-          className="w-full px-6 py-3 rounded-full text-body font-semibold transition-colors cursor-pointer hover:opacity-90"
-          style={{ backgroundColor: 'var(--accent-purple)', color: '#E7E4E4' }}
+          disabled={isSubmitting}
+          className="w-full px-6 py-3 rounded-full text-body font-semibold transition-colors cursor-pointer hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+          style={{ backgroundColor: '#E7E4E4', color: '#202020' }}
         >
-          Send Message
+          {isSubmitting ? 'Sending…' : 'Send Message'}
         </button>
 
         {/* Info Text */}

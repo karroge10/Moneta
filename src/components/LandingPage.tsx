@@ -26,7 +26,7 @@ export default function LandingPage() {
       setIsScrolled(window.scrollY > 50);
 
       // Update active section based on scroll position
-      const sections = ["home", "about", "features", "pricing", "contact"];
+      const sections = ["home", "about", "features", "contact"];
       const scrollPosition = window.scrollY + 100;
 
       for (const section of sections) {
@@ -458,21 +458,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Plans coming later */}
-      <section id="pricing" className="py-16 md:py-24 px-6 md:px-8 bg-[#282828]">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-page-title text-[#E7E4E4] font-bold mb-4">Plans coming later</h2>
-          <p className="text-body text-[#E7E4E4] opacity-70">
-            We&apos;re focused on building the best experience first. When we introduce plans, we&apos;ll let you know.
-          </p>
-        </div>
-      </section>
-
       {/* Footer */}
       <footer id="contact" className="py-12 md:py-16 px-6 md:px-8 border-t border-[#3a3a3a]">
         <div className="max-w-6xl mx-auto">
           {/* Main Footer Content */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-8">
             {/* Brand + Description */}
             <div className="space-y-4">
               <div className="flex items-center gap-3">
@@ -512,35 +502,6 @@ export default function LandingPage() {
                 </a>
               </nav>
             </div>
-
-            {/* Social Icons */}
-            <div className="space-y-4">
-              <h3 className="text-card-header text-[#E7E4E4]">Connect</h3>
-              <div className="flex items-center gap-4">
-                {/* Placeholder social icons - using simple divs for now */}
-                <a
-                  href="#"
-                  className="w-10 h-10 rounded-full bg-[#282828] border border-[#3a3a3a] flex items-center justify-center text-[#E7E4E4] hover:text-[#AC66DA] transition-colors"
-                  aria-label="Instagram"
-                >
-                  <span className="text-body">IG</span>
-                </a>
-                <a
-                  href="#"
-                  className="w-10 h-10 rounded-full bg-[#282828] border border-[#3a3a3a] flex items-center justify-center text-[#E7E4E4] hover:text-[#AC66DA] transition-colors"
-                  aria-label="LinkedIn"
-                >
-                  <span className="text-body">LI</span>
-                </a>
-                <a
-                  href="#"
-                  className="w-10 h-10 rounded-full bg-[#282828] border border-[#3a3a3a] flex items-center justify-center text-[#E7E4E4] hover:text-[#AC66DA] transition-colors"
-                  aria-label="Twitter"
-                >
-                  <span className="text-body">X</span>
-                </a>
-              </div>
-            </div>
           </div>
 
           {/* Legal Links */}
@@ -549,12 +510,12 @@ export default function LandingPage() {
               © 2024 Moneta. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
-              <a href="#" className="text-helper text-[#E7E4E4] opacity-70 hover:text-[#AC66DA] transition-colors">
+              <Link href="/terms" className="text-helper text-[#E7E4E4] opacity-70 hover:text-[#AC66DA] transition-colors">
                 Terms and Conditions
-              </a>
-              <a href="#" className="text-helper text-[#E7E4E4] opacity-70 hover:text-[#AC66DA] transition-colors">
+              </Link>
+              <Link href="/privacy" className="text-helper text-[#E7E4E4] opacity-70 hover:text-[#AC66DA] transition-colors">
                 Privacy Policy
-              </a>
+              </Link>
             </div>
           </div>
         </div>

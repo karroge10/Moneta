@@ -2,7 +2,7 @@ export interface FAQItem {
   id: string;
   question: string;
   answer: string;
-  category: 'General' | 'Account' | 'Features' | 'Technical' | 'Pricing';
+  category: 'General' | 'Account' | 'Features' | 'Technical';
 }
 
 export const faqData: FAQItem[] = [
@@ -22,7 +22,7 @@ export const faqData: FAQItem[] = [
     id: '3',
     question: 'When will you offer plans?',
     answer: "We're focused on the core product first. We'll announce plans when we're ready.",
-    category: 'Pricing'
+    category: 'General'
   },
   {
     id: '4',
