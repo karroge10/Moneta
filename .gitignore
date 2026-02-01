@@ -28,6 +28,7 @@
 *.pdf
 *.xlsx
 *.xls
+ROADMAP.md
 
 # debug
 npm-debug.log*
