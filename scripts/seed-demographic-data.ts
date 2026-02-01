@@ -264,7 +264,6 @@ async function main() {
         targetDate: new Date(now.getFullYear() + 1, 5, 1),
         targetAmount,
         currentAmount: Math.round(targetAmount * (0.2 + Math.random() * 0.7)),
-        progress: 20 + Math.random() * 70,
       },
     });
   }
