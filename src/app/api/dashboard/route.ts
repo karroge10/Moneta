@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { Transaction as TransactionType, ExpenseCategory, TimePeriod } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
 import { convertTransactionsToTarget } from '@/lib/currency-conversion';
+import { getFinancialHealthScore } from '@/lib/financial-health';
 import { getInvestmentsPortfolio } from '@/lib/investments';
 
 export const runtime = 'nodejs';
@@ -366,6 +367,8 @@ export async function GET(request: NextRequest) {
 
     // Investments (live)
     const investmentsPortfolio = await getInvestmentsPortfolio(user.id, userCurrencyRecord);
+
+    const financialHealth = await getFinancialHealthScore(user.id, timePeriod, targetCurrencyId);
     
     return NextResponse.json({
       income: {
@@ -382,6 +385,11 @@ export async function GET(request: NextRequest) {
       topExpenses,
       investments: investmentsPortfolio.portfolio,
       portfolioBalance: investmentsPortfolio.balance,
+      financialHealth: {
+        score: financialHealth.score,
+        trend: financialHealth.trend,
+        details: financialHealth.details,
+      },
     });
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
