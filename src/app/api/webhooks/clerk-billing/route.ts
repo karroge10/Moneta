@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhook } from '@clerk/nextjs/webhooks';
 import { clerkClient } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
@@ -11,7 +11,7 @@ const VALID_PLAN_SLUGS = ['basic', 'premium', 'ultimate'] as const;
  * Configure this URL in Clerk Dashboard → Webhooks (subscribe to Billing events).
  * Set CLERK_WEBHOOK_SIGNING_SECRET (or the Billing endpoint's signing secret) in env.
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const evt = await verifyWebhook(req);
 
