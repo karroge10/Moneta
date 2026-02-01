@@ -20,8 +20,6 @@ const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
 const SKELETON_ROWS = 10;
 const CARD_MIN_HEIGHT = 380;
 const DONUT_HEIGHT = 260;
-/** Max height for the category list; beyond this it scrolls */
-const LIST_MAX_HEIGHT = 500;
 
 interface AverageExpensesCardProps {
   expenses: AverageExpense[];
@@ -60,9 +58,7 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
       <div
         className="mt-2 flex flex-col flex-1 min-h-0 overflow-hidden"
         style={{
-          minHeight: loading || (!showError && !showComingSoon)
-            ? DONUT_HEIGHT + 24 + LIST_MAX_HEIGHT
-            : CARD_MIN_HEIGHT,
+          minHeight: loading || (!showError && !showComingSoon) ? CARD_MIN_HEIGHT : undefined,
         }}
       >
         {loading ? (
@@ -70,10 +66,7 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
             <div className="w-full shrink-0 rounded-2xl flex items-center justify-center" style={{ height: DONUT_HEIGHT, backgroundColor: '#202020' }}>
               <div className="w-32 h-32 rounded-full animate-pulse" style={SKELETON_STYLE} />
             </div>
-            <div
-              className="overflow-hidden mt-4 pr-2 flex-1 min-h-0"
-              style={{ maxHeight: LIST_MAX_HEIGHT, minHeight: LIST_MAX_HEIGHT }}
-            >
+            <div className="overflow-hidden mt-4 pr-2 flex-1 min-h-0">
               <div className="flex flex-col gap-3">
                 {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
                   <div
@@ -115,10 +108,7 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
             <div className="w-full shrink-0" style={{ height: DONUT_HEIGHT }}>
               <DonutChart data={chartData} />
             </div>
-            <div
-              className="overflow-y-auto custom-scrollbar mt-4 pr-2 flex-1 min-h-0"
-              style={{ maxHeight: LIST_MAX_HEIGHT }}
-            >
+            <div className="overflow-y-auto custom-scrollbar mt-4 pr-2 flex-1 min-h-0">
               <div className="flex flex-col gap-3">
                 {[...expenses]
                   .sort((a, b) => b.amount - a.amount)

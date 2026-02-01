@@ -695,6 +695,11 @@ export async function GET(request: NextRequest) {
       demographicComparisonsDisabled,
       cohortFilters,
       demographicCohortValueMissing: cohortValueFromUser == null,
+      financialHealth: {
+        score: financialHealth.score,
+        trend: financialHealth.trend,
+        details: financialHealth.details,
+      },
     });
   } catch (error) {
     console.error('Error fetching statistics data:', error);

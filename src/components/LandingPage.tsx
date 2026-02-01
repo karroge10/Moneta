@@ -17,12 +17,9 @@ import {
   Check,
   CheckCircle,
 } from "iconoir-react";
-import { pricingTiers } from "@/lib/pricingData";
-
-export default function LandingPage({ initialUserPlan }: { initialUserPlan?: string | null }) {
+export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
-  const [userPlan, setUserPlan] = useState<string | null>(initialUserPlan || null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -48,26 +45,6 @@ export default function LandingPage({ initialUserPlan }: { initialUserPlan?: str
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Only fetch user plan client-side if it wasn't provided server-side
-  // This handles cases where user signs in/out after initial page load
-  useEffect(() => {
-    if (initialUserPlan === undefined) {
-      const fetchUserPlan = async () => {
-        try {
-          const response = await fetch('/api/user/settings');
-          if (response.ok) {
-            const data = await response.json();
-            setUserPlan(data.plan || 'basic');
-          }
-        } catch (error) {
-          // User might not be signed in or API might fail
-          console.error('Failed to fetch user plan:', error);
-        }
-      };
-
-      fetchUserPlan();
-    }
-  }, [initialUserPlan]);
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
     e.preventDefault();
@@ -131,15 +108,6 @@ export default function LandingPage({ initialUserPlan }: { initialUserPlan?: str
               }`}
             >
               Features
-            </a>
-            <a
-              href="#pricing"
-              onClick={(e) => handleNavClick(e, "pricing")}
-              className={`text-body font-semibold transition-colors ${
-                activeSection === "pricing" ? "text-[#AC66DA]" : "text-[#E7E4E4] hover:text-[#AC66DA]"
-              }`}
-            >
-              Pricing
             </a>
             <a
               href="#contact"
@@ -490,8 +458,15 @@ export default function LandingPage({ initialUserPlan }: { initialUserPlan?: str
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <PricingSection userPlan={userPlan} />
+      {/* Plans coming later */}
+      <section id="pricing" className="py-16 md:py-24 px-6 md:px-8 bg-[#282828]">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="text-page-title text-[#E7E4E4] font-bold mb-4">Plans coming later</h2>
+          <p className="text-body text-[#E7E4E4] opacity-70">
+            We&apos;re focused on building the best experience first. When we introduce plans, we&apos;ll let you know.
+          </p>
+        </div>
+      </section>
 
       {/* Footer */}
       <footer id="contact" className="py-12 md:py-16 px-6 md:px-8 border-t border-[#3a3a3a]">
@@ -527,13 +502,6 @@ export default function LandingPage({ initialUserPlan }: { initialUserPlan?: str
                   className="text-body text-[#E7E4E4] opacity-70 hover:text-[#AC66DA] transition-colors"
                 >
                   Features
-                </a>
-                <a
-                  href="#pricing"
-                  onClick={(e) => handleNavClick(e, "pricing")}
-                  className="text-body text-[#E7E4E4] opacity-70 hover:text-[#AC66DA] transition-colors"
-                >
-                  Pricing
                 </a>
                 <a
                   href="#contact"
@@ -591,243 +559,6 @@ export default function LandingPage({ initialUserPlan }: { initialUserPlan?: str
           </div>
         </div>
       </footer>
-    </div>
-  );
-}
-
-// Pricing Section Component
-function PricingSection({ userPlan }: { userPlan: string | null }) {
-  const [isYearly, setIsYearly] = useState(false);
-
-  return (
-    <section id="pricing" className="py-16 md:py-24 px-6 md:px-8 bg-[#282828]">
-      <div className="max-w-6xl mx-auto">
-        {/* Section Title */}
-        <div className="text-center mb-12 space-y-4">
-          <h2 className="text-page-title text-[#E7E4E4] font-bold">Pricing Plans</h2>
-          <p className="text-body text-[#E7E4E4] opacity-70 max-w-2xl mx-auto">
-            Choose from our range of plans designed to help you maximize your financial
-            performance, from basic tracking to advanced analytics and customization.
-          </p>
-        </div>
-
-        {/* Pricing Toggle */}
-        <div className="flex items-center justify-center gap-4 mb-8">
-          <span
-            className={`text-body transition-colors ${!isYearly ? "font-semibold" : ""}`}
-            style={{ color: !isYearly ? "var(--text-primary)" : "var(--text-secondary)" }}
-          >
-            Monthly
-          </span>
-          <button
-            onClick={() => setIsYearly(!isYearly)}
-            className="relative w-14 h-7 rounded-full transition-colors cursor-pointer"
-            style={{ backgroundColor: isYearly ? "var(--accent-purple)" : "#393939" }}
-            aria-label={isYearly ? "Switch to monthly billing" : "Switch to yearly billing"}
-          >
-            <span
-              className="absolute top-1 left-1 w-5 h-5 rounded-full transition-transform bg-white"
-              style={{ transform: isYearly ? "translateX(28px)" : "translateX(0)" }}
-            />
-          </button>
-          <span
-            className={`text-body transition-colors ${isYearly ? "font-semibold" : ""}`}
-            style={{ color: isYearly ? "var(--text-primary)" : "var(--text-secondary)" }}
-          >
-            Yearly <span style={{ color: "var(--accent-green)" }}>(Save 20%)</span>
-          </span>
-        </div>
-
-        {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {pricingTiers.map((tier, index) => {
-            // Map plan names: Basic Plan -> Basic, Premium Plan -> Standard, Ultimate Plan -> Enterprise
-            const displayName = tier.name === "Basic Plan" ? "Basic" 
-              : tier.name === "Premium Plan" ? "Standard" 
-              : tier.name === "Ultimate Plan" ? "Enterprise" 
-              : tier.name;
-
-            return (
-              <PricingCard
-                key={tier.id}
-                name={displayName}
-                planId={tier.id}
-                tagline={tier.tagline}
-                monthlyPrice={tier.monthlyPrice}
-                yearlyPrice={tier.yearlyPrice}
-                features={tier.features.map(f => f.text)}
-                ctaText={tier.ctaText}
-                isEmphasized={index === 1} // Middle card (Standard/Premium) is emphasized
-                isYearly={isYearly}
-                userPlan={userPlan}
-                hasDiscount={tier.hasDiscount}
-                discountPercent={tier.discountPercent}
-              />
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// Pricing Card Component
-interface PricingCardProps {
-  name: string;
-  planId: "basic" | "premium" | "ultimate";
-  tagline: string;
-  monthlyPrice: number;
-  yearlyPrice: number;
-  features: string[];
-  ctaText: string;
-  isEmphasized: boolean;
-  isYearly: boolean;
-  userPlan: string | null;
-  hasDiscount?: boolean;
-  discountPercent?: number;
-}
-
-function PricingCard({
-  name,
-  planId,
-  tagline,
-  monthlyPrice,
-  yearlyPrice,
-  features,
-  ctaText,
-  isEmphasized,
-  isYearly,
-  userPlan,
-  hasDiscount,
-  discountPercent,
-}: PricingCardProps) {
-  const price = isYearly ? yearlyPrice : monthlyPrice;
-  const period = isYearly ? "/ year" : "/ month";
-
-  const formatPrice = (price: number) => {
-    if (price === 0) return "Free";
-    return `$ ${price.toFixed(2)}`;
-  };
-
-  // Determine button text and behavior based on user's plan
-  const getButtonConfig = () => {
-    if (!userPlan) {
-      // Not signed in - show original CTAs
-      return { text: ctaText, isCurrentPlan: false, isDisabled: false };
-    }
-
-    const planHierarchy: Record<string, number> = {
-      basic: 1,
-      premium: 2,
-      ultimate: 3,
-    };
-
-    const userPlanLevel = planHierarchy[userPlan] || 1;
-    const cardPlanLevel = planHierarchy[planId] || 1;
-
-    if (cardPlanLevel === userPlanLevel) {
-      // User is on this plan
-      return { text: "Current Plan", isCurrentPlan: true, isDisabled: true };
-    } else if (cardPlanLevel > userPlanLevel) {
-      // Higher plan - show upgrade
-      return { text: "Upgrade", isCurrentPlan: false, isDisabled: false };
-    } else {
-      // Lower plan - user is already on higher plan
-      return { text: "Current Plan", isCurrentPlan: true, isDisabled: true };
-    }
-  };
-
-  const buttonConfig = getButtonConfig();
-
-  return (
-    <div className="relative">
-      {/* Discount Badge */}
-      {hasDiscount && discountPercent && (
-        <div
-          className="absolute -top-4 right-4 px-5 py-2 text-sm font-bold transform rotate-12 z-10"
-          style={{
-            backgroundColor: "var(--accent-purple)",
-            color: "#fff",
-            clipPath: "polygon(0 0, 100% 0, 100% 75%, 85% 100%, 0 100%)",
-          }}
-        >
-          {discountPercent}% OFF
-        </div>
-      )}
-
-      <div
-        className={`card-surface flex flex-col gap-6 border ${
-          isEmphasized ? "border-2 border-[#AC66DA]" : "border-[#3a3a3a]"
-        }`}
-      >
-      <div>
-        <h3 className="text-card-header text-[#E7E4E4] mb-2">{name}</h3>
-        <div className="flex items-baseline gap-2 mb-2">
-          <span className="text-card-value text-[#E7E4E4]">{formatPrice(price)}</span>
-          {price > 0 && (
-            <span className="text-body text-[#E7E4E4] opacity-70">{period}</span>
-          )}
-        </div>
-        <p className="text-body text-[#E7E4E4] opacity-70">{tagline}</p>
-      </div>
-
-      <ul className="flex flex-col gap-3 flex-1">
-        {features.map((feature, index) => (
-          <li key={index} className="flex items-start gap-3">
-            <div className="shrink-0 mt-0.5">
-              <Check width={20} height={20} strokeWidth={2} style={{ color: "var(--accent-purple)" }} />
-            </div>
-            <span className="text-body text-[#E7E4E4]">{feature}</span>
-          </li>
-        ))}
-      </ul>
-
-      <SignedOut>
-        <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard">
-          <button
-            className={`mt-4 py-3 px-6 rounded-full text-body font-semibold transition-colors cursor-pointer ${
-              name === "Basic"
-                ? "bg-[#282828] hover:bg-[#393939] text-[#E7E4E4]"
-                : "bg-[#E7E4E4] hover:opacity-90 text-[#282828]"
-            }`}
-          >
-            {ctaText}
-          </button>
-        </SignUpButton>
-      </SignedOut>
-      <SignedIn>
-        {buttonConfig.isDisabled ? (
-          <button
-            disabled
-            className={`mt-4 py-3 px-6 rounded-full text-body font-semibold transition-colors cursor-not-allowed opacity-60 ${
-              name === "Basic"
-                ? "bg-[#282828] text-[#E7E4E4]"
-                : "bg-[#E7E4E4] text-[#282828]"
-            }`}
-          >
-            {buttonConfig.text}
-          </button>
-        ) : buttonConfig.text === "Upgrade" ? (
-          <Link
-            href="/pricing"
-            className="mt-4 py-3 px-6 rounded-full text-body font-semibold transition-all cursor-pointer inline-block text-center bg-[var(--accent-purple)] text-[#E7E4E4] hover:opacity-90 ring-2 ring-[#AC66DA]/50 ring-offset-2 ring-offset-[#202020]"
-          >
-            {buttonConfig.text}
-          </Link>
-        ) : (
-          <Link
-            href="/dashboard"
-            className={`mt-4 py-3 px-6 rounded-full text-body font-semibold transition-colors cursor-pointer inline-block text-center ${
-              name === "Basic"
-                ? "bg-[#282828] hover:bg-[#393939] text-[#E7E4E4]"
-                : "bg-[#E7E4E4] hover:opacity-90 text-[#282828]"
-            }`}
-          >
-            Open Dashboard
-          </Link>
-        )}
-      </SignedIn>
-      </div>
     </div>
   );
 }
