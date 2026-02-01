@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Xmark } from 'iconoir-react';
 import { getHealthColor, getTrendColor } from '@/lib/utils';
 import type { FinancialHealthDetails, TimePeriod } from '@/types/dashboard';
@@ -16,52 +16,17 @@ interface FinancialHealthModalProps {
   isOpen: boolean;
   onClose: () => void;
   timePeriod?: TimePeriod;
+  /** Data loaded on page load by parent; modal never fetches */
   initialData?: FinancialHealthDetails | null;
 }
 
 export default function FinancialHealthModal({
   isOpen,
   onClose,
-  timePeriod = 'This Month',
   initialData,
 }: FinancialHealthModalProps) {
-  const [data, setData] = useState<FinancialHealthDetails | null>(initialData ?? null);
-  const [loading, setLoading] = useState(!initialData);
-  const [error, setError] = useState<string | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const pointerDownOnOverlay = useRef(false);
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params = new URLSearchParams({ timePeriod });
-      const res = await fetch(`/api/financial-health?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to fetch financial health');
-      const json = await res.json();
-      setData({
-        score: json.score ?? 0,
-        trend: json.trend ?? 0,
-        details: json.details ?? { saving: 0, spendingControl: 0, goals: 0, engagement: 0 },
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load financial health');
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [timePeriod]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    if (initialData != null) {
-      setData(initialData);
-      setLoading(false);
-      setError(null);
-    } else {
-      fetchData();
-    }
-  }, [isOpen, initialData, fetchData]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -80,11 +45,13 @@ export default function FinancialHealthModal({
 
   if (!isOpen) return null;
 
+  const loading = initialData == null;
+  const data = initialData ?? null;
   const score = data?.score ?? 0;
   const trend = data?.trend ?? 0;
   const details = data?.details;
   const showTrend = trend !== 0;
-  const isEmpty = score === 0 && !loading && !error;
+  const isEmpty = score === 0 && !loading;
 
   return (
     <>
@@ -123,20 +90,7 @@ export default function FinancialHealthModal({
                 <div className="h-4 w-32 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
               </div>
             )}
-            {error && !loading && (
-              <div className="py-4">
-                <p className="text-body opacity-70">{error}</p>
-                <button
-                  type="button"
-                  onClick={fetchData}
-                  className="mt-4 px-4 py-2 rounded-full font-semibold text-[#E7E4E4] hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: '#AC66DA' }}
-                >
-                  Retry
-                </button>
-              </div>
-            )}
-            {!loading && !error && data && (
+            {!loading && data && (
               <>
                 <div className="flex flex-col items-center mb-6">
                   <span className="text-fin-health-key" style={{ color: getHealthColor(score) }}>
