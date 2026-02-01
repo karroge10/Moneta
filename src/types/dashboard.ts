@@ -118,6 +118,17 @@ export type TimePeriod =
   | 'Last Year' 
   | 'All Time';
 
+export interface FinancialHealthDetails {
+  score: number;
+  trend: number;
+  details: {
+    saving: number;
+    spendingControl: number;
+    goals: number;
+    engagement: number;
+  };
+}
+
 export interface IncomeSource {
   id: string;
   name: string;

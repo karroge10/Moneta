@@ -10,6 +10,7 @@ import UpcomingBillsCard from '@/components/dashboard/UpcomingBillsCard';
 import TransactionsCard from '@/components/dashboard/TransactionsCard';
 import GoalsCard from '@/components/dashboard/GoalsCard';
 import FinancialHealthCard from '@/components/dashboard/FinancialHealthCard';
+import FinancialHealthModal from '@/components/dashboard/FinancialHealthModal';
 import InvestmentsCard from '@/components/dashboard/InvestmentsCard';
 import InsightCard from '@/components/dashboard/InsightCard';
 import TopExpensesCard from '@/components/dashboard/TopExpensesCard';
@@ -20,14 +21,10 @@ import Confetti from '@/components/ui/Confetti';
 import { getGoalStatus } from '@/lib/goalUtils';
 import { buildTransactionFromRecurring } from '@/lib/recurring-utils';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
-import { Transaction, ExpenseCategory, TimePeriod, Goal, Investment, Bill, RecurringItem } from '@/types/dashboard';
+import { Transaction, ExpenseCategory, TimePeriod, Goal, Investment, Bill, RecurringItem, FinancialHealthDetails } from '@/types/dashboard';
 import { useCategories } from '@/hooks/useCategories';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
-import {
-  mockUpdate,
-  mockFinancialHealth,
-  mockInsight,
-} from '@/lib/mockData';
+import { mockUpdate, mockInsight } from '@/lib/mockData';
 
 export default function DashboardPage() {
   const [income, setIncome] = useState({ amount: 0, trend: 0, comparisonLabel: '' });
@@ -37,6 +34,8 @@ export default function DashboardPage() {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [financialHealth, setFinancialHealth] = useState<FinancialHealthDetails | null>(null);
+  const [financialHealthModalOpen, setFinancialHealthModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Month');
@@ -68,9 +67,7 @@ export default function DashboardPage() {
       }));
   }, [recurringItems, categories]);
   
-  // Keep mock data for other components (not requested to be changed)
   const update = mockUpdate;
-  const financialHealth = mockFinancialHealth;
   const insight = mockInsight;
   
   const fetchDashboardData = useCallback(async () => {
@@ -103,6 +100,15 @@ export default function DashboardPage() {
       setTransactions(data.transactions || []);
       setTopExpenses(data.topExpenses || []);
       setInvestments(data.investments || []);
+      setFinancialHealth(
+        data.financialHealth != null
+          ? {
+              score: data.financialHealth.score ?? 0,
+              trend: data.financialHealth.trend ?? 0,
+              details: data.financialHealth.details ?? { saving: 0, spendingControl: 0, goals: 0, engagement: 0 },
+            }
+          : null
+      );
 
       const recurringResponse = await fetch('/api/recurring?type=expense');
       if (recurringResponse.ok) {
@@ -121,6 +127,7 @@ export default function DashboardPage() {
       setTopExpenses([]);
       setInvestments([]);
       setRecurringItems([]);
+      setFinancialHealth(null);
     } finally {
       setLoading(false);
     }
@@ -518,7 +525,12 @@ export default function DashboardPage() {
         <GoalsCard goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} />
 
         {/* Financial Health short row */}
-        <FinancialHealthCard score={financialHealth} mobile />
+        <FinancialHealthCard
+          score={financialHealth?.score ?? 0}
+          trend={financialHealth?.trend}
+          mobile
+          onLearnClick={() => setFinancialHealthModalOpen(true)}
+        />
 
         {/* Upcoming Bills full width */}
         <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
@@ -564,7 +576,12 @@ export default function DashboardPage() {
           trend={insight.trend}
           minimal
         />
-        <FinancialHealthCard score={financialHealth} minimal />
+        <FinancialHealthCard
+          score={financialHealth?.score ?? 0}
+          trend={financialHealth?.trend}
+          minimal
+          onLearnClick={() => setFinancialHealthModalOpen(true)}
+        />
         <GoalsCard goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} />
         <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
         <TransactionsCard transactions={transactions} onRefresh={fetchDashboardData} />
@@ -622,7 +639,11 @@ export default function DashboardPage() {
                   <GoalsCard goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} />
                 </div>
                 <div className="col-span-2 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  <FinancialHealthCard score={financialHealth} />
+                  <FinancialHealthCard
+                    score={financialHealth?.score ?? 0}
+                    trend={financialHealth?.trend}
+                    onLearnClick={() => setFinancialHealthModalOpen(true)}
+                  />
                 </div>
               </div>
               
@@ -672,6 +693,14 @@ export default function DashboardPage() {
           currencyOptions={currencyOptions}
         />
       )}
+
+      {/* Financial Health Score breakdown modal */}
+      <FinancialHealthModal
+        isOpen={financialHealthModalOpen}
+        onClose={() => setFinancialHealthModalOpen(false)}
+        timePeriod={timePeriod}
+        initialData={financialHealth}
+      />
 
       {/* Confetti */}
       {showConfetti && (

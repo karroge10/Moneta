@@ -14,9 +14,11 @@ const SKELETON_ITEMS = 5;
 interface StatisticsSummaryProps {
   items: StatisticsSummaryItem[];
   loading?: boolean;
+  /** When provided, the Financial Health "Learn" link opens this callback (e.g. modal) instead of linking */
+  onFinancialHealthLearnClick?: () => void;
 }
 
-export default function StatisticsSummary({ items, loading = false }: StatisticsSummaryProps) {
+export default function StatisticsSummary({ items, loading = false, onFinancialHealthLearnClick }: StatisticsSummaryProps) {
   const { currency } = useCurrency();
   const regularItems = items.filter(item => !item.isLarge);
   const largeItem = items.find(item => item.isLarge);
@@ -73,65 +75,67 @@ export default function StatisticsSummary({ items, loading = false }: Statistics
           ))}
           {portfolioItem && <SummaryItem key={portfolioItem.id} item={portfolioItem} currency={currency} />}
           {largeItem && (
-            <div key={largeItem.id} className="relative">
-              <div className="absolute top-2 right-2 z-10">
-                <span 
-                  className="px-3 py-1 text-xs rounded-full font-semibold"
-                  style={{ backgroundColor: '#202020', color: '#E7E4E4' }}
-                >
-                  Coming Soon
-                </span>
-              </div>
+            <div
+              key={largeItem.id}
+              className="flex flex-col items-center justify-center p-6 mt-4"
+              style={{
+                backgroundColor: '#202020',
+                borderRadius: '30px',
+                width: '100%',
+                minHeight: '200px',
+              }}
+            >
               <div
-                className="flex flex-col items-center justify-center p-6 mt-4"
+                className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                style={{ backgroundColor: `${largeItem.iconColor}1a` }}
+              >
+                {(() => {
+                  const Icon = getIcon(largeItem.icon);
+                  return (
+                    <Icon
+                      width={32}
+                      height={32}
+                      strokeWidth={1.5}
+                      style={{ color: largeItem.iconColor }}
+                    />
+                  );
+                })()}
+              </div>
+              <h3 className="text-card-header mb-4">{largeItem.label}</h3>
+              <div
+                className="mb-4"
                 style={{
-                  backgroundColor: '#202020',
-                  borderRadius: '30px',
-                  width: '100%',
-                  minHeight: '200px',
-                  filter: 'blur(2px)',
-                  pointerEvents: 'none',
-                  userSelect: 'none',
+                  color: largeItem.iconColor,
+                  fontSize: 'clamp(48px, 5vw, 64px)',
+                  fontWeight: 700,
+                  lineHeight: 1.1,
                 }}
               >
-                <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-                  style={{ backgroundColor: `${largeItem.iconColor}1a` }}
-                >
-                  {(() => {
-                    const Icon = getIcon(largeItem.icon);
-                    return (
-                      <Icon
-                        width={32}
-                        height={32}
-                        strokeWidth={1.5}
-                        style={{ color: largeItem.iconColor }}
-                      />
-                    );
-                  })()}
-                </div>
-                <h3 className="text-card-header mb-4">{largeItem.label}</h3>
-                <div 
-                  className="mb-4" 
-                  style={{ 
-                    color: largeItem.iconColor,
-                    fontSize: 'clamp(48px, 5vw, 64px)',
-                    fontWeight: 700,
-                    lineHeight: 1.1
-                  }}
-                >
-                  {largeItem.value}
-                </div>
-                {largeItem.link && (
-                  <Link 
-                    href="#" 
+                {largeItem.value}
+              </div>
+              {largeItem.change && (
+                <div className="text-helper mb-2">{largeItem.change}</div>
+              )}
+              {largeItem.link && (
+                onFinancialHealthLearnClick ? (
+                  <button
+                    type="button"
+                    onClick={onFinancialHealthLearnClick}
+                    className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap text-left"
+                  >
+                    <span className="text-wrap-safe break-words">{largeItem.link}</span>
+                    <NavArrowRight width={14} height={14} className="stroke-current transition-colors shrink-0" />
+                  </button>
+                ) : (
+                  <Link
+                    href="/financial-health"
                     className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap"
                   >
                     <span className="text-wrap-safe break-words">{largeItem.link}</span>
-                    <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0" />
+                    <NavArrowRight width={14} height={14} className="stroke-current transition-colors shrink-0" />
                   </Link>
-                )}
-              </div>
+                )
+              )}
             </div>
           )}
           {itemsAfterPortfolio.map((item) => (
