@@ -13,8 +13,6 @@ import {
   CalendarCheck,
   Reports,
   LogOut,
-  SunLight,
-  HalfMoon,
   NavArrowRight,
   NavArrowLeft,
 } from "iconoir-react";
@@ -56,8 +54,6 @@ export default function Sidebar({ activeSection }: SidebarProps) {
       return false;
     }
   });
-  const [isLightActive, setIsLightActive] = useState<boolean>(true);
-
   // Sync body class with collapsed state
   useEffect(() => {
     document.body.classList.toggle("sidebar-collapsed", isCollapsed);
@@ -123,7 +119,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
         </nav>
       </div>
 
-      {/* Footer with Auth and Theme Toggle */}
+      {/* Footer with Auth */}
       <div className="sidebar-footer">
         <ClerkLoading>
           <div className="sidebar-logout pointer-events-none cursor-default opacity-80" aria-hidden="true">
@@ -184,42 +180,6 @@ export default function Sidebar({ activeSection }: SidebarProps) {
             </SignInButton>
           </SignedOut>
         </ClerkLoaded>
-
-        {isCollapsed ? (
-          <button
-            type="button"
-            className="theme-toggle-single"
-            aria-label={isLightActive ? "Light mode active" : "Dark mode active"}
-            onClick={() => setIsLightActive((v) => !v)}
-          >
-            <span className={`tt-icon ${isLightActive ? "show" : ""}`}>
-              <SunLight width={20} height={20} strokeWidth={1.5} />
-            </span>
-            <span className={`tt-icon ${!isLightActive ? "show" : ""}`}>
-              <HalfMoon width={20} height={20} strokeWidth={1.5} />
-            </span>
-          </button>
-        ) : (
-          <div className={`theme-toggle ${isLightActive ? "is-light" : "is-dark"}`}>
-            <span className="theme-toggle-indicator" aria-hidden="true" />
-            <button
-              type="button"
-              className={`theme-toggle-button ${isLightActive ? "active" : ""}`}
-              aria-label="Light mode"
-              onClick={() => setIsLightActive(true)}
-            >
-              <SunLight width={20} height={20} strokeWidth={1.5} />
-            </button>
-            <button
-              type="button"
-              className={`theme-toggle-button ${!isLightActive ? "active" : ""}`}
-              aria-label="Dark mode"
-              onClick={() => setIsLightActive(false)}
-            >
-              <HalfMoon width={20} height={20} strokeWidth={1.5} />
-            </button>
-          </div>
-        )}
       </div>
     </aside>
   );

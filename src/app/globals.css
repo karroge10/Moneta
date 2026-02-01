@@ -335,55 +335,6 @@ body.sidebar-collapsed {
   min-height: 20px;
 }
 
-.theme-toggle {
-  display: flex;
-  position: relative;
-  background: #202020;
-  border-radius: var(--radius-sidebar-active);
-  padding: 4px;
-  gap: 4px;
-  overflow: hidden;
-}
-
-/* Sliding pill indicator */
-.theme-toggle-indicator {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  height: calc(100% - 8px);
-  width: calc(50% - 4px);
-  background: #282828;
-  border-radius: calc(var(--radius-sidebar-active) - 5px);
-  transition: transform 200ms ease;
-  z-index: 0;
-}
-.theme-toggle.is-dark .theme-toggle-indicator {
-  transform: translateX(100%);
-}
-.theme-toggle.is-enabled .theme-toggle-indicator {
-  transform: translateX(100%);
-}
-
-.theme-toggle-button {
-  flex: 1;
-  padding: 10px 16px; /* match sidebar item vertical rhythm */
-  border-radius: var(--radius-sidebar-active);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.15s ease, transform 0.1s ease;
-  background: transparent;
-  position: relative;
-  z-index: 1;
-}
-
-.theme-toggle-button:active { transform: scale(0.98); }
-
-/* Expanded mode: make theme icons turn purple on hover */
-.theme-toggle-button:hover { color: var(--accent-purple); }
-.theme-toggle-button svg { stroke: currentColor; }
-
 /* Dividers */
 .sidebar-divider {
   border: 0;
@@ -457,59 +408,8 @@ body.sidebar-collapsed .sidebar .sidebar-logout .text-sidebar-button {
   padding: 0;
   white-space: nowrap;
 }
-body.sidebar-collapsed .sidebar .theme-toggle {
-  background: transparent;
-  padding: 0;
-  gap: 8px;
-}
-body.sidebar-collapsed .sidebar .theme-toggle-indicator { display: none; }
-body.sidebar-collapsed .sidebar .theme-toggle-button {
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  background: #202020;
-  border-radius: 10px;
-}
-body.sidebar-collapsed .sidebar .theme-toggle-button.active { background: #282828; }
-
-/* Single compact mode button used in collapsed state */
-.theme-toggle-single {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-sidebar-active);
-  background: #202020;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-  position: relative;
-  overflow: hidden;
-  color: var(--text-primary);
-}
-.theme-toggle-single:hover { background: #202020; color: var(--accent-purple); }
-.theme-toggle-single:active { transform: scale(0.98); }
-.theme-toggle-single svg { stroke: currentColor; }
-
-/* Crossfade/scale animation for collapsed mode toggle */
-.tt-icon {
-  position: absolute;
-  inset: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transform: scale(0.85) rotate(-8deg);
-  transition: opacity 160ms ease, transform 200ms ease;
-}
-.tt-icon.show {
-  opacity: 1;
-  transform: scale(1) rotate(0deg);
-}
-
 /* Optional mode: force accent color on controls at rest (toggle via body.controls-accent-always) */
 body.controls-accent-always .sidebar .collapse-btn,
-body.controls-accent-always .sidebar .theme-toggle-single,
 body.controls-accent-always .sidebar .sidebar-logout {
   color: var(--accent-purple);
 }
