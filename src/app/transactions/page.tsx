@@ -560,7 +560,7 @@ export default function TransactionsPage() {
     mapped.sort((a, b) => {
       const aVal = a[sortKey as keyof RecurringRow];
       const bVal = b[sortKey as keyof RecurringRow];
-      if (sortColumn === 'date' || sortColumn === 'dateRaw') {
+      if (sortKey === 'dateRaw') {
         const cmp = String(aVal).localeCompare(String(bVal));
         return sortOrder === 'asc' ? cmp : -cmp;
       }
@@ -785,7 +785,7 @@ export default function TransactionsPage() {
                       </>
                     ) : viewMode === 'past' && transactions.length === 0 ? (
                       <tr>
-                        <td colSpan={viewMode === 'future' ? 6 : 5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)', height: '100%' }}>
+                        <td colSpan={5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)', height: '100%' }}>
                           <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 500px)' }}>
                             No transactions found. Try adjusting your filters.
                           </div>
