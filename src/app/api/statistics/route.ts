@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { calculateGoalProgress } from '@/lib/goalUtils';
+import { getFinancialHealthScore } from '@/lib/financial-health';
 import { TimePeriod, MonthlySummaryRow, StatisticsSummaryItem, DemographicComparison } from '@/types/dashboard';
 import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
 
@@ -623,6 +624,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const financialHealth = await getFinancialHealthScore(user.id, timePeriod, targetCurrencyId);
+
     // Build summary items
     const summaryItems: StatisticsSummaryItem[] = [
       {
@@ -668,8 +671,8 @@ export async function GET(request: NextRequest) {
       {
         id: '6',
         label: 'Financial Health Score',
-        value: '81/100',
-        change: '',
+        value: `${financialHealth.score}/100`,
+        change: financialHealth.trend !== 0 ? `${financialHealth.trend > 0 ? '+' : ''}${financialHealth.trend} vs last period` : '',
         icon: 'Heart',
         iconColor: '#AC66DA',
         isLarge: true,

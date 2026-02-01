@@ -39,7 +39,7 @@ export const faqData: FAQItem[] = [
   {
     id: '6',
     question: 'What is the Financial Health Score?',
-    answer: 'The Financial Health Score is a calculated metric based on your spending, savings, and income habits, providing a quick overview of your financial well-being.',
+    answer: 'The Financial Health Score is a calculated metric based on your spending, savings, and income habits, providing a quick overview of your financial well-being. You can see the full breakdown on the Financial Health page.',
     category: 'Features'
   },
   {

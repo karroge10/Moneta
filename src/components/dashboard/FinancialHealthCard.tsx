@@ -1,15 +1,54 @@
+import Link from 'next/link';
 import Card from '@/components/ui/Card';
-import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
-import { getHealthColor } from '@/lib/utils';
+import { getHealthColor, getTrendColor } from '@/lib/utils';
 import { NavArrowRight } from 'iconoir-react';
 
 interface FinancialHealthCardProps {
   score: number;
+  trend?: number;
   mobile?: boolean;
   minimal?: boolean;
+  /** When provided, "Learn how we calculate" opens this callback (e.g. modal) instead of linking to /financial-health */
+  onLearnClick?: () => void;
 }
 
-export default function FinancialHealthCard({ score, mobile = false, minimal = false }: FinancialHealthCardProps) {
+function TrendLine({ trend }: { trend: number }) {
+  const sign = trend > 0 ? '+' : '';
+  const label = `${sign}${trend} vs last period`;
+  return (
+    <span className="text-helper" style={{ color: getTrendColor(trend) }}>
+      {label}
+    </span>
+  );
+}
+
+const learnLinkClass = 'text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors';
+const learnLinkClassDesktop = 'text-helper flex items-center gap-2 cursor-pointer group hover-text-purple transition-colors mt-2 min-w-0';
+
+function LearnTrigger({
+  onClick,
+  className,
+  compact = false,
+}: { onClick?: () => void; className: string; compact?: boolean }) {
+  const content = (
+    <>
+      <span className={compact ? '' : 'text-wrap-safe break-words leading-tight'}>Learn how we calculate financial health score</span>
+      <NavArrowRight width={compact ? 12 : 14} height={compact ? 12 : 14} className="stroke-current transition-colors shrink-0" />
+    </>
+  );
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={className}>
+        {content}
+      </button>
+    );
+  }
+  return <Link href="/financial-health" className={className}>{content}</Link>;
+}
+
+export default function FinancialHealthCard({ score, trend, mobile = false, minimal = false, onLearnClick }: FinancialHealthCardProps) {
+  const showTrend = trend != null && trend !== 0;
+
   // Empty state when score is 0
   if (score === 0) {
     if (mobile) {
@@ -17,7 +56,6 @@ export default function FinancialHealthCard({ score, mobile = false, minimal = f
         <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 min-w-0">
           <div className="mb-2 flex items-center gap-3">
             <div className="text-card-header">Financial Health</div>
-            <ComingSoonBadge />
           </div>
           <div className="flex flex-col justify-center items-center py-4">
             <div className="text-body text-center mb-2 opacity-70">Add transactions to see your score</div>
@@ -29,16 +67,13 @@ export default function FinancialHealthCard({ score, mobile = false, minimal = f
 
     if (minimal) {
       return (
-        <Card 
-          title="Financial Health" 
-          href="/financial-health" 
+        <Card
+          title="Financial Health"
+          href="/financial-health"
           showActions={false}
           customHeader={
             <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <h2 className="text-card-header">Financial Health</h2>
-                <ComingSoonBadge />
-              </div>
+              <h2 className="text-card-header">Financial Health</h2>
             </div>
           }
         >
@@ -51,16 +86,13 @@ export default function FinancialHealthCard({ score, mobile = false, minimal = f
     }
 
     return (
-      <Card 
-        title="Financial Health" 
-        href="/financial-health" 
+      <Card
+        title="Financial Health"
+        href="/financial-health"
         showActions={false}
         customHeader={
           <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="text-card-header">Financial Health</h2>
-              <ComingSoonBadge />
-            </div>
+            <h2 className="text-card-header">Financial Health</h2>
           </div>
         }
       >
@@ -75,16 +107,13 @@ export default function FinancialHealthCard({ score, mobile = false, minimal = f
   // Minimal variant: like Income/Expense cards (for two-column layout)
   if (minimal) {
     return (
-      <Card 
-        title="Financial Health" 
-        href="/financial-health" 
+      <Card
+        title="Financial Health"
+        href="/financial-health"
         showActions={false}
         customHeader={
           <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="text-card-header">Financial Health</h2>
-              <ComingSoonBadge />
-            </div>
+            <h2 className="text-card-header">Financial Health</h2>
           </div>
         }
       >
@@ -94,10 +123,8 @@ export default function FinancialHealthCard({ score, mobile = false, minimal = f
               {score}
             </span>
           </div>
-          <div className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors mt-2">
-            <span>Learn how we calculate financial health score</span>
-            <NavArrowRight width={12} height={12} className="stroke-current transition-colors flex-shrink-0" />
-          </div>
+          {showTrend && <TrendLine trend={trend!} />}
+          <LearnTrigger onClick={onLearnClick} className={`${learnLinkClass} mt-2`} compact />
         </div>
       </Card>
     );
@@ -109,33 +136,27 @@ export default function FinancialHealthCard({ score, mobile = false, minimal = f
       <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 min-w-0">
         <div className="mb-2 flex items-center gap-3">
           <div className="text-card-header">Financial Health</div>
-          <ComingSoonBadge />
         </div>
         <div className="flex items-center justify-between gap-3 min-w-0">
           <span className="text-card-value flex-shrink-0 whitespace-nowrap" style={{ color: getHealthColor(score) }}>
             {score}/100
           </span>
         </div>
-        <div className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors">
-          <span>Learn how we calculate financial health score</span>
-          <NavArrowRight width={12} height={12} className="stroke-current transition-colors flex-shrink-0" />
-        </div>
+        {showTrend && <TrendLine trend={trend!} />}
+        <LearnTrigger onClick={onLearnClick} className={learnLinkClass} compact />
       </div>
     );
   }
 
   // Desktop variant: full card
   return (
-    <Card 
-      title="Financial Health" 
-      href="/financial-health" 
+    <Card
+      title="Financial Health"
+      href="/financial-health"
       showActions={false}
       customHeader={
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h2 className="text-card-header">Financial Health</h2>
-            <ComingSoonBadge />
-          </div>
+          <h2 className="text-card-header">Financial Health</h2>
         </div>
       }
     >
@@ -145,10 +166,8 @@ export default function FinancialHealthCard({ score, mobile = false, minimal = f
             {score}
           </span>
         </div>
-        <div className="text-helper flex items-center gap-2 cursor-pointer group hover-text-purple transition-colors mt-2 min-w-0">
-          <span className="text-wrap-safe break-words leading-tight">Learn how we calculate financial health score</span>
-          <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0" />
-        </div>
+        {showTrend && <TrendLine trend={trend!} />}
+        <LearnTrigger onClick={onLearnClick} className={learnLinkClassDesktop} compact={false} />
       </div>
     </Card>
   );
