@@ -1,11 +1,120 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Check } from 'iconoir-react';
-import { pricingTiers } from '@/lib/pricingData';
+import { SignedIn, SignedOut } from '@clerk/nextjs';
+import { CheckoutButton } from '@clerk/nextjs/experimental';
+import { pricingTiers as fallbackTiers } from '@/lib/pricingData';
+
+const VALID_PLAN_IDS = ['basic', 'premium', 'ultimate'] as const;
+type PlanId = (typeof VALID_PLAN_IDS)[number];
+
+function isPlanId(s: string | null | undefined): s is PlanId {
+  return s != null && VALID_PLAN_IDS.includes(s as PlanId);
+}
+
+export interface DisplayTier {
+  id: string;
+  clerkPlanId?: string;
+  name: string;
+  tagline: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  features: { text: string }[];
+  ctaText: string;
+  hasDiscount?: boolean;
+  discountPercent?: number;
+}
+
+function displayTiersFromApi(plans: { id: string; clerkPlanId?: string; name: string; description: string; monthlyPrice: number; yearlyPrice: number; features: { key: string; name: string; description: string }[] }[]): DisplayTier[] {
+  return plans.map((plan, index) => ({
+    id: plan.id,
+    clerkPlanId: plan.clerkPlanId,
+    name: plan.name,
+    tagline: plan.description,
+    monthlyPrice: plan.monthlyPrice,
+    yearlyPrice: plan.yearlyPrice,
+    features: plan.features.map((f) => ({ text: f.name })),
+    ctaText: index === 0 || plan.monthlyPrice === 0 ? 'Get Started' : 'Upgrade',
+  }));
+}
+
+function displayTiersFromFallback(): DisplayTier[] {
+  return fallbackTiers.map((t) => ({
+    id: t.id,
+    name: t.name,
+    tagline: t.tagline,
+    monthlyPrice: t.monthlyPrice,
+    yearlyPrice: t.yearlyPrice,
+    features: t.features.map((f) => ({ text: f.text })),
+    ctaText: t.ctaText,
+    hasDiscount: t.hasDiscount,
+    discountPercent: t.discountPercent,
+  }));
+}
 
 export default function PricingTiers() {
+  const [tiers, setTiers] = useState<DisplayTier[]>(displayTiersFromFallback());
   const [isYearly, setIsYearly] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<PlanId | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [updatingTierId, setUpdatingTierId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setError(null);
+      const [plansRes, settingsRes] = await Promise.all([
+        fetch('/api/plans'),
+        fetch('/api/user/settings'),
+      ]);
+
+      const plansData = plansRes.ok ? await plansRes.json() : { plans: [] };
+      const plans = plansData?.plans ?? [];
+      if (plans.length > 0) {
+        setTiers(displayTiersFromApi(plans));
+      }
+
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json();
+        const plan = settingsData?.plan;
+        setCurrentPlan(isPlanId(plan) ? plan : 'basic');
+      } else {
+        if (settingsRes.status === 401) setCurrentPlan(null);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load');
+      setCurrentPlan(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSelectPlan = async (tier: DisplayTier) => {
+    if (currentPlan === tier.id) return;
+    setUpdatingTierId(tier.id);
+    setError(null);
+    try {
+      const res = await fetch('/api/user/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: tier.id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error ?? 'Failed to update plan');
+      }
+      setCurrentPlan(isPlanId(tier.id) ? tier.id : 'basic');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update plan');
+    } finally {
+      setUpdatingTierId(null);
+    }
+  };
 
   const formatPrice = (price: number) => {
     if (price === 0) return 'Free';
@@ -20,6 +129,16 @@ export default function PricingTiers() {
           <p className="text-body" style={{ color: 'var(--text-secondary)' }}>
             Flexible plans designed for every type of user. Upgrade anytime.
           </p>
+          {error && (
+            <p className="mt-2 text-sm" style={{ color: 'var(--error)' }}>
+              {error}
+            </p>
+          )}
+          {!loading && currentPlan === null && (
+            <p className="mt-2 text-helper">
+              Sign in to select or change your plan.
+            </p>
+          )}
         </div>
 
         {/* Billing Toggle - On the right */}
@@ -46,7 +165,7 @@ export default function PricingTiers() {
 
       {/* Pricing Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {pricingTiers.map((tier) => {
+        {tiers.map((tier) => {
           const price = isYearly ? tier.yearlyPrice : tier.monthlyPrice;
           const period = isYearly ? '/ year' : '/ month';
 
@@ -74,7 +193,7 @@ export default function PricingTiers() {
                 }}
               >
                 {/* Badges */}
-                {tier.isCurrentPlan && (
+                {!loading && currentPlan === tier.id && (
                   <div
                     className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold"
                     style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
@@ -108,20 +227,59 @@ export default function PricingTiers() {
                   ))}
                 </ul>
 
-                {/* CTA Button - Upgrade tiers stand out with ring */}
-                <button
-                  className={`mt-4 py-3 px-6 rounded-lg text-body font-semibold transition-colors cursor-pointer ${
-                    tier.id === 'basic'
-                      ? 'bg-[#282828] hover:bg-[#393939]'
-                      : 'hover:opacity-90 ring-2 ring-[#AC66DA]/50 ring-offset-2 ring-offset-[#202020]'
-                  }`}
-                  style={{
-                    backgroundColor: tier.id === 'basic' ? '#282828' : 'var(--accent-purple)',
-                    color: tier.id === 'basic' ? '#E7E4E4' : '#E7E4E4',
-                  }}
-                >
-                  {tier.ctaText}
-                </button>
+                {/* CTA Button - Free: PATCH plan; Paid with Clerk Billing: CheckoutButton */}
+                {tier.monthlyPrice === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPlan(tier)}
+                    disabled={loading || updatingTierId !== null || currentPlan === tier.id || currentPlan === null}
+                    className="mt-4 py-3 px-6 rounded-lg text-body font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed bg-[#282828] hover:bg-[#393939]"
+                    style={{ color: '#E7E4E4' }}
+                  >
+                    {updatingTierId === tier.id ? 'Updating…' : currentPlan === tier.id ? 'Current Plan' : tier.ctaText}
+                  </button>
+                ) : tier.clerkPlanId ? (
+                  <>
+                    <SignedIn>
+                      <CheckoutButton
+                        planId={tier.clerkPlanId}
+                        planPeriod={isYearly ? 'annual' : 'month'}
+                        for="user"
+                        newSubscriptionRedirectUrl="/pricing"
+                        onSubscriptionComplete={fetchData}
+                      >
+                        <button
+                          type="button"
+                          disabled={loading || currentPlan === tier.id}
+                          className="mt-4 w-full py-3 px-6 rounded-lg text-body font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 ring-2 ring-[#AC66DA]/50 ring-offset-2 ring-offset-[#202020]"
+                          style={{ backgroundColor: 'var(--accent-purple)', color: '#E7E4E4' }}
+                        >
+                          {currentPlan === tier.id ? 'Current Plan' : tier.ctaText}
+                        </button>
+                      </CheckoutButton>
+                    </SignedIn>
+                    <SignedOut>
+                      <button
+                        type="button"
+                        disabled
+                        className="mt-4 w-full py-3 px-6 rounded-lg text-body font-semibold opacity-60 cursor-not-allowed ring-2 ring-[#AC66DA]/50 ring-offset-2 ring-offset-[#202020]"
+                        style={{ backgroundColor: 'var(--accent-purple)', color: '#E7E4E4' }}
+                      >
+                        Sign in to upgrade
+                      </button>
+                    </SignedOut>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPlan(tier)}
+                    disabled={loading || updatingTierId !== null || currentPlan === tier.id || currentPlan === null}
+                    className="mt-4 py-3 px-6 rounded-lg text-body font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 ring-2 ring-[#AC66DA]/50 ring-offset-2 ring-offset-[#202020]"
+                    style={{ backgroundColor: 'var(--accent-purple)', color: '#E7E4E4' }}
+                  >
+                    {updatingTierId === tier.id ? 'Updating…' : currentPlan === tier.id ? 'Current Plan' : tier.ctaText}
+                  </button>
+                )}
               </div>
               </div>
             </div>

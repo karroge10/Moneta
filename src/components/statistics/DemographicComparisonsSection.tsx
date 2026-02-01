@@ -159,8 +159,8 @@ export default function DemographicComparisonsSection({
       showActions={false}
       className="flex flex-col min-h-0 flex-1"
     >
-      <div className="flex flex-col gap-4 flex-1 min-h-0" style={{ minHeight: contentMinHeight }}>
-        <div className="mb-2 w-full">
+      <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden" style={{ minHeight: contentMinHeight }}>
+        <div className="mb-2 w-full shrink-0">
           <div className="relative w-full" ref={dimensionRef}>
             <button
               type="button"
@@ -204,7 +204,7 @@ export default function DemographicComparisonsSection({
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 pr-2">
+        <div className="flex flex-col gap-3 pr-2 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
           {comparisons.length === 0 ? (
             <p className="text-body text-center py-4" style={{ color: 'var(--text-secondary)' }}>
               {demographicCohortValueMissing

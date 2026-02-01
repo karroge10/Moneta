@@ -64,7 +64,6 @@ export const pricingTiers: PricingTier[] = [
     monthlyPrice: 0,
     yearlyPrice: 0,
     tagline: 'Perfect for getting started.',
-    isCurrentPlan: true,
     features: [
       { text: 'Track Income & Expenses', included: true },
       { text: 'Unlimited Transactions', included: true },

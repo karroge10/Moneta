@@ -13,7 +13,6 @@ import {
   Cash,
   Calendar,
   HomeSimpleDoor,
-  Crown,
   Reports,
   LotOfCash,
   CalendarCheck,
@@ -403,30 +402,6 @@ export default function PersonalInformationCard({
           </div>
         )}
 
-        {/* Current Plan Section */}
-        {settings.plan === 'basic' && (
-          <div className="flex flex-col gap-3 mt-4">
-            <div className="text-body" style={{ color: '#E7E4E4' }}>
-              Current Plan
-            </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <span
-                className="inline-flex items-center gap-2 pl-0 pr-4 py-2 rounded-full cursor-default"
-                style={{ backgroundColor: '#282828', color: '#E7E4E4' }}
-              >
-                <Crown width={18} height={18} strokeWidth={1.5} />
-                <span className="text-body">Basic Tier</span>
-              </span>
-              <Link
-                href="/pricing"
-                className="px-6 py-2.5 rounded-full text-body font-semibold transition-all hover:opacity-90 cursor-pointer ring-2 ring-[#AC66DA]/40 ring-offset-2 ring-offset-[#282828]"
-                style={{ backgroundColor: 'var(--accent-purple)', color: '#E7E4E4' }}
-              >
-                Upgrade to Premium
-              </Link>
-            </div>
-          </div>
-        )}
       </div>
     </Card>
   );
