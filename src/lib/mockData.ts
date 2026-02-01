@@ -1157,6 +1157,8 @@ export const mockStatisticsPage = {
 
 export const mockUserSettings: UserSettings = {
   name: '',
+  firstName: '',
+  lastName: '',
   username: '',
   email: '',
   jobPosition: '',
