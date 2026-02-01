@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { currentUser } from '@clerk/nextjs/server';
+import { clerkClient, currentUser } from '@clerk/nextjs/server';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import {
@@ -96,12 +96,15 @@ export async function GET() {
 /**
  * PATCH /api/user/settings
  * Update current user's settings
- * Body: { firstName?, lastName?, userName?, dateOfBirth?, country?, languageId?, currencyId?, defaultPage?, incomeTaxRate?, dataSharingEnabled? }
+ * Body: { firstName?, lastName?, userName?, userName?, dateOfBirth?, country?, languageId?, currencyId?, defaultPage?, plan?, incomeTaxRate?, dataSharingEnabled? }
  */
 export async function PATCH(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
     const body = await request.json();
+
+    const VALID_PLANS = ['basic', 'premium', 'ultimate'] as const;
+    type Plan = (typeof VALID_PLANS)[number];
 
     const updateData: {
       firstName?: string | null;
@@ -113,6 +116,7 @@ export async function PATCH(request: NextRequest) {
       languageId?: number | null;
       currencyId?: number | null;
       defaultPage?: string;
+      plan?: string | null;
       incomeTaxRate?: number | null;
       dataSharingEnabled?: boolean | null;
       notificationSettings?: object;
@@ -208,6 +212,17 @@ export async function PATCH(request: NextRequest) {
       updateData.defaultPage = body.defaultPage;
     }
 
+    if (body.plan !== undefined) {
+      const plan = body.plan === null || body.plan === '' ? null : String(body.plan).toLowerCase();
+      if (plan !== null && !VALID_PLANS.includes(plan as Plan)) {
+        return NextResponse.json(
+          { error: 'Plan must be one of: basic, premium, ultimate' },
+          { status: 400 }
+        );
+      }
+      updateData.plan = plan;
+    }
+
     if (body.incomeTaxRate !== undefined) {
       if (body.incomeTaxRate === null) {
         updateData.incomeTaxRate = null;
@@ -261,6 +276,20 @@ export async function PATCH(request: NextRequest) {
       where: { id: user.id },
       include: { language: true, currency: true },
     });
+
+    // Sync plan to Clerk publicMetadata when plan was updated (per Clerk Backend SDK pattern)
+    if (updateData.plan !== undefined && user.clerkUserId) {
+      const planForClerk = updatedUser?.plan ?? 'basic';
+      try {
+        const client = await clerkClient();
+        await client.users.updateUser(user.clerkUserId, {
+          publicMetadata: { plan: planForClerk },
+        });
+      } catch (clerkErr) {
+        console.error('Failed to sync plan to Clerk publicMetadata:', clerkErr);
+        // DB is source of truth; non-fatal
+      }
+    }
 
     if (!updatedUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Crown, Bell, Settings, LogOut, Plus, HeadsetHelp, Upload, CalendarCheck } from 'iconoir-react';
+import { Bell, Settings, LogOut, Plus, HeadsetHelp, Upload, CalendarCheck } from 'iconoir-react';
 import Link from 'next/link';
 import { useClerk } from '@clerk/nextjs';
 import NotificationsDropdown from '@/components/updates/NotificationsDropdown';
@@ -171,14 +171,6 @@ export default function DashboardHeader({
                 >
                   <HeadsetHelp width={18} height={18} strokeWidth={1.5} className="stroke-current" />
                   Help Center
-                </Link>
-                <Link 
-                  href="/pricing" 
-                  className="w-full text-left px-4 py-3 flex items-center gap-2 hover-text-purple transition-colors text-body cursor-pointer"
-                  onClick={() => setIsUserMenuOpen(false)}
-                >
-                  <Crown width={18} height={18} strokeWidth={1.5} className="stroke-current" />
-                  Premium
                 </Link>
                 <button 
                   className="w-full text-left px-4 py-3 flex items-center gap-2 hover-text-purple transition-colors text-body cursor-pointer"

@@ -20,8 +20,8 @@ export const faqData: FAQItem[] = [
   },
   {
     id: '3',
-    question: 'Can I use Moneta for free?',
-    answer: 'Yes, the Basic plan offers core features for free. Upgrading to Premium or Ultimate plans unlocks additional tools and insights.',
+    question: 'When will you offer plans?',
+    answer: "We're focused on the core product first. We'll announce plans when we're ready.",
     category: 'Pricing'
   },
   {
@@ -45,7 +45,7 @@ export const faqData: FAQItem[] = [
   {
     id: '7',
     question: 'Can I set financial goals?',
-    answer: 'Yes, you can set up to 3 goals with the Free plan or unlimited goals with a Premium subscription.',
+    answer: 'Yes, you can set and track financial goals in the Goals section.',
     category: 'Features'
   },
   {
@@ -56,8 +56,8 @@ export const faqData: FAQItem[] = [
   },
   {
     id: '9',
-    question: 'Can I change my subscription plan?',
-    answer: 'Yes, you can upgrade, downgrade, or cancel your plan anytime by clicking the "Manage Subscription" button on the Settings page.',
+    question: 'How do I manage my account?',
+    answer: 'Visit the Settings page to update your profile, language, currency, and notification preferences.',
     category: 'Account'
   },
   {
@@ -96,17 +96,5 @@ export const faqData: FAQItem[] = [
     answer: 'Check your notification settings on the Notifications page to ensure alerts are enabled for your account.',
     category: 'Technical'
   },
-  {
-    id: '16',
-    question: 'What benefits do I get with Premium or Elite plans?',
-    answer: 'Premium gives you advanced insights, unlimited goals, and category customization. Elite includes priority support, exclusive features, and early access to new tools. Check out our Pricing plans.',
-    category: 'Pricing'
-  },
-  {
-    id: '17',
-    question: 'Can I cancel my subscription at any time?',
-    answer: 'Yes, subscriptions can be canceled anytime, and you\'ll retain access to premium features until the end of the billing period.',
-    category: 'Pricing'
-  }
-];
+  ];
 
