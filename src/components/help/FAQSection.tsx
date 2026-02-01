@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { HelpCircle, Filter, NavArrowDown, User, Spark, Settings, Crown } from 'iconoir-react';
+import { HelpCircle, Filter, NavArrowDown, User, Spark, Settings } from 'iconoir-react';
 import SearchBar from '@/components/transactions/shared/SearchBar';
 import Card from '@/components/ui/Card';
 import { FAQItem } from '@/lib/faqData';
@@ -29,7 +29,6 @@ export default function FAQSection({ faqItems }: FAQSectionProps) {
     { value: 'Account', label: 'Account', icon: User },
     { value: 'Features', label: 'Features', icon: Spark },
     { value: 'Technical', label: 'Technical', icon: Settings },
-    { value: 'Pricing', label: 'Pricing', icon: Crown },
   ];
 
   const selectedCategoryObj = categories.find(cat => cat.value === selectedCategory) || categories[0];

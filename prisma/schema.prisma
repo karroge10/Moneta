@@ -46,6 +46,22 @@ model User {
   Income           Income[]
   Trip             Trip[]
   pdfProcessingJobs PdfProcessingJob[]
+  feedback         Feedback[]
+}
+
+// Feedback from Help Center (no email sending; stored in DB only)
+model Feedback {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  email     String
+  category  String
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 // User notification preferences (separate table - read infrequently)
