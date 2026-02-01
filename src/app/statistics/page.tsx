@@ -8,6 +8,7 @@ import DemographicComparisonsSection from '@/components/statistics/DemographicCo
 import AverageExpensesCard from '@/components/statistics/AverageExpensesCard';
 import MonthlySummaryTable from '@/components/statistics/MonthlySummaryTable';
 import StatisticsSummary from '@/components/statistics/StatisticsSummary';
+import FinancialHealthModal from '@/components/dashboard/FinancialHealthModal';
 import { mockStatisticsPage } from '@/lib/mockData';
 import { MonthlySummaryRow, StatisticsSummaryItem, DemographicComparison } from '@/types/dashboard';
 
@@ -37,6 +38,7 @@ export default function StatisticsPage() {
   const [demographicComparisons, setDemographicComparisons] = useState<DemographicComparison[]>([]);
   const [demographicComparisonsDisabled, setDemographicComparisonsDisabled] = useState(false);
   const [demographicCohortValueMissing, setDemographicCohortValueMissing] = useState(false);
+  const [financialHealthModalOpen, setFinancialHealthModalOpen] = useState(false);
   const prevDimensionRef = useRef<DemographicDimension | null>(null);
 
   const fetchFull = useCallback(async () => {
@@ -149,6 +151,7 @@ export default function StatisticsPage() {
         <StatisticsSummary
           items={summaryItemsToShow}
           loading={loadingPersonal || !!error}
+          onFinancialHealthLearnClick={() => setFinancialHealthModalOpen(true)}
         />
       </div>
 
@@ -184,6 +187,7 @@ export default function StatisticsPage() {
             <StatisticsSummary
               items={summaryItemsToShow}
               loading={loadingPersonal || !!error}
+              onFinancialHealthLearnClick={() => setFinancialHealthModalOpen(true)}
             />
           </div>
         </div>
@@ -198,6 +202,12 @@ export default function StatisticsPage() {
           />
         </div>
       </div>
+
+      <FinancialHealthModal
+        isOpen={financialHealthModalOpen}
+        onClose={() => setFinancialHealthModalOpen(false)}
+        timePeriod={STATISTICS_TIME_PERIOD}
+      />
     </main>
   );
 }
