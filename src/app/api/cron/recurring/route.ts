@@ -17,16 +17,33 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     // Security check: Vercel sets User-Agent to 'vercel-cron/1.0' for cron requests
-    const userAgent = request.headers.get('user-agent');
+    const userAgent = request.headers.get('user-agent') || '';
     const cronSecret = request.headers.get('x-cron-secret');
     const expectedSecret = process.env.CRON_SECRET;
 
-    const isVercelCron = userAgent === 'vercel-cron/1.0';
+    const isVercelCron = userAgent.includes('vercel-cron');
     const hasValidSecret = expectedSecret && cronSecret === expectedSecret;
 
+    // Log for debugging (remove in production if needed)
+    console.log('[cron/recurring] Security check:', {
+      userAgent,
+      isVercelCron,
+      hasSecret: !!cronSecret,
+      hasExpectedSecret: !!expectedSecret,
+      hasValidSecret,
+    });
+
     if (!isVercelCron && !hasValidSecret) {
+      console.error('[cron/recurring] Unauthorized access attempt');
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { 
+          error: 'Unauthorized',
+          debug: {
+            userAgent,
+            hasSecret: !!cronSecret,
+            hasExpectedSecret: !!expectedSecret,
+          }
+        },
         { status: 401 }
       );
     }
