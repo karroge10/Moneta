@@ -109,7 +109,7 @@ async function getUserCurrencyId(userCurrencyId?: number): Promise<number> {
   return currency.id;
 }
 
-async function processDueRecurringItems(userId: number, now: Date) {
+export async function processDueRecurringItems(userId: number, now: Date) {
   const dueItems = await db.recurringTransaction.findMany({
     where: {
       userId,
