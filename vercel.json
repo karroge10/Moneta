@@ -6,6 +6,12 @@
     "env": {
       "PYTHON_PATH": "python3"
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/recurring",
+      "schedule": "0 2 * * *"
+    }
+  ]
 }
 
