@@ -5,9 +5,21 @@ import { NextResponse } from "next/server";
 const isPublicRoute = createRouteMatcher(["/", "/unauthorized"]);
 
 // Internal API routes that should be accessible via shared secret
-const isInternalRoute = createRouteMatcher(["/api/internal(.*)"]);
+// Cron routes bypass Clerk auth (they have their own security checks)
+const isInternalRoute = createRouteMatcher([
+  "/api/internal(.*)",
+  "/api/cron(.*)",
+]);
 
 export default clerkMiddleware(async (auth, request) => {
+  const pathname = request.nextUrl.pathname;
+  
+  // Handle cron routes - they have their own security (User-Agent or CRON_SECRET)
+  if (pathname.startsWith("/api/cron")) {
+    return NextResponse.next(); // Let the cron endpoint handle its own security
+  }
+  
+  // Handle internal API routes with shared secret
   const internalSecretHeader = request.headers.get("x-internal-secret");
   const expectedSecret = process.env.INTERNAL_API_SECRET;
 
