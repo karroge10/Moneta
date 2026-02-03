@@ -15,6 +15,14 @@ export const dynamic = 'force-dynamic';
  * Schedule: Configured in vercel.json to run daily at 2:00 AM UTC.
  */
 export async function GET(request: NextRequest) {
+  // Log immediately to verify function is being called
+  console.log('[cron/recurring] Endpoint called at:', new Date().toISOString());
+  console.log('[cron/recurring] Headers:', {
+    userAgent: request.headers.get('user-agent'),
+    cronSecret: request.headers.get('x-cron-secret') ? 'present' : 'missing',
+    allHeaders: Object.fromEntries(request.headers.entries()),
+  });
+
   try {
     // Security check: Vercel sets User-Agent to 'vercel-cron/1.0' for cron requests
     const userAgent = request.headers.get('user-agent') || '';
@@ -24,7 +32,7 @@ export async function GET(request: NextRequest) {
     const isVercelCron = userAgent.includes('vercel-cron');
     const hasValidSecret = expectedSecret && cronSecret === expectedSecret;
 
-    // Log for debugging (remove in production if needed)
+    // Log for debugging
     console.log('[cron/recurring] Security check:', {
       userAgent,
       isVercelCron,
