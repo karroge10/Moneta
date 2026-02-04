@@ -43,7 +43,7 @@ export default function IncomePage() {
   const [nextMonthPrediction, setNextMonthPrediction] = useState<number | null>(null);
   const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
   const { categories } = useCategories();
-  const { currencyOptions } = useCurrencyOptions();
+  const { currencyOptions, loading: currencyOptionsLoading } = useCurrencyOptions();
 
   // Derive upcoming list for the card from full recurring items (no extra fetch on click)
   const upcomingIncomes = useMemo(() => {
@@ -479,6 +479,7 @@ export default function IncomePage() {
             isDeleting={isDeleting}
             categories={categories}
             currencyOptions={currencyOptions}
+            currencyOptionsLoading={currencyOptionsLoading}
           />
         )}
       </main>
@@ -535,6 +536,7 @@ export default function IncomePage() {
             isDeleting={isDeleting}
             categories={categories}
             currencyOptions={currencyOptions}
+            currencyOptionsLoading={currencyOptionsLoading}
           />
         )}
       </main>
