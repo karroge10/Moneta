@@ -123,6 +123,22 @@ export default function TransactionForm({
     }
   }, [transaction]);
 
+  // Set default currency for new transactions (add mode)
+  useEffect(() => {
+    if (mode === 'add' && !transaction.currencyId && currency?.id) {
+      setFormData(prev => {
+        // Only update if currencyId is not already set to the user's currency
+        if (prev.currencyId === currency.id) {
+          return prev;
+        }
+        return {
+          ...prev,
+          currencyId: currency.id,
+        };
+      });
+    }
+  }, [mode, currency, transaction.currencyId]);
+
   // Filter categories by transaction type (client-side filtering)
   const categories = allCategories.filter(cat => {
     // Include categories that match the transaction type or have null type (for both)
