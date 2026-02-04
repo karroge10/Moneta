@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Xmark } from 'iconoir-react';
 import { Transaction, Category } from '@/types/dashboard';
 import TransactionForm from './TransactionForm';
+import { useCurrency } from '@/hooks/useCurrency';
+import Spinner from '@/components/ui/Spinner';
 
 interface TransactionModalProps {
   transaction: Transaction | null;
@@ -13,6 +15,7 @@ interface TransactionModalProps {
   onDelete?: () => void;
   onPauseResume?: (recurringId: number, isActive: boolean) => void;
   isSaving?: boolean;
+  isDeleting?: boolean;
   categories: Category[];
   currencyOptions: Array<{ id: number; name: string; symbol: string; alias: string }>;
 }
@@ -25,6 +28,7 @@ export default function TransactionModal({
   onDelete,
   onPauseResume,
   isSaving = false,
+  isDeleting = false,
   categories,
   currencyOptions,
 }: TransactionModalProps) {
@@ -32,6 +36,7 @@ export default function TransactionModal({
   const overlayRef = useRef<HTMLDivElement>(null);
   const pointerDownOnOverlay = useRef(false);
   const [isFloatingPanelOpen, setIsFloatingPanelOpen] = useState(false);
+  const { loading: currencyLoading } = useCurrency();
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -94,7 +99,17 @@ export default function TransactionModal({
               <Xmark width={24} height={24} strokeWidth={1.5} />
             </button>
           </div>
-          <div className={`flex-1 ${isFloatingPanelOpen ? 'overflow-visible' : 'overflow-y-auto'}`}>
+          <div className={`flex-1 ${isFloatingPanelOpen ? 'overflow-visible' : 'overflow-y-auto'} relative`}>
+            {currencyLoading && mode === 'add' && (
+              <div className="absolute inset-0 bg-[#282828]/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-b-3xl">
+                <div className="flex flex-col items-center gap-3">
+                  <Spinner />
+                  <p className="text-body" style={{ color: 'var(--text-secondary)' }}>
+                    Loading currency...
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="p-6 pb-8">
               <TransactionForm
                 transaction={transaction}
@@ -105,6 +120,7 @@ export default function TransactionModal({
                 onPauseResume={onPauseResume}
                 onFloatingPanelToggle={setIsFloatingPanelOpen}
                 isSaving={isSaving}
+                isDeleting={isDeleting}
                 categories={categories}
                 currencyOptions={currencyOptions}
               />
