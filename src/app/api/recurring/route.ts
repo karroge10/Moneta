@@ -316,7 +316,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (body.createInitial) {
+    // Only create initial transaction if startDate is today or in the past
+    // If startDate is in the future, wait until that date arrives (cron will handle it)
+    if (body.createInitial && startDate <= new Date()) {
       await processDueRecurringItems(user.id, new Date());
     }
 
