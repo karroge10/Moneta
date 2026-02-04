@@ -64,6 +64,7 @@ export default function ExpensesPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Keep mock data for components not requested to be changed
   const update = mockExpensesPage.update;
@@ -288,6 +289,7 @@ export default function ExpensesPage() {
     if (!selectedTransaction) return;
 
     try {
+      setIsDeleting(true);
       if (selectedTransaction.recurringId !== undefined) {
         const response = await fetch(`/api/recurring?id=${selectedTransaction.recurringId}`, {
           method: 'DELETE',
@@ -315,6 +317,8 @@ export default function ExpensesPage() {
     } catch (err) {
       console.error('Error deleting transaction:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete transaction');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -457,6 +461,7 @@ export default function ExpensesPage() {
             onDelete={handleDelete}
             onPauseResume={selectedTransaction.recurringId !== undefined ? handlePauseResume : undefined}
             isSaving={isSaving}
+            isDeleting={isDeleting}
             categories={categories}
             currencyOptions={currencyOptions}
           />
@@ -512,6 +517,7 @@ export default function ExpensesPage() {
             onDelete={handleDelete}
             onPauseResume={selectedTransaction.recurringId !== undefined ? handlePauseResume : undefined}
             isSaving={isSaving}
+            isDeleting={isDeleting}
             categories={categories}
             currencyOptions={currencyOptions}
           />
