@@ -44,6 +44,7 @@ export default function DashboardPage() {
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
   // Transaction modal state (for recurring from Upcoming Bills)
@@ -276,6 +277,7 @@ export default function DashboardPage() {
   const handleTransactionDelete = async () => {
     if (!selectedTransaction || selectedTransaction.recurringId === undefined) return;
     try {
+      setIsDeleting(true);
       const response = await fetch(`/api/recurring?id=${selectedTransaction.recurringId}`, {
         method: 'DELETE',
       });
@@ -287,6 +289,8 @@ export default function DashboardPage() {
       fetchDashboardData();
     } catch (err) {
       console.error('Error deleting recurring:', err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -689,6 +693,7 @@ export default function DashboardPage() {
           onDelete={handleTransactionDelete}
           onPauseResume={handlePauseResume}
           isSaving={isSaving}
+          isDeleting={isDeleting}
           categories={categories}
           currencyOptions={currencyOptions}
         />
