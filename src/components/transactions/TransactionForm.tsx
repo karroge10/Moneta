@@ -11,6 +11,7 @@ import Spinner from '@/components/ui/Spinner';
 import CurrencySelector from '@/components/transactions/import/CurrencySelector';
 import { CalendarPanel } from '@/components/transactions/shared/CalendarPanel';
 import { formatDateForDisplay, formatDateToInput } from '@/lib/dateFormatting';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 interface TransactionFormProps {
   transaction: Transaction;
@@ -21,6 +22,7 @@ interface TransactionFormProps {
   onPauseResume?: (recurringId: number, isActive: boolean) => void;
   onFloatingPanelToggle?: (isOpen: boolean) => void;
   isSaving?: boolean;
+  isDeleting?: boolean;
   categories: Category[];
   currencyOptions: Array<{ id: number; name: string; symbol: string; alias: string }>;
 }
@@ -34,10 +36,12 @@ export default function TransactionForm({
   onPauseResume,
   onFloatingPanelToggle,
   isSaving = false,
+  isDeleting = false,
   categories: allCategories,
   currencyOptions,
 }: TransactionFormProps) {
-  const { currency } = useCurrency();
+  const { currency, loading: currencyLoading } = useCurrency();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState<Transaction>(transaction);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
@@ -124,20 +128,31 @@ export default function TransactionForm({
   }, [transaction]);
 
   // Set default currency for new transactions (add mode)
+  // Only set when currency is loaded AND currencyOptions includes the currency
   useEffect(() => {
-    if (mode === 'add' && !transaction.currencyId && currency?.id) {
-      setFormData(prev => {
-        // Only update if currencyId is not already set to the user's currency
-        if (prev.currencyId === currency.id) {
-          return prev;
-        }
-        return {
-          ...prev,
-          currencyId: currency.id,
-        };
-      });
+    if (
+      mode === 'add' &&
+      !transaction.currencyId &&
+      !currencyLoading &&
+      currency?.id &&
+      currencyOptions.length > 0
+    ) {
+      // Check if the currency exists in currencyOptions
+      const currencyExists = currencyOptions.some(opt => opt.id === currency.id);
+      if (currencyExists) {
+        setFormData(prev => {
+          // Only update if currencyId is not already set to the user's currency
+          if (prev.currencyId === currency.id) {
+            return prev;
+          }
+          return {
+            ...prev,
+            currencyId: currency.id,
+          };
+        });
+      }
     }
-  }, [mode, currency, transaction.currencyId]);
+  }, [mode, currency, currencyLoading, currencyOptions, transaction.currencyId]);
 
   // Filter categories by transaction type (client-side filtering)
   const categories = allCategories.filter(cat => {
@@ -360,10 +375,15 @@ export default function TransactionForm({
     });
   };
 
-  const handleDelete = async () => {
-    if (onDelete && window.confirm('Are you sure you want to delete this transaction?')) {
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (onDelete) {
       onDelete();
     }
+    setShowDeleteConfirm(false);
   };
 
   // Check if current category is valid for current transaction type
@@ -904,13 +924,13 @@ export default function TransactionForm({
           {mode === 'edit' && onDelete && (
             <button
               type="button"
-              onClick={handleDelete}
-              disabled={isSaving}
+              onClick={handleDeleteClick}
+              disabled={isSaving || isDeleting}
               className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer hover:bg-[#B82E2E] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#D93F3F]"
               style={{ backgroundColor: '#D93F3F', color: 'var(--text-primary)' }}
             >
               <Trash width={16} height={16} strokeWidth={1.5} />
-              <span>Delete</span>
+              <span>{isDeleting ? 'Deleting...' : 'Delete'}</span>
             </button>
           )}
           <button
@@ -965,6 +985,17 @@ export default function TransactionForm({
           </button>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteConfirm(false)}
+        isLoading={isDeleting}
+        variant="danger"
+      />
     </form>
   );
 }

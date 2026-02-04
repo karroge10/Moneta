@@ -46,6 +46,7 @@ export default function TransactionsPage() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type?: ToastType }>>([]);
 
   const addToast = useCallback((message: string, type: ToastType = 'success') => {
@@ -435,6 +436,7 @@ export default function TransactionsPage() {
     if (!selectedTransaction) return;
 
     try {
+      setIsDeleting(true);
       if (selectedTransaction.recurringId !== undefined) {
         const response = await fetch(`/api/recurring?id=${selectedTransaction.recurringId}`, {
           method: 'DELETE',
@@ -464,6 +466,8 @@ export default function TransactionsPage() {
     } catch (err) {
       console.error('Error deleting transaction:', err);
       addToast(err instanceof Error ? err.message : 'Failed to delete transaction', 'error');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1002,6 +1006,7 @@ export default function TransactionsPage() {
           onDelete={handleDelete}
           onPauseResume={selectedTransaction.recurringId !== undefined ? handlePauseResume : undefined}
           isSaving={isSaving}
+          isDeleting={isDeleting}
           categories={categories}
           currencyOptions={currencyOptions}
         />
