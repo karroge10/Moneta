@@ -353,6 +353,26 @@ export async function POST(request: NextRequest) {
     // Get language alias from user (already fetched with language relation)
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
 
+    // Check if this is a recurring transaction
+    const isRecurring = body.recurring?.isRecurring === true;
+    let shouldCreateTransaction = true;
+    let recurringStartDate: Date | null = null;
+
+    if (isRecurring) {
+      // Get the start date for recurring transaction
+      const startDateStr = body.recurring?.startDate || body.dateRaw || body.date;
+      recurringStartDate = startDateStr ? new Date(startDateStr) : transactionDate;
+      
+      // Only create transaction if startDate is today or in the past
+      // If startDate is in the future, the cron job will create it when the date arrives
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const startDateOnly = new Date(recurringStartDate);
+      startDateOnly.setHours(0, 0, 0, 0);
+      
+      shouldCreateTransaction = startDateOnly <= today;
+    }
+
     // Create recurring schedule if requested
     await createRecurringFromPayload({
       userId: user.id,
@@ -363,41 +383,56 @@ export async function POST(request: NextRequest) {
       transactionDate,
     });
     
-    // Create transaction (save full description to database)
-    const newTransaction = await db.transaction.create({
-      data: {
-        userId: user.id,
-        type,
-        amount: absoluteAmount,
-        description: name, // Save full description
-        date: transactionDate,
-        categoryId,
-        currencyId,
-      },
-      include: {
-        category: true,
-      },
-    });
+    // Only create transaction record if:
+    // 1. It's not a recurring transaction, OR
+    // 2. It's a recurring transaction but startDate is today or in the past
+    let newTransaction = null;
+    if (shouldCreateTransaction) {
+      newTransaction = await db.transaction.create({
+        data: {
+          userId: user.id,
+          type,
+          amount: absoluteAmount,
+          description: name, // Save full description
+          date: transactionDate,
+          categoryId,
+          currencyId,
+        },
+        include: {
+          category: true,
+        },
+      });
+    }
     
-    // Transform to frontend format (format name for display)
-    const signedAmount = newTransaction.type === 'expense' ? -newTransaction.amount : newTransaction.amount;
+    // If transaction was created, return it; otherwise return success with no transaction
+    if (newTransaction) {
+      // Transform to frontend format (format name for display)
+      const signedAmount = newTransaction.type === 'expense' ? -newTransaction.amount : newTransaction.amount;
 
-    const transaction: TransactionType = {
-      id: newTransaction.id.toString(),
-      name: formatTransactionName(newTransaction.description, userLanguageAlias, false),
-      fullName: formatTransactionName(newTransaction.description, userLanguageAlias, true),
-      originalDescription: newTransaction.description, // Original description from database
-      date: formatDate(newTransaction.date),
-      dateRaw: newTransaction.date.toISOString().split('T')[0],
-      amount: signedAmount,
-      category: newTransaction.category?.name || null,
-      icon: getIconForCategory(newTransaction.category?.name || null),
-      originalAmount: signedAmount,
-      originalCurrencySymbol: transactionCurrency?.symbol,
-      originalCurrencyAlias: transactionCurrency?.alias,
-    };
-    
-    return NextResponse.json({ transaction }, { status: 201 });
+      const transaction: TransactionType = {
+        id: newTransaction.id.toString(),
+        name: formatTransactionName(newTransaction.description, userLanguageAlias, false),
+        fullName: formatTransactionName(newTransaction.description, userLanguageAlias, true),
+        originalDescription: newTransaction.description, // Original description from database
+        date: formatDate(newTransaction.date),
+        dateRaw: newTransaction.date.toISOString().split('T')[0],
+        amount: signedAmount,
+        category: newTransaction.category?.name || null,
+        icon: getIconForCategory(newTransaction.category?.name || null),
+        originalAmount: signedAmount,
+        originalCurrencySymbol: transactionCurrency?.symbol,
+        originalCurrencyAlias: transactionCurrency?.alias,
+      };
+      
+      return NextResponse.json({ transaction }, { status: 201 });
+    } else {
+      // Recurring transaction created but startDate is in the future
+      // Return success without transaction (it will be created by cron when due)
+      return NextResponse.json({ 
+        message: 'Recurring transaction created. Transaction will be created when start date arrives.',
+        transaction: null 
+      }, { status: 201 });
+    }
   } catch (error) {
     console.error('Error creating transaction:', error);
     return NextResponse.json(

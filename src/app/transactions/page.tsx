@@ -42,6 +42,7 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [currencyOptions, setCurrencyOptions] = useState<Array<{ id: number; name: string; symbol: string; alias: string }>>([]);
+  const [currencyOptionsLoading, setCurrencyOptionsLoading] = useState(true);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
   const [loading, setLoading] = useState(true);
@@ -197,6 +198,7 @@ export default function TransactionsPage() {
   useEffect(() => {
     const fetchCurrencies = async () => {
       try {
+        setCurrencyOptionsLoading(true);
         const response = await fetch('/api/currencies');
         if (response.ok) {
           const data = await response.json();
@@ -204,6 +206,8 @@ export default function TransactionsPage() {
         }
       } catch (err) {
         console.error('Error fetching currencies:', err);
+      } finally {
+        setCurrencyOptionsLoading(false);
       }
     };
     fetchCurrencies();
@@ -408,6 +412,18 @@ export default function TransactionsPage() {
 
       const data = await response.json();
       const savedTransaction = data.transaction;
+
+      // If transaction is null, it means it's a recurring transaction with future startDate
+      // The transaction will be created by cron when the date arrives
+      if (!savedTransaction) {
+        setSelectedTransaction(null);
+        addToast('Recurring transaction created. Transaction will be created when start date arrives.');
+        // Refresh recurring items for future tab
+        if (viewMode === 'future') {
+          fetchRecurring();
+        }
+        return;
+      }
 
       setTransactions(prev => {
         const exists = prev.some(t => t.id === savedTransaction.id);
@@ -1009,6 +1025,7 @@ export default function TransactionsPage() {
           isDeleting={isDeleting}
           categories={categories}
           currencyOptions={currencyOptions}
+          currencyOptionsLoading={currencyOptionsLoading}
         />
       )}
 

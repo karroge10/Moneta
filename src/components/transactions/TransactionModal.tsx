@@ -18,6 +18,7 @@ interface TransactionModalProps {
   isDeleting?: boolean;
   categories: Category[];
   currencyOptions: Array<{ id: number; name: string; symbol: string; alias: string }>;
+  currencyOptionsLoading?: boolean;
 }
 
 export default function TransactionModal({
@@ -31,12 +32,16 @@ export default function TransactionModal({
   isDeleting = false,
   categories,
   currencyOptions,
+  currencyOptionsLoading = false,
 }: TransactionModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const pointerDownOnOverlay = useRef(false);
   const [isFloatingPanelOpen, setIsFloatingPanelOpen] = useState(false);
   const { loading: currencyLoading } = useCurrency();
+  
+  // Show loading overlay when currency or currencyOptions are loading
+  const isLoadingCurrencyData = currencyLoading || currencyOptionsLoading;
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -100,12 +105,12 @@ export default function TransactionModal({
             </button>
           </div>
           <div className={`flex-1 ${isFloatingPanelOpen ? 'overflow-visible' : 'overflow-y-auto'} relative`}>
-            {currencyLoading && mode === 'add' && (
+            {isLoadingCurrencyData && (
               <div className="absolute inset-0 bg-[#282828]/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-b-3xl">
                 <div className="flex flex-col items-center gap-3">
                   <Spinner />
                   <p className="text-body" style={{ color: 'var(--text-secondary)' }}>
-                    Loading currency...
+                    Loading currency data...
                   </p>
                 </div>
               </div>
