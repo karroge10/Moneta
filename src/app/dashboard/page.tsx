@@ -50,7 +50,7 @@ export default function DashboardPage() {
   // Transaction modal state (for recurring from Upcoming Bills)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const { categories } = useCategories();
-  const { currencyOptions } = useCurrencyOptions();
+  const { currencyOptions, loading: currencyOptionsLoading } = useCurrencyOptions();
 
   // Derive upcoming bills for the card from full recurring items (include paused, show Paused badge)
   const upcomingBills = useMemo((): Bill[] => {
@@ -696,6 +696,7 @@ export default function DashboardPage() {
           isDeleting={isDeleting}
           categories={categories}
           currencyOptions={currencyOptions}
+          currencyOptionsLoading={currencyOptionsLoading}
         />
       )}
 
