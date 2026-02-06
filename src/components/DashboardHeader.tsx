@@ -13,11 +13,13 @@ interface ActionButton {
   label: string;
   onClick: () => void;
   icon?: React.ReactNode;
+  disabled?: boolean;
 }
 
 interface DashboardHeaderProps {
   pageName?: string;
   actionButton?: ActionButton;
+  secondaryButton?: ActionButton;
   actionButtons?: ActionButton[];
   timePeriod?: TimePeriod;
   onTimePeriodChange?: (period: TimePeriod) => void;
@@ -31,9 +33,10 @@ const TIME_PERIOD_OPTIONS: TimePeriod[] = [
   'All Time',
 ];
 
-export default function DashboardHeader({ 
-  pageName = 'Dashboard', 
-  actionButton, 
+export default function DashboardHeader({
+  pageName = 'Dashboard',
+  actionButton,
+  secondaryButton,
   actionButtons,
   timePeriod = 'This Month',
   onTimePeriodChange,
@@ -45,6 +48,11 @@ export default function DashboardHeader({
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const { notifications, refresh } = useNotifications(5, true); // Fetch top 5 unread notifications
+
+  const allButtons = actionButtons || [
+    ...(secondaryButton ? [secondaryButton] : []),
+    ...(actionButton ? [actionButton] : []),
+  ];
 
   // Update optimistic state when notifications change
   useEffect(() => {
@@ -68,20 +76,24 @@ export default function DashboardHeader({
   return (
     <div className="flex items-center justify-between mb-8 px-6 pt-7">
       <h1 className="text-page-title">{pageName}</h1>
-      
+
       <div className="flex items-center gap-4">
-        {(actionButtons || (actionButton ? [actionButton] : [])).map((btn, index) => (
-          <button
-            key={index}
-            onClick={btn.onClick}
-            className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors cursor-pointer hover:opacity-90"
-            style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
-          >
-            {btn.icon || <Plus width={18} height={18} strokeWidth={1.5} />}
-            <span className="text-sm font-semibold">{btn.label}</span>
-          </button>
-        ))}
-        
+        {allButtons.map((btn, index) => {
+          const isSecondary = btn === secondaryButton;
+          return (
+            <button
+              key={index}
+              onClick={btn.onClick}
+              disabled={btn.disabled}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all cursor-pointer disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed ${isSecondary ? 'bg-[#312033] border border-[#AC66DA]/30 text-[#AC66DA] hover:bg-[#3d2941]' : 'bg-[#E7E4E4] text-[#282828] hover:opacity-90'
+                }`}
+            >
+              {!isSecondary && (btn.icon || <Plus width={18} height={18} strokeWidth={1.5} />)}
+              <span className="text-sm font-semibold">{btn.label}</span>
+            </button>
+          );
+        })}
+
         <div className="flex items-center gap-4">
           {onTimePeriodChange && (
             <Dropdown
@@ -108,7 +120,7 @@ export default function DashboardHeader({
               {hasUnreadNotifications && (
                 <span
                   className="absolute top-0 right-0 blinking-dot"
-                  style={{ 
+                  style={{
                     width: '8px',
                     height: '8px',
                     backgroundColor: '#AC66DA',
@@ -144,7 +156,7 @@ export default function DashboardHeader({
               }}
             />
           </div>
-          
+
           <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -153,26 +165,26 @@ export default function DashboardHeader({
             >
               <Settings width={20} height={20} strokeWidth={1.5} className="stroke-current" />
             </button>
-            
+
             {isUserMenuOpen && (
               <div className="absolute top-full mt-2 right-0 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[180px]" style={{ backgroundColor: 'var(--bg-surface)' }}>
-                <Link 
-                  href="/settings" 
+                <Link
+                  href="/settings"
                   className="w-full text-left px-4 py-3 flex items-center gap-2 hover-text-purple transition-colors text-body cursor-pointer"
                   onClick={() => setIsUserMenuOpen(false)}
                 >
                   <Settings width={18} height={18} strokeWidth={1.5} className="stroke-current" />
                   Settings
                 </Link>
-                <Link 
-                  href="/help" 
+                <Link
+                  href="/help"
                   className="w-full text-left px-4 py-3 flex items-center gap-2 hover-text-purple transition-colors text-body cursor-pointer"
                   onClick={() => setIsUserMenuOpen(false)}
                 >
                   <HeadsetHelp width={18} height={18} strokeWidth={1.5} className="stroke-current" />
                   Help Center
                 </Link>
-                <button 
+                <button
                   className="w-full text-left px-4 py-3 flex items-center gap-2 hover-text-purple transition-colors text-body cursor-pointer"
                   onClick={async () => {
                     setIsUserMenuOpen(false);

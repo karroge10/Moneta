@@ -24,24 +24,46 @@ const formatXAxisLabel = (dateStr: string) => {
   if (isDailyWithMonth(dateStr)) {
     return { monDay: dateStr, isDailyWithMonth: true };
   }
-  const parts = dateStr.split(' ');
-  if (parts.length >= 2) {
+
+  // Handle "Jan 1, 2025" or "Jan 1" from toLocaleDateString
+  const parts = dateStr.replace(',', '').split(' ');
+  if (parts.length >= 3) {
+    // Has Month, Day, Year
     const month = parts[0].substring(0, 3);
-    const year = parts[1];
-    return { month, year, isDaily: false };
+    const day = parts[1];
+    const year = parts[2];
+    return { month, day, year, isFullDate: true };
+  } else if (parts.length === 2) {
+    const month = parts[0].substring(0, 3);
+    const day = parts[1];
+    return { month, day, isFullDate: false };
   }
+
   return { month: dateStr.substring(0, 3), year: '', isDaily: false };
 };
 
 // Custom tick component for vertical labels
 const CustomXAxisTick = ({ x, y, payload }: any) => {
   const formatted = formatXAxisLabel(payload.value);
-  
+
+  if ('isFullDate' in formatted && formatted.isFullDate) {
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text x={0} y={0} dy={16} textAnchor="middle" fill="rgba(231, 228, 228, 0.7)" fontSize={11}>
+          {formatted.month} {formatted.day}
+        </text>
+        <text x={0} y={0} dy={30} textAnchor="middle" fill="rgba(231, 228, 228, 0.4)" fontSize={10}>
+          {formatted.year}
+        </text>
+      </g>
+    );
+  }
+
   if ('isDailyWithMonth' in formatted && formatted.isDailyWithMonth) {
     // For "Jan 1", "Dec 15" format
     return (
       <g transform={`translate(${x},${y})`}>
-        <text x={0} y={0} dy={16} textAnchor="middle" fill="rgba(231, 228, 228, 0.7)" fontSize={12}>
+        <text x={0} y={0} dy={16} textAnchor="middle" fill="rgba(231, 228, 228, 0.7)" fontSize={11}>
           {formatted.monDay}
         </text>
       </g>
@@ -51,22 +73,24 @@ const CustomXAxisTick = ({ x, y, payload }: any) => {
     // Legacy: just day number
     return (
       <g transform={`translate(${x},${y})`}>
-        <text x={0} y={0} dy={16} textAnchor="middle" fill="rgba(231, 228, 228, 0.7)" fontSize={12}>
+        <text x={0} y={0} dy={16} textAnchor="middle" fill="rgba(231, 228, 228, 0.7)" fontSize={11}>
           {formatted.day}
         </text>
       </g>
     );
   }
-  
+
   // For monthly data, show month and year
   return (
     <g transform={`translate(${x},${y})`}>
-      <text x={0} y={0} dy={0} textAnchor="middle" fill="rgba(231, 228, 228, 0.7)" fontSize={12}>
+      <text x={0} y={0} dy={16} textAnchor="middle" fill="rgba(231, 228, 228, 0.7)" fontSize={11}>
         {formatted.month}
       </text>
-      <text x={0} y={14} dy={0} textAnchor="middle" fill="rgba(231, 228, 228, 0.7)" fontSize={12}>
-        {formatted.year}
-      </text>
+      {formatted.year && (
+        <text x={0} y={30} dy={0} textAnchor="middle" fill="rgba(231, 228, 228, 0.4)" fontSize={10}>
+          {formatted.year}
+        </text>
+      )}
     </g>
   );
 };
@@ -77,13 +101,13 @@ const CustomTooltip = ({ active, payload, currencySymbol = '$' }: any) => {
     const data = payload[0].payload;
     const dateStr = data.date;
     const value = data.value;
-    
+
     // Format date for display: "Jan 1" / "Dec 15" show as-is; legacy "1" shows "Day 1"; monthly as-is
     let displayDate = dateStr;
     if (isLegacyDailyData(dateStr)) {
       displayDate = `Day ${dateStr}`;
     }
-    
+
     return (
       <div className="tooltip-surface">
         <div className="tooltip-label">{displayDate}</div>
@@ -98,84 +122,59 @@ const CustomTooltip = ({ active, payload, currencySymbol = '$' }: any) => {
 // Returns a number (0 = show all) or 'preserveStartEnd' for automatic spacing
 const calculateInterval = (data: Array<{ date: string; value: number }>): number | 'preserveStartEnd' => {
   if (!data || data.length === 0) return 0;
-  
-  const isDaily = isLegacyDailyData(data[0].date) || isDailyWithMonth(data[0].date);
+
   const dataLength = data.length;
-  
-  if (isDaily) {
-    // For daily data (month views)
-    if (dataLength <= 31) {
-      // Show all labels for a single month or less
-      return 0;
-    } else {
-      // For more than a month of daily data, show approximately 12-15 labels
-      return Math.max(1, Math.floor(dataLength / 12));
-    }
-  } else {
-    // For monthly data
-    if (dataLength <= 6) {
-      // Show all labels for 6 months or less
-      return 0;
-    } else if (dataLength <= 12) {
-      // Show every other month for 7-12 months
-      return 1;
-    } else if (dataLength <= 24) {
-      // Show every 3rd month for 13-24 months (every quarter)
-      return 2;
-    } else if (dataLength <= 48) {
-      // Show every 4th month for 25-48 months
-      return 3;
-    } else {
-      // For "All Time" with many months (49+), calculate interval to show ~8-10 labels
-      // This ensures readable spacing without overlap
-      const targetLabels = 8;
-      const calculatedInterval = Math.floor(dataLength / targetLabels);
-      // Cap the interval - show at minimum every 6th month, but can be more for very long periods
-      return Math.max(5, calculatedInterval);
-    }
-  }
+
+  if (dataLength <= 7) return 0;
+  if (dataLength <= 14) return 1;
+  if (dataLength <= 31) return Math.ceil(dataLength / 6);
+  if (dataLength <= 90) return Math.ceil(dataLength / 8);
+
+  // For all-time data (potentially hundreds of points)
+  const targetLabels = 6;
+  return Math.floor(dataLength / targetLabels);
 };
 
 export default function LineChart({ data, noPadding = false, currencySymbol = '$' }: LineChartProps) {
   const interval = calculateInterval(data);
-  
+
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart 
-          data={data} 
+        <AreaChart
+          data={data}
           margin={{ top: 10, right: 16, left: 16, bottom: 0 }}
         >
-        <defs>
-          <linearGradient id={`colorGradient-${noPadding ? 'no-pad' : 'default'}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#AC66DA" stopOpacity={1} />
-            <stop offset="100%" stopColor="#282828" stopOpacity={1} />
-          </linearGradient>
-        </defs>
-        <XAxis 
-          dataKey="date" 
-          axisLine={{ stroke: 'rgba(231, 228, 228, 0.3)' }}
-          tickLine={{ stroke: 'rgba(231, 228, 228, 0.3)' }}
-          tick={<CustomXAxisTick />}
-          height={54}
-          tickMargin={16}
-          interval={interval}
-        />
-        <YAxis 
-          hide
-        />
-        <Tooltip content={<CustomTooltip currencySymbol={currencySymbol} />} />
-        <Area
-          type="monotone"
-          dataKey="value"
-          stroke="#AC66DA"
-          strokeWidth={2}
-          fill={`url(#colorGradient-${noPadding ? 'no-pad' : 'default'})`}
-          dot={{ fill: '#E7E4E4', r: 4, strokeWidth: 0 }}
-          activeDot={{ r: 6 }}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+          <defs>
+            <linearGradient id={`colorGradient-${noPadding ? 'no-pad' : 'default'}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#AC66DA" stopOpacity={1} />
+              <stop offset="100%" stopColor="#282828" stopOpacity={1} />
+            </linearGradient>
+          </defs>
+          <XAxis
+            dataKey="date"
+            axisLine={{ stroke: 'rgba(231, 228, 228, 0.3)' }}
+            tickLine={{ stroke: 'rgba(231, 228, 228, 0.3)' }}
+            tick={<CustomXAxisTick />}
+            height={54}
+            tickMargin={16}
+            interval={interval}
+          />
+          <YAxis
+            hide
+          />
+          <Tooltip content={<CustomTooltip currencySymbol={currencySymbol} />} />
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke="#AC66DA"
+            strokeWidth={2}
+            fill={`url(#colorGradient-${noPadding ? 'no-pad' : 'default'})`}
+            dot={{ fill: '#E7E4E4', r: 4, strokeWidth: 0 }}
+            activeDot={{ r: 6 }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }
