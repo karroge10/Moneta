@@ -97,9 +97,11 @@ export interface Investment {
   quantity?: number;
   purchasePrice?: number | null;
   purchaseDate?: string | null;
+  purchaseCurrencyId?: number | null;
   currentValue: number;
   changePercent: number;
   icon: string;
+  priceHistory?: { date: string; price: number }[];
 }
 
 export interface ExpenseCategory {
@@ -111,11 +113,11 @@ export interface ExpenseCategory {
   color: string;
 }
 
-export type TimePeriod = 
-  | 'This Month' 
-  | 'Last Month' 
-  | 'This Year' 
-  | 'Last Year' 
+export type TimePeriod =
+  | 'This Month'
+  | 'Last Month'
+  | 'This Year'
+  | 'Last Year'
   | 'All Time';
 
 export interface FinancialHealthDetails {

@@ -126,6 +126,22 @@ model Goal {
   @@index([userId])
 }
 
+// InvestmentPriceHistory table - Stores historical price snapshots for investments
+model InvestmentPriceHistory {
+  id           Int      @id @default(autoincrement())
+  investmentId Int
+  price        Decimal  @db.Decimal(18, 8)
+  priceDate    DateTime
+  source       String   // 'live' | 'manual' | 'auto'
+  createdAt    DateTime @default(now())
+
+  investment Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+
+  @@index([investmentId])
+  @@index([priceDate])
+  @@index([investmentId, priceDate])
+}
+
 // Investment table
 model Investment {
   id           Int      @id @default(autoincrement())
@@ -142,12 +158,14 @@ model Investment {
   currentValue Float
   changePercent Float   @default(0)
   icon         String
+  lastPriceUpdateDate DateTime? // Tracks when custom assets were last manually updated
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchaseCurrency Currency? @relation("CurrencyToPurchaseInvestments", fields: [purchaseCurrencyId], references: [id])
+  priceHistory InvestmentPriceHistory[]
 
   @@index([userId])
 }
