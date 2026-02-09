@@ -38,13 +38,19 @@ export async function GET() {
 
     const recentActivities = recentTransactions.map(t => ({
       id: t.id.toString(),
+      assetId: t.investmentAssetId?.toString(),
       name: t.asset?.name || 'Unknown Asset',
       ticker: t.asset?.ticker || '',
       type: t.investmentType === 'buy' ? 'Buy' : 'Sell',
+      investmentType: t.investmentType,
       quantity: Number(t.quantity),
+      pricePerUnit: Number(t.pricePerUnit),
       amount: Number(t.pricePerUnit) * Number(t.quantity),
-      date: t.date.toLocaleDateString(),
-      icon: t.asset?.assetType === 'crypto' ? 'BitcoinCircle' : 'Reports',
+      date: t.date.toISOString(), // ISO for better client-side parsing
+      icon: t.asset?.assetType === 'crypto' ? 'BitcoinCircle' :
+        t.asset?.assetType === 'stock' ? 'Cash' :
+          t.asset?.assetType === 'property' ? 'Neighbourhood' : 'Reports',
+      assetType: t.asset?.assetType,
     }));
 
     // Map to Frontend expected structure
@@ -57,22 +63,43 @@ export async function GET() {
       sourceType: a.pricingMode,
       quantity: a.quantity,
       currentValue: a.currentValue,
+      gainLoss: a.pnl,
       changePercent: a.pnlPercent,
       icon: a.icon || (a.type === 'crypto' ? 'BitcoinCircle' : 'Reports'),
       priceHistory: [], // Not supported in MVP refactor
     }));
 
+    // Fetch latest notification (prefer unread)
+    const latestNotification = await db.notification.findFirst({
+      where: { userId: user.id },
+      orderBy: [
+        { read: 'asc' },      // unread first
+        { createdAt: 'desc' } // then most recent
+      ],
+    });
+
+    // Format notification for UpdateCard
+    const update = latestNotification ? {
+      date: latestNotification.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      message: latestNotification.text,
+      highlight: '',
+      link: 'View all notifications',
+      isUnread: !latestNotification.read,
+    } : {
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      message: 'No new updates at this time.',
+      highlight: '',
+      link: 'View notifications',
+      isUnread: false,
+    };
+
     const responsePayload = {
-      update: {
-        date: new Date().toDateString(),
-        message: 'Portfolio updated.',
-        highlight: '',
-        link: '',
-      },
+      update,
       balance: {
         amount: summary.totalValue,
         trend: summary.pnlPercent,
       },
+      totalCost: summary.totalCost,
       portfolio,
       performance: {
         trend: summary.pnlPercent,

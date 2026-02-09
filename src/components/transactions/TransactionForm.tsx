@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useLayoutEffect, useCallback, CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import { NavArrowDown, Trash, ShoppingBag, Wallet, Language, Pause, Play } from 'iconoir-react';
+import { NavArrowDown, Trash, ShoppingBag, Wallet, Language, Pause, Play, FloppyDisk } from 'iconoir-react';
 import { Transaction, Category, RecurringFrequencyUnit } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -49,7 +49,11 @@ export default function TransactionForm({
     transaction.amount < 0 ? 'expense' : transaction.amount > 0 ? 'income' : 'expense'
   );
   const [amountInput, setAmountInput] = useState(
-    transaction.amount ? Math.abs(transaction.amount).toString() : ''
+    transaction.originalAmount !== undefined
+      ? Math.abs(transaction.originalAmount).toString()
+      : transaction.amount
+        ? Math.abs(transaction.amount).toString()
+        : ''
   );
   const [dateInput, setDateInput] = useState('');
   const [recurringEnabled, setRecurringEnabled] = useState<boolean>(transaction.recurring?.isRecurring ?? false);
@@ -87,11 +91,11 @@ export default function TransactionForm({
     const initial = formatDateToInput(transaction.date);
     return initial ? new Date(initial) : new Date();
   });
-  
+
   // Portal positioning state for date dropdown
   const [dateDropdownStyle, setDateDropdownStyle] = useState<CSSProperties | null>(null);
   const [dateOpenUpward, setDateOpenUpward] = useState(false);
-  
+
   const [recurringStartDropdownStyle, setRecurringStartDropdownStyle] = useState<CSSProperties | null>(null);
   const [recurringStartOpenUpward, setRecurringStartOpenUpward] = useState(false);
   const [recurringEndDropdownStyle, setRecurringEndDropdownStyle] = useState<CSSProperties | null>(null);
@@ -108,7 +112,8 @@ export default function TransactionForm({
     setFormData(transactionToUse);
     // Default to 'expense' if amount is 0 or missing, otherwise determine from amount sign
     setTransactionType(transaction.amount < 0 ? 'expense' : transaction.amount > 0 ? 'income' : 'expense');
-    setAmountInput(transaction.amount ? Math.abs(transaction.amount).toString() : '');
+    const amountToShow = transaction.originalAmount !== undefined ? transaction.originalAmount : transaction.amount;
+    setAmountInput(amountToShow ? Math.abs(amountToShow).toString() : '');
     const initial = formatDateToInput(transaction.date);
     setDateInput(initial);
     setCurrentMonth(initial ? new Date(initial) : new Date());
@@ -163,38 +168,38 @@ export default function TransactionForm({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      
+
       // Category dropdown (absolute positioning)
       if (isCategoryOpen && categoryDropdownRef.current && !categoryDropdownRef.current.contains(target)) {
         setIsCategoryOpen(false);
       }
-      
+
       // Date dropdown (portal) - check both container and portal ref
-      if (isDateOpen && 
-          dateDropdownRef.current && 
-          !dateDropdownRef.current.contains(target) &&
-          (!datePortalRef.current || !datePortalRef.current.contains(target))) {
+      if (isDateOpen &&
+        dateDropdownRef.current &&
+        !dateDropdownRef.current.contains(target) &&
+        (!datePortalRef.current || !datePortalRef.current.contains(target))) {
         setIsDateOpen(false);
       }
-      
-      
+
+
       if (isRecurringStartOpen &&
-          recurringStartDropdownRef.current &&
-          !recurringStartDropdownRef.current.contains(target) &&
-          (!recurringStartPortalRef.current || !recurringStartPortalRef.current.contains(target))) {
+        recurringStartDropdownRef.current &&
+        !recurringStartDropdownRef.current.contains(target) &&
+        (!recurringStartPortalRef.current || !recurringStartPortalRef.current.contains(target))) {
         setIsRecurringStartOpen(false);
       }
 
       if (isRecurringEndOpen &&
-          recurringEndDropdownRef.current &&
-          !recurringEndDropdownRef.current.contains(target) &&
-          (!recurringEndPortalRef.current || !recurringEndPortalRef.current.contains(target))) {
+        recurringEndDropdownRef.current &&
+        !recurringEndDropdownRef.current.contains(target) &&
+        (!recurringEndPortalRef.current || !recurringEndPortalRef.current.contains(target))) {
         setIsRecurringEndOpen(false);
       }
 
       if (isRecurringUnitOpen &&
-          recurringUnitDropdownRef.current &&
-          !recurringUnitDropdownRef.current.contains(target)) {
+        recurringUnitDropdownRef.current &&
+        !recurringUnitDropdownRef.current.contains(target)) {
         setIsRecurringUnitOpen(false);
       }
     };
@@ -357,14 +362,14 @@ export default function TransactionForm({
     const startDateForRecurring = mode === 'add' ? dateInput : (recurringStartDate || dateInput);
     const recurringPayload = recurringEnabled
       ? {
-          isRecurring: true,
-          frequencyUnit: recurringUnit,
-          frequencyInterval: Math.max(1, recurringInterval || 1),
-          startDate: startDateForRecurring,
-          endDate: recurringEndDate || null,
-          type: transactionType,
-          isActive: transaction.recurringId !== undefined ? (transaction.recurring?.isActive ?? true) : undefined,
-        }
+        isRecurring: true,
+        frequencyUnit: recurringUnit,
+        frequencyInterval: Math.max(1, recurringInterval || 1),
+        startDate: startDateForRecurring,
+        endDate: recurringEndDate || null,
+        type: transactionType,
+        isActive: transaction.recurringId !== undefined ? (transaction.recurring?.isActive ?? true) : undefined,
+      }
       : undefined;
     // Include currencyId in the saved transaction
     onSave({
@@ -466,11 +471,11 @@ export default function TransactionForm({
   // Get the original description and translated version
   const originalDescription = transaction.originalDescription || transaction.name;
   const translatedDescription = transaction.fullName || transaction.name;
-  
+
   // Check if translation is available and different from original
   // Translation exists if original has Georgian characters and translated version is different
   const hasGeorgianInOriginal = /[\u10A0-\u10FF]/.test(originalDescription || '');
-  const hasTranslation = originalDescription && 
+  const hasTranslation = originalDescription &&
     translatedDescription &&
     originalDescription !== translatedDescription &&
     originalDescription.trim() !== '' &&
@@ -639,60 +644,69 @@ export default function TransactionForm({
           <div className="relative bg-[#202020] border border-[#3a3a3a] rounded-xl p-0.5 flex gap-0.5 h-[42px]">
             <button
               type="button"
-              onClick={() => setTransactionType('expense')}
-              disabled={isSaving}
-              className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 ${
-                transactionType === 'expense'
-                  ? 'bg-[#D93F3F] text-white shadow-sm'
-                  : 'bg-transparent text-[#8C8C8C] hover:text-[#E7E4E4]'
-              }`}
-            >
-              <ShoppingBag width={14} height={14} strokeWidth={1.5} />
-              <span>Expense</span>
-            </button>
-            <button
-              type="button"
               onClick={() => setTransactionType('income')}
               disabled={isSaving}
-              className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 ${
-                transactionType === 'income'
-                  ? 'bg-[#74C648] text-white shadow-sm'
-                  : 'bg-transparent text-[#8C8C8C] hover:text-[#E7E4E4]'
-              }`}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 ${transactionType === 'income'
+                ? 'bg-[#74C648] text-white shadow-sm'
+                : 'bg-transparent text-[#8C8C8C] hover:text-[#E7E4E4]'
+                }`}
             >
               <Wallet width={14} height={14} strokeWidth={1.5} />
               <span>Income</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTransactionType('expense')}
+              disabled={isSaving}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 ${transactionType === 'expense'
+                ? 'bg-[#D93F3F] text-white shadow-sm'
+                : 'bg-transparent text-[#8C8C8C] hover:text-[#E7E4E4]'
+                }`}
+            >
+              <ShoppingBag width={14} height={14} strokeWidth={1.5} />
+              <span>Expense</span>
             </button>
           </div>
         </div>
 
         <div>
           <label className="block text-body font-medium mb-2">Amount</label>
-          <div className="relative">
-            <span 
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-body font-semibold"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              {selectedCurrency.symbol}
-            </span>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={amountInput}
-              onChange={(e) => {
-                const sanitized = e.target.value.replace(/[^0-9.,]/g, '');
-                setAmountInput(sanitized);
-                const numericValue = parseFloat(sanitized.replace(/,/g, '.'));
-                setFormData(prev => ({
-                  ...prev,
-                  amount: Number.isNaN(numericValue) ? 0 : numericValue,
-                }));
-              }}
-              disabled={isSaving}
-              className="w-full pl-8 pr-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ color: 'var(--text-primary)' }}
-              placeholder="0.00"
-            />
+          <div className="space-y-1.5">
+            <div className="relative">
+              <span
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-body font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {selectedCurrency.symbol}
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={amountInput}
+                onChange={(e) => {
+                  const sanitized = e.target.value.replace(/[^0-9.,]/g, '');
+                  setAmountInput(sanitized);
+                  const numericValue = parseFloat(sanitized.replace(/,/g, '.'));
+                  setFormData(prev => ({
+                    ...prev,
+                    amount: Number.isNaN(numericValue) ? 0 : numericValue,
+                  }));
+                }}
+                disabled={isSaving}
+                className="w-full pl-8 pr-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ color: 'var(--text-primary)' }}
+                placeholder="0.00"
+              />
+            </div>
+            {formData.currencyId &&
+              formData.currencyId !== currency.id &&
+              transaction.amount !== undefined &&
+              transaction.originalAmount !== undefined &&
+              Math.abs(transaction.amount) !== Math.abs(transaction.originalAmount) && (
+                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  ≈ {currency.symbol}{formatNumber(Math.abs(transaction.amount))} in your currency
+                </div>
+              )}
           </div>
         </div>
       </div>
@@ -938,9 +952,9 @@ export default function TransactionForm({
             onClick={onCancel}
             disabled={isSaving}
             className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#4a4a4a]"
-            style={{ 
-              backgroundColor: '#282828', 
-              color: 'var(--text-primary)', 
+            style={{
+              backgroundColor: '#282828',
+              color: 'var(--text-primary)',
               border: '1px solid #3a3a3a',
             }}
             onMouseEnter={(e) => {
@@ -980,7 +994,10 @@ export default function TransactionForm({
                 <span>Saving...</span>
               </>
             ) : (
-              <span>{mode === 'add' ? 'Add Transaction' : 'Save Changes'}</span>
+              <>
+                <FloppyDisk width={18} height={18} strokeWidth={1.5} />
+                <span>Save Changes</span>
+              </>
             )}
           </button>
         </div>

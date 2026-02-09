@@ -19,14 +19,14 @@ interface MobileNavbarProps {
 export default function MobileNavbar({ pageName, timePeriod, onTimePeriodChange, activeSection = 'dashboard' }: MobileNavbarProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const timePeriodOptions: TimePeriod[] = ['This Month', 'This Year', 'All Time'];
   const { notifications, refresh } = useNotifications(5, true); // Fetch top 5 unread notifications
 
   // Update optimistic state when notifications change
   useEffect(() => {
-    setHasUnreadNotifications(notifications.length > 0);
+    // This useEffect is now mostly empty as we use notifications.length directly,
+    // but we can keep it for other side effects if needed, or remove it.
   }, [notifications]);
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function MobileNavbar({ pageName, timePeriod, onTimePeriodChange,
     <>
       <div className="flex items-center justify-between mb-6 px-4 pt-6 md:hidden">
         <h1 className="text-page-title">{pageName}</h1>
-        
+
         <div className="flex items-center gap-3">
           {timePeriod && onTimePeriodChange && (
             <Dropdown
@@ -57,24 +57,20 @@ export default function MobileNavbar({ pageName, timePeriod, onTimePeriodChange,
               iconLeft={<CalendarCheck width={18} height={18} strokeWidth={1.5} />}
             />
           )}
-          
+
           <div className="relative" ref={notificationsRef}>
             <button
               onClick={() => {
                 setIsNotificationsOpen(!isNotificationsOpen);
-                // Hide dot immediately when opening (optimistic update)
-                if (!isNotificationsOpen && hasUnreadNotifications) {
-                  setHasUnreadNotifications(false);
-                }
               }}
               className="p-2 rounded-lg transition-colors relative cursor-pointer hover-text-purple"
               aria-label="Notifications"
             >
               <Bell width={20} height={20} strokeWidth={1.5} className="stroke-current" />
-              {hasUnreadNotifications && (
+              {notifications.length > 0 && (
                 <span
                   className="absolute top-0 right-0 blinking-dot"
-                  style={{ 
+                  style={{
                     width: '8px',
                     height: '8px',
                     backgroundColor: '#AC66DA',
@@ -89,11 +85,9 @@ export default function MobileNavbar({ pageName, timePeriod, onTimePeriodChange,
               isOpen={isNotificationsOpen}
               onClose={() => {
                 setIsNotificationsOpen(false);
-                refresh(); // Refresh when closing to get latest notifications
               }}
               onMarkAllRead={() => {
-                // Refresh notifications after marking all as read to update badge
-                refresh();
+                // Handled by context
               }}
               onNotificationClick={async (notificationId) => {
                 try {
@@ -101,8 +95,9 @@ export default function MobileNavbar({ pageName, timePeriod, onTimePeriodChange,
                     method: 'PATCH',
                   });
                   if (response.ok) {
-                    // Refresh notifications immediately to update the badge and remove purple dot
-                    await refresh();
+                    // Update locally via context if we choose to expose that, 
+                    // or just rely on the next poll/PATCH refresh.
+                    // For now, simplicity.
                   }
                 } catch (error) {
                   console.error('Failed to mark notification as read:', error);
@@ -110,7 +105,7 @@ export default function MobileNavbar({ pageName, timePeriod, onTimePeriodChange,
               }}
             />
           </div>
-          
+
           <button
             onClick={() => setIsDrawerOpen(true)}
             className="p-2 rounded-lg transition-colors cursor-pointer hover-text-purple"
