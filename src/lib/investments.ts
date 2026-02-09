@@ -48,7 +48,6 @@ async function fetchCryptoPrices(ids: string[]): Promise<Record<string, number>>
     const res = await fetch(url, { next: { revalidate: 60 } });
     if (!res.ok) return {};
     const data = await res.json();
-    // Transform { bitcoin: { usd: 50000 } } to { bitcoin: 50000 }
     const prices: Record<string, number> = {};
     for (const key in data) {
       if (data[key]?.usd) prices[key] = data[key].usd;
@@ -60,8 +59,38 @@ async function fetchCryptoPrices(ids: string[]): Promise<Record<string, number>>
   }
 }
 
+async function fetchStockPrices(tickers: string[]): Promise<Record<string, number>> {
+  if (tickers.length === 0) return {};
+  const unique = Array.from(new Set(tickers));
+  const symbols = unique.map(t => `${t.toLowerCase()}.us`).join('+');
+  const url = `https://stooq.pl/q/l/?s=${symbols}&f=sd2t2ohlcv&h&e=json`;
+
+  try {
+    const res = await fetch(url, { next: { revalidate: 60 } });
+    if (!res.ok) return {};
+    const data = await res.json();
+    const prices: Record<string, number> = {};
+    if (data?.symbols) {
+      for (const s of data.symbols) {
+        if (s.close !== 'N/D') {
+          const ticker = s.symbol.split('.')[0].toUpperCase();
+          prices[ticker] = Number(s.close);
+        }
+      }
+    }
+    return prices;
+  } catch (e) {
+    console.error('Failed to fetch stock prices', e);
+    return {};
+  }
+}
+
 export async function getInvestmentsPortfolio(userId: number, targetCurrency: Currency): Promise<PortfolioSummary> {
   console.log('[investments] Getting portfolio for user', userId, 'target', targetCurrency.alias);
+
+  // Resolve USD currency ID for live price conversion
+  const usd = await db.currency.findFirst({ where: { alias: { equals: 'usd', mode: 'insensitive' } } });
+
   // 1. Fetch all investment transactions
   const transactions = await db.transaction.findMany({
     where: {
@@ -70,7 +99,7 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
     },
     include: {
       asset: true,
-      currency: true, // Transaction currency
+      currency: true,
     },
     orderBy: { date: 'asc' },
   });
@@ -90,15 +119,24 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
   }
 
   // 3. Prepare for Live Pricing
-  const livePriceIds: string[] = [];
+  const cryptoIds: string[] = [];
+  const stockTickers: string[] = [];
+
   for (const item of assetMap.values()) {
-    if (item.asset?.pricingMode === 'live' && (item.asset.coingeckoId || coingeckoMap[item.asset.ticker])) {
-      const id = item.asset.coingeckoId || coingeckoMap[item.asset.ticker];
-      if (id) livePriceIds.push(id);
+    if (item.asset?.pricingMode === 'live') {
+      if (item.asset.assetType === 'crypto') {
+        const id = item.asset.coingeckoId || coingeckoMap[item.asset.ticker];
+        if (id) cryptoIds.push(id);
+      } else if (item.asset.assetType === 'stock') {
+        stockTickers.push(item.asset.ticker);
+      }
     }
   }
-  const livePrices = await fetchCryptoPrices(livePriceIds);
-  console.log('[investments] Live prices fetched:', livePrices);
+
+  const [cryptoPrices, stockPrices] = await Promise.all([
+    fetchCryptoPrices(cryptoIds),
+    fetchStockPrices(stockTickers)
+  ]);
 
   const portfolioAssets: PortfolioAsset[] = [];
   let globalTotalValue = 0;
@@ -109,23 +147,11 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
     if (!asset) continue;
 
     let quantity = 0;
-    let totalCost = 0; // Total cost basis
+    let totalCost = 0;
     let lastPrice = 0;
 
     for (const t of txs) {
       const qty = Number(t.quantity);
-      // Ensure transaction price is converted to Target Currency?
-      // Or should we calculate Cost Basis in USD and then convert?
-      // Usually cleaner to convert everything to Target Currency immediately for display.
-      // But if target currency changes, historical cost basis shouldn't fluctuate by FX Rate of TODAY?
-      // Historical Cost is fixed in Transaction Currency.
-      // We should convert Transaction Cost to Target Currency using Rate at Transaction Date?
-      // Or just convert avgPrice at the end?
-      // Standard: Sum(Cost in USD), Sum(Qty). Avg = Cost/Qty.
-      // Let's assume we convert everything to Target Currency at the time of calculation using CURRENT rate?
-      // No, cost basis uses historical rate.
-      // We'll use helper `convertAmount`.
-
       let pricePerUnit = Number(t.pricePerUnit);
       if (t.currencyId !== targetCurrency.id) {
         pricePerUnit = await convertAmount(pricePerUnit, t.currencyId, targetCurrency.id, t.date);
@@ -139,44 +165,42 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
         lastPrice = pricePerUnit;
       } else if (t.investmentType === 'sell') {
         if (quantity > 0) {
-          // Reduce cost basis proportionally
           const ratio = qty / quantity;
           totalCost -= totalCost * ratio;
         }
         quantity -= qty;
-        lastPrice = pricePerUnit; // Using sell price as "last valid price" source? debatable. Use buy/sell price both.
+        lastPrice = pricePerUnit;
       }
     }
 
-    if (quantity < 0.00000001) quantity = 0; // Floating point fix
+    if (quantity < 0.00000001) quantity = 0;
 
     let avgPrice = quantity > 0 ? totalCost / quantity : 0;
 
     // Determine Current Price
     let currentPrice = lastPrice;
+    let isLivePriceInUSD = false;
+
     if (asset.pricingMode === 'live') {
-      const id = asset.coingeckoId || coingeckoMap[asset.ticker];
-      if (id && livePrices[id]) {
-        // Live prices are USD. Convert to target currency.
-        // Assuming fetchCryptoPrices returns USD.
-        // We need 'usd' currency ID.
-        // TODO: Optimize getting USD currency ID.
-        // For now assume logic handles it or we fetch USD id.
-        // If target is USD, great. Else convert.
-        // Using convertAmount from USD to Target.
-        // We need existing 'convertAmount' which takes ID.
-        // I will hack: assume we can resolve 'USD' id efficiently.
-        // Or just `convertAmount` handles it? `convertAmount` needs DB lookup? Yes.
-        // I'll leave it as TODO or do a quick lookup.
-        // Actually, `investments.ts` in lines 133-136 fetched usdCurrency.
-        currentPrice = livePrices[id]; // This is USD.
+      if (asset.assetType === 'crypto') {
+        const id = asset.coingeckoId || coingeckoMap[asset.ticker];
+        if (id && cryptoPrices[id]) {
+          currentPrice = cryptoPrices[id];
+          isLivePriceInUSD = true;
+        }
+      } else if (asset.assetType === 'stock') {
+        if (stockPrices[asset.ticker]) {
+          currentPrice = stockPrices[asset.ticker];
+          isLivePriceInUSD = true;
+        }
       }
     }
 
-    // Normalize currentPrice to targetCurrency (if it was USD from API)
-    // Need to handle currency conversion for Live Price.
+    // Convert Live USD price to Target Currency immediately if needed
+    if (isLivePriceInUSD && usd && targetCurrency.id !== usd.id) {
+      currentPrice = await convertAmount(currentPrice, usd.id, targetCurrency.id, new Date());
+    }
 
-    // Calculate final metrics
     const currentValue = quantity * currentPrice;
     const pnl = currentValue - totalCost;
     const pnlPercent = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
@@ -194,35 +218,11 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
       pnl,
       pnlPercent,
       pricingMode: asset.pricingMode,
-      icon: asset.assetType === 'crypto' ? 'BitcoinCircle' : 'Reports', // Placeholder
+      icon: asset.assetType === 'crypto' ? 'BitcoinCircle' : asset.assetType === 'stock' ? 'Cash' : asset.assetType === 'property' ? 'Neighbourhood' : 'Reports',
     });
 
     globalTotalValue += currentValue;
     globalTotalCost += totalCost;
-  }
-
-  // Post-process: Convert Live USD prices if needed.
-  // Getting USD Currency ID for conversion
-  const usd = await db.currency.findFirst({ where: { alias: { equals: 'usd', mode: 'insensitive' } } });
-  console.log('[investments] USD Currency lookup:', usd?.alias);
-
-  if (usd && targetCurrency.id !== usd.id) {
-    // Convert assets that used Live USD price
-    const now = new Date();
-    for (const p of portfolioAssets) {
-      if (p.pricingMode === 'live') {
-        // It is currently in USD. Convert to Target.
-        p.currentPrice = await convertAmount(p.currentPrice, usd.id, targetCurrency.id, now);
-        p.currentValue = p.quantity * p.currentPrice;
-        // Recalculate PnL
-        p.pnl = p.currentValue - p.totalCost;
-        p.pnlPercent = p.totalCost > 0 ? (p.pnl / p.totalCost) * 100 : 0;
-      }
-    }
-
-    // Recalculate globals after conversion
-    globalTotalValue = portfolioAssets.reduce((sum, a) => sum + a.currentValue, 0);
-    // globalTotalCost was already in target currency (converted at transaction time).
   }
 
   const globalPnl = globalTotalValue - globalTotalCost;

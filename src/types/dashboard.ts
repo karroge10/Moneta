@@ -100,6 +100,7 @@ export interface Investment {
   purchaseCurrencyId?: number | null;
   currentValue: number;
   changePercent: number;
+  gainLoss?: number;
   icon: string;
   priceHistory?: { date: string; price: number }[];
 }
@@ -268,6 +269,7 @@ export interface NotificationEntry {
   time: string;
   type: string;
   text: string;
+  read: boolean;
 }
 
 export interface NotificationSettings {

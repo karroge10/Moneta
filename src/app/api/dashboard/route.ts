@@ -3,7 +3,7 @@ import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Transaction as TransactionType, ExpenseCategory, TimePeriod } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
-import { convertTransactionsToTarget } from '@/lib/currency-conversion';
+import { convertTransactionsToTargetSimple } from '@/lib/currency-conversion';
 import { getFinancialHealthScore } from '@/lib/financial-health';
 import { getInvestmentsPortfolio } from '@/lib/investments';
 
@@ -16,19 +16,19 @@ function formatDate(date: Date): string {
   const day = date.getDate();
   const month = months[date.getMonth()];
   const year = date.getFullYear();
-  
+
   // Add ordinal suffix
   const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
-                 day === 2 || day === 22 ? 'nd' :
-                 day === 3 || day === 23 ? 'rd' : 'th';
-  
+    day === 2 || day === 22 ? 'nd' :
+      day === 3 || day === 23 ? 'rd' : 'th';
+
   return `${month} ${day}${suffix} ${year}`;
 }
 
 // Get icon based on category name or default
 function getIconForCategory(categoryName: string | null): string {
   if (!categoryName) return 'HelpCircle';
-  
+
   const iconMap: Record<string, string> = {
     'Rent': 'City',
     'Entertainment': 'Tv',
@@ -47,7 +47,7 @@ function getIconForCategory(categoryName: string | null): string {
     'Taxes': 'Cash',
     'Mobile Data': 'SmartphoneDevice',
   };
-  
+
   return iconMap[categoryName] || 'HelpCircle';
 }
 
@@ -60,39 +60,39 @@ const categoryColors = ['#AC66DA', '#74C648', '#D93F3F'];
 function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; end: Date } {
   const year = now.getFullYear();
   const month = now.getMonth();
-  
+
   switch (period) {
     case 'This Month':
       return {
         start: new Date(year, month, 1),
         end: new Date(year, month + 1, 0, 23, 59, 59, 999),
       };
-    
+
     case 'Last Month':
       return {
         start: new Date(year, month - 1, 1),
         end: new Date(year, month, 0, 23, 59, 59, 999),
       };
-    
+
     case 'This Year':
       return {
         start: new Date(year, 0, 1),
         end: new Date(year, 11, 31, 23, 59, 59, 999),
       };
-    
+
     case 'Last Year':
       return {
         start: new Date(year - 1, 0, 1),
         end: new Date(year - 1, 11, 31, 23, 59, 59, 999),
       };
-    
+
     case 'All Time':
       // Return a very early date to include all transactions
       return {
         start: new Date(2000, 0, 1),
         end: new Date(year + 10, 11, 31, 23, 59, 59, 999),
       };
-    
+
     default:
       // Default to This Month
       return {
@@ -113,7 +113,7 @@ function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; en
 function getComparisonDateRange(period: TimePeriod, now: Date): { start: Date; end: Date } | null {
   const year = now.getFullYear();
   const month = now.getMonth();
-  
+
   switch (period) {
     case 'This Month':
       // Compare to Last Month
@@ -121,31 +121,31 @@ function getComparisonDateRange(period: TimePeriod, now: Date): { start: Date; e
         start: new Date(year, month - 1, 1),
         end: new Date(year, month, 0, 23, 59, 59, 999),
       };
-    
+
     case 'Last Month':
       // Compare to 2 months ago (the month before last month)
       return {
         start: new Date(year, month - 2, 1),
         end: new Date(year, month - 1, 0, 23, 59, 59, 999),
       };
-    
+
     case 'This Year':
       // Compare to Last Year
       return {
         start: new Date(year - 1, 0, 1),
         end: new Date(year - 1, 11, 31, 23, 59, 59, 999),
       };
-    
+
     case 'Last Year':
       // Compare to 2 years ago
       return {
         start: new Date(year - 2, 0, 1),
         end: new Date(year - 2, 11, 31, 23, 59, 59, 999),
       };
-    
+
     case 'All Time':
       return null; // No comparison for All Time
-    
+
     default:
       return null;
   }
@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
     // Get user with language included to avoid extra query
     const user = await requireCurrentUserWithLanguage();
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
-    
+
     const now = new Date();
 
     const userCurrencyRecord = user.currencyId
@@ -198,15 +198,15 @@ export async function GET(request: NextRequest) {
     }
 
     const targetCurrencyId = userCurrencyRecord.id;
-    
+
     // Get time period from query params, default to 'This Month'
     const { searchParams } = new URL(request.url);
     const timePeriod = (searchParams.get('timePeriod') || 'This Month') as TimePeriod;
-    
+
     // Calculate date ranges for selected period and comparison period
     const selectedRange = getDateRangeForPeriod(timePeriod, now);
     const comparisonRange = getComparisonDateRange(timePeriod, now);
-    
+
     // Fetch only the needed slices to reduce payload and conversion work
     const [selectedTransactions, comparisonTransactions, latestTransactionsRaw] = await Promise.all([
       db.transaction.findMany({
@@ -225,18 +225,18 @@ export async function GET(request: NextRequest) {
       }),
       comparisonRange
         ? db.transaction.findMany({
-            where: {
-              userId: user.id,
-              date: {
-                gte: comparisonRange.start,
-                lte: comparisonRange.end,
-              },
+          where: {
+            userId: user.id,
+            date: {
+              gte: comparisonRange.start,
+              lte: comparisonRange.end,
             },
-            include: {
-              currency: true,
-            },
-            orderBy: { date: 'desc' },
-          })
+          },
+          include: {
+            currency: true,
+          },
+          orderBy: { date: 'desc' },
+        })
         : Promise.resolve([]),
       db.transaction.findMany({
         where: { userId: user.id },
@@ -250,9 +250,9 @@ export async function GET(request: NextRequest) {
     ]);
 
     const [selectedWithConverted, comparisonWithConverted, latestWithConverted] = await Promise.all([
-      convertTransactionsToTarget(selectedTransactions, targetCurrencyId),
-      convertTransactionsToTarget(comparisonTransactions, targetCurrencyId),
-      convertTransactionsToTarget(latestTransactionsRaw, targetCurrencyId),
+      convertTransactionsToTargetSimple(selectedTransactions, targetCurrencyId),
+      convertTransactionsToTargetSimple(comparisonTransactions, targetCurrencyId),
+      convertTransactionsToTargetSimple(latestTransactionsRaw, targetCurrencyId),
     ]);
 
     // Calculate selected period income and expenses
@@ -262,11 +262,11 @@ export async function GET(request: NextRequest) {
     const selectedPeriodExpenses = selectedWithConverted
       .filter((t) => t.type === 'expense')
       .reduce((sum: number, t) => sum + t.convertedAmount, 0);
-    
+
     // Calculate comparison period income and expenses (if comparison exists)
     let comparisonIncome = 0;
     let comparisonExpenses = 0;
-    
+
     if (comparisonRange) {
       comparisonIncome = comparisonWithConverted
         .filter((t) => t.type === 'income')
@@ -275,24 +275,24 @@ export async function GET(request: NextRequest) {
         .filter((t) => t.type === 'expense')
         .reduce((sum: number, t) => sum + t.convertedAmount, 0);
     }
-    
+
     // Calculate trends (percentage change from comparison period)
     // If comparison period had no income/expenses but selected period does, show 100% increase
     // If both periods are 0, show 0% (no change)
     // Otherwise calculate percentage change
     // For "All Time", no trend calculation (trend = 0)
-    const incomeTrend = comparisonRange && comparisonIncome > 0 
+    const incomeTrend = comparisonRange && comparisonIncome > 0
       ? Math.round(((selectedPeriodIncome - comparisonIncome) / comparisonIncome) * 100)
-      : comparisonRange && selectedPeriodIncome > 0 
+      : comparisonRange && selectedPeriodIncome > 0
         ? 100  // New income in selected period (100% increase from 0)
         : 0;   // No comparison or no income in either period
-    
+
     const expenseTrend = comparisonRange && comparisonExpenses > 0
       ? Math.round(((selectedPeriodExpenses - comparisonExpenses) / comparisonExpenses) * 100)
-      : comparisonRange && selectedPeriodExpenses > 0 
+      : comparisonRange && selectedPeriodExpenses > 0
         ? 100  // New expenses in selected period (100% increase from 0)
         : 0;   // No comparison or no expenses in either period
-    
+
     // Get latest transactions (limit to 6) - already limited in query
     const latestTransactions: TransactionType[] = latestWithConverted.map((t) => {
       const originalSignedAmount = t.type === 'expense' ? -t.amount : t.amount;
@@ -301,7 +301,7 @@ export async function GET(request: NextRequest) {
       const displayName = formatTransactionName(t.description, userLanguageAlias, false);
       // Full name for modal (translated if needed, but not cleaned)
       const fullName = formatTransactionName(t.description, userLanguageAlias, true);
-      
+
       return {
         id: t.id.toString(),
         name: displayName,
@@ -317,15 +317,15 @@ export async function GET(request: NextRequest) {
         icon: getIconForCategory(t.category?.name || null),
       };
     });
-    
+
     // Calculate top expense categories (selected period)
     const expenseTransactions = selectedWithConverted.filter((t) => t.type === 'expense');
     const categoryTotals = new Map<string, { amount: number; categoryId: number; categoryName: string }>();
-    
+
     expenseTransactions.forEach((t) => {
       const categoryName = t.category?.name || 'Uncategorized';
       const categoryId = t.categoryId || 0;
-      
+
       if (!categoryTotals.has(categoryName)) {
         categoryTotals.set(categoryName, {
           amount: 0,
@@ -333,25 +333,25 @@ export async function GET(request: NextRequest) {
           categoryName,
         });
       }
-      
+
       const existing = categoryTotals.get(categoryName)!;
       existing.amount += t.convertedAmount;
     });
-    
+
     // Convert to array and sort by amount
     const topCategoriesArray = Array.from(categoryTotals.values())
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 3); // Top 3
-    
+
     // Calculate total expenses for percentage calculation (all expenses, not just top 3)
     const totalExpenses = selectedPeriodExpenses;
-    
+
     // Format top expenses with percentages and colors
     const topExpenses: ExpenseCategory[] = topCategoriesArray.map((cat, index: number) => {
-      const percentage = totalExpenses > 0 
+      const percentage = totalExpenses > 0
         ? Math.round((cat.amount / totalExpenses) * 100)
         : 0;
-      
+
       return {
         id: cat.categoryId.toString() || `uncategorized-${index}`,
         name: cat.categoryName,
@@ -361,7 +361,7 @@ export async function GET(request: NextRequest) {
         color: categoryColors[index % categoryColors.length],
       };
     });
-    
+
     // Get comparison label for trend display
     const comparisonLabel = getComparisonLabel(timePeriod);
 
@@ -369,7 +369,7 @@ export async function GET(request: NextRequest) {
     const investmentsPortfolio = await getInvestmentsPortfolio(user.id, userCurrencyRecord);
 
     const financialHealth = await getFinancialHealthScore(user.id, timePeriod, targetCurrencyId);
-    
+
     return NextResponse.json({
       income: {
         amount: Math.round(selectedPeriodIncome),

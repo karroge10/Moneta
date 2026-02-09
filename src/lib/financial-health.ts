@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { convertTransactionsToTarget } from '@/lib/currency-conversion';
+import { convertTransactionsToTargetSimple } from '@/lib/currency-conversion';
 import { calculateGoalProgress } from '@/lib/goalUtils';
 import type { FinancialHealthDetails, TimePeriod } from '@/types/dashboard';
 
@@ -177,12 +177,12 @@ export async function getFinancialHealthScore(
     }),
     comparisonRange
       ? db.transaction.findMany({
-          where: {
-            userId,
-            date: { gte: comparisonRange.start, lte: comparisonRange.end },
-          },
-          include: { category: true, currency: true },
-        })
+        where: {
+          userId,
+          date: { gte: comparisonRange.start, lte: comparisonRange.end },
+        },
+        include: { category: true, currency: true },
+      })
       : Promise.resolve([]),
     db.goal.findMany({
       where: { userId },
@@ -201,9 +201,9 @@ export async function getFinancialHealthScore(
     }),
   ]);
 
-  const selectedConverted = await convertTransactionsToTarget(selectedTx, targetCurrencyId);
+  const selectedConverted = await convertTransactionsToTargetSimple(selectedTx, targetCurrencyId);
   const comparisonConverted = comparisonRange
-    ? await convertTransactionsToTarget(comparisonTx, targetCurrencyId)
+    ? await convertTransactionsToTargetSimple(comparisonTx, targetCurrencyId)
     : [];
 
   const selectedIncome = selectedConverted
@@ -217,7 +217,7 @@ export async function getFinancialHealthScore(
   const categorizedInPeriod =
     totalTxInPeriod > 0
       ? selectedConverted.filter((t) => t.category?.name && t.category.name !== 'Uncategorized').length /
-        totalTxInPeriod
+      totalTxInPeriod
       : 0;
 
   const details = {
@@ -245,8 +245,8 @@ export async function getFinancialHealthScore(
     const compCategorized =
       comparisonConverted.length > 0
         ? comparisonConverted.filter(
-            (t) => t.category?.name && t.category.name !== 'Uncategorized'
-          ).length / comparisonConverted.length
+          (t) => t.category?.name && t.category.name !== 'Uncategorized'
+        ).length / comparisonConverted.length
         : 0;
     const compDetails = {
       saving: pillarSaving(compIncome, compExpenses),

@@ -54,27 +54,27 @@ export default function TransactionsPage() {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     setToasts((prev) => [...prev, { id, message, type }]);
   }, []);
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [pageInput, setPageInput] = useState('1');
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  
+
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>(''); // 'expense' | 'income' | ''
   const [monthFilter, setMonthFilter] = useState<string>(''); // 'this_month' | 'this_year' | month string | ''
-  
+
   // Sorting
   type SortColumn = 'date' | 'description' | 'type' | 'amount' | 'category';
   type SortOrder = 'asc' | 'desc';
   const [sortColumn, setSortColumn] = useState<SortColumn>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  
+
   // Modals
   const [isCategoryStatsOpen, setIsCategoryStatsOpen] = useState(false);
 
@@ -130,7 +130,7 @@ export default function TransactionsPage() {
   const fetchTransactions = useCallback(async (page: number = 1) => {
     try {
       setLoading(true);
-      
+
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),
@@ -138,11 +138,11 @@ export default function TransactionsPage() {
         sortBy: sortColumn,
         sortOrder: sortOrder,
       });
-      
+
       if (debouncedSearchQuery) params.set('search', debouncedSearchQuery);
       if (categoryFilter) params.set('category', categoryFilter);
       if (typeFilter) params.set('type', typeFilter);
-      
+
       // Handle time period filters
       if (monthFilter) {
         if (monthFilter === 'this_month' || monthFilter === 'this_year') {
@@ -157,14 +157,14 @@ export default function TransactionsPage() {
           params.set('month', monthFilter);
         }
       }
-      
+
       setPageInput(page.toString());
-      
+
       const response = await fetch(`/api/transactions?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to fetch transactions');
       }
-      
+
       const data = await response.json();
       setTransactions(data.transactions || []);
       setTotal(data.total || 0);
@@ -246,7 +246,7 @@ export default function TransactionsPage() {
 
   // Get available months - fetch from API
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
-  
+
   useEffect(() => {
     const fetchAvailableMonths = async () => {
       try {
@@ -618,7 +618,7 @@ export default function TransactionsPage() {
     <main className="min-h-screen bg-[#202020]">
       {/* Desktop Header */}
       <div className="hidden md:block">
-        <DashboardHeader 
+        <DashboardHeader
           pageName="Transactions"
           actionButtons={[
             {
@@ -641,14 +641,14 @@ export default function TransactionsPage() {
 
       {/* Mobile Navbar */}
       <div className="md:hidden">
-        <MobileNavbar 
-          pageName="Transactions" 
+        <MobileNavbar
+          pageName="Transactions"
           activeSection="transactions"
         />
       </div>
 
       {/* Content */}
-      <div className="px-4 md:px-6 lg:px-8 pb-6 flex flex-col min-h-[calc(100vh-120px)]">
+      <div className="px-4 md:px-6 pb-6 flex flex-col min-h-[calc(100vh-120px)]">
         <Card
           title={viewMode === 'past' ? 'History' : 'Upcoming'}
           onAdd={handleAddTransactionClick}
@@ -662,9 +662,8 @@ export default function TransactionsPage() {
                   role="tab"
                   aria-selected={viewMode === 'past'}
                   onClick={() => setViewModeAndUrl('past')}
-                  className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer ${
-                    viewMode === 'past' ? 'bg-[#E7E4E4] text-[#282828]' : 'text-[#E7E4E4] hover:opacity-80'
-                  }`}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer ${viewMode === 'past' ? 'bg-[#E7E4E4] text-[#282828]' : 'text-[#E7E4E4] hover:opacity-80'
+                    }`}
                 >
                   Past
                 </button>
@@ -673,9 +672,8 @@ export default function TransactionsPage() {
                   role="tab"
                   aria-selected={viewMode === 'future'}
                   onClick={() => setViewModeAndUrl('future')}
-                  className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer ${
-                    viewMode === 'future' ? 'bg-[#E7E4E4] text-[#282828]' : 'text-[#E7E4E4] hover:opacity-80'
-                  }`}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer ${viewMode === 'future' ? 'bg-[#E7E4E4] text-[#282828]' : 'text-[#E7E4E4] hover:opacity-80'
+                    }`}
                 >
                   Future
                 </button>
@@ -720,60 +718,60 @@ export default function TransactionsPage() {
             <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020', minHeight: (viewMode === 'past' ? transactions.length === 0 : recurringRowsData.rows.length === 0) && !displayLoading ? 'calc(100vh - 400px)' : 'auto' }}>
               <div className="flex-1 overflow-x-auto">
                 <table className="min-w-full" style={{ height: (viewMode === 'past' ? transactions.length === 0 : recurringRowsData.rows.length === 0) && !displayLoading ? '100%' : 'auto' }}>
-                      <thead>
-                        <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                          <th 
-                            className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
-                            onClick={() => handleSort('date')}
-                          >
-                            <span className="flex items-center gap-1">
-                              Date
-                              <SortIcon column="date" />
-                            </span>
-                          </th>
-                          <th 
-                            className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
-                            onClick={() => handleSort('description')}
-                          >
-                            <span className="flex items-center gap-1">
-                              Description
-                              <SortIcon column="description" />
-                            </span>
-                          </th>
-                          <th 
-                            className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
-                            onClick={() => handleSort('type')}
-                          >
-                            <span className="flex items-center gap-1">
-                              Type
-                              <SortIcon column="type" />
-                            </span>
-                          </th>
-                          <th 
-                            className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
-                            onClick={() => handleSort('amount')}
-                          >
-                            <span className="flex items-center gap-1">
-                              Amount
-                              <SortIcon column="amount" />
-                            </span>
-                          </th>
-                          <th 
-                            className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
-                            onClick={() => handleSort('category')}
-                          >
-                            <span className="flex items-center gap-1">
-                              Category
-                              <SortIcon column="category" />
-                            </span>
-                          </th>
-                          {viewMode === 'future' && (
-                            <th className="px-5 py-3 align-top" style={{ color: '#9CA3AF' }}>
-                              Status
-                            </th>
-                          )}
-                        </tr>
-                      </thead>
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+                      <th
+                        className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
+                        onClick={() => handleSort('date')}
+                      >
+                        <span className="flex items-center gap-1">
+                          Date
+                          <SortIcon column="date" />
+                        </span>
+                      </th>
+                      <th
+                        className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
+                        onClick={() => handleSort('description')}
+                      >
+                        <span className="flex items-center gap-1">
+                          Description
+                          <SortIcon column="description" />
+                        </span>
+                      </th>
+                      <th
+                        className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
+                        onClick={() => handleSort('type')}
+                      >
+                        <span className="flex items-center gap-1">
+                          Type
+                          <SortIcon column="type" />
+                        </span>
+                      </th>
+                      <th
+                        className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
+                        onClick={() => handleSort('amount')}
+                      >
+                        <span className="flex items-center gap-1">
+                          Amount
+                          <SortIcon column="amount" />
+                        </span>
+                      </th>
+                      <th
+                        className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors select-none"
+                        onClick={() => handleSort('category')}
+                      >
+                        <span className="flex items-center gap-1">
+                          Category
+                          <SortIcon column="category" />
+                        </span>
+                      </th>
+                      {viewMode === 'future' && (
+                        <th className="px-5 py-3 align-top" style={{ color: '#9CA3AF' }}>
+                          Status
+                        </th>
+                      )}
+                    </tr>
+                  </thead>
                   <tbody>
                     {displayLoading ? (
                       <>
@@ -826,7 +824,7 @@ export default function TransactionsPage() {
                         const truncatedName = truncateName(transaction.name, MAX_NAME_LENGTH);
                         const categoryObj = categories.find(c => c.name === transaction.category);
                         const CategoryIcon = categoryObj ? getIcon(categoryObj.icon) : null;
-                        
+
                         return (
                           <tr
                             key={transaction.id}

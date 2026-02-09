@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { NotificationEntry } from '@/types/dashboard';
+import { useNotificationContext } from '@/contexts/NotificationContext';
 
 interface NotificationsDropdownProps {
   notifications: NotificationEntry[];
@@ -12,17 +13,15 @@ interface NotificationsDropdownProps {
   onMarkAllRead?: () => void;
 }
 
-export default function NotificationsDropdown({ 
-  notifications, 
-  isOpen, 
+export default function NotificationsDropdown({
+  notifications,
+  isOpen,
   onClose,
   onNotificationClick,
   onMarkAllRead,
 }: NotificationsDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const hasMarkedAsReadRef = useRef(false);
-  // Snapshot of notifications when dropdown opens - keeps them visible even after marking as read
-  const [snapshotNotifications, setSnapshotNotifications] = useState<NotificationEntry[]>([]);
+  const { markAsReadLocally } = useNotificationContext();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -37,50 +36,30 @@ export default function NotificationsDropdown({
     }
   }, [isOpen, onClose]);
 
-  // Take snapshot and mark as read when dropdown opens
+  // Mark all as read when dropdown opens
   useEffect(() => {
-    if (isOpen && notifications.length > 0 && snapshotNotifications.length === 0 && !hasMarkedAsReadRef.current) {
-      // Take snapshot of current notifications to keep them visible
-      setSnapshotNotifications(notifications.slice(0, 5));
-      
-      // Mark all notifications as read immediately when opening dropdown
-      hasMarkedAsReadRef.current = true;
-      
+    if (isOpen && notifications.some(n => !n.read)) {
+      // Mark all notifications as read immediately in local state
+      markAsReadLocally();
+
       fetch('/api/notifications', {
         method: 'PATCH',
       })
         .then(() => {
-          // Refresh notifications to update badge and remove purple dot
           onMarkAllRead?.();
         })
         .catch((error) => {
           console.error('Failed to mark notifications as read:', error);
-          hasMarkedAsReadRef.current = false;
         });
     }
-    
-    // Reset flag when dropdown closes
-    if (!isOpen) {
-      hasMarkedAsReadRef.current = false;
-      // Clear snapshot when closing
-      if (snapshotNotifications.length > 0) {
-        setTimeout(() => {
-          setSnapshotNotifications([]);
-        }, 100);
-      }
-    }
-  }, [isOpen, notifications, snapshotNotifications.length, onMarkAllRead]);
+  }, [isOpen, notifications, markAsReadLocally, onMarkAllRead]);
 
   if (!isOpen) return null;
 
-  // Use snapshot if available, otherwise use current notifications
-  const displayedNotifications = snapshotNotifications.length > 0 
-    ? snapshotNotifications 
-    : notifications.slice(0, 5);
-  const hasNotifications = displayedNotifications.length > 0;
+  const hasNotifications = notifications.length > 0;
 
   return (
-    <div 
+    <div
       ref={dropdownRef}
       className="absolute top-full mt-2 right-0 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[320px] max-w-[400px]"
       style={{ backgroundColor: 'var(--bg-surface)' }}
@@ -96,30 +75,37 @@ export default function NotificationsDropdown({
       <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
         {hasNotifications ? (
           <div className="py-2">
-            {displayedNotifications.map((notification) => (
+            {notifications.map((notification) => (
               <Link
                 key={notification.id}
                 href="/notifications"
                 onClick={async (e) => {
                   e.preventDefault();
+                  // Mark specific notification as read locally if needed (already marked all though)
+                  markAsReadLocally(notification.id);
                   await onNotificationClick?.(notification.id);
-                  // Close dropdown after marking as read (refresh will update badge)
                   setTimeout(() => {
                     onClose();
                   }, 100);
                 }}
-                className="block px-4 py-2.5 hover:opacity-80 transition-opacity border-b"
+                className={`block px-4 py-3 hover:opacity-80 transition-opacity border-b relative ${!notification.read ? 'bg-[#AC66DA]/5' : ''}`}
                 style={{ borderColor: 'rgba(231, 228, 228, 0.05)' }}
               >
+                {!notification.read && (
+                  <div
+                    className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: '#AC66DA' }}
+                  />
+                )}
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-helper text-xs" style={{ color: '#B9B9B9' }}>
                         {notification.date} {notification.time}
                       </span>
-                      <span 
+                      <span
                         className="text-xs px-2.5 py-1 rounded-full"
-                        style={{ 
+                        style={{
                           backgroundColor: '#202020',
                           color: '#E7E4E4'
                         }}
@@ -150,7 +136,7 @@ export default function NotificationsDropdown({
           href="/notifications"
           onClick={onClose}
           className="block w-full text-center px-3 py-1.5 rounded-lg transition-opacity cursor-pointer hover:opacity-80 text-sm font-semibold"
-          style={{ 
+          style={{
             backgroundColor: '#282828',
             color: '#E7E4E4'
           }}
