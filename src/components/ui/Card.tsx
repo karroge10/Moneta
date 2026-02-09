@@ -9,6 +9,7 @@ interface CardProps {
   href?: string;
   className?: string;
   onAdd?: () => void;
+  action?: ReactNode;
 }
 
 export default function Card({
@@ -19,6 +20,7 @@ export default function Card({
   href,
   className = '',
   onAdd,
+  action,
 }: CardProps) {
   return (
     <div className={`card-surface flex flex-col min-h-0 ${className}`}>
@@ -31,6 +33,7 @@ export default function Card({
           ) : (
             <h2 className="text-card-header">{title}</h2>
           )}
+          {action && <div>{action}</div>}
         </div>
       )}
       <div className="flex-1 flex flex-col min-h-0">

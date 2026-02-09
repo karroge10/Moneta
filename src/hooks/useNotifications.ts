@@ -1,63 +1,24 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { NotificationEntry } from '@/types/dashboard';
+import { useMemo } from 'react';
+import { useNotificationContext } from '@/contexts/NotificationContext';
 
 export function useNotifications(limit: number = 10, unreadOnly: boolean = false) {
-  const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { notifications: allNotifications, isLoading, error, refresh } = useNotificationContext();
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await fetch(`/api/notifications?limit=${limit}&unreadOnly=${unreadOnly}`);
-
-      if (response.status === 401) {
-        setNotifications([]);
-        return;
-      }
-
-      if (!response.ok) {
-        setError('Failed to fetch notifications');
-        setNotifications([]);
-        return;
-      }
-
-      const data = await response.json();
-      setNotifications(data.notifications || []);
-    } catch (err) {
-      console.error('Error fetching notifications:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch notifications');
-      setNotifications([]);
-    } finally {
-      setIsLoading(false);
+  // Filter and limit notifications based on hook parameters
+  const notifications = useMemo(() => {
+    let filtered = allNotifications;
+    if (unreadOnly) {
+      filtered = allNotifications.filter(n => !n.read);
     }
-  }, [limit, unreadOnly]);
-
-  useEffect(() => {
-    fetchNotifications();
-    
-    // Refresh notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
-    
-    // Listen for custom event to refresh notifications immediately
-    const handleRefreshEvent = () => {
-      fetchNotifications();
-    };
-    window.addEventListener('refreshNotifications', handleRefreshEvent);
-    
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('refreshNotifications', handleRefreshEvent);
-    };
-  }, [fetchNotifications]);
+    return filtered.slice(0, limit);
+  }, [allNotifications, limit, unreadOnly]);
 
   return {
     notifications,
     isLoading,
     error,
-    refresh: fetchNotifications,
+    refresh,
   };
 }

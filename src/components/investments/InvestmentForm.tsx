@@ -14,7 +14,8 @@ import {
   ViewGrid,
   NavArrowDown,
   Plus,
-  Minus
+  Minus,
+  FloppyDisk
 } from 'iconoir-react';
 import { Investment } from '@/types/dashboard';
 import { CalendarPanel } from '@/components/transactions/shared/CalendarPanel';
@@ -23,6 +24,13 @@ import { CurrencyOption } from '@/components/transactions/import/CurrencySelecto
 import { formatDateForDisplay, formatDateToInput } from '@/lib/dateFormatting';
 import Spinner from '@/components/ui/Spinner';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
+import { formatNumber } from '@/lib/utils';
+import AssetLogo from './AssetLogo';
+
+function Skeleton({ className }: { className?: string }) {
+  return <div className={`animate-pulse bg-[#3a3a3a] rounded-xl ${className}`} />;
+}
 
 interface InvestmentFormProps {
   mode: 'add';
@@ -47,11 +55,12 @@ export default function InvestmentForm({
   initialAsset,
   onSave,
   onCancel,
-  currencyOptions,
+  currencyOptions: propCurrencyOptions,
   isSaving = false,
   onFloatingPanelToggle,
 }: InvestmentFormProps) {
   const { currency } = useCurrency();
+  const { currencyOptions, rates: prefetchRates } = useCurrencyOptions();
   const [step, setStep] = useState<Step>(initialAsset ? 'details' : 'type_selection');
 
   // Form State
@@ -65,7 +74,7 @@ export default function InvestmentForm({
     date: '',
     coingeckoId: initialAsset?.coingeckoId || '',
     pricingMode: 'manual' as 'live' | 'manual',
-    currencyId: null as number | null,
+    currencyId: currency?.id || null,
     subtitle: '',
     icon: initialAsset?.icon || 'BitcoinCircle',
   });
@@ -75,6 +84,8 @@ export default function InvestmentForm({
   const [searchLoading, setSearchLoading] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [conversionRate, setConversionRate] = useState<number | null>(null);
+  const [isLoadingRate, setIsLoadingRate] = useState(false);
 
   // Portal refs and state for date picker
   const dateTriggerRef = useRef<HTMLButtonElement>(null);
@@ -108,6 +119,40 @@ export default function InvestmentForm({
     }
   }, [searchQuery, runSearch, step]);
 
+  // Fetch conversion rate when currency or date changes
+  useEffect(() => {
+    const isToday = !formState.date || formState.date.split('T')[0] === new Date().toISOString().split('T')[0];
+
+    const fetchRate = async () => {
+      if (!formState.currencyId || !currency?.id || formState.currencyId === currency.id) {
+        setConversionRate(null);
+        return;
+      }
+
+      // If date is today or not set, and we have pre-fetched rates, use them
+      if (isToday && prefetchRates[formState.currencyId]) {
+        setConversionRate(prefetchRates[formState.currencyId]);
+        return;
+      }
+
+      setIsLoadingRate(true);
+      try {
+        const res = await fetch(`/api/exchange-rate?from=${formState.currencyId}&to=${currency.id}&date=${formState.date || new Date().toISOString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          setConversionRate(data.rate);
+        }
+      } catch (error) {
+        console.error('Failed to fetch rate:', error);
+      } finally {
+        setIsLoadingRate(false);
+      }
+    };
+
+    const debounce = setTimeout(fetchRate, isToday ? 0 : 500);
+    return () => clearTimeout(debounce);
+  }, [formState.currencyId, currency?.id, formState.date, prefetchRates, step]);
+
   useEffect(() => {
     onFloatingPanelToggle?.(isDateOpen);
   }, [isDateOpen, onFloatingPanelToggle]);
@@ -117,13 +162,23 @@ export default function InvestmentForm({
     const margin = 8;
     const triggerRect = dateTriggerRef.current.getBoundingClientRect();
     const dropdownRect = datePortalRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - triggerRect.bottom;
+    const spaceAbove = triggerRect.top;
+    const shouldOpenUp = (dropdownRect.height || 340) + margin > spaceBelow && spaceAbove > spaceBelow;
+
+    const top = shouldOpenUp
+      ? Math.max(margin, triggerRect.top - (dropdownRect.height || 340) - margin)
+      : Math.min(window.innerHeight - (dropdownRect.height || 340) - margin, triggerRect.bottom + margin);
+
+    const maxLeft = window.innerWidth - (dropdownRect.width || 320) - margin;
+    const left = Math.min(Math.max(triggerRect.left, margin), Math.max(margin, maxLeft));
 
     setDateDropdownStyle({
       position: 'fixed',
       minWidth: '320px',
       width: 'max-content',
-      left: Math.max(8, Math.min(triggerRect.left, window.innerWidth - 340)),
-      top: triggerRect.bottom + margin,
+      left,
+      top,
       zIndex: 1000,
     });
   }, [isDateOpen]);
@@ -204,8 +259,16 @@ export default function InvestmentForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // For property/custom assets, ensure ticker exists
+    let finalTicker = formState.ticker;
+    if ((formState.assetType === 'property' || formState.assetType === 'custom') && !finalTicker && formState.name) {
+      // Auto-generate a ticker from the name (e.g. "My Apartment" -> "MYAPARTMENT" or just "MY APARTMENT")
+      finalTicker = formState.name.toUpperCase().slice(0, 5);
+    }
+
     onSave({
       ...formState,
+      ticker: finalTicker,
       quantity: Number(formState.quantity),
       pricePerUnit: Number(formState.pricePerUnit),
       currencyId: formState.currencyId || currency.id,
@@ -213,7 +276,8 @@ export default function InvestmentForm({
     });
   };
 
-  const targetSymbol = currency?.symbol || '$';
+  const selectedCurrency = currencyOptions.find(c => c.id === formState.currencyId) || currency;
+  const targetSymbol = selectedCurrency?.symbol || '$';
 
   return (
     <div className="flex flex-col h-full bg-[#282828]">
@@ -296,7 +360,7 @@ export default function InvestmentForm({
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#282828] flex items-center justify-center text-[#AC66DA]">
-                          {asset.type === 'crypto' ? <BitcoinCircle width={18} height={18} /> : <Cash width={18} height={18} />}
+                          <AssetLogo src={asset.icon} size={18} />
                         </div>
                         <div>
                           <div className="text-sm font-semibold text-primary">{asset.name}</div>
@@ -328,131 +392,295 @@ export default function InvestmentForm({
         {step === 'details' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold">{formState.name || 'New Investment'}</h3>
-              {formState.ticker && <span className="text-xs bg-[#3a3a3a] px-2 py-1 rounded text-[#E7E4E4]">{formState.ticker}</span>}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#202020] flex items-center justify-center border border-[#3a3a3a]">
+                  <AssetLogo src={formState.icon} size={22} className="text-[#AC66DA]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">{formState.name || 'New Investment'}</h3>
+                  <div className="flex items-center gap-2">
+                    {formState.ticker && (
+                      <span className="text-sm font-bold text-[#AC66DA] tracking-wider bg-[#AC66DA]/10 px-2 py-0.5 rounded uppercase">
+                        {formState.ticker}
+                      </span>
+                    )}
+                    {formState.assetType && (
+                      <span className="text-xs text-helper capitalize">
+                        • {formState.assetType}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 bg-[#202020] p-1 rounded-xl border border-[#3a3a3a]">
+            <div className="relative bg-[#202020] border border-[#3a3a3a] rounded-xl p-0.5 flex gap-0.5 h-[42px]">
               <button
                 type="button"
                 onClick={() => setFormState(s => ({ ...s, investmentType: 'buy' }))}
-                className={`py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${formState.investmentType === 'buy' ? 'bg-[#74C648] text-[#202020]' : 'text-helper hover:text-white'
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${formState.investmentType === 'buy'
+                  ? 'bg-[#74C648] text-white shadow-sm'
+                  : 'bg-transparent text-[#8C8C8C] hover:text-[#E7E4E4]'
                   }`}
               >
-                <Plus width={16} height={16} strokeWidth={2.5} /> Buy
+                <span>Buy</span>
               </button>
               <button
                 type="button"
                 onClick={() => setFormState(s => ({ ...s, investmentType: 'sell' }))}
-                className={`py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${formState.investmentType === 'sell' ? 'bg-[#D93F3F] text-white' : 'text-helper hover:text-white'
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${formState.investmentType === 'sell'
+                  ? 'bg-[#D93F3F] text-white shadow-sm'
+                  : 'bg-transparent text-[#8C8C8C] hover:text-[#E7E4E4]'
                   }`}
               >
-                <Minus width={16} height={16} strokeWidth={2.5} /> Sell
+                <span>Sell</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-body font-medium mb-2">Quantity</label>
-                <input
-                  type="number"
-                  step="any"
-                  className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
-                  value={formState.quantity}
-                  onChange={(e) => setFormState(s => ({ ...s, quantity: e.target.value }))}
-                  placeholder="0.00"
-                />
+            {/* Price/Quantity Skeletons could go here if loading */}
+            {isSaving && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <Skeleton className="h-14" />
+                  <Skeleton className="h-14" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Skeleton className="h-14" />
+                  <Skeleton className="h-14" />
+                </div>
+                <Skeleton className="h-16" />
               </div>
-              <div>
-                <label className="block text-body font-medium mb-2">Price per Unit</label>
-                <input
-                  type="number"
-                  step="any"
-                  className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
-                  value={formState.pricePerUnit}
-                  onChange={(e) => setFormState(s => ({ ...s, pricePerUnit: e.target.value }))}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
+            )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div ref={dateDropdownRef}>
-                <label className="block text-body font-medium mb-2">Date</label>
-                <button
-                  type="button"
-                  ref={dateTriggerRef}
-                  onClick={() => setIsDateOpen(!isDateOpen)}
-                  className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] text-left hover:border-[#AC66DA] transition-all flex items-center justify-between cursor-pointer"
-                >
-                  <span className={formState.date ? 'text-primary' : 'text-helper'}>
-                    {formState.date ? formatDateForDisplay(formState.date) : 'Today'}
-                  </span>
-                  <NavArrowDown className="text-helper" width={16} />
-                </button>
-                {isDateOpen && typeof document !== 'undefined' && createPortal(
-                  <div
-                    ref={datePortalRef}
-                    className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden bg-[#202020]"
-                    style={dateDropdownStyle ?? { display: 'none' }}
-                  >
-                    <CalendarPanel
-                      selectedDate={formState.date}
-                      currentMonth={calendarMonth}
-                      onChange={(date) => { setFormState((s) => ({ ...s, date })); setIsDateOpen(false); }}
-                      onMonthChange={setCalendarMonth}
+            {!isSaving && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-body font-medium mb-2">Quantity</label>
+                    <input
+                      type="number"
+                      step="any"
+                      className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
+                      value={formState.quantity}
+                      onChange={(e) => setFormState(s => ({ ...s, quantity: e.target.value }))}
+                      placeholder="0.00"
                     />
-                  </div>,
-                  document.body
+                  </div>
+                  <div>
+                    <label className="block text-body font-medium mb-2">Price per Unit</label>
+                    <input
+                      type="number"
+                      step="any"
+                      className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
+                      value={formState.pricePerUnit}
+                      onChange={(e) => setFormState(s => ({ ...s, pricePerUnit: e.target.value }))}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div ref={dateDropdownRef}>
+                    <label className="block text-body font-medium mb-2">Date</label>
+                    <button
+                      type="button"
+                      ref={dateTriggerRef}
+                      onClick={() => setIsDateOpen(!isDateOpen)}
+                      className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] text-left hover:border-[#AC66DA] transition-all flex items-center justify-between cursor-pointer"
+                    >
+                      <span className={formState.date ? 'text-primary' : 'text-helper'}>
+                        {formState.date ? formatDateForDisplay(formState.date) : 'Today'}
+                      </span>
+                      <NavArrowDown className="text-helper" width={16} />
+                    </button>
+                    {isDateOpen && typeof document !== 'undefined' && createPortal(
+                      <div
+                        ref={datePortalRef}
+                        className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden bg-[#202020]"
+                        style={dateDropdownStyle ?? { display: 'none' }}
+                      >
+                        <CalendarPanel
+                          selectedDate={formState.date}
+                          currentMonth={calendarMonth}
+                          onChange={(date) => { setFormState((s) => ({ ...s, date })); setIsDateOpen(false); }}
+                          onMonthChange={setCalendarMonth}
+                        />
+                      </div>,
+                      document.body
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-body font-medium mb-2">Currency</label>
+                    <CurrencySelector
+                      options={currencyOptions}
+                      selectedCurrencyId={formState.currencyId}
+                      onSelect={(id) => setFormState((s) => ({ ...s, currencyId: id }))}
+                    />
+                  </div>
+                </div>
+
+                {formState.quantity && formState.pricePerUnit && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-4 bg-[#202020] rounded-xl border border-[#3a3a3a]">
+                      <span className="text-helper text-xs uppercase">Total Cost</span>
+                      <span className="text-lg font-bold text-primary">
+                        {targetSymbol}{(Number(formState.quantity) * Number(formState.pricePerUnit)).toLocaleString()}
+                      </span>
+                    </div>
+
+                    {formState.currencyId && currency?.id && formState.currencyId !== currency.id && (
+                      <div className="p-4 rounded-xl bg-[#202020] border border-[#3a3a3a] min-h-[80px] flex flex-col justify-center">
+                        {isLoadingRate ? (
+                          <div className="space-y-3 animate-pulse">
+                            <div className="flex justify-between items-center">
+                              <div className="h-4 w-32 bg-[#3a3a3a] rounded-lg" />
+                              <div className="h-6 w-24 bg-[#3a3a3a] rounded-lg" />
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <div className="h-3 w-40 bg-[#3a3a3a] rounded-lg" />
+                              <div className="h-3 w-28 bg-[#3a3a3a] rounded-lg" />
+                            </div>
+                          </div>
+                        ) : (conversionRate !== null) ? (
+                          <>
+                            <div className="flex justify-between items-center text-sm mb-1.5">
+                              <span style={{ color: 'var(--text-secondary)' }}>
+                                Value at {formState.investmentType === 'buy' ? 'purchase' : 'sale'}
+                              </span>
+                              <span className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+                                {currency.symbol}{formatNumber((Number(formState.quantity) * Number(formState.pricePerUnit)) * conversionRate)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px]" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>
+                              <span>Rate on {formState.date ? formatDateForDisplay(formState.date) : 'today'}</span>
+                              <span>
+                                1 {selectedCurrency?.alias} = {new Intl.NumberFormat('en-US', {
+                                  maximumFractionDigits: conversionRate < 1 ? 6 : 4,
+                                  minimumFractionDigits: 2
+                                }).format(conversionRate)} {currency.alias}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center text-xs text-helper">
+                            Rates unavailable for selected date.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
-              </div>
-
-              <div>
-                <label className="block text-body font-medium mb-2">Currency</label>
-                <CurrencySelector
-                  options={currencyOptions}
-                  selectedCurrencyId={formState.currencyId}
-                  onSelect={(id) => setFormState((s) => ({ ...s, currencyId: id }))}
-                />
-              </div>
-            </div>
-
-            {formState.quantity && formState.pricePerUnit && (
-              <div className="flex items-center justify-between p-4 bg-[#202020] rounded-xl border border-[#3a3a3a]">
-                <span className="text-helper text-xs uppercase">Total {formState.investmentType === 'buy' ? 'Cost' : 'Value'}</span>
-                <span className="text-lg font-bold text-primary">
-                  {targetSymbol}{(Number(formState.quantity) * Number(formState.pricePerUnit)).toLocaleString()}
-                </span>
-              </div>
+              </>
             )}
           </div>
         )}
+
+        <div className="flex items-center justify-end gap-3 pt-4">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#4a4a4a]"
+            style={{
+              backgroundColor: '#282828',
+              color: 'var(--text-primary)',
+              border: '1px solid #3a3a3a',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#323232';
+              e.currentTarget.style.borderColor = '#4a4a4a';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#282828';
+              e.currentTarget.style.borderColor = '#3a3a3a';
+            }}
+          >
+            Cancel
+          </button>
+          {step !== 'details' ? (
+            <>
+              {step === 'search' && (
+                <button
+                  onClick={handleBack}
+                  className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#4a4a4a] flex items-center gap-2"
+                  style={{
+                    backgroundColor: '#282828',
+                    color: 'var(--text-primary)',
+                    border: '1px solid #3a3a3a',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#323232';
+                    e.currentTarget.style.borderColor = '#4a4a4a';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#282828';
+                    e.currentTarget.style.borderColor = '#3a3a3a';
+                  }}
+                >
+                  <NavArrowLeft width={16} height={16} /> Back
+                </button>
+              )}
+              <button
+                onClick={handleNext}
+                className="px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#9A4FB8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--accent-purple)';
+                }}
+              >
+                Next
+              </button>
+            </>
+          ) : (
+            <>
+              {(!initialAsset || step !== 'details') && (
+                <button
+                  onClick={handleBack}
+                  className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#4a4a4a] flex items-center gap-2"
+                  style={{
+                    backgroundColor: '#282828',
+                    color: 'var(--text-primary)',
+                    border: '1px solid #3a3a3a',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#323232';
+                    e.currentTarget.style.borderColor = '#4a4a4a';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#282828';
+                    e.currentTarget.style.borderColor = '#3a3a3a';
+                  }}
+                >
+                  <NavArrowLeft width={16} height={16} /> Back
+                </button>
+              )}
+              <button
+                onClick={handleSubmit}
+                disabled={isSaving || !formState.quantity || !formState.pricePerUnit}
+                className="px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#9A4FB8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--accent-purple)';
+                }}
+              >
+                {isSaving ? <><Spinner size={16} color="white" /><span>Saving...</span></> : (
+                  <>
+                    <FloppyDisk width={18} height={18} strokeWidth={1.5} />
+                    <span>Save Changes</span>
+                  </>
+                )}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center justify-end gap-3 px-6 py-5 border-t border-[#3a3a3a] bg-[#282828]">
-        <button onClick={onCancel} className="px-5 py-2 rounded-xl text-sm font-medium border border-[#3a3a3a] hover:bg-[#323232] cursor-pointer">
-          Cancel
-        </button>
-        {step !== 'details' ? (
-          <div className="flex gap-2">
-            {step === 'search' && <button onClick={handleBack} className="px-5 py-2 rounded-xl text-sm font-medium border border-[#3a3a3a] hover:bg-[#323232] cursor-pointer">Back</button>}
-            <button onClick={handleNext} className="px-6 py-2 rounded-xl text-sm font-bold bg-[#AC66DA] text-white hover:bg-[#9A4FB8] cursor-pointer">
-              Next
-            </button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <button onClick={handleBack} className="px-5 py-2 rounded-xl text-sm font-medium border border-[#3a3a3a] hover:bg-[#323232] cursor-pointer">Back</button>
-            <button
-              onClick={handleSubmit}
-              disabled={isSaving || !formState.quantity || !formState.pricePerUnit}
-              className="px-8 py-2 rounded-xl text-sm font-bold bg-[#AC66DA] text-white hover:bg-[#9A4FB8] flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {isSaving ? <><Spinner size={16} color="white" /><span>Saving...</span></> : 'Confirm Transaction'}
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+
+    </div >
   );
 }
