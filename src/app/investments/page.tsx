@@ -1,18 +1,26 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { Investment, PerformanceDataPoint, InvestmentActivity } from '@/types/dashboard';
+import {
+  Plus,
+  FilterList,
+  Sort,
+  NavArrowDown,
+  RefreshDouble,
+  Download,
+  BitcoinCircle,
+  Reports
+} from 'iconoir-react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
-import UpdateCard from '@/components/dashboard/UpdateCard';
-import BalanceCard from '@/components/dashboard/BalanceCard';
-import PortfolioCard from '@/components/dashboard/PortfolioCard';
-import PerformanceCardNoPadding from '@/components/dashboard/PerformanceCardNoPadding';
-import RecentActivitiesCard from '@/components/dashboard/RecentActivitiesCard';
-import CardSkeleton from '@/components/dashboard/CardSkeleton';
-import { InvestmentActivity, PerformanceDataPoint, TimePeriod, Investment } from '@/types/dashboard';
-import { Xmark } from 'iconoir-react';
-import InvestmentForm from '@/components/investments/InvestmentForm';
-import { CurrencyOption } from '@/components/transactions/import/CurrencySelector';
+
+import Spinner from '@/components/ui/Spinner';
+import PortfolioCard from '@/components/investments/PortfolioCard';
+import InvestmentForm from '@/components/investments/InvestmentForm'; // Currently this handles Add Flow
+import AssetModal from '@/components/investments/AssetModal';
+import { useCurrency } from '@/hooks/useCurrency';
+import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 
 interface InvestmentsApiResponse {
   update: {
@@ -35,18 +43,21 @@ interface InvestmentsApiResponse {
 }
 
 export default function InvestmentsPage() {
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>('All Time');
+
+  const { currency } = useCurrency();
+  const { currencyOptions } = useCurrencyOptions();
   const [data, setData] = useState<InvestmentsApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
-  const [currencies, setCurrencies] = useState<CurrencyOption[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+
+  // Modals state
+  const [isAddModalOpen, setAddModalOpen] = useState(false);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [initialAssetForAdd, setInitialAssetForAdd] = useState<any | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [isFloatingPanelOpen, setIsFloatingPanelOpen] = useState(false);
 
+  // Fetch Data
   const fetchInvestments = useCallback(async () => {
     try {
       setLoading(true);
@@ -68,164 +79,54 @@ export default function InvestmentsPage() {
 
   useEffect(() => {
     fetchInvestments();
-
-    fetch('/api/currencies')
-      .then(res => res.json())
-      .then(data => setCurrencies(data.currencies || []))
-      .catch(err => console.error('Failed to fetch currencies', err));
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowAddModal(false);
-        setShowEditModal(false);
-        setSelectedInvestment(null);
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
   }, [fetchInvestments]);
 
-  const handleSaveInvestment = useCallback(async (formData: any, saveMode: 'add' | 'edit') => {
+  // Handle Add Transaction (Success)
+  const handleSaveInvestment = async (formData: any) => {
+    setIsSaving(true);
     try {
-      setSaving(true);
-      setError(null);
-      const isEdit = saveMode === 'edit';
-      const url = isEdit ? `/api/investments/${selectedInvestment?.id}` : '/api/investments';
-      const method = isEdit ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
+      const res = await fetch('/api/investments', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || `Failed to ${isEdit ? 'update' : 'add'} investment`);
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to save investment');
       }
 
-      setShowAddModal(false);
-      setShowEditModal(false);
-      setSelectedInvestment(null);
-      fetchInvestments();
+      setAddModalOpen(false);
+      setInitialAssetForAdd(null);
+      fetchInvestments(); // Refresh portfolio
+
+      // If we were in AssetModal (selectedAssetId set), we should also refresh it?
+      // AssetModal uses useSWR, so we can mutate global cache or it auto-refreshes?
+      // We'll trust global refresh or user interaction.
+      // Actually, if AssetModal is open, we want it to reflect the new transaction.
+      // AssetModal uses /api/investments/[id]. 
+      // We can rely on its internal SWR revalidation if we trigger it.
+      // For now, fetchInvestments refreshes the main page.
     } catch (err) {
-      console.error('Operation failed', err);
-      setError(err instanceof Error ? err.message : 'Operation failed');
+      console.error(err);
+      alert(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
-  }, [fetchInvestments, selectedInvestment]);
-
-  const handleDeleteInvestment = useCallback(async () => {
-    if (!selectedInvestment || !confirm('Are you sure you want to delete this investment?')) return;
-
-    try {
-      setSaving(true);
-      const res = await fetch(`/api/investments/${selectedInvestment.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete investment');
-      setShowEditModal(false);
-      setSelectedInvestment(null);
-      fetchInvestments();
-    } catch (err) {
-      console.error('Delete failed', err);
-      setError(err instanceof Error ? err.message : 'Delete failed');
-    } finally {
-      setSaving(false);
-    }
-  }, [fetchInvestments, selectedInvestment]);
-
-  const handleRefreshPrices = useCallback(async () => {
-    try {
-      setRefreshing(true);
-      const res = await fetch('/api/cron/update-investment-prices');
-      if (!res.ok) throw new Error('Refresh failed');
-      fetchInvestments();
-    } catch (err) {
-      console.error('Refresh failed', err);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [fetchInvestments]);
-
-  const handleSelectAsset = (
-    asset: { id: string; name: string; symbol: string; type: string; icon: string; price?: number; ticker?: string },
-  ) => {
-    // This is now handled inside InvestmentForm
   };
 
-  const renderSkeletonLayout = () => (
-    <>
-      <div className="flex flex-col gap-4 px-4 pb-4 md:hidden">
-        <div className="grid grid-cols-2 gap-4">
-          <CardSkeleton title="Update" variant="update" />
-          <CardSkeleton title="Balance" variant="value" />
-        </div>
-        <CardSkeleton title="Portfolio" variant="list" />
-        <CardSkeleton title="Performance" variant="chart" />
-        <CardSkeleton title="Recent Activities" variant="list" />
-      </div>
-      <div className="hidden md:grid 2xl:hidden md:grid-cols-2 md:gap-4 md:px-6 md:pb-6">
-        <div className="grid grid-cols-2 gap-4 col-span-2">
-          <CardSkeleton title="Update" variant="update" />
-          <CardSkeleton title="Balance" variant="value" />
-        </div>
-        <CardSkeleton title="Portfolio" variant="list" />
-        <CardSkeleton title="Performance" variant="chart" />
-        <div className="col-span-2">
-          <CardSkeleton title="Recent Activities" variant="list" />
-        </div>
-      </div>
-      <div className="hidden 2xl:grid 2xl:grid-cols-2 2xl:gap-4 2xl:px-6 2xl:pb-6">
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-4">
-            <CardSkeleton title="Update" variant="update" />
-            <CardSkeleton title="Balance" variant="value" />
-          </div>
-          <CardSkeleton title="Portfolio" variant="list" />
-        </div>
-        <div className="flex flex-col gap-4">
-          <CardSkeleton title="Performance" variant="chart" />
-          <CardSkeleton title="Recent Activities" variant="list" />
-        </div>
-      </div>
-    </>
-  );
+  const openAssetDetails = (investment: Investment) => {
+    setSelectedAssetId(investment.id);
+  };
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-[#202020]">
-        <div className="hidden md:block">
-          <DashboardHeader pageName="Investments" />
-        </div>
-        <div className="md:hidden">
-          <MobileNavbar pageName="Investments" timePeriod={timePeriod} onTimePeriodChange={setTimePeriod} activeSection="investments" />
-        </div>
-        {renderSkeletonLayout()}
-      </main>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <main className="min-h-screen bg-[#202020]">
-        <div className="hidden md:block">
-          <DashboardHeader pageName="Investments" />
-        </div>
-        <div className="md:hidden">
-          <MobileNavbar pageName="Investments" timePeriod={timePeriod} onTimePeriodChange={setTimePeriod} activeSection="investments" />
-        </div>
-        <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 px-4">
-          <div className="text-body opacity-70 text-center">{error || 'Unable to load investments.'}</div>
-          <button
-            onClick={fetchInvestments}
-            className="px-4 py-2 rounded-full bg-[#E7E4E4] text-[#282828] text-body font-medium hover:opacity-90 transition-opacity"
-          >
-            Retry
-          </button>
-        </div>
-      </main>
-    );
-  }
+  const openAddTransaction = (asset?: any) => {
+    if (asset) {
+      setInitialAssetForAdd(asset);
+    } else {
+      setInitialAssetForAdd(null);
+    }
+    setAddModalOpen(true);
+  };
 
   return (
     <main className="min-h-screen bg-[#202020]">
@@ -234,13 +135,14 @@ export default function InvestmentsPage() {
         <DashboardHeader
           pageName="Investments"
           actionButton={{
-            label: 'Add Investment',
-            onClick: () => setShowAddModal(true),
+            label: "Add Investment",
+            onClick: () => openAddTransaction(),
+            icon: <Plus width={18} height={18} strokeWidth={2.5} />
           }}
           secondaryButton={{
-            label: refreshing ? 'Refreshing...' : 'Refresh Prices',
-            onClick: handleRefreshPrices,
-            disabled: refreshing,
+            label: "Refresh",
+            onClick: fetchInvestments,
+            icon: <RefreshDouble width={18} height={18} strokeWidth={1.5} />
           }}
         />
       </div>
@@ -249,163 +151,184 @@ export default function InvestmentsPage() {
       <div className="md:hidden">
         <MobileNavbar
           pageName="Investments"
-          timePeriod={timePeriod}
-          onTimePeriodChange={setTimePeriod}
           activeSection="investments"
         />
       </div>
 
-      {/* Mobile: Custom Layout (< 768px) */}
-      <div className="flex flex-col gap-4 px-4 pb-4 md:hidden">
-        {/* Update and Balance side by side */}
-        <div className="grid grid-cols-2 gap-4">
-          <UpdateCard
-            date={data.update.date}
-            message={data.update.message}
-            highlight={data.update.highlight}
-            link={data.update.link}
-            linkHref="/statistics"
-          />
-          <BalanceCard amount={data.balance.amount} trend={data.balance.trend} />
-        </div>
-        <PortfolioCard investments={data.portfolio} />
-        <PerformanceCardNoPadding
-          trend={data.performance.trend}
-          trendText={data.performance.trendText}
-          data={data.performance.data}
-        />
-        <RecentActivitiesCard activities={data.recentActivities} />
+      <div className="flex flex-col gap-8 px-4 pb-4 md:px-6 md:pb-6">
+        {loading && !data ? (
+          <div className="w-full h-80 flex items-center justify-center">
+            <Spinner size={32} />
+          </div>
+        ) : error ? (
+          <div className="w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">
+            <p className="text-[#D93F3F] mb-4">{error}</p>
+            <button onClick={fetchInvestments} className="px-4 py-2 bg-[#AC66DA] rounded-lg text-white font-bold">Retry</button>
+          </div>
+        ) : (
+          <>
+            {/* Summary Cards */}
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 p-8 bg-[#282828] rounded-[30px] border border-[#3a3a3a] relative overflow-hidden">
+                <div className="relative z-10 flex flex-col justify-between h-full gap-6">
+                  <div>
+                    <h3 className="text-card-header text-[#9CA3AF] mb-1 uppercase tracking-wide text-xs font-bold">Total Portfolio Value</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-card-currency text-[#E7E4E4] font-medium">{currency.symbol}</span>
+                      <span className="text-card-value text-white tracking-tight">
+                        {data?.balance.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2.5 py-1 rounded-lg text-sm font-bold flex items-center gap-1.5 ${(data?.balance.trend || 0) >= 0
+                      ? 'bg-[#74C648]/10 text-[#74C648]'
+                      : 'bg-[#D93F3F]/10 text-[#D93F3F]'
+                      }`}>
+                      {(data?.balance.trend || 0) >= 0 ? '+' : ''}{(data?.balance.trend || 0).toFixed(2)}%
+                    </span>
+                    <span className="text-sm text-helper">all time return</span>
+                  </div>
+                </div>
+
+                {/* Decorative Background Glow */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-[#AC66DA]/5 blur-[80px] rounded-full pointer-events-none" />
+              </div>
+
+              <div className="p-8 bg-[#282828] rounded-[30px] border border-[#3a3a3a] flex flex-col justify-center items-center text-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-[#AC66DA]/10 flex items-center justify-center text-[#AC66DA]">
+                  <Sort width={24} height={24} />
+                </div>
+                <div>
+                  <h4 className="text-primary font-bold">Portfolio Insights</h4>
+                  <p className="text-xs text-secondary mt-1 max-w-[200px]">
+                    Your holdings are split across {data?.portfolio.length || 0} unique assets.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* Holdings List */}
+            <section>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">Assets Portfolio</h2>
+              </div>
+
+              {data?.portfolio && data.portfolio.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {data.portfolio.map((item) => (
+                    <PortfolioCard
+                      key={item.id}
+                      data={item}
+                      onClick={() => openAssetDetails(item)}
+                      onEdit={() => openAssetDetails(item)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="p-16 text-center text-secondary bg-[#282828] rounded-[30px] border border-[#3a3a3a] border-dashed">
+                  <p className="mb-4">No investments tracked yet.</p>
+                  <button onClick={() => openAddTransaction()} className="text-[#AC66DA] font-bold hover:underline">Start your portfolio</button>
+                </div>
+              )}
+            </section>
+
+            {/* Recent Activities */}
+            <section>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">Recent Activities</h2>
+              </div>
+              <div className="bg-[#282828] border border-[#3a3a3a] rounded-[30px] overflow-hidden">
+                {data?.recentActivities && data.recentActivities.length > 0 ? (
+                  <div className="divide-y divide-[#3a3a3a]">
+                    {data.recentActivities.map((activity: any) => (
+                      <div key={activity.id} className="p-5 flex items-center justify-between hover:bg-[#323232] transition-colors cursor-default">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full bg-[#202020] flex items-center justify-center text-[#AC66DA] border border-[#3a3a3a]">
+                            {activity.icon === 'BitcoinCircle' ? (
+                              <BitcoinCircle width={24} height={24} />
+                            ) : (
+                              <Reports width={24} height={24} />
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-bold text-primary text-lg">{activity.name}</div>
+                            <div className="text-sm text-helper uppercase tracking-wider">{activity.ticker} • {activity.date}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`font-bold text-lg ${activity.type === 'Buy' ? 'text-[#D93F3F]' : 'text-[#74C648]'}`}>
+                            {activity.type === 'Buy' ? '-' : '+'}{activity.quantity.toLocaleString()} {activity.ticker}
+                          </div>
+                          <div className="text-sm text-helper">
+                            {activity.type} Transaction
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-16 text-center text-secondary">
+                    No recent investment activity.
+                  </div>
+                )}
+              </div>
+            </section>
+          </>
+        )}
       </div>
 
-      {/* Two-column layout: 768px - 1535px */}
-      <div className="hidden md:grid 2xl:hidden md:grid-cols-2 md:gap-4 md:px-6 md:pb-6">
-        {/* Update and Balance side by side */}
-        <div className="grid grid-cols-2 gap-4 col-span-2">
-          <UpdateCard
-            date={data.update.date}
-            message={data.update.message}
-            highlight={data.update.highlight}
-            link={data.update.link}
-            linkHref="/statistics"
-          />
-          <BalanceCard amount={data.balance.amount} trend={data.balance.trend} />
-        </div>
-        <PortfolioCard investments={data.portfolio} />
-        <PerformanceCardNoPadding
-          trend={data.performance.trend}
-          trendText={data.performance.trendText}
-          data={data.performance.data}
-        />
-        <div className="col-span-2">
-          <RecentActivitiesCard activities={data.recentActivities} />
-        </div>
-      </div>
+      {/* Modals ... */}
 
-      {/* Desktop: 2-column layout with 50/50 split (>= 1536px) */}
-      <div className="hidden 2xl:grid 2xl:grid-cols-2 2xl:gap-4 2xl:px-6 2xl:pb-6">
-        {/* Left column (50%) */}
-        <div className="flex flex-col gap-4">
-          {/* Row 1: Update and Balance side by side */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-              <UpdateCard
-                date={data.update.date}
-                message={data.update.message}
-                highlight={data.update.highlight}
-                link={data.update.link}
-                linkHref="/statistics"
-              />
-            </div>
-            <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-              <BalanceCard amount={data.balance.amount} trend={data.balance.trend} />
-            </div>
-          </div>
-          <div className="flex-1 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-            <PortfolioCard
-              investments={data.portfolio}
-              onEdit={(inv) => {
-                setSelectedInvestment(inv);
-                setShowEditModal(true);
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Right column (50%) */}
-        <div className="flex flex-col gap-4">
-          <div className="flex-1 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-            <PerformanceCardNoPadding
-              trend={data.performance.trend}
-              trendText={data.performance.trendText}
-              data={data.performance.data}
-            />
-          </div>
-          <div className="flex-1 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-            <RecentActivitiesCard activities={data.recentActivities} />
-          </div>
-        </div>
-      </div>
-
-      {/* Edit Investment Modal */}
-      {showEditModal && selectedInvestment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
+      {/* Add Investment Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="fixed inset-0 bg-black/60 animate-in fade-in duration-200"
-            onClick={() => { setShowEditModal(false); setSelectedInvestment(null); }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => !isSaving && setAddModalOpen(false)}
           />
-          <div className={`relative bg-[#282828] rounded-3xl w-full max-w-2xl max-h-[94vh] border border-[#3a3a3a] shadow-2xl flex flex-col animate-in zoom-in-95 duration-200 ${isFloatingPanelOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#3a3a3a]">
-              <h3 className="text-card-header">Edit Investment</h3>
-              <button
-                onClick={() => { setShowEditModal(false); setSelectedInvestment(null); }}
-                className="p-2 rounded-full hover:text-[#E7E4E4] hover:bg-[#3a3a3a] transition-colors cursor-pointer"
-              >
-                <Xmark width={22} height={22} strokeWidth={1.5} />
+          <div
+            className={`relative w-full max-w-2xl bg-[#282828] rounded-3xl shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${isFloatingPanelOpen ? 'h-[700px]' : 'h-[600px] max-h-[90vh]'
+              }`}
+          >
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[#3a3a3a]">
+              <h2 className="text-xl font-bold">Add Investment Transaction</h2>
+              <button onClick={() => setAddModalOpen(false)} className="text-helper hover:text-white transition-colors">
+                <span className="sr-only">Close</span>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
             </div>
-            <InvestmentForm
-              mode="edit"
-              investment={selectedInvestment}
-              onSave={(formData) => handleSaveInvestment(formData, 'edit')}
-              onCancel={() => { setShowEditModal(false); setSelectedInvestment(null); }}
-              currencyOptions={currencies}
-              isSaving={saving}
-              onFloatingPanelToggle={setIsFloatingPanelOpen}
-            />
+
+            <div className="flex-1 overflow-hidden">
+              <InvestmentForm
+                mode="add"
+                initialAsset={initialAssetForAdd}
+                onSave={handleSaveInvestment}
+                onCancel={() => setAddModalOpen(false)}
+                currencyOptions={currencyOptions}
+                isSaving={isSaving}
+                onFloatingPanelToggle={setIsFloatingPanelOpen}
+              />
+            </div>
           </div>
         </div>
       )}
 
-      {/* Add Investment Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
-          <div
-            className="fixed inset-0 bg-black/60 animate-in fade-in duration-200"
-            onClick={() => setShowAddModal(false)}
-          />
-          <div className={`relative bg-[#282828] rounded-3xl w-full max-w-2xl max-h-[94vh] border border-[#3a3a3a] shadow-2xl flex flex-col animate-in zoom-in-95 duration-200 ${isFloatingPanelOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#3a3a3a]">
-              <h3 className="text-card-header">Add Investment</h3>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="p-2 rounded-full hover:text-[#E7E4E4] hover:bg-[#3a3a3a] transition-colors cursor-pointer"
-                aria-label="Close add investment modal"
-              >
-                <Xmark width={22} height={22} strokeWidth={1.5} />
-              </button>
-            </div>
-            <InvestmentForm
-              mode="add"
-              onSave={(formData) => handleSaveInvestment(formData, 'add')}
-              onCancel={() => setShowAddModal(false)}
-              currencyOptions={currencies}
-              isSaving={saving}
-              onFloatingPanelToggle={setIsFloatingPanelOpen}
-            />
-          </div>
-        </div>
+      {/* Asset Details Modal */}
+      {selectedAssetId && (
+        <AssetModal
+          isOpen={!!selectedAssetId}
+          onClose={() => setSelectedAssetId(null)}
+          assetId={selectedAssetId}
+          onAddTransaction={(asset) => {
+            // Close Asset details? Or keep open?
+            // The AssetModal uses Portal, so opening another Modal on top works if z-index is higher.
+            // We'll open Add Transaction form.
+            openAddTransaction(asset);
+          }}
+        />
       )}
     </main>
   );
 }
-
