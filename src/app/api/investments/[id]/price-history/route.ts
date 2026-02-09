@@ -7,11 +7,12 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id: paramId } = await params;
         await requireCurrentUser();
-        const id = parseInt(params.id, 10);
+        const id = parseInt(paramId, 10);
 
         if (isNaN(id)) {
             return NextResponse.json({ error: 'Invalid investment ID' }, { status: 400 });
