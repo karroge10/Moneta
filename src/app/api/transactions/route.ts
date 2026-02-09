@@ -14,19 +14,19 @@ function formatDate(date: Date): string {
   const day = date.getDate();
   const month = months[date.getMonth()];
   const year = date.getFullYear();
-  
+
   // Add ordinal suffix
   const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
-                 day === 2 || day === 22 ? 'nd' :
-                 day === 3 || day === 23 ? 'rd' : 'th';
-  
+    day === 2 || day === 22 ? 'nd' :
+      day === 3 || day === 23 ? 'rd' : 'th';
+
   return `${month} ${day}${suffix} ${year}`;
 }
 
 // Get icon based on category name or default
 function getIconForCategory(categoryName: string | null): string {
   if (!categoryName) return 'HelpCircle';
-  
+
   const iconMap: Record<string, string> = {
     'Rent': 'City',
     'Entertainment': 'Tv',
@@ -45,7 +45,7 @@ function getIconForCategory(categoryName: string | null): string {
     'Taxes': 'Cash',
     'Mobile Data': 'SmartphoneDevice',
   };
-  
+
   return iconMap[categoryName] || 'HelpCircle';
 }
 
@@ -68,33 +68,33 @@ export async function GET(request: NextRequest) {
     }
 
     const targetCurrencyId = userCurrencyRecord.id;
-    
+
     const { searchParams } = new URL(request.url);
-    
+
     // Pagination
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '20', 10)));
-    
+
     // Filters
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category');
     const type = searchParams.get('type'); // 'expense' | 'income' | null
     const month = searchParams.get('month'); // Format: 'YYYY-MM'
     const timePeriod = searchParams.get('timePeriod') || 'All Time';
-    
+
     // Sorting
     const sortBy = searchParams.get('sortBy') || 'date';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
-    
+
     // Build where clause
     const where: Record<string, unknown> = {
       userId: user.id,
     };
-    
+
     // Date filter based on time period or month
     const dateFilter: { gte?: Date; lte?: Date } = {};
     const now = new Date();
-    
+
     // Month filter takes precedence over time period if specified
     if (month) {
       const [year, monthNum] = month.split('-').map(Number);
@@ -105,16 +105,16 @@ export async function GET(request: NextRequest) {
     } else if (timePeriod === 'This Year') {
       dateFilter.gte = new Date(now.getFullYear(), 0, 1);
     }
-    
+
     if (Object.keys(dateFilter).length > 0) {
       where.date = dateFilter;
     }
-    
+
     // Type filter
     if (type === 'expense' || type === 'income') {
       where.type = type;
     }
-    
+
     // Category filter
     if (category) {
       const categoryRecord = await db.category.findFirst({
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
           },
         },
       });
-      
+
       if (categoryRecord) {
         where.categoryId = categoryRecord.id;
       } else {
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
         });
       }
     }
-    
+
     // Search filter
     if (search) {
       where.description = {
@@ -147,15 +147,15 @@ export async function GET(request: NextRequest) {
         mode: 'insensitive',
       };
     }
-    
+
     // Get total count - all transactions are included (no filtering)
     const total = await db.transaction.count({ where });
     const totalPages = Math.ceil(total / pageSize);
-    
+
     // Build orderBy clause based on sort parameters
     type OrderDirection = 'asc' | 'desc';
     const direction: OrderDirection = sortOrder === 'asc' ? 'asc' : 'desc';
-    
+
     let orderBy: Record<string, unknown>;
     switch (sortBy) {
       case 'description':
@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
         orderBy = { date: direction };
         break;
     }
-    
+
     // Fetch paginated transactions - all transactions are included (no filtering)
     const filteredTransactions = await db.transaction.findMany({
       where,
@@ -203,14 +203,14 @@ export async function GET(request: NextRequest) {
         };
       }),
     );
-    
+
     // Transform to frontend format
     const transactions: TransactionType[] = transactionsWithConverted.map((t) => {
       // For transaction history page, show full name (translated if needed, but not cleaned)
       const fullName = formatTransactionName(t.description, userLanguageAlias, true);
       const originalSignedAmount = t.type === 'expense' ? -t.amount : t.amount;
       const convertedSignedAmount = t.type === 'expense' ? -t.convertedAmount : t.convertedAmount;
-      
+
       return {
         id: t.id.toString(),
         name: fullName, // Full description for transaction history
@@ -227,7 +227,7 @@ export async function GET(request: NextRequest) {
         icon: getIconForCategory(t.category?.name || null),
       };
     });
-    
+
     return NextResponse.json({
       transactions,
       total,
@@ -288,16 +288,16 @@ export async function POST(request: NextRequest) {
     // Get user with language included to avoid extra query
     const user = await requireCurrentUserWithLanguage();
     const body = await request.json();
-    
+
     const { name, date, amount, category, currencyId: requestCurrencyId } = body;
-    
+
     if (!name || !date || amount === undefined) {
       return NextResponse.json(
         { error: 'Missing required fields: name, date, amount' },
         { status: 400 }
       );
     }
-    
+
     // Use currencyId from request if provided, otherwise use user's default currency
     let currencyId = requestCurrencyId;
     if (!currencyId) {
@@ -317,11 +317,11 @@ export async function POST(request: NextRequest) {
     const transactionCurrency = await db.currency.findUnique({
       where: { id: currencyId },
     });
-    
+
     // Determine type and absolute amount
     const type = amount >= 0 ? 'income' : 'expense';
     const absoluteAmount = Math.abs(amount);
-    
+
     // Parse date (format: "Dec 2nd 2024" or ISO string)
     let transactionDate: Date;
     if (date.includes('st') || date.includes('nd') || date.includes('rd') || date.includes('th')) {
@@ -338,7 +338,7 @@ export async function POST(request: NextRequest) {
     } else {
       transactionDate = new Date(date);
     }
-    
+
     // Find category if provided
     let categoryId: number | null = null;
     if (category) {
@@ -349,7 +349,7 @@ export async function POST(request: NextRequest) {
         categoryId = categoryRecord.id;
       }
     }
-    
+
     // Get language alias from user (already fetched with language relation)
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
 
@@ -362,14 +362,14 @@ export async function POST(request: NextRequest) {
       // Get the start date for recurring transaction
       const startDateStr = body.recurring?.startDate || body.dateRaw || body.date;
       recurringStartDate = startDateStr ? new Date(startDateStr) : transactionDate;
-      
+
       // Only create transaction if startDate is today or in the past
       // If startDate is in the future, the cron job will create it when the date arrives
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const startDateOnly = new Date(recurringStartDate);
       startDateOnly.setHours(0, 0, 0, 0);
-      
+
       shouldCreateTransaction = startDateOnly <= today;
     }
 
@@ -382,7 +382,7 @@ export async function POST(request: NextRequest) {
       categoryId,
       transactionDate,
     });
-    
+
     // Only create transaction record if:
     // 1. It's not a recurring transaction, OR
     // 2. It's a recurring transaction but startDate is today or in the past
@@ -403,7 +403,7 @@ export async function POST(request: NextRequest) {
         },
       });
     }
-    
+
     // If transaction was created, return it; otherwise return success with no transaction
     if (newTransaction) {
       // Transform to frontend format (format name for display)
@@ -423,14 +423,14 @@ export async function POST(request: NextRequest) {
         originalCurrencySymbol: transactionCurrency?.symbol,
         originalCurrencyAlias: transactionCurrency?.alias,
       };
-      
+
       return NextResponse.json({ transaction }, { status: 201 });
     } else {
       // Recurring transaction created but startDate is in the future
       // Return success without transaction (it will be created by cron when due)
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'Recurring transaction created. Transaction will be created when start date arrives.',
-        transaction: null 
+        transaction: null
       }, { status: 201 });
     }
   } catch (error) {
@@ -448,16 +448,16 @@ export async function PUT(request: NextRequest) {
     // Get user with language included to avoid extra query
     const user = await requireCurrentUserWithLanguage();
     const body = await request.json();
-    
-    const { id, name, date, amount, category, currencyId } = body;
-    
+
+    const { id, name, date, amount, category, currencyId, investmentType, quantity, pricePerUnit } = body;
+
     if (!id || !name || !date || amount === undefined) {
       return NextResponse.json(
         { error: 'Missing required fields: id, name, date, amount' },
         { status: 400 }
       );
     }
-    
+
     // Verify transaction belongs to user
     const existingTransaction = await db.transaction.findFirst({
       where: {
@@ -465,18 +465,18 @@ export async function PUT(request: NextRequest) {
         userId: user.id,
       },
     });
-    
+
     if (!existingTransaction) {
       return NextResponse.json(
         { error: 'Transaction not found' },
         { status: 404 }
       );
     }
-    
+
     // Determine type and absolute amount
     const type = amount >= 0 ? 'income' : 'expense';
     const absoluteAmount = Math.abs(amount);
-    
+
     // Parse date
     let transactionDate: Date;
     if (date.includes('st') || date.includes('nd') || date.includes('rd') || date.includes('th')) {
@@ -492,7 +492,7 @@ export async function PUT(request: NextRequest) {
     } else {
       transactionDate = new Date(date);
     }
-    
+
     // Find category if provided
     let categoryId: number | null = null;
     if (category) {
@@ -503,7 +503,7 @@ export async function PUT(request: NextRequest) {
         categoryId = categoryRecord.id;
       }
     }
-    
+
     // Validate and get currency ID
     let transactionCurrencyId: number;
     if (currencyId !== undefined && currencyId !== null) {
@@ -532,10 +532,10 @@ export async function PUT(request: NextRequest) {
         transactionCurrencyId = defaultCurrency.id;
       }
     }
-    
+
     // Get language alias from user (already fetched with language relation)
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
-    
+
     // Update transaction (save full description to database)
     const updatedTransaction = await db.transaction.update({
       where: { id: parseInt(id) },
@@ -546,13 +546,16 @@ export async function PUT(request: NextRequest) {
         date: transactionDate,
         categoryId,
         currencyId: transactionCurrencyId,
+        investmentType: investmentType as any,
+        quantity: quantity !== undefined ? Number(quantity) : undefined,
+        pricePerUnit: pricePerUnit !== undefined ? Number(pricePerUnit) : undefined,
       },
       include: {
         category: true,
         currency: true,
       },
     });
-    
+
     // Learn merchant mapping if category was changed
     // Only learn if category was actually set (not null) and different from before
     if (categoryId && categoryId !== existingTransaction.categoryId) {
@@ -560,7 +563,7 @@ export async function PUT(request: NextRequest) {
         const { normalizeMerchantName, extractMerchantFromDescription } = await import('@/lib/merchant');
         const merchantName = extractMerchantFromDescription(name);
         const normalizedMerchant = normalizeMerchantName(merchantName);
-        
+
         if (normalizedMerchant) {
           // Fire-and-forget: learn merchant mapping in background
           await db.merchant.upsert({
@@ -588,10 +591,10 @@ export async function PUT(request: NextRequest) {
         console.debug('[merchant/learn] failed during transaction update', error);
       }
     }
-    
+
     // Transform to frontend format (format name for display)
     const signedUpdatedAmount = updatedTransaction.type === 'expense' ? -updatedTransaction.amount : updatedTransaction.amount;
-    
+
     // Get user's currency for conversion
     const userCurrencyRecord = user.currencyId
       ? await db.currency.findUnique({ where: { id: user.currencyId } })
@@ -628,7 +631,7 @@ export async function PUT(request: NextRequest) {
       originalCurrencyAlias: updatedTransaction.currency?.alias,
       currencyId: updatedTransaction.currencyId,
     };
-    
+
     return NextResponse.json({ transaction });
   } catch (error) {
     console.error('Error updating transaction:', error);
@@ -645,14 +648,14 @@ export async function DELETE(request: NextRequest) {
     const user = await requireCurrentUser();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    
+
     if (!id) {
       return NextResponse.json(
         { error: 'Missing transaction id' },
         { status: 400 }
       );
     }
-    
+
     // Verify transaction belongs to user
     const existingTransaction = await db.transaction.findFirst({
       where: {
@@ -660,19 +663,19 @@ export async function DELETE(request: NextRequest) {
         userId: user.id,
       },
     });
-    
+
     if (!existingTransaction) {
       return NextResponse.json(
         { error: 'Transaction not found' },
         { status: 404 }
       );
     }
-    
+
     // Delete transaction
     await db.transaction.delete({
       where: { id: parseInt(id) },
     });
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting transaction:', error);
