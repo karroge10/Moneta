@@ -3,7 +3,7 @@ import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { LatestExpense, ExpenseCategory, PerformanceDataPoint, TimePeriod } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
-import { convertTransactionsToTarget } from '@/lib/currency-conversion';
+import { convertTransactionsToTargetSimple } from '@/lib/currency-conversion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,19 +14,19 @@ function formatDate(date: Date): string {
   const day = date.getDate();
   const month = months[date.getMonth()];
   const year = date.getFullYear();
-  
+
   // Add ordinal suffix
   const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
-                 day === 2 || day === 22 ? 'nd' :
-                 day === 3 || day === 23 ? 'rd' : 'th';
-  
+    day === 2 || day === 22 ? 'nd' :
+      day === 3 || day === 23 ? 'rd' : 'th';
+
   return `${month} ${day}${suffix} ${year}`;
 }
 
 // Format month for grouping (e.g., "January 2025")
 function formatMonth(date: Date): string {
-  const months = ['January', 'February', 'March', 'April', 'May', 'June', 
-                  'July', 'August', 'September', 'October', 'November', 'December'];
+  const months = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
   return `${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
@@ -45,7 +45,7 @@ function formatDayWithMonth(date: Date): string {
 // Get icon based on category name
 function getIconForCategory(categoryName: string | null): string {
   if (!categoryName) return 'HelpCircle';
-  
+
   const iconMap: Record<string, string> = {
     'Rent': 'City',
     'Entertainment': 'Tv',
@@ -66,7 +66,7 @@ function getIconForCategory(categoryName: string | null): string {
     'Housing': 'City',
     'Health': 'Gym',
   };
-  
+
   return iconMap[categoryName] || 'HelpCircle';
 }
 
@@ -79,38 +79,38 @@ const categoryColors = ['#AC66DA', '#74C648', '#D93F3F'];
 function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; end: Date } {
   const year = now.getFullYear();
   const month = now.getMonth();
-  
+
   switch (period) {
     case 'This Month':
       return {
         start: new Date(year, month, 1),
         end: new Date(year, month + 1, 0, 23, 59, 59, 999),
       };
-    
+
     case 'Last Month':
       return {
         start: new Date(year, month - 1, 1),
         end: new Date(year, month, 0, 23, 59, 59, 999),
       };
-    
+
     case 'This Year':
       return {
         start: new Date(year, 0, 1),
         end: new Date(year, 11, 31, 23, 59, 59, 999),
       };
-    
+
     case 'Last Year':
       return {
         start: new Date(year - 1, 0, 1),
         end: new Date(year - 1, 11, 31, 23, 59, 59, 999),
       };
-    
+
     case 'All Time':
       return {
         start: new Date(2000, 0, 1),
         end: new Date(year + 10, 11, 31, 23, 59, 59, 999),
       };
-    
+
     default:
       return {
         start: new Date(year, month, 1),
@@ -125,20 +125,20 @@ function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; en
 function getComparisonDateRange(period: TimePeriod, now: Date): { start: Date; end: Date } | null {
   const year = now.getFullYear();
   const month = now.getMonth();
-  
+
   switch (period) {
     case 'This Month':
       return {
         start: new Date(year, month - 1, 1),
         end: new Date(year, month, 0, 23, 59, 59, 999),
       };
-    
+
     case 'Last Month':
       return {
         start: new Date(year, month - 2, 1),
         end: new Date(year, month - 1, 0, 23, 59, 59, 999),
       };
-    
+
     case 'This Year': {
       // Compare YTD to same YTD last year (e.g. Jan 1–Jan 31 2025 vs Jan 1–Jan 31 2024)
       const lastYearSameMonthLastDay = new Date(year - 1, now.getMonth() + 1, 0).getDate();
@@ -154,10 +154,10 @@ function getComparisonDateRange(period: TimePeriod, now: Date): { start: Date; e
         start: new Date(year - 2, 0, 1),
         end: new Date(year - 2, 11, 31, 23, 59, 59, 999),
       };
-    
+
     case 'All Time':
       return null;
-    
+
     default:
       return null;
   }
@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireCurrentUserWithLanguage();
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
-    
+
     const now = new Date();
 
     const userCurrencyRecord = user.currencyId
@@ -203,13 +203,13 @@ export async function GET(request: NextRequest) {
     }
 
     const targetCurrencyId = userCurrencyRecord.id;
-    
+
     const { searchParams } = new URL(request.url);
     const timePeriod = (searchParams.get('timePeriod') || 'This Year') as TimePeriod;
-    
+
     const selectedRange = getDateRangeForPeriod(timePeriod, now);
     const comparisonRange = getComparisonDateRange(timePeriod, now);
-    
+
     // Fetch all expense transactions for the user
     const allExpenseTransactions = await db.transaction.findMany({
       where: {
@@ -225,11 +225,11 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const transactionsWithConverted = await convertTransactionsToTarget(
+    const transactionsWithConverted = await convertTransactionsToTargetSimple(
       allExpenseTransactions,
       targetCurrencyId,
     );
-    
+
     // Helper: normalize to calendar date (strip time) for consistent period bucketing across timezones
     const toDateOnly = (d: Date): Date =>
       new Date(new Date(d).getFullYear(), new Date(d).getMonth(), new Date(d).getDate());
@@ -241,23 +241,23 @@ export async function GET(request: NextRequest) {
       const e = toDateOnly(end);
       return d >= s && d <= e;
     };
-    
+
     // Calculate selected period expenses
-    const selectedPeriodTransactions = transactionsWithConverted.filter((t) => 
+    const selectedPeriodTransactions = transactionsWithConverted.filter((t) =>
       isInRange(t.date, selectedRange.start, selectedRange.end)
     );
-    
+
     const selectedPeriodExpenses = selectedPeriodTransactions.reduce((sum: number, t) => sum + t.convertedAmount, 0);
-    
+
     // Calculate comparison period expenses
     let comparisonExpenses = 0;
     if (comparisonRange) {
-      const comparisonTransactions = transactionsWithConverted.filter((t) => 
+      const comparisonTransactions = transactionsWithConverted.filter((t) =>
         isInRange(t.date, comparisonRange.start, comparisonRange.end)
       );
       comparisonExpenses = comparisonTransactions.reduce((sum: number, t) => sum + t.convertedAmount, 0);
     }
-    
+
     // Skip trend for "This Year" when only one month has passed (January) — not enough data for meaningful comparison
     const skipComparison = timePeriod === 'This Year' && now.getMonth() === 0;
 
@@ -299,14 +299,14 @@ export async function GET(request: NextRequest) {
             : comparisonRange && selectedPeriodExpenses > 0
               ? 100
               : 0;
-    
+
     // Calculate top expense categories
     const categoryTotals = new Map<string, { amount: number; categoryId: number; categoryName: string }>();
-    
+
     selectedPeriodTransactions.forEach((t) => {
       const categoryName = t.category?.name || 'Uncategorized';
       const categoryId = t.categoryId || 0;
-      
+
       if (!categoryTotals.has(categoryName)) {
         categoryTotals.set(categoryName, {
           amount: 0,
@@ -314,24 +314,24 @@ export async function GET(request: NextRequest) {
           categoryName,
         });
       }
-      
+
       const existing = categoryTotals.get(categoryName)!;
       existing.amount += t.convertedAmount;
     });
-    
+
     // Convert to array and sort by amount
     const topCategoriesArray = Array.from(categoryTotals.values())
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 3); // Top 3
-    
+
     const totalExpenses = selectedPeriodExpenses;
-    
+
     // Format top categories with percentages and colors
     const topCategories: ExpenseCategory[] = topCategoriesArray.map((cat, index: number) => {
-      const percentage = totalExpenses > 0 
+      const percentage = totalExpenses > 0
         ? Math.round((cat.amount / totalExpenses) * 100)
         : 0;
-      
+
       return {
         id: cat.categoryId.toString() || `uncategorized-${index}`,
         name: cat.categoryName,
@@ -341,14 +341,14 @@ export async function GET(request: NextRequest) {
         color: categoryColors[index % categoryColors.length],
       };
     });
-    
+
     // Get latest expense transactions grouped by month
     const latestExpenses: LatestExpense[] = selectedPeriodTransactions
       .slice(0, 20) // Limit to 20 most recent
       .map((t) => {
         const displayName = formatTransactionName(t.description, userLanguageAlias, false);
         const fullName = formatTransactionName(t.description, userLanguageAlias, true);
-        
+
         return {
           id: t.id.toString(),
           name: displayName,
@@ -365,13 +365,13 @@ export async function GET(request: NextRequest) {
           month: formatMonth(t.date),
         };
       });
-    
+
     // Calculate performance data
     // For "This Month" and "Last Month", use daily breakdown
     // For other periods, use monthly breakdown
     const isMonthlyPeriod = timePeriod === 'This Month' || timePeriod === 'Last Month';
     const performanceTotals = new Map<string, number>();
-    
+
     if (isMonthlyPeriod) {
       // Daily breakdown for monthly periods
       selectedPeriodTransactions.forEach((t) => {
@@ -391,7 +391,7 @@ export async function GET(request: NextRequest) {
         performanceTotals.set(monthKey, performanceTotals.get(monthKey)! + t.convertedAmount);
       });
     }
-    
+
     // Sort chronologically
     const performanceData: PerformanceDataPoint[] = Array.from(performanceTotals.entries())
       .map(([date, value]) => ({ date, value }))
@@ -407,7 +407,7 @@ export async function GET(request: NextRequest) {
           return new Date(a.date).getTime() - new Date(b.date).getTime();
         }
       });
-    
+
     // Average card: always compare current year vs previous year (average monthly across all months)
     const currentYear = now.getFullYear();
     const currentYearStart = new Date(currentYear, 0, 1);
@@ -435,7 +435,7 @@ export async function GET(request: NextRequest) {
     // Calculate average monthly expenses (or average daily for single month periods)
     let averageMonthlyExpenses = 0;
     let averageDailyExpenses = 0;
-    
+
     if (isMonthlyPeriod) {
       const daysInPeriod = Math.ceil((selectedRange.end.getTime() - selectedRange.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       averageDailyExpenses = totalExpenses / daysInPeriod;
@@ -444,9 +444,9 @@ export async function GET(request: NextRequest) {
       const numberOfMonths = performanceData.length || 1;
       averageMonthlyExpenses = totalExpenses / numberOfMonths;
     }
-    
+
     const comparisonLabel = getComparisonLabel(timePeriod);
-    
+
     // Generate trend text for performance
     // For expenses: negative trend is good (spending less), positive is bad (spending more)
     // No comparison when skipped; All Time uses growth since beginning
@@ -459,14 +459,14 @@ export async function GET(request: NextRequest) {
         : expenseTrend < 0
           ? `Your expenses decreased ${Math.abs(expenseTrend)}% ${periodSuffix}`
           : `Your expenses remained stable ${periodSuffix}`;
-    
+
     // Calculate next month prediction (only for "This Month")
     let nextMonthPrediction = 0;
     if (timePeriod === 'This Month') {
       const currentDay = now.getDate();
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const daysElapsed = currentDay;
-      
+
       if (daysElapsed > 0 && selectedPeriodExpenses > 0) {
         // Calculate average daily spending so far
         const averageDailySpending = selectedPeriodExpenses / daysElapsed;
@@ -475,7 +475,7 @@ export async function GET(request: NextRequest) {
       } else {
         // If no data yet, use last month's average if available
         if (comparisonRange) {
-          const comparisonTransactions = transactionsWithConverted.filter((t) => 
+          const comparisonTransactions = transactionsWithConverted.filter((t) =>
             isInRange(t.date, comparisonRange.start, comparisonRange.end)
           );
           const comparisonTotal = comparisonTransactions.reduce((sum: number, t) => sum + t.convertedAmount, 0);
@@ -483,7 +483,7 @@ export async function GET(request: NextRequest) {
         }
       }
     }
-    
+
     return NextResponse.json({
       total: {
         amount: Math.round(selectedPeriodExpenses),
@@ -508,8 +508,16 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching expenses data:', error);
+    console.error('Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    // Return more specific error message for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch expenses data';
     return NextResponse.json(
-      { error: 'Failed to fetch expenses data' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

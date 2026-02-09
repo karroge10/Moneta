@@ -1,26 +1,28 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { mutate } from 'swr';
 import { Investment, PerformanceDataPoint, InvestmentActivity } from '@/types/dashboard';
-import {
-  Plus,
-  FilterList,
-  Sort,
-  NavArrowDown,
-  RefreshDouble,
-  Download,
-  BitcoinCircle,
-  Reports
-} from 'iconoir-react';
+import { Plus, BitcoinCircle, Reports, Cash, Neighbourhood, ViewGrid, Xmark } from 'iconoir-react';
+import { getIcon } from '@/lib/iconMapping';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
-
+import Card from '@/components/ui/Card';
 import Spinner from '@/components/ui/Spinner';
-import PortfolioCard from '@/components/investments/PortfolioCard';
-import InvestmentForm from '@/components/investments/InvestmentForm'; // Currently this handles Add Flow
+import CardSkeleton from '@/components/dashboard/CardSkeleton';
+import UpdateCard from '@/components/dashboard/UpdateCard';
+import InvestmentForm from '@/components/investments/InvestmentForm';
 import AssetModal from '@/components/investments/AssetModal';
+import InvestmentTransactionModal from '@/components/investments/InvestmentTransactionModal';
+import PortfolioTrendCard from '@/components/investments/PortfolioTrendCard';
+import TotalInvestedCard from '@/components/investments/TotalInvestedCard';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
+import { formatDateForDisplay } from '@/lib/dateFormatting';
+import AssetLogo from '@/components/investments/AssetLogo';
+import { CompactListDesign, CarouselDesign, TableDesign } from '@/components/investments/PortfolioDesignOptions';
 
 interface InvestmentsApiResponse {
   update: {
@@ -28,26 +30,29 @@ interface InvestmentsApiResponse {
     message: string;
     highlight: string;
     link: string;
+    isUnread?: boolean;
   };
   balance: {
     amount: number;
     trend: number;
+    trendText?: string;
   };
+  totalCost: number;
   portfolio: Investment[];
   performance: {
     trend: number;
     trendText: string;
     data: PerformanceDataPoint[];
   };
-  recentActivities: InvestmentActivity[];
+  recentActivities: any[];
 }
 
-export default function InvestmentsPage() {
-
+export default function InvestmentsNewPage() {
   const { currency } = useCurrency();
   const { currencyOptions } = useCurrencyOptions();
   const [data, setData] = useState<InvestmentsApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Modals state
@@ -55,12 +60,18 @@ export default function InvestmentsPage() {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [initialAssetForAdd, setInitialAssetForAdd] = useState<any | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isFloatingPanelOpen, setIsFloatingPanelOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
+  const [isSavingTx, setIsSavingTx] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Fetch Data
-  const fetchInvestments = useCallback(async () => {
+  const fetchInvestments = useCallback(async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       const res = await fetch('/api/investments');
       if (!res.ok) {
@@ -73,7 +84,11 @@ export default function InvestmentsPage() {
       setError(err instanceof Error ? err.message : 'Failed to load investments');
       setData(null);
     } finally {
-      setLoading(false);
+      if (isRefresh) {
+        setIsRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -98,20 +113,57 @@ export default function InvestmentsPage() {
 
       setAddModalOpen(false);
       setInitialAssetForAdd(null);
-      fetchInvestments(); // Refresh portfolio
-
-      // If we were in AssetModal (selectedAssetId set), we should also refresh it?
-      // AssetModal uses useSWR, so we can mutate global cache or it auto-refreshes?
-      // We'll trust global refresh or user interaction.
-      // Actually, if AssetModal is open, we want it to reflect the new transaction.
-      // AssetModal uses /api/investments/[id]. 
-      // We can rely on its internal SWR revalidation if we trigger it.
-      // For now, fetchInvestments refreshes the main page.
+      await fetchInvestments(true);
+      if (selectedAssetId) {
+        mutate(`/api/investments/${selectedAssetId}`);
+      }
     } catch (err) {
       console.error(err);
       alert(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveTransaction = async (txData: any) => {
+    try {
+      setIsSavingTx(true);
+      const res = await fetch('/api/transactions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(txData)
+      });
+      if (!res.ok) throw new Error('Failed to update');
+
+      setEditingTransaction(null);
+      await fetchInvestments(true);
+      if (selectedAssetId) {
+        mutate(`/api/investments/${selectedAssetId}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to update transaction');
+    } finally {
+      setIsSavingTx(false);
+    }
+  };
+
+  const handleDeleteTransaction = async () => {
+    if (!editingTransaction) return;
+    try {
+      setIsSavingTx(true);
+      await fetch(`/api/transactions?id=${editingTransaction.id}`, { method: 'DELETE' });
+      setEditingTransaction(null);
+      await fetchInvestments(true);
+      if (selectedAssetId) {
+        mutate(`/api/investments/${selectedAssetId}`);
+      }
+      setShowDeleteConfirm(false);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete transaction');
+    } finally {
+      setIsSavingTx(false);
     }
   };
 
@@ -128,6 +180,20 @@ export default function InvestmentsPage() {
     setAddModalOpen(true);
   };
 
+  const handleTransactionClick = (activity: any) => {
+    setEditingTransaction({
+      id: activity.id,
+      date: activity.date,
+      investmentType: activity.investmentType,
+      quantity: activity.quantity,
+      pricePerUnit: activity.pricePerUnit,
+      assetName: activity.name,
+      assetTicker: activity.ticker,
+      icon: activity.icon,
+      assetType: activity.assetType,
+    });
+  };
+
   return (
     <main className="min-h-screen bg-[#202020]">
       {/* Desktop Header */}
@@ -138,11 +204,6 @@ export default function InvestmentsPage() {
             label: "Add Investment",
             onClick: () => openAddTransaction(),
             icon: <Plus width={18} height={18} strokeWidth={2.5} />
-          }}
-          secondaryButton={{
-            label: "Refresh",
-            onClick: fetchInvestments,
-            icon: <RefreshDouble width={18} height={18} strokeWidth={1.5} />
           }}
         />
       </div>
@@ -155,10 +216,16 @@ export default function InvestmentsPage() {
         />
       </div>
 
-      <div className="flex flex-col gap-8 px-4 pb-4 md:px-6 md:pb-6">
-        {loading && !data ? (
-          <div className="w-full h-80 flex items-center justify-center">
-            <Spinner size={32} />
+      <div className="px-4 md:px-6 pb-6 flex flex-col min-h-[calc(100vh-120px)] relative">
+        {(loading || isRefreshing || isSaving || isSavingTx) ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <CardSkeleton title="Update" variant="update" />
+              <CardSkeleton title="Total Portfolio Value" variant="value" />
+              <CardSkeleton title="Total Invested" variant="value" />
+            </div>
+            <CardSkeleton title="Assets Portfolio" variant="list" />
+            <CardSkeleton title="Recent Activities" variant="list" />
           </div>
         ) : error ? (
           <div className="w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">
@@ -167,106 +234,111 @@ export default function InvestmentsPage() {
           </div>
         ) : (
           <>
-            {/* Summary Cards */}
-            <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 p-8 bg-[#282828] rounded-[30px] border border-[#3a3a3a] relative overflow-hidden">
-                <div className="relative z-10 flex flex-col justify-between h-full gap-6">
-                  <div>
-                    <h3 className="text-card-header text-[#9CA3AF] mb-1 uppercase tracking-wide text-xs font-bold">Total Portfolio Value</h3>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-card-currency text-[#E7E4E4] font-medium">{currency.symbol}</span>
-                      <span className="text-card-value text-white tracking-tight">
-                        {data?.balance.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2.5 py-1 rounded-lg text-sm font-bold flex items-center gap-1.5 ${(data?.balance.trend || 0) >= 0
-                      ? 'bg-[#74C648]/10 text-[#74C648]'
-                      : 'bg-[#D93F3F]/10 text-[#D93F3F]'
-                      }`}>
-                      {(data?.balance.trend || 0) >= 0 ? '+' : ''}{(data?.balance.trend || 0).toFixed(2)}%
-                    </span>
-                    <span className="text-sm text-helper">all time return</span>
-                  </div>
+            {/* Top Section: Update Card + Portfolio Trend + Total Invested (3-column Grid) */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+              {/* Update Card */}
+              {data?.update && (
+                <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+                  <UpdateCard
+                    date={data.update.date}
+                    message={data.update.message}
+                    highlight={data.update.highlight}
+                    link={data.update.link}
+                    linkHref="/notifications"
+                    isUnread={data.update.isUnread}
+                  />
                 </div>
+              )}
 
-                {/* Decorative Background Glow */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-[#AC66DA]/5 blur-[80px] rounded-full pointer-events-none" />
-              </div>
-
-              <div className="p-8 bg-[#282828] rounded-[30px] border border-[#3a3a3a] flex flex-col justify-center items-center text-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-[#AC66DA]/10 flex items-center justify-center text-[#AC66DA]">
-                  <Sort width={24} height={24} />
+              {/* Total Portfolio Value Card */}
+              {data?.balance && (
+                <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+                  <PortfolioTrendCard
+                    balance={data.balance}
+                    currency={currency}
+                  />
                 </div>
-                <div>
-                  <h4 className="text-primary font-bold">Portfolio Insights</h4>
-                  <p className="text-xs text-secondary mt-1 max-w-[200px]">
-                    Your holdings are split across {data?.portfolio.length || 0} unique assets.
-                  </p>
+              )}
+
+              {/* Total Invested Card */}
+              {data?.totalCost !== undefined && (
+                <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+                  <TotalInvestedCard
+                    totalCost={data.totalCost}
+                    currency={currency}
+                  />
                 </div>
-              </div>
-            </section>
+              )}
+            </div>
 
-            {/* Holdings List */}
-            <section>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Assets Portfolio</h2>
-              </div>
-
+            {/* Assets Portfolio Card */}
+            <Card
+              title="Assets Portfolio"
+              className="mb-6"
+            >
               {data?.portfolio && data.portfolio.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {data.portfolio.map((item) => (
-                    <PortfolioCard
-                      key={item.id}
-                      data={item}
-                      onClick={() => openAssetDetails(item)}
-                      onEdit={() => openAssetDetails(item)}
-                    />
-                  ))}
-                </div>
+                <CarouselDesign
+                  portfolio={data.portfolio}
+                  currency={currency}
+                  onAssetClick={openAssetDetails}
+                />
               ) : (
-                <div className="p-16 text-center text-secondary bg-[#282828] rounded-[30px] border border-[#3a3a3a] border-dashed">
+                <div className="p-16 text-center text-secondary">
                   <p className="mb-4">No investments tracked yet.</p>
                   <button onClick={() => openAddTransaction()} className="text-[#AC66DA] font-bold hover:underline">Start your portfolio</button>
                 </div>
               )}
-            </section>
+            </Card>
 
-            {/* Recent Activities */}
-            <section>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Recent Activities</h2>
-              </div>
-              <div className="bg-[#282828] border border-[#3a3a3a] rounded-[30px] overflow-hidden">
+            {/* Recent Activities Card */}
+            <Card title="Recent Activities">
+              <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020' }}>
                 {data?.recentActivities && data.recentActivities.length > 0 ? (
-                  <div className="divide-y divide-[#3a3a3a]">
-                    {data.recentActivities.map((activity: any) => (
-                      <div key={activity.id} className="p-5 flex items-center justify-between hover:bg-[#323232] transition-colors cursor-default">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-full bg-[#202020] flex items-center justify-center text-[#AC66DA] border border-[#3a3a3a]">
-                            {activity.icon === 'BitcoinCircle' ? (
-                              <BitcoinCircle width={24} height={24} />
-                            ) : (
-                              <Reports width={24} height={24} />
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-bold text-primary text-lg">{activity.name}</div>
-                            <div className="text-sm text-helper uppercase tracking-wider">{activity.ticker} • {activity.date}</div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className={`font-bold text-lg ${activity.type === 'Buy' ? 'text-[#D93F3F]' : 'text-[#74C648]'}`}>
-                            {activity.type === 'Buy' ? '-' : '+'}{activity.quantity.toLocaleString()} {activity.ticker}
-                          </div>
-                          <div className="text-sm text-helper">
-                            {activity.type} Transaction
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex-1 overflow-y-auto max-h-[400px]">
+                    <table className="min-w-full">
+                      <thead className="sticky top-0 bg-[#202020] z-10">
+                        <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+                          <th className="px-5 py-3 align-top">Asset</th>
+                          <th className="px-5 py-3 align-top">Date</th>
+                          <th className="px-5 py-3 align-top">Type</th>
+                          <th className="px-5 py-3 align-top">Quantity</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.recentActivities.map((activity: any) => (
+                          <tr
+                            key={activity.id}
+                            className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => handleTransactionClick(activity)}
+                          >
+                            <td className="px-5 py-4 align-top">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-[#282828] flex items-center justify-center text-[#AC66DA] border border-[#3a3a3a]">
+                                  <AssetLogo src={activity.icon} size={18} />
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-sm">{activity.name}</div>
+                                  <div className="text-xs text-helper uppercase tracking-wider">{activity.ticker}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <span className="text-sm">{formatDateForDisplay(activity.date)}</span>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <span className={`text-sm font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
+                                {activity.type}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <span className={`text-sm font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
+                                {activity.type === 'Buy' ? '+' : '-'}{activity.quantity.toLocaleString()} {activity.ticker}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
                   <div className="p-16 text-center text-secondary">
@@ -274,61 +346,88 @@ export default function InvestmentsPage() {
                   </div>
                 )}
               </div>
-            </section>
+            </Card>
           </>
         )}
       </div>
 
-      {/* Modals ... */}
+      {/* Edit Transaction Modal */}
+      {
+        editingTransaction && (
+          <InvestmentTransactionModal
+            transaction={editingTransaction}
+            onClose={() => setEditingTransaction(null)}
+            onSave={handleSaveTransaction}
+            onDelete={() => setShowDeleteConfirm(true)}
+            isSaving={isSavingTx}
+            currencySymbol={currency.symbol}
+          />
+        )
+      }
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleDeleteTransaction}
+        onCancel={() => setShowDeleteConfirm(false)}
+        isLoading={isSavingTx}
+        variant="danger"
+      />
 
       {/* Add Investment Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => !isSaving && setAddModalOpen(false)}
-          />
-          <div
-            className={`relative w-full max-w-2xl bg-[#282828] rounded-3xl shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${isFloatingPanelOpen ? 'h-[700px]' : 'h-[600px] max-h-[90vh]'
-              }`}
-          >
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[#3a3a3a]">
-              <h2 className="text-xl font-bold">Add Investment Transaction</h2>
-              <button onClick={() => setAddModalOpen(false)} className="text-helper hover:text-white transition-colors">
-                <span className="sr-only">Close</span>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-              </button>
-            </div>
+      {
+        isAddModalOpen && typeof document !== 'undefined' && createPortal(
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/60"
+              onClick={() => !isSaving && setAddModalOpen(false)}
+            />
+            <div className="relative w-full max-w-2xl bg-[#282828] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="flex items-center justify-between px-6 py-5 border-b border-[#3a3a3a]">
+                <h2 className="text-xl font-bold">Add Investment Transaction</h2>
+                <button
+                  onClick={() => setAddModalOpen(false)}
+                  className="text-helper hover:text-white transition-colors cursor-pointer"
+                  aria-label="Close"
+                >
+                  <Xmark width={24} height={24} strokeWidth={2} />
+                </button>
+              </div>
 
-            <div className="flex-1 overflow-hidden">
-              <InvestmentForm
-                mode="add"
-                initialAsset={initialAssetForAdd}
-                onSave={handleSaveInvestment}
-                onCancel={() => setAddModalOpen(false)}
-                currencyOptions={currencyOptions}
-                isSaving={isSaving}
-                onFloatingPanelToggle={setIsFloatingPanelOpen}
-              />
+              <div className="flex-1 overflow-y-auto">
+                <InvestmentForm
+                  mode="add"
+                  initialAsset={initialAssetForAdd}
+                  onSave={handleSaveInvestment}
+                  onCancel={() => setAddModalOpen(false)}
+                  currencyOptions={currencyOptions}
+                  isSaving={isSaving}
+                  onFloatingPanelToggle={() => { }}
+                />
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )
+      }
 
       {/* Asset Details Modal */}
-      {selectedAssetId && (
-        <AssetModal
-          isOpen={!!selectedAssetId}
-          onClose={() => setSelectedAssetId(null)}
-          assetId={selectedAssetId}
-          onAddTransaction={(asset) => {
-            // Close Asset details? Or keep open?
-            // The AssetModal uses Portal, so opening another Modal on top works if z-index is higher.
-            // We'll open Add Transaction form.
-            openAddTransaction(asset);
-          }}
-        />
-      )}
-    </main>
+      {
+        selectedAssetId && (
+          <AssetModal
+            isOpen={!!selectedAssetId}
+            onClose={() => setSelectedAssetId(null)}
+            assetId={selectedAssetId}
+            onAddTransaction={(asset) => {
+              openAddTransaction(asset);
+            }}
+            onSuccess={() => fetchInvestments(true)}
+          />
+        )
+      }
+    </main >
   );
 }

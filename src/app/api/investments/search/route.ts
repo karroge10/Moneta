@@ -28,7 +28,7 @@ async function searchCoingecko(query: string): Promise<SearchResult[]> {
     name: coin.name,
     symbol: coin.symbol?.toUpperCase?.() || coin.id,
     type: 'crypto',
-    icon: 'BitcoinCircle',
+    icon: coin.thumb || 'BitcoinCircle',
     ticker: coin.symbol?.toUpperCase?.() || coin.id,
   }));
 }

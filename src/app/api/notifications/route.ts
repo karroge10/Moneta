@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         time: notif.time,
         type: notif.type,
         text: notif.text,
+        read: notif.read,
       };
     });
 
@@ -89,20 +90,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
-      const dateObj = notification.date instanceof Date ? notification.date : new Date(notification.date);
-      const day = String(dateObj.getDate()).padStart(2, '0');
-      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const year = dateObj.getFullYear();
+    const dateObj = notification.date instanceof Date ? notification.date : new Date(notification.date);
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = dateObj.getFullYear();
 
-      return NextResponse.json({
-        notification: {
-          id: notification.id.toString(),
-          date: `${day}.${month}.${year}`,
-          time: notification.time,
-          type: notification.type,
-          text: notification.text,
-        },
-      });
+    return NextResponse.json({
+      notification: {
+        id: notification.id.toString(),
+        date: `${day}.${month}.${year}`,
+        time: notification.time,
+        type: notification.type,
+        text: notification.text,
+        read: notification.read,
+      },
+    });
   } catch (error) {
     console.error('[api/notifications] POST error', error);
 
@@ -136,9 +138,9 @@ export async function PATCH(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ 
-      ok: true, 
-      count: result.count 
+    return NextResponse.json({
+      ok: true,
+      count: result.count
     });
   } catch (error) {
     console.error('[api/notifications] PATCH error', error);
