@@ -146,6 +146,8 @@ export interface IncomeSource {
 export interface PerformanceDataPoint {
   date: string;
   value: number;
+  cost?: number;
+  pnl?: number;
 }
 
 export interface LatestExpense extends Transaction {

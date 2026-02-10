@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
 
     if (demographicOnly) {
       const periodTx = await db.transaction.findMany({
-        where: { userId: user.id, date: { gte: selectedRange.start, lte: selectedRange.end } },
+        where: { userId: user.id, date: { gte: selectedRange.start, lte: selectedRange.end }, investmentAssetId: null },
         select: { amount: true, currencyId: true, date: true, type: true },
       });
       let cohortUsers: { id: number; dateOfBirth: Date | null; country: string | null; profession: string | null }[] = [];
@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
           : [];
         if (filteredCohort.length >= MIN_COHORT_SIZE) {
           const cohortTx = await db.transaction.findMany({
-            where: { userId: { in: filteredCohort.map((u) => u.id) }, date: { gte: selectedRange.start, lte: selectedRange.end } },
+            where: { userId: { in: filteredCohort.map((u) => u.id) }, date: { gte: selectedRange.start, lte: selectedRange.end }, investmentAssetId: null },
             select: { userId: true, amount: true, currencyId: true, date: true, type: true },
           });
           for (const t of cohortTx) {
@@ -280,6 +280,7 @@ export async function GET(request: NextRequest) {
     const allTransactions = await db.transaction.findMany({
       where: {
         userId: user.id,
+        investmentAssetId: null,
       },
       include: {
         category: true,
@@ -321,6 +322,7 @@ export async function GET(request: NextRequest) {
           where: {
             userId: { in: cohortIds },
             date: { gte: selectedRange.start, lte: selectedRange.end },
+            investmentAssetId: null,
           },
           select: { userId: true, amount: true, currencyId: true, date: true, type: true },
         });

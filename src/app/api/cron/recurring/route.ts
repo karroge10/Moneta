@@ -111,6 +111,10 @@ export async function GET(request: NextRequest) {
             });
             snapshotsCreated += 1;
             console.log(`[cron] User ${user.id}: Saved snapshot. Value=${portfolio.totalValue.toFixed(2)}`);
+
+            // Generate Performance Alerts
+            const { generatePerformanceAlerts } = await import('@/lib/notifications');
+            await generatePerformanceAlerts(user.id, portfolio.totalValue, userCurrency.symbol);
           }
         }
 

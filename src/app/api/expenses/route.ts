@@ -215,6 +215,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId: user.id,
         type: 'expense',
+        investmentAssetId: null,
       },
       include: {
         category: true,
