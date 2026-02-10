@@ -850,9 +850,19 @@ export default function TransactionsPage() {
                               </span>
                             </td>
                             <td className="px-5 py-4 align-top">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-3">
                                 {CategoryIcon && (
-                                  <CategoryIcon width={16} height={16} strokeWidth={1.5} style={{ color: categoryObj?.color || '#E7E4E4' }} />
+                                  <div 
+                                    className="w-10 h-10 icon-circle" 
+                                    style={{ backgroundColor: `${categoryObj?.color || '#AC66DA'}1a` }}
+                                  >
+                                    <CategoryIcon 
+                                      width={20} 
+                                      height={20} 
+                                      strokeWidth={1.5} 
+                                      style={{ color: categoryObj?.color || '#AC66DA' }} 
+                                    />
+                                  </div>
                                 )}
                                 <span className="text-sm">{transaction.category || 'Uncategorized'}</span>
                               </div>
@@ -892,9 +902,19 @@ export default function TransactionsPage() {
                               </span>
                             </td>
                             <td className="px-5 py-4 align-top">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-3">
                                 {CategoryIcon && (
-                                  <CategoryIcon width={16} height={16} strokeWidth={1.5} style={{ color: categoryObj?.color || '#E7E4E4' }} />
+                                  <div 
+                                    className="w-10 h-10 icon-circle" 
+                                    style={{ backgroundColor: `${categoryObj?.color || '#AC66DA'}1a` }}
+                                  >
+                                    <CategoryIcon 
+                                      width={20} 
+                                      height={20} 
+                                      strokeWidth={1.5} 
+                                      style={{ color: categoryObj?.color || '#AC66DA' }} 
+                                    />
+                                  </div>
                                 )}
                                 <span className="text-sm">{row.category || 'Uncategorized'}</span>
                               </div>
