@@ -1,16 +1,19 @@
 'use client';
 
 import Card from '@/components/ui/Card';
+import TrendIndicator from '@/components/ui/TrendIndicator';
 import { formatNumber } from '@/lib/utils';
 
 interface TotalInvestedCardProps {
     totalCost: number;
+    trend?: number;
+    comparisonLabel?: string;
     currency: {
         symbol: string;
     };
 }
 
-export default function TotalInvestedCard({ totalCost, currency }: TotalInvestedCardProps) {
+export default function TotalInvestedCard({ totalCost, trend, comparisonLabel, currency }: TotalInvestedCardProps) {
     return (
         <Card title="Total Invested">
             <div className="flex flex-col flex-1 min-h-0">
@@ -20,6 +23,9 @@ export default function TotalInvestedCard({ totalCost, currency }: TotalInvested
                         {formatNumber(totalCost)}
                     </span>
                 </div>
+                {trend !== undefined && comparisonLabel && comparisonLabel.trim() !== '' && (
+                    <TrendIndicator value={trend} label={comparisonLabel} />
+                )}
             </div>
         </Card>
     );
