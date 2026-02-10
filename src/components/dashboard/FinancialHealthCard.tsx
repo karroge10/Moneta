@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
-import { getHealthColor, getTrendColor } from '@/lib/utils';
+import { getHealthColor } from '@/lib/utils';
 import { NavArrowRight } from 'iconoir-react';
 
 interface FinancialHealthCardProps {
@@ -12,15 +12,6 @@ interface FinancialHealthCardProps {
   onLearnClick?: () => void;
 }
 
-function TrendLine({ trend }: { trend: number }) {
-  const sign = trend > 0 ? '+' : '';
-  const label = `${sign}${trend} vs last period`;
-  return (
-    <span className="text-helper" style={{ color: getTrendColor(trend) }}>
-      {label}
-    </span>
-  );
-}
 
 const learnLinkClass = 'text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors';
 const learnLinkClassDesktop = 'text-helper flex items-center gap-2 cursor-pointer group hover-text-purple transition-colors mt-2 min-w-0';
@@ -46,8 +37,8 @@ function LearnTrigger({
   return <Link href="/financial-health" className={className}>{content}</Link>;
 }
 
+
 export default function FinancialHealthCard({ score, trend, mobile = false, minimal = false, onLearnClick }: FinancialHealthCardProps) {
-  const showTrend = trend != null && trend !== 0;
 
   // Empty state when score is 0
   if (score === 0) {
@@ -123,7 +114,6 @@ export default function FinancialHealthCard({ score, trend, mobile = false, mini
               {score}
             </span>
           </div>
-          {showTrend && <TrendLine trend={trend!} />}
           <LearnTrigger onClick={onLearnClick} className={`${learnLinkClass} mt-2`} compact />
         </div>
       </Card>
@@ -142,7 +132,6 @@ export default function FinancialHealthCard({ score, trend, mobile = false, mini
             {score}/100
           </span>
         </div>
-        {showTrend && <TrendLine trend={trend!} />}
         <LearnTrigger onClick={onLearnClick} className={learnLinkClass} compact />
       </div>
     );
@@ -166,7 +155,6 @@ export default function FinancialHealthCard({ score, trend, mobile = false, mini
             {score}
           </span>
         </div>
-        {showTrend && <TrendLine trend={trend!} />}
         <LearnTrigger onClick={onLearnClick} className={learnLinkClassDesktop} compact={false} />
       </div>
     </Card>

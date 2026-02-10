@@ -988,17 +988,9 @@ export default function TransactionForm({
               }
             }}
           >
-            {isSaving ? (
-              <>
-                <Spinner size={16} color="var(--text-primary)" />
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <FloppyDisk width={18} height={18} strokeWidth={1.5} />
-                <span>Save Changes</span>
-              </>
-            )}
+            {isSaving && <Spinner size={16} color="var(--text-primary)" />}
+            <FloppyDisk width={18} height={18} strokeWidth={1.5} />
+            <span>Save Changes</span>
           </button>
         </div>
       </div>

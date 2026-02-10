@@ -285,16 +285,16 @@ export default function InvestmentTransactionModal({
                     }}
                 >
                     <div
-                        className="flex items-center justify-between px-6 py-5 border-b border-[#3a3a3a]"
+                        className="flex items-center justify-between p-6 border-b border-[#3a3a3a]"
                         style={{ backgroundColor: 'var(--bg-surface)' }}
                     >
-                        <h2 className="text-xl font-bold">Edit Investment Transaction</h2>
+                        <h2 className="text-card-header">Edit Investment Transaction</h2>
                         <button
                             onClick={onClose}
-                            className="text-helper hover:text-white transition-colors cursor-pointer"
+                            className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer"
                             aria-label="Close"
                         >
-                            <Xmark width={24} height={24} strokeWidth={2} />
+                            <Xmark width={24} height={24} strokeWidth={1.5} />
                         </button>
                     </div>
                     <div className="flex-1 overflow-y-auto">
@@ -519,7 +519,7 @@ export default function InvestmentTransactionModal({
                                         style={{ backgroundColor: '#D93F3F', color: 'var(--text-primary)' }}
                                     >
                                         <Trash width={16} height={16} strokeWidth={1.5} />
-                                        <span>{isDeleting ? 'Deleting...' : 'Delete'}</span>
+                                        <span>Delete</span>
                                     </button>
                                 )}
                                 <button
@@ -563,12 +563,9 @@ export default function InvestmentTransactionModal({
                                         }
                                     }}
                                 >
-                                    {isSaving ? 'Saving...' : (
-                                        <>
-                                            <FloppyDisk width={18} height={18} strokeWidth={1.5} />
-                                            <span>Save Changes</span>
-                                        </>
-                                    )}
+                                    {isSaving && <Spinner size={16} color="white" />}
+                                    <FloppyDisk width={18} height={18} strokeWidth={1.5} />
+                                    <span>Save Changes</span>
                                 </button>
                             </div>
                         </form>

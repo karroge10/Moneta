@@ -171,6 +171,7 @@ export async function getFinancialHealthScore(
       where: {
         userId,
         date: { gte: selectedRange.start, lte: selectedRange.end },
+        investmentAssetId: null,
       },
       include: { category: true, currency: true },
       orderBy: { date: 'desc' },
@@ -180,6 +181,7 @@ export async function getFinancialHealthScore(
         where: {
           userId,
           date: { gte: comparisonRange.start, lte: comparisonRange.end },
+          investmentAssetId: null,
         },
         include: { category: true, currency: true },
       })
@@ -196,6 +198,7 @@ export async function getFinancialHealthScore(
       where: {
         userId,
         date: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
+        investmentAssetId: null,
       },
       select: { id: true, categoryId: true },
     }),

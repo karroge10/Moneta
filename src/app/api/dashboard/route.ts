@@ -216,6 +216,7 @@ export async function GET(request: NextRequest) {
             gte: selectedRange.start,
             lte: selectedRange.end,
           },
+          investmentAssetId: null,
         },
         include: {
           category: true,
@@ -231,6 +232,7 @@ export async function GET(request: NextRequest) {
               gte: comparisonRange.start,
               lte: comparisonRange.end,
             },
+            investmentAssetId: null,
           },
           include: {
             currency: true,
@@ -239,7 +241,7 @@ export async function GET(request: NextRequest) {
         })
         : Promise.resolve([]),
       db.transaction.findMany({
-        where: { userId: user.id },
+        where: { userId: user.id, investmentAssetId: null },
         include: {
           category: true,
           currency: true,
@@ -384,7 +386,21 @@ export async function GET(request: NextRequest) {
       },
       transactions: latestTransactions,
       topExpenses,
-      investments: investmentsPortfolio.portfolio,
+      investments: investmentsPortfolio.assets.map((a) => ({
+        id: a.assetId.toString(),
+        name: a.name,
+        subtitle: a.ticker,
+        ticker: a.ticker,
+        assetType: a.type,
+        sourceType: a.pricingMode,
+        quantity: a.quantity,
+        currentValue: a.currentValue,
+        currentPrice: a.currentPrice,
+        gainLoss: a.pnl,
+        changePercent: a.pnlPercent,
+        icon: a.icon || (a.type === 'crypto' ? 'BitcoinCircle' : 'Reports'),
+        priceHistory: [],
+      })),
       portfolioBalance: investmentsPortfolio.balance,
       financialHealth: {
         score: financialHealth.score,

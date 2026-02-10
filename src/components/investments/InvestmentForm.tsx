@@ -28,6 +28,7 @@ import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 import { formatNumber, formatSmartNumber } from '@/lib/utils';
 import AssetLogo from './AssetLogo';
 import { getDerivedAssetIcon } from '@/lib/asset-utils';
+import { useToast } from '@/contexts/ToastContext';
 
 function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse bg-[#3a3a3a] rounded-xl ${className}`} />;
@@ -62,6 +63,7 @@ export default function InvestmentForm({
 }: InvestmentFormProps) {
   const { currency } = useCurrency();
   const { currencyOptions, rates: prefetchRates } = useCurrencyOptions();
+  const { addToast } = useToast();
   const [step, setStep] = useState<Step>(initialAsset ? 'details' : 'type_selection');
 
   // Form State
@@ -285,7 +287,7 @@ export default function InvestmentForm({
     
     // Validate required fields
     if (!formState.name) {
-        alert('Name is required');
+        addToast('Name is required', 'error');
         return;
     }
 
@@ -354,11 +356,12 @@ export default function InvestmentForm({
             <div className="relative">
               <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-helper" width={20} height={20} />
               <input
-                className="w-full px-12 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
+                className="w-full px-12 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={formState.assetType === 'crypto' ? 'Search BTC, Ethereum...' : 'Search AAPL, TSLA...'}
                 autoFocus
+                disabled={isSaving}
               />
             </div>
 
@@ -450,7 +453,8 @@ export default function InvestmentForm({
                       <input 
                         value={formState.name}
                         onChange={(e) => setFormState(s => ({ ...s, name: e.target.value }))}
-                        className="w-full px-4 py-2 rounded-xl bg-[#202020] text-lg font-bold border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C]"
+                        disabled={isSaving}
+                        className="w-full px-0 py-1 bg-transparent text-2xl font-bold border-0 border-b-2 border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{ color: 'var(--text-primary)' }}
                         placeholder="Asset Name"
                       />
@@ -528,144 +532,130 @@ export default function InvestmentForm({
               </button>
             </div>
 
-            {/* Price/Quantity Skeletons could go here if loading */}
-            {isSaving && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <Skeleton className="h-14" />
-                  <Skeleton className="h-14" />
+            {/* Price/Quantity Section */}
+            <div className={isSaving ? 'opacity-50 pointer-events-none' : ''}>
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-body font-medium mb-2">Quantity</label>
+                  <input
+                    type="number"
+                    step="any"
+                    disabled={isSaving}
+                    className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors disabled:cursor-not-allowed"
+                    value={formState.quantity}
+                    onChange={(e) => setFormState(s => ({ ...s, quantity: e.target.value }))}
+                    placeholder="0.00"
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Skeleton className="h-14" />
-                  <Skeleton className="h-14" />
+                <div>
+                  <label className="block text-body font-medium mb-2">Price per Unit</label>
+                  <input
+                    type="number"
+                    step="any"
+                    disabled={isSaving}
+                    className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors disabled:cursor-not-allowed"
+                    value={formState.pricePerUnit}
+                    onChange={(e) => setFormState(s => ({ ...s, pricePerUnit: e.target.value }))}
+                    placeholder="0.00"
+                  />
                 </div>
-                <Skeleton className="h-16" />
               </div>
-            )}
 
-            {!isSaving && (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-body font-medium mb-2">Quantity</label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
-                      value={formState.quantity}
-                      onChange={(e) => setFormState(s => ({ ...s, quantity: e.target.value }))}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-body font-medium mb-2">Price per Unit</label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
-                      value={formState.pricePerUnit}
-                      onChange={(e) => setFormState(s => ({ ...s, pricePerUnit: e.target.value }))}
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div ref={dateDropdownRef}>
-                    <label className="block text-body font-medium mb-2">Date</label>
-                    <button
-                      type="button"
-                      ref={dateTriggerRef}
-                      onClick={() => setIsDateOpen(!isDateOpen)}
-                      disabled={isSaving}
-                      className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] text-left hover:border-[#AC66DA] transition-all flex items-center justify-between cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div ref={dateDropdownRef}>
+                  <label className="block text-body font-medium mb-2">Date</label>
+                  <button
+                    type="button"
+                    ref={dateTriggerRef}
+                    onClick={() => setIsDateOpen(!isDateOpen)}
+                    disabled={isSaving}
+                    className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] text-left hover:border-[#AC66DA] transition-all flex items-center justify-between cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className={formState.date ? 'text-primary' : 'text-helper'}>
+                      {formState.date ? formatDateForDisplay(formState.date) : 'Today'}
+                    </span>
+                    <NavArrowDown className="text-helper" width={16} />
+                  </button>
+                  {isDateOpen && typeof document !== 'undefined' && createPortal(
+                    <div
+                      ref={datePortalRef}
+                      className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden bg-[#202020]"
+                      style={dateDropdownStyle ?? { display: 'none' }}
                     >
-                      <span className={formState.date ? 'text-primary' : 'text-helper'}>
-                        {formState.date ? formatDateForDisplay(formState.date) : 'Today'}
-                      </span>
-                      <NavArrowDown className="text-helper" width={16} />
-                    </button>
-                    {isDateOpen && typeof document !== 'undefined' && createPortal(
-                      <div
-                        ref={datePortalRef}
-                        className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden bg-[#202020]"
-                        style={dateDropdownStyle ?? { display: 'none' }}
-                      >
-                        <CalendarPanel
-                          selectedDate={formState.date}
-                          currentMonth={calendarMonth}
-                          onChange={(date) => { setFormState((s) => ({ ...s, date })); setIsDateOpen(false); }}
-                          onMonthChange={setCalendarMonth}
-                        />
-                      </div>,
-                      document.body
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-body font-medium mb-2">Currency</label>
-                    <CurrencySelector
-                      options={currencyOptions}
-                      selectedCurrencyId={formState.currencyId}
-                      onSelect={(id) => setFormState((s) => ({ ...s, currencyId: id }))}
-                      disabled={isSaving}
-                    />
-                  </div>
+                      <CalendarPanel
+                        selectedDate={formState.date}
+                        currentMonth={calendarMonth}
+                        onChange={(date) => { setFormState((s) => ({ ...s, date })); setIsDateOpen(false); }}
+                        onMonthChange={setCalendarMonth}
+                      />
+                    </div>,
+                    document.body
+                  )}
                 </div>
 
-                {formState.quantity && formState.pricePerUnit && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-4 bg-[#202020] rounded-xl border border-[#3a3a3a]">
-                      <span className="text-helper text-xs uppercase">Total Cost</span>
-                      <span className="text-lg font-bold text-primary">
-                        {targetSymbol}{formatSmartNumber(Number(formState.quantity) * Number(formState.pricePerUnit))}
-                      </span>
-                    </div>
+                <div>
+                  <label className="block text-body font-medium mb-2">Currency</label>
+                  <CurrencySelector
+                    options={currencyOptions}
+                    selectedCurrencyId={formState.currencyId}
+                    onSelect={(id) => setFormState((s) => ({ ...s, currencyId: id }))}
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
 
-                    {formState.currencyId && currency?.id && formState.currencyId !== currency.id && (
-                      <div className="p-4 rounded-xl bg-[#202020] border border-[#3a3a3a] min-h-[80px] flex flex-col justify-center">
-                        {isLoadingRate ? (
-                          <div className="space-y-3 animate-pulse">
-                            <div className="flex justify-between items-center">
-                              <div className="h-4 w-32 bg-[#3a3a3a] rounded-lg" />
-                              <div className="h-6 w-24 bg-[#3a3a3a] rounded-lg" />
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <div className="h-3 w-40 bg-[#3a3a3a] rounded-lg" />
-                              <div className="h-3 w-28 bg-[#3a3a3a] rounded-lg" />
-                            </div>
-                          </div>
-                        ) : (conversionRate !== null) ? (
-                          <>
-                            <div className="flex justify-between items-center text-sm mb-1.5">
-                              <span style={{ color: 'var(--text-secondary)' }}>
-                                Value at {formState.investmentType === 'buy' ? 'purchase' : 'sale'}
-                              </span>
-                              <span className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
-                                {currency.symbol}{formatSmartNumber((Number(formState.quantity) * Number(formState.pricePerUnit)) * conversionRate)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center text-[10px]" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>
-                              <span>Rate on {formState.date ? formatDateForDisplay(formState.date) : 'today'}</span>
-                              <span>
-                                1 {selectedCurrency?.alias} = {new Intl.NumberFormat('en-US', {
-                                  maximumFractionDigits: conversionRate < 1 ? 6 : 4,
-                                  minimumFractionDigits: 2
-                                }).format(conversionRate)} {currency.alias}
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-center text-xs text-helper">
-                            Rates unavailable for selected date.
-                          </div>
-                        )}
-                      </div>
-                    )}
+              {formState.quantity && formState.pricePerUnit && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-4 bg-[#202020] rounded-xl border border-[#3a3a3a]">
+                    <span className="text-helper text-xs uppercase">Total Cost</span>
+                    <span className="text-lg font-bold text-primary">
+                      {targetSymbol}{formatSmartNumber(Number(formState.quantity) * Number(formState.pricePerUnit))}
+                    </span>
                   </div>
-                )}
-              </>
-            )}
+
+                  {formState.currencyId && currency?.id && formState.currencyId !== currency.id && (
+                    <div className="p-4 rounded-xl bg-[#202020] border border-[#3a3a3a] min-h-[80px] flex flex-col justify-center">
+                      {isLoadingRate ? (
+                        <div className="space-y-3 animate-pulse">
+                          <div className="flex justify-between items-center">
+                            <div className="h-4 w-32 bg-[#3a3a3a] rounded-lg" />
+                            <div className="h-6 w-24 bg-[#3a3a3a] rounded-lg" />
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <div className="h-3 w-40 bg-[#3a3a3a] rounded-lg" />
+                            <div className="h-3 w-28 bg-[#3a3a3a] rounded-lg" />
+                          </div>
+                        </div>
+                      ) : (conversionRate !== null) ? (
+                        <>
+                          <div className="flex justify-between items-center text-sm mb-1.5">
+                            <span style={{ color: 'var(--text-secondary)' }}>
+                              Value at {formState.investmentType === 'buy' ? 'purchase' : 'sale'}
+                            </span>
+                            <span className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+                              {currency.symbol}{formatSmartNumber((Number(formState.quantity) * Number(formState.pricePerUnit)) * conversionRate)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px]" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>
+                            <span>Rate on {formState.date ? formatDateForDisplay(formState.date) : 'today'}</span>
+                            <span>
+                              1 {selectedCurrency?.alias} = {new Intl.NumberFormat('en-US', {
+                                maximumFractionDigits: (conversionRate ?? 0) < 1 ? 6 : 4,
+                                minimumFractionDigits: 2
+                              }).format(conversionRate ?? 0)} {currency.alias}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center text-xs text-helper">
+                          Rates unavailable for selected date.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -764,12 +754,9 @@ export default function InvestmentForm({
                   e.currentTarget.style.backgroundColor = 'var(--accent-purple)';
                 }}
               >
-                {isSaving ? <><Spinner size={16} color="white" /><span>Saving...</span></> : (
-                  <>
-                    <FloppyDisk width={18} height={18} strokeWidth={1.5} />
-                    <span>Save Changes</span>
-                  </>
-                )}
+                {isSaving && <Spinner size={16} color="white" />}
+                <FloppyDisk width={18} height={18} strokeWidth={1.5} />
+                <span>Save Changes</span>
               </button>
             </>
           )}

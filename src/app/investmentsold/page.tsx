@@ -18,7 +18,6 @@ import InvestmentTransactionModal from '@/components/investments/InvestmentTrans
 import PortfolioTrendCard from '@/components/investments/PortfolioTrendCard';
 import TotalInvestedCard from '@/components/investments/TotalInvestedCard';
 import AssetAllocationCard from '@/components/investments/AssetAllocationCard';
-import PortfolioPerformanceChart from '@/components/investments/PortfolioPerformanceChart';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
@@ -68,29 +67,6 @@ export default function InvestmentsNewPage() {
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
   const [isSavingTx, setIsSavingTx] = useState(false);
   const [isDeletingTx, setIsDeletingTx] = useState(false);
-  const [performanceData, setPerformanceData] = useState<PerformanceDataPoint[]>([]);
-  const [isPerformanceLoading, setIsPerformanceLoading] = useState(false);
-
-  useEffect(() => {
-    if (data?.performance?.data) {
-      setPerformanceData(data.performance.data);
-    }
-  }, [data]);
-
-  const handleRangeChange = async (range: string) => {
-    setIsPerformanceLoading(true);
-    try {
-      const res = await fetch(`/api/investments/performance?range=${range}`);
-      if (!res.ok) throw new Error('Failed to fetch performance data');
-      const newData = await res.json();
-      setPerformanceData(newData);
-    } catch (error) {
-        console.error(error);
-        addToast('Failed to update chart', 'error');
-    } finally {
-      setIsPerformanceLoading(false);
-    }
-  };
 
   // Fetch Data
   const fetchInvestments = useCallback(async (isRefresh = false) => {
@@ -229,7 +205,7 @@ export default function InvestmentsNewPage() {
       {/* Desktop Header */}
       <div className="hidden md:block">
         <DashboardHeader
-          pageName="Investments"
+          pageName="Investments (Old)"
           actionButton={{
             label: "Add Investment",
             onClick: () => openAddTransaction(),
@@ -249,16 +225,12 @@ export default function InvestmentsNewPage() {
       <div className="px-4 md:px-6 pb-6 flex flex-col min-h-[calc(100vh-120px)] relative">
         {(loading || isRefreshing || isSaving || isSavingTx) ? (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <CardSkeleton title="Update" variant="update" />
               <CardSkeleton title="Total Portfolio Value" variant="value" />
               <CardSkeleton title="Total Invested" variant="value" />
-              <CardSkeleton title="Allocation" variant="value" />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 <CardSkeleton title="Performance" variant="list" />
-                 <CardSkeleton title="Assets Portfolio" variant="list" />
-            </div>
+            <CardSkeleton title="Assets Portfolio" variant="list" />
             <CardSkeleton title="Recent Activities" variant="list" />
           </div>
         ) : error ? (
@@ -284,12 +256,13 @@ export default function InvestmentsNewPage() {
                 </div>
               )}
 
-              {/* Total Portfolio Value Card (No Graph) */}
+              {/* Total Portfolio Value Card */}
               {data?.balance && (
                 <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                   <PortfolioTrendCard
                     balance={data.balance}
                     currency={currency}
+                    graphData={data.performance.data}
                   />
                 </div>
               )}
@@ -312,39 +285,24 @@ export default function InvestmentsNewPage() {
               )}
             </div>
 
-
-
-            {/* Middle Section: Big Chart + Assets List (2-column Grid) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                {/* 1. Large Portfolio Performance Chart */}
-                <div className="h-[500px] flex flex-col [&>.card-surface]:h-full">
-                     <PortfolioPerformanceChart 
-                        data={performanceData}
-                        currencySymbol={currency.symbol}
-                        onRangeChange={handleRangeChange}
-                        isLoading={isPerformanceLoading}
-                    />
+            {/* Assets Portfolio Card */}
+            <Card
+              title="Assets Portfolio"
+              className="mb-6"
+            >
+              {data?.portfolio && data.portfolio.length > 0 ? (
+                <CarouselDesign
+                  portfolio={data.portfolio}
+                  currency={currency}
+                  onAssetClick={openAssetDetails}
+                />
+              ) : (
+                <div className="p-16 text-center text-secondary">
+                  <p className="mb-4">No investments tracked yet.</p>
+                  <button onClick={() => openAddTransaction()} className="text-[#AC66DA] font-bold hover:underline">Start your portfolio</button>
                 </div>
-
-                {/* 2. Assets Portfolio List */}
-                <Card
-                  title="Assets"
-                  className="h-[500px]"
-                >
-                  {data?.portfolio && data.portfolio.length > 0 ? (
-                    <CompactListDesign
-                      portfolio={data.portfolio}
-                      currency={currency}
-                      onAssetClick={openAssetDetails}
-                    />
-                  ) : (
-                    <div className="p-16 text-center text-secondary h-full flex flex-col items-center justify-center">
-                      <p className="mb-4">No investments tracked yet.</p>
-                      <button onClick={() => openAddTransaction()} className="text-[#AC66DA] font-bold hover:underline">Start your portfolio</button>
-                    </div>
-                  )}
-                </Card>
-            </div>
+              )}
+            </Card>
 
             {/* Recent Activities Card */}
             <Card title="Recent Activities">
@@ -401,8 +359,8 @@ export default function InvestmentsNewPage() {
                               </span>
                             </td>
                             <td className="px-5 py-4 align-top">
-                              <span className="text-sm font-semibold">
-                                {formatSmartNumber(activity.quantity)} {activity.ticker}
+                              <span className={`text-sm font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
+                                {activity.type === 'Buy' ? '+' : '-'}{formatSmartNumber(activity.quantity)} {activity.ticker}
                               </span>
                             </td>
                           </tr>
@@ -444,18 +402,15 @@ export default function InvestmentsNewPage() {
               className="absolute inset-0 bg-black/60"
               onClick={() => !isSaving && setAddModalOpen(false)}
             />
-            <div 
-              className="relative w-full max-w-2xl max-h-[94vh] rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300 overflow-hidden flex flex-col"
-              style={{ backgroundColor: 'var(--bg-surface)' }}
-            >
-              <div className="flex items-center justify-between p-6 border-b border-[#3a3a3a]">
-                <h2 className="text-card-header">Add Investment Transaction</h2>
+            <div className="relative w-full max-w-2xl bg-[#282828] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="flex items-center justify-between px-6 py-5 border-b border-[#3a3a3a]">
+                <h2 className="text-xl font-bold">Add Investment Transaction</h2>
                 <button
                   onClick={() => setAddModalOpen(false)}
-                  className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer"
+                  className="text-helper hover:text-white transition-colors cursor-pointer"
                   aria-label="Close"
                 >
-                  <Xmark width={24} height={24} strokeWidth={1.5} />
+                  <Xmark width={24} height={24} strokeWidth={2} />
                 </button>
               </div>
 

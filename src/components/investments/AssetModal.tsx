@@ -12,6 +12,9 @@ import AssetLogo from './AssetLogo';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { getAssetColor, getDerivedAssetIcon } from '@/lib/asset-utils';
 import { formatSmartNumber } from '@/lib/utils';
+import { useToast } from '@/contexts/ToastContext';
+
+import LineChart from '@/components/ui/LineChart';
 
 interface AssetModalProps {
     isOpen: boolean;
@@ -37,12 +40,18 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
     const [showDeleteAssetConfirm, setShowDeleteAssetConfirm] = useState(false);
     const [transactionToDelete, setTransactionToDelete] = useState<any | null>(null);
     const [isDeletingTransaction, setIsDeletingTransaction] = useState(false);
+    const { addToast } = useToast();
 
     // New State for Renaming and Manual Pricing
     const [isRenaming, setIsRenaming] = useState(false);
     const [newName, setNewName] = useState('');
     const [isUpdatingValue, setIsUpdatingValue] = useState(false);
     const [newManualPrice, setNewManualPrice] = useState('');
+
+    // Historical Chart State
+    const [historyRange, setHistoryRange] = useState('1M');
+    const [historyData, setHistoryData] = useState<any[]>([]);
+    const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
     const { data, error, isLoading, isValidating, mutate: mutateAsset } = useSWR(
         isOpen && assetId ? `/api/investments/${assetId}` : null,
@@ -55,6 +64,35 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
     );
 
     const asset = data?.asset;
+
+    // Fetch Historical Data
+    useEffect(() => {
+        if (assetId && isOpen && asset?.pricingMode === 'live') {
+            const fetchHistory = async () => {
+                setIsHistoryLoading(true);
+                try {
+                    const res = await fetch(`/api/investments/${assetId}/history?range=${historyRange}`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json.history) {
+                             setHistoryData(json.history.map((h: any) => ({ date: h.date, value: h.price })));
+                        } else {
+                            setHistoryData([]);
+                        }
+                    }
+                } catch (e) {
+                    console.error(e);
+                    setHistoryData([]);
+                } finally {
+                    setIsHistoryLoading(false);
+                }
+            };
+            fetchHistory();
+        } else {
+            // Reset if not live or closed
+            if (!isHistoryLoading) setHistoryData([]);
+        }
+    }, [assetId, isOpen, historyRange, asset?.pricingMode]);
 
     // Sync local state with asset data when loaded
     useEffect(() => {
@@ -78,10 +116,11 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
             await mutate('/api/investments');
             setIsRenaming(false);
             setIsUpdatingValue(false);
+            addToast('Asset updated successfully');
             if (onSuccess) onSuccess();
         } catch (e) {
             console.error(e);
-            alert('Failed to update asset');
+            addToast('Failed to update asset', 'error');
         } finally {
             setIsSaving(false);
         }
@@ -93,7 +132,9 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
             return {
                 totalInvested: asset.totalCost || 0,
                 currentValue: asset.currentValue || 0,
-                unrealizedPnL: asset.pnl || 0,
+                unrealizedPnL: asset.unrealizedPnl || 0,
+                realizedPnL: asset.realizedPnl || 0,
+                totalPnL: asset.pnl || 0,
                 roi: asset.pnlPercent || 0,
                 totalQuantity: asset.quantity || 0,
             };
@@ -167,11 +208,12 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
             await fetch(`/api/transactions?id=${transactionToDelete.id}`, { method: 'DELETE' });
             await mutateAsset();
             await mutate('/api/investments');
+            addToast('Transaction deleted');
             if (onSuccess) onSuccess();
             setTransactionToDelete(null);
         } catch (e) {
             console.error(e);
-            alert('Failed to delete transaction');
+            addToast('Failed to delete transaction', 'error');
         }
     };
 
@@ -188,10 +230,11 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
             setEditingTransaction(null);
             await mutateAsset();
             await mutate('/api/investments');
+            addToast('Transaction updated');
             if (onSuccess) onSuccess();
         } catch (e) {
             console.error(e);
-            alert('Failed to update transaction');
+            addToast('Failed to update transaction', 'error');
         } finally {
             setIsSaving(false);
         }
@@ -201,13 +244,14 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
         setIsDeleting(true);
         try {
             const res = await fetch(`/api/investments/${assetId}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Failed');
+            if (!res.ok) throw new Error('Failed to delete asset');
             mutate('/api/investments');
+            addToast('Asset deleted successfully');
             if (onSuccess) onSuccess();
             setShowDeleteAssetConfirm(false);
             onClose();
         } catch (e) {
-            alert('Failed to delete asset');
+            addToast('Failed to delete asset', 'error');
         } finally {
             setIsDeleting(false);
         }
@@ -219,11 +263,12 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
             await fetch(`/api/transactions?id=${txId}`, { method: 'DELETE' });
             await mutateAsset();
             await mutate('/api/investments');
+            addToast('Transaction deleted');
             if (onSuccess) onSuccess();
             setEditingTransaction(null);
         } catch (e) {
             console.error(e);
-            alert('Failed to delete transaction');
+            addToast('Failed to delete transaction', 'error');
         } finally {
             setIsDeletingTransaction(false);
         }
@@ -279,7 +324,8 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                         <input 
                                                             value={newName}
                                                             onChange={(e) => setNewName(e.target.value)}
-                                                            className="text-card-header bg-[#202020] border border-[#3a3a3a] rounded px-2 py-0.5 focus:border-[#AC66DA] focus:outline-none min-w-[200px]"
+                                                            disabled={isSaving}
+                                                            className="text-card-header bg-[#202020] border border-[#3a3a3a] rounded px-2 py-0.5 focus:border-[#AC66DA] focus:outline-none min-w-[200px] disabled:opacity-50 disabled:cursor-not-allowed"
                                                             autoFocus
                                                             onKeyDown={(e) => {
                                                                 if (e.key === 'Enter') handleUpdateAsset({ name: newName });
@@ -288,13 +334,15 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                         />
                                                         <button 
                                                             onClick={() => handleUpdateAsset({ name: newName })}
-                                                            className="text-xs bg-[#AC66DA] text-white px-2 py-1 rounded hover:bg-[#9A4FB8]"
+                                                            disabled={isSaving}
+                                                            className="text-xs bg-[#AC66DA] text-white px-2 py-1 rounded hover:bg-[#9A4FB8] disabled:opacity-50 disabled:cursor-not-allowed"
                                                         >
                                                             Save
                                                         </button>
                                                         <button 
                                                             onClick={() => setIsRenaming(false)}
-                                                            className="text-xs bg-[#3a3a3a] text-white px-2 py-1 rounded hover:bg-[#4a4a4a]"
+                                                            disabled={isSaving}
+                                                            className="text-xs bg-[#3a3a3a] text-white px-2 py-1 rounded hover:bg-[#4a4a4a] disabled:opacity-50 disabled:cursor-not-allowed"
                                                         >
                                                             Cancel
                                                         </button>
@@ -371,11 +419,56 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                         {[
                                             { label: 'Total Invested', value: assetStats.totalInvested, isPnL: false },
                                             { label: 'Current Value', value: assetStats.currentValue, isPnL: false, isCurrentValue: true },
-                                            { label: 'P&L', value: assetStats.unrealizedPnL, isPnL: true },
+                                            { label: 'P&L', value: assetStats.totalPnL, isPnL: true },
                                             { label: 'ROI', value: assetStats.roi, isPnL: true, isPercent: true },
                                         ].map((stat, i) => (
                                             <div key={i} className="p-4 bg-[#202020] rounded-2xl border border-[#3a3a3a] relative group">
                                                 <div className="text-xs text-helper uppercase tracking-wider mb-1">{stat.label}</div>
+                                                
+                                                {/* ... (rest of card contents adjusted) */}
+                                                {(isLoading || isValidating) ? (
+                                                    <div className="h-6 w-24 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                                                ) : stat.isCurrentValue && isUpdatingValue && asset?.userId ? (
+                                                    /* ... form remains same ... */
+                                                    <div className="space-y-2">
+                                                        <input 
+                                                            type="number"
+                                                            value={newManualPrice}
+                                                            onChange={(e) => setNewManualPrice(e.target.value)}
+                                                            disabled={isSaving}
+                                                            className="w-full text-sm bg-[#282828] border border-[#3a3a3a] rounded px-2 py-1 focus:border-[#AC66DA] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            placeholder="Enter price"
+                                                            autoFocus
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleUpdateAsset({ manualPrice: newManualPrice });
+                                                                if (e.key === 'Escape') setIsUpdatingValue(false);
+                                                            }}
+                                                        />
+                                                        <div className="flex gap-1">
+                                                            <button 
+                                                                onClick={() => handleUpdateAsset({ manualPrice: newManualPrice })}
+                                                                disabled={isSaving}
+                                                                className="flex-1 text-xs bg-[#AC66DA] text-white px-2 py-1 rounded hover:bg-[#9A4FB8] disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            >
+                                                                Save
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => setIsUpdatingValue(false)}
+                                                                disabled={isSaving}
+                                                                className="flex-1 text-xs bg-[#3a3a3a] text-white px-2 py-1 rounded hover:bg-[#4a4a4a] disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className={`text-lg font-bold ${stat.isPnL ? (stat.value >= 0 ? 'text-[#74C648]' : 'text-[#D93F3F]') : ''}`}>
+                                                        {stat.isPnL ? (stat.value >= 0 ? '+' : '') : ''}
+                                                        {stat.isPercent ? '' : stat.isQuantity ? '' : currencySymbol}
+                                                        {stat.isPercent ? stat.value.toFixed(2) : stat.isQuantity ? formatSmartNumber(stat.value) : formatSmartNumber(Math.abs(stat.value))}
+                                                        {stat.isPercent ? '%' : ''}
+                                                    </div>
+                                                )}
                                                 
                                                 {/* Edit Icon for Manual Assets on Current Value Card */}
                                                 {stat.isCurrentValue && asset?.userId && asset?.pricingMode === 'manual' && !isUpdatingValue && (
@@ -392,51 +485,55 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                         </svg>
                                                     </button>
                                                 )}
-
-                                                {(isLoading || isValidating) ? (
-                                                    <div className="h-6 w-24 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
-                                                ) : stat.isCurrentValue && isUpdatingValue && asset?.userId ? (
-                                                    /* Inline Edit Form for Manual Price */
-                                                    <div className="space-y-2">
-                                                        <input 
-                                                            type="number"
-                                                            value={newManualPrice}
-                                                            onChange={(e) => setNewManualPrice(e.target.value)}
-                                                            className="w-full text-sm bg-[#282828] border border-[#3a3a3a] rounded px-2 py-1 focus:border-[#AC66DA] focus:outline-none"
-                                                            placeholder="Enter price"
-                                                            autoFocus
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') handleUpdateAsset({ manualPrice: newManualPrice });
-                                                                if (e.key === 'Escape') setIsUpdatingValue(false);
-                                                            }}
-                                                        />
-                                                        <div className="flex gap-1">
-                                                            <button 
-                                                                onClick={() => handleUpdateAsset({ manualPrice: newManualPrice })}
-                                                                className="flex-1 text-xs bg-[#AC66DA] text-white px-2 py-1 rounded hover:bg-[#9A4FB8]"
-                                                            >
-                                                                Save
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => setIsUpdatingValue(false)}
-                                                                className="flex-1 text-xs bg-[#3a3a3a] text-white px-2 py-1 rounded hover:bg-[#4a4a4a]"
-                                                            >
-                                                                Cancel
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className={`text-lg font-bold ${stat.isPnL ? (stat.value >= 0 ? 'text-[#74C648]' : 'text-[#D93F3F]') : ''}`}>
-                                                        {stat.isPnL ? (stat.value >= 0 ? '+' : '') : ''}
-                                                        {stat.isPercent ? '' : stat.isQuantity ? '' : currencySymbol}
-                                                        {stat.isPercent ? stat.value.toFixed(2) : stat.isQuantity ? formatSmartNumber(stat.value) : formatSmartNumber(Math.abs(stat.value))}
-                                                        {stat.isPercent ? '%' : ''}
-                                                    </div>
-                                                )}
                                             </div>
                                         ))}
                                     </div>
                                 </div>
+
+                                {/* Historical Performance Chart */}
+                                {asset?.pricingMode === 'live' && (
+                                    <div className="bg-[#202020] rounded-3xl border border-[#3a3a3a] p-6 relative overflow-hidden">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <h3 className="text-body font-medium">Price History</h3>
+                                            <div className="flex bg-[#282828] rounded-lg p-1 border border-[#3a3a3a]">
+                                                {['1W', '1M', '3M', '1Y', 'All'].map((range) => (
+                                                    <button
+                                                        key={range}
+                                                        onClick={() => setHistoryRange(range)}
+                                                        disabled={isHistoryLoading}
+                                                        className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${
+                                                            historyRange === range
+                                                            ? 'bg-[#AC66DA] text-white' 
+                                                            : 'text-secondary hover:text-white'
+                                                        } ${isHistoryLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                    >
+                                                        {range}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="h-[300px] w-full -ml-4 relative">
+                                            {isHistoryLoading && (
+                                                <div className="absolute inset-0 z-10 bg-[#202020]/50 flex items-center justify-center backdrop-blur-sm">
+                                                    <Spinner size={24} />
+                                                </div>
+                                            )}
+                                            
+                                            {historyData && historyData.length > 0 ? (
+                                                <LineChart 
+                                                    data={historyData} 
+                                                    currencySymbol={currencySymbol} 
+                                                />
+                                            ) : (
+                                                <div className="h-full flex items-center justify-center text-helper">
+                                                    {!isHistoryLoading && 'No price history available'}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
 
                                 {/* Transactions */}
                                 <div>
@@ -483,9 +580,8 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                         <div className="rounded-3xl border border-[#3a3a3a] overflow-hidden relative" style={{ backgroundColor: '#202020' }}>
                                             {(isSaving || isDeleting) && (
                                                 <div className="absolute inset-0 z-10 bg-black/5 backdrop-blur-[1px] flex items-center justify-center transition-all duration-300">
-                                                    <div className="bg-[#282828] p-3 rounded-2xl shadow-xl border border-[#3a3a3a] flex items-center gap-2">
+                                                    <div className="bg-[#282828] p-3 rounded-2xl shadow-xl border border-[#3a3a3a] flex items-center justify-center">
                                                         <Spinner size={16} />
-                                                        <span className="text-xs font-medium text-helper uppercase tracking-wider">Processing...</span>
                                                     </div>
                                                 </div>
                                             )}
@@ -545,7 +641,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                         style={{ backgroundColor: '#D93F3F', color: 'var(--text-primary)' }}
                                     >
                                         <Trash width={16} height={16} strokeWidth={1.5} />
-                                        <span>{isDeleting ? 'Deleting...' : 'Delete'}</span>
+                                        <span>Delete</span>
                                     </button>
                                     <button
                                         onClick={onClose}

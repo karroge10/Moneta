@@ -16,13 +16,24 @@ const isLegacyDailyData = (dateStr: string): boolean => /^\d+$/.test(dateStr.tri
 const isDailyWithMonth = (dateStr: string): boolean =>
   /^[A-Za-z]{3} \d{1,2}$/.test(dateStr.trim());
 
-// Format date for x-axis: "Dec 2024", "Jan 1", or legacy "1"
+// Format date for x-axis: "Dec 2024", "Jan 1", or legacy "1", or "YYYY-MM-DD"
 const formatXAxisLabel = (dateStr: string) => {
   if (isLegacyDailyData(dateStr)) {
     return { day: dateStr, isDaily: true };
   }
   if (isDailyWithMonth(dateStr)) {
     return { monDay: dateStr, isDailyWithMonth: true };
+  }
+
+  // Handle YYYY-MM-DD (ISO Format)
+  const isoMatch = /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim());
+  if (isoMatch) {
+    const date = new Date(dateStr);
+    // Force en-US locale to avoid Russian/system labels
+    const month = date.toLocaleString('en-US', { month: 'short' });
+    const day = date.getDate().toString();
+    const year = date.getFullYear().toString();
+    return { month, day, year, isFullDate: true };
   }
 
   // Handle "Jan 1, 2025" or "Jan 1" from toLocaleDateString
@@ -143,7 +154,7 @@ export default function LineChart({ data, noPadding = false, currencySymbol = '$
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={data}
-          margin={{ top: 10, right: 16, left: 16, bottom: 0 }}
+          margin={{ top: 10, right: 0, left: 0, bottom: 0 }}
         >
           <defs>
             <linearGradient id={`colorGradient-${noPadding ? 'no-pad' : 'default'}`} x1="0" y1="0" x2="0" y2="1">
@@ -159,9 +170,11 @@ export default function LineChart({ data, noPadding = false, currencySymbol = '$
             height={54}
             tickMargin={16}
             interval={interval}
+            padding={{ left: 16, right: 16 }} // Add padding for symmetry
           />
           <YAxis
             hide
+            domain={['auto', 'auto']}
           />
           <Tooltip content={<CustomTooltip currencySymbol={currencySymbol} />} />
           <Area
@@ -170,8 +183,8 @@ export default function LineChart({ data, noPadding = false, currencySymbol = '$
             stroke="#AC66DA"
             strokeWidth={2}
             fill={`url(#colorGradient-${noPadding ? 'no-pad' : 'default'})`}
-            dot={{ fill: '#E7E4E4', r: 4, strokeWidth: 0 }}
-            activeDot={{ r: 6 }}
+            dot={false} // Remove dots
+            activeDot={{ r: 6, fill: '#AC66DA', stroke: '#E7E4E4', strokeWidth: 2 }}
           />
         </AreaChart>
       </ResponsiveContainer>

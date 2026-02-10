@@ -18,7 +18,7 @@ interface PortfolioDesignProps {
 // ============================================
 export function CompactListDesign({ portfolio, currency, onAssetClick }: PortfolioDesignProps) {
     return (
-        <div className="max-h-[400px] overflow-y-auto pr-2 -mr-2">
+        <div className="h-full overflow-y-auto pr-2 -mr-2">
             <div className="space-y-2">
                 {portfolio.map((item) => (
                     <div
@@ -46,27 +46,23 @@ export function CompactListDesign({ portfolio, currency, onAssetClick }: Portfol
                                     <span className="text-[10px] text-helper uppercase tracking-wider shrink-0">
                                         {item.quantity ? formatSmartNumber(item.quantity) : '0'} {item.ticker || (item.quantity === 1 ? 'Item' : 'Items')}
                                     </span>
-                                    {item.sourceType === 'live' && item.currentPrice && (
-                                        <span className="text-[10px] text-helper/50 truncate">• {currency.symbol}{formatSmartNumber(item.currentPrice)}</span>
-                                    )}
+
                                 </div>
                             </div>
                         </div>
 
-                        {/* Mini Trend Indicator */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                            {(item.changePercent || 0) >= 0 ? (
-                                <StatUp width={16} height={16} className="text-[#74C648]" strokeWidth={2.5} />
-                            ) : (
-                                <StatDown width={16} height={16} className="text-[#D93F3F]" strokeWidth={2.5} />
-                            )}
-                        </div>
+
 
                         {/* Value + Change */}
                         <div className="text-right flex-shrink-0">
                             <div className="font-bold text-sm">{currency.symbol}{formatSmartNumber(item.currentValue || 0)}</div>
-                            <div className={`text-xs font-bold ${(item.changePercent || 0) >= 0 ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
-                                {(item.changePercent || 0) >= 0 ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%
+                            <div className={`text-xs font-bold flex items-center justify-end gap-1 ${(item.changePercent || 0) >= 0 ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
+                                {(item.changePercent || 0) >= 0 ? (
+                                    <StatUp width={14} height={14} strokeWidth={2.5} />
+                                ) : (
+                                    <StatDown width={14} height={14} strokeWidth={2.5} />
+                                )}
+                                {Math.abs(item.changePercent || 0).toFixed(2)}%
                             </div>
                         </div>
                     </div>
