@@ -268,3 +268,72 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
     assets: portfolioAssets
   };
 }
+
+async function fetchCryptoHistory(id: string, days: number = 30): Promise<{ date: string; value: number }[]> {
+  try {
+    const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}&interval=daily`;
+    const res = await fetch(url, { next: { revalidate: 3600 } });
+    if (!res.ok) return [];
+    
+    const data = await res.json();
+    if (!data.prices || !Array.isArray(data.prices)) return [];
+
+    return data.prices.map((item: [number, number]) => ({
+      date: new Date(item[0]).toISOString().split('T')[0],
+      value: item[1]
+    }));
+  } catch (error) {
+    console.error(`Failed to fetch crypto history for ${id}`, error);
+    return [];
+  }
+}
+
+export async function getInvestmentPriceHistory(assetId: number, maxPoints: number = 30): Promise<{ date: string; value: number }[]> {
+  const asset = await db.asset.findUnique({ where: { id: assetId } });
+  if (!asset) return [];
+
+  // 1. Manual assets -> Flat line
+  if (asset.pricingMode === 'manual') {
+    const price = Number(asset.manualPrice || 0);
+    return Array.from({ length: maxPoints }).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (maxPoints - 1 - i));
+      return {
+        date: d.toISOString().split('T')[0],
+        value: price
+      };
+    });
+  }
+
+  // 2. Crypto
+  if (asset.assetType === 'crypto') {
+    const cgId = asset.coingeckoId || (asset.ticker ? coingeckoMap[asset.ticker] : null);
+    if (cgId) {
+      const history = await fetchCryptoHistory(cgId, maxPoints);
+      if (history.length > 0) {
+          return history.slice(-maxPoints);
+      }
+    }
+  }
+
+  // 3. Stocks/Others -> Live Price Flat Line (fallback)
+  let currentPrice = 0;
+  if (asset.assetType === 'stock' && asset.ticker) {
+    // Reuse existing fetcher for single item
+    try {
+        const prices = await fetchStockPrices([asset.ticker]);
+        currentPrice = prices[asset.ticker] || 0;
+    } catch (e) {
+        console.error('Failed to fetch stock price for history', e);
+    }
+  }
+  
+  return Array.from({ length: maxPoints }).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (maxPoints - 1 - i));
+      return {
+        date: d.toISOString().split('T')[0],
+        value: currentPrice
+      };
+    });
+}
