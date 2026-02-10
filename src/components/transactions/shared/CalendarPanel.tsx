@@ -74,8 +74,8 @@ export function CalendarPanel({
 
   const selectedYear = selected?.getFullYear() ?? today.getFullYear();
   const minYear = Math.min(today.getFullYear(), selectedYear, currentMonth.getFullYear()) - 50;
-  const maxYear = Math.max(today.getFullYear(), selectedYear, currentMonth.getFullYear()) + 50;
-  const years = Array.from({ length: maxYear - minYear + 1 }, (_, idx) => minYear + idx);
+  const maxYear = today.getFullYear() + 1;
+  const years = Array.from({ length: maxYear - minYear + 1 }, (_, idx) => maxYear - idx);
 
   const alignmentClass =
     controlAlignment === 'start' ? 'justify-start' : controlAlignment === 'end' ? 'justify-end' : 'justify-center';

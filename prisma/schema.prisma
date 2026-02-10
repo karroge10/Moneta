@@ -122,6 +122,7 @@ model Asset {
   assetType   AssetType    // crypto | stock | property | custom | other
   coingeckoId String?
   pricingMode PricingMode  // live | manual
+  icon        String?
   
   // New Fields for Private/Manual Assets
   userId      Int?         // If set, this is a private asset for this user

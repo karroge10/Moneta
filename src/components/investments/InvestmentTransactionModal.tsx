@@ -11,6 +11,7 @@ import { formatNumber, formatSmartNumber } from '@/lib/utils';
 import { CalendarPanel } from '@/components/transactions/shared/CalendarPanel';
 import AssetLogo from './AssetLogo';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import { getDerivedAssetIcon } from '@/lib/asset-utils';
 
 function Skeleton({ className }: { className?: string }) {
     return <div className={`animate-pulse bg-[#3a3a3a] rounded-xl ${className}`} />;
@@ -302,7 +303,12 @@ export default function InvestmentTransactionModal({
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-[#202020] flex items-center justify-center border border-[#3a3a3a]">
-                                            <AssetLogo src={transaction.icon || 'BitcoinCircle'} size={22} className="text-[#AC66DA]" />
+                                            <AssetLogo 
+                                                src={transaction.icon || getDerivedAssetIcon(transaction.assetType, transaction.assetTicker, 'live')} 
+                                                size={22} 
+                                                className="text-[#AC66DA]" 
+                                                fallback={getDerivedAssetIcon(transaction.assetType, transaction.assetTicker, 'manual')}
+                                            />
                                         </div>
                                         <div>
                                             <h3 className="text-lg font-bold">{transaction.assetName}</h3>

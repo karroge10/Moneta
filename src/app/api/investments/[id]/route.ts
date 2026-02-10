@@ -60,6 +60,7 @@ export async function GET(
             pnlPercent: portfolioAsset?.pnlPercent || 0,
             pricingMode: asset.pricingMode, // Include pricing mode
             manualPrice: asset.manualPrice, // Include raw manual price
+            icon: portfolioAsset?.icon || asset.icon, // Use derived icon from portfolio
         };
 
         return NextResponse.json({ asset: assetWithStats });
