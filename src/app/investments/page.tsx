@@ -18,7 +18,6 @@ import InvestmentTransactionModal from '@/components/investments/InvestmentTrans
 import PortfolioTrendCard from '@/components/investments/PortfolioTrendCard';
 import TotalInvestedCard from '@/components/investments/TotalInvestedCard';
 import AssetAllocationCard from '@/components/investments/AssetAllocationCard';
-import ConfirmModal from '@/components/ui/ConfirmModal';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
@@ -65,7 +64,7 @@ export default function InvestmentsNewPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
   const [isSavingTx, setIsSavingTx] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeletingTx, setIsDeletingTx] = useState(false);
 
   // Fetch Data
   const fetchInvestments = useCallback(async (isRefresh = false) => {
@@ -153,20 +152,19 @@ export default function InvestmentsNewPage() {
 
   const handleDeleteTransaction = async () => {
     if (!editingTransaction) return;
+    setIsDeletingTx(true);
     try {
-      setIsSavingTx(true);
       await fetch(`/api/transactions?id=${editingTransaction.id}`, { method: 'DELETE' });
       setEditingTransaction(null);
       await fetchInvestments(true);
       if (selectedAssetId) {
         mutate(`/api/investments/${selectedAssetId}`);
       }
-      setShowDeleteConfirm(false);
     } catch (e) {
       console.error(e);
       alert('Failed to delete transaction');
     } finally {
-      setIsSavingTx(false);
+      setIsDeletingTx(false);
     }
   };
 
@@ -371,24 +369,13 @@ export default function InvestmentsNewPage() {
             transaction={editingTransaction}
             onClose={() => setEditingTransaction(null)}
             onSave={handleSaveTransaction}
-            onDelete={() => setShowDeleteConfirm(true)}
+            onDelete={handleDeleteTransaction}
             isSaving={isSavingTx}
+            isDeleting={isDeletingTx}
             currencySymbol={currency.symbol}
           />
         )
       }
-
-      <ConfirmModal
-        isOpen={showDeleteConfirm}
-        title="Delete Transaction"
-        message="Are you sure you want to delete this transaction? This action cannot be undone."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        onConfirm={handleDeleteTransaction}
-        onCancel={() => setShowDeleteConfirm(false)}
-        isLoading={isSavingTx}
-        variant="danger"
-      />
 
       {/* Add Investment Modal */}
       {

@@ -60,7 +60,7 @@ export default function ConfirmModal({
     <>
       <div
         ref={overlayRef}
-        className="fixed inset-0 bg-black/60 z-50 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-black/60 z-[70] animate-in fade-in duration-200"
         onMouseDown={() => {
           pointerDownOnOverlay.current = true;
         }}
@@ -71,7 +71,7 @@ export default function ConfirmModal({
           pointerDownOnOverlay.current = false;
         }}
       />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in zoom-in-95 duration-200 pointer-events-none">
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 animate-in zoom-in-95 duration-200 pointer-events-none">
         <div
           className="w-full max-w-md rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300 overflow-hidden flex flex-col pointer-events-auto"
           style={{ backgroundColor: 'var(--bg-surface)' }}
@@ -99,13 +99,13 @@ export default function ConfirmModal({
               {message}
             </p>
           </div>
-          <div className="flex items-center gap-3 justify-end p-6 border-t border-[#3a3a3a]">
+          <div className="flex items-center gap-3 justify-end p-6">
             <button
               type="button"
               onClick={onCancel}
               disabled={isLoading}
               className="px-6 py-2 rounded-full text-body font-semibold transition-opacity hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: '#282828', color: '#E7E4E4' }}
+              style={{ backgroundColor: '#282828', color: '#E7E4E4', border: '1px solid #3a3a3a' }}
             >
               {cancelLabel}
             </button>
