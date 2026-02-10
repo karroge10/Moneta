@@ -2,7 +2,6 @@
 
 import Card from '@/components/ui/Card';
 import TrendIndicator from '@/components/ui/TrendIndicator';
-import { formatSmartNumber } from '@/lib/utils';
 
 interface PortfolioTrendCardProps {
     balance: {
@@ -19,17 +18,12 @@ interface PortfolioTrendCardProps {
 export default function PortfolioTrendCard({ balance, currency }: PortfolioTrendCardProps) {
     return (
         <Card title="Total Portfolio Value">
-            <div className="flex flex-col h-full justify-between min-h-[120px]">
-                <div className="flex items-baseline gap-1 mb-2">
-                    <span className="text-2xl text-secondary font-medium">{currency.symbol}</span>
-                    <span className="text-4xl font-bold tracking-tight text-[#E7E4E4]">
-                        {balance.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
+            <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+                    <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
+                    <span className="text-card-value break-all min-w-0">{balance.amount.toLocaleString('en-US')}</span>
                 </div>
-                
-                <div className="mt-auto">
-                    <TrendIndicator value={balance.trend} label="All Time Return" />
-                </div>
+                <TrendIndicator value={balance.trend} label="All Time Return" />
             </div>
         </Card>
     );
