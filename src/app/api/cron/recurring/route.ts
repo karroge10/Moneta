@@ -63,43 +63,62 @@ export async function GET(request: NextRequest) {
     const currencyUpdateResult = await updateDailyExchangeRates();
     console.log('[cron] Currency update completed:', currencyUpdateResult);
 
-    // ===== TASK 2: Process Recurring Transactions =====
-    console.log('[cron] Starting recurring transactions processing...');
+    // ===== TASK 2: Process Recurring Transactions & Snapshots =====
+    console.log('[cron] Starting users maintenance task...');
     const users = await db.user.findMany({
-      select: { id: true },
+      include: {
+        currency: true,
+      }
     });
 
     let usersProcessed = 0;
     let transactionsCreated = 0;
-    const recurringErrors: string[] = [];
+    let snapshotsCreated = 0;
+    const errors: string[] = [];
+
+    const { getInvestmentsPortfolio } = await import('@/lib/investments');
 
     for (const user of users) {
       try {
-        // Count transactions before processing
+        console.log(`[cron] Processing user ${user.id}...`);
+
+        // 2a. Recurring Transactions
         const beforeCount = await db.transaction.count({
           where: { userId: user.id },
         });
-
-        // Process recurring items for this user
         await processDueRecurringItems(user.id, now);
-
-        // Count transactions after processing
         const afterCount = await db.transaction.count({
           where: { userId: user.id },
         });
-
         const created = afterCount - beforeCount;
         transactionsCreated += created;
-        usersProcessed += 1;
 
-        if (created > 0) {
-          console.log(`[cron] User ${user.id}: Created ${created} transaction(s)`);
+        // 2b. Portfolio Snapshot
+        const userCurrency = user.currency || await db.currency.findFirst();
+        if (userCurrency) {
+          const portfolio = await getInvestmentsPortfolio(user.id, userCurrency);
+          
+          // Only save if there's actual value or cost to track
+          if (portfolio.totalValue > 0 || portfolio.totalCost > 0) {
+            await db.portfolioSnapshot.create({
+              data: {
+                userId: user.id,
+                totalValue: portfolio.totalValue,
+                totalCost: portfolio.totalCost,
+                totalPnl: portfolio.totalPnl,
+                timestamp: now,
+              }
+            });
+            snapshotsCreated += 1;
+            console.log(`[cron] User ${user.id}: Saved snapshot. Value=${portfolio.totalValue.toFixed(2)}`);
+          }
         }
+
+        usersProcessed += 1;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        recurringErrors.push(`User ${user.id}: ${errorMessage}`);
+        errors.push(`User ${user.id}: ${errorMessage}`);
         console.error(`[cron] Error processing user ${user.id}:`, error);
-        // Continue processing other users even if one fails
       }
     }
 
@@ -110,14 +129,15 @@ export async function GET(request: NextRequest) {
         updated: currencyUpdateResult.updated,
         errors: currencyUpdateResult.errors.length > 0 ? currencyUpdateResult.errors : undefined,
       },
-      recurringTransactions: {
+      maintenance: {
         usersProcessed,
         transactionsCreated,
-        errors: recurringErrors.length > 0 ? recurringErrors : undefined,
+        snapshotsCreated,
+        errors: errors.length > 0 ? errors : undefined,
       },
     };
 
-    console.log(`[cron] Completed: ${usersProcessed} users processed, ${transactionsCreated} transactions created, ${currencyUpdateResult.updated} exchange rates updated`);
+    console.log(`[cron] Completed: ${usersProcessed} users processed, ${transactionsCreated} transactions created, ${snapshotsCreated} snapshots saved, ${currencyUpdateResult.updated} exchange rates updated`);
 
     return NextResponse.json(summary);
   } catch (error) {

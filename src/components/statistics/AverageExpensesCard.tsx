@@ -123,7 +123,10 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
                     >
                       <div
                         className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: bgColor }}
+                       style={{ 
+                          backgroundColor: bgColor,
+                          border: '1px solid rgba(231, 228, 228, 0.1)'
+                        }}
                       >
                         <Icon
                           width={20}

@@ -17,6 +17,7 @@ export interface Transaction {
   recurringId?: number;
   /** When true = active, when false = paused; used in upcoming list to show Paused badge */
   isActive?: boolean;
+  color?: string;
 }
 
 export interface Bill {
@@ -101,6 +102,7 @@ export interface Investment {
   currentValue: number;
   changePercent: number;
   gainLoss?: number;
+  currentPrice?: number;
   icon: string;
   priceHistory?: { date: string; price: number }[];
 }

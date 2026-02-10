@@ -4,6 +4,8 @@ import { Investment } from '@/types/dashboard';
 import { useState } from 'react';
 import AssetLogo from './AssetLogo';
 import { NavArrowLeft, NavArrowRight, StatUp, StatDown } from 'iconoir-react';
+import { getAssetColor } from '@/lib/asset-utils';
+import { formatSmartNumber } from '@/lib/utils';
 
 interface PortfolioDesignProps {
     portfolio: Investment[];
@@ -26,12 +28,23 @@ export function CompactListDesign({ portfolio, currency, onAssetClick }: Portfol
                     >
                         {/* Icon + Name */}
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="w-10 h-10 rounded-full bg-[#282828] flex items-center justify-center border border-[#3a3a3a] flex-shrink-0">
-                                <AssetLogo src={item.icon} size={22} className="text-[#AC66DA]" />
+                            <div 
+                                className="w-10 h-10 icon-circle flex-shrink-0"
+                                style={{ backgroundColor: `${getAssetColor(item.assetType)}1a` }}
+                            >
+                                <AssetLogo src={item.icon} size={22} className="text-current" style={{ color: getAssetColor(item.assetType) }} />
                             </div>
                             <div className="min-w-0 flex-1">
                                 <div className="font-bold text-sm truncate group-hover:text-[#AC66DA] transition-colors">{item.name}</div>
-                                <div className="text-xs text-helper uppercase tracking-wider">{item.ticker}</div>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="text-[10px] text-helper uppercase tracking-wider shrink-0">{item.ticker}</span>
+                                    {item.sourceType === 'live' && item.currentPrice && (
+                                        <span className="text-[10px] text-helper/50 truncate">• {currency.symbol}{formatSmartNumber(item.currentPrice)}</span>
+                                    )}
+                                    {item.quantity && (
+                                        <span className="text-[10px] text-helper/50 truncate">• Qty: {formatSmartNumber(item.quantity)}</span>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -46,7 +59,7 @@ export function CompactListDesign({ portfolio, currency, onAssetClick }: Portfol
 
                         {/* Value + Change */}
                         <div className="text-right flex-shrink-0">
-                            <div className="font-bold text-sm">{currency.symbol}{item.currentValue?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                            <div className="font-bold text-sm">{currency.symbol}{formatSmartNumber(item.currentValue || 0)}</div>
                             <div className={`text-xs font-bold ${(item.changePercent || 0) >= 0 ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
                                 {(item.changePercent || 0) >= 0 ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%
                             </div>
@@ -92,8 +105,11 @@ export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioD
                         >
                             {/* Header with Icon */}
                             <div className="flex items-center gap-3 mb-4">
-                                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#AC66DA]/20 to-[#282828] flex items-center justify-center border-2 border-[#AC66DA]/30">
-                                    <AssetLogo src={item.icon} size={28} className="text-[#AC66DA]" />
+                                <div 
+                                    className="w-14 h-14 icon-circle shrink-0"
+                                    style={{ backgroundColor: `${getAssetColor(item.assetType)}1a` }}
+                                >
+                                    <AssetLogo src={item.icon} size={28} className="text-current" style={{ color: getAssetColor(item.assetType) }} />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="font-bold text-base truncate">{item.name}</div>
@@ -101,10 +117,22 @@ export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioD
                                 </div>
                             </div>
 
-                            {/* Value Display */}
-                            <div className="mb-3">
-                                <div className="text-xs text-helper mb-1">Current Value</div>
-                                <div className="text-2xl font-bold">{currency.symbol}{item.currentValue?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <div className="text-[10px] text-helper uppercase tracking-wider mb-1">Current Value</div>
+                                    <div className="text-xl font-bold">{currency.symbol}{formatSmartNumber(item.currentValue || 0)}</div>
+                                </div>
+                                {item.sourceType === 'live' && item.currentPrice ? (
+                                    <div className="text-right">
+                                        <div className="text-[10px] text-helper uppercase tracking-wider mb-1">Price</div>
+                                        <div className="text-base font-bold text-helper">{currency.symbol}{formatSmartNumber(item.currentPrice)}</div>
+                                    </div>
+                                ) : item.quantity ? (
+                                    <div className="text-right">
+                                        <div className="text-[10px] text-helper uppercase tracking-wider mb-1">Quantity</div>
+                                        <div className="text-base font-bold text-helper">{formatSmartNumber(item.quantity)}</div>
+                                    </div>
+                                ) : null}
                             </div>
 
                             {/* Performance Badge */}
@@ -118,7 +146,7 @@ export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioD
                                     {(item.changePercent || 0) >= 0 ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%
                                 </span>
                                 <span className={`text-xs ${(item.changePercent || 0) >= 0 ? 'text-[#74C648]/70' : 'text-[#D93F3F]/70'}`}>
-                                    ({(item.gainLoss || 0) >= 0 ? '+' : ''}{currency.symbol}{Math.abs(item.gainLoss || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })})
+                                    ({(item.gainLoss || 0) >= 0 ? '+' : ''}{currency.symbol}{formatSmartNumber(Math.abs(item.gainLoss || 0))})
                                 </span>
                             </div>
                         </div>
@@ -250,12 +278,20 @@ export function TableDesign({ portfolio, currency, onAssetClick }: PortfolioDesi
                             >
                                 <td className="px-5 py-4 align-top">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-full bg-[#282828] flex items-center justify-center border border-[#3a3a3a] flex-shrink-0">
-                                            <AssetLogo src={item.icon} size={20} className="text-[#AC66DA]" />
+                                        <div 
+                                            className="w-9 h-9 icon-circle flex-shrink-0"
+                                            style={{ backgroundColor: `${getAssetColor(item.assetType)}1a` }}
+                                        >
+                                            <AssetLogo src={item.icon} size={20} className="text-current" style={{ color: getAssetColor(item.assetType) }} />
                                         </div>
                                         <div className="min-w-0">
                                             <div className="font-bold text-sm truncate group-hover:text-[#AC66DA] transition-colors">{item.name}</div>
-                                            <div className="text-xs text-helper uppercase tracking-wider">{item.ticker}</div>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-xs text-helper uppercase tracking-wider">{item.ticker}</span>
+                                                {item.quantity && (
+                                                    <span className="text-[10px] text-helper/50">• Qty: {formatSmartNumber(item.quantity)}</span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
@@ -265,7 +301,10 @@ export function TableDesign({ portfolio, currency, onAssetClick }: PortfolioDesi
                                     </span>
                                 </td>
                                 <td className="px-5 py-4 align-top text-right">
-                                    <div className="font-bold text-sm">{currency.symbol}{item.currentValue?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                    <div className="font-bold text-sm">{currency.symbol}{formatSmartNumber(item.currentValue || 0)}</div>
+                                    {item.sourceType === 'live' && item.currentPrice && (
+                                        <div className="text-[10px] text-helper mt-0.5">{currency.symbol}{formatSmartNumber(item.currentPrice)}</div>
+                                    )}
                                 </td>
                                 <td className="px-5 py-4 align-top text-right">
                                     <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${(item.changePercent || 0) >= 0 ? 'bg-[#74C648]/10 border border-[#74C648]/30' : 'bg-[#D93F3F]/10 border border-[#D93F3F]/30'}`}>
@@ -279,7 +318,7 @@ export function TableDesign({ portfolio, currency, onAssetClick }: PortfolioDesi
                                         </span>
                                     </div>
                                     <div className={`text-xs mt-1 ${(item.changePercent || 0) >= 0 ? 'text-[#74C648]/70' : 'text-[#D93F3F]/70'}`}>
-                                        {(item.gainLoss || 0) >= 0 ? '+' : ''}{currency.symbol}{Math.abs(item.gainLoss || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        {(item.gainLoss || 0) >= 0 ? '+' : ''}{currency.symbol}{formatSmartNumber(Math.abs(item.gainLoss || 0))}
                                     </div>
                                 </td>
                             </tr>

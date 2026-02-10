@@ -116,6 +116,15 @@ body.sidebar-collapsed {
 /* Badges */
 .badge-glow { background: var(--accent-purple-glow); border-radius: 9999px; }
 
+.icon-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(231, 228, 228, 0.1);
+  flex-shrink: 0;
+}
+
 /* Tooltips - Unified design system for all tooltip instances */
 .tooltip-surface {
   background: var(--bg-surface);

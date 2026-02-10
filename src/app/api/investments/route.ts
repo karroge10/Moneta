@@ -63,6 +63,7 @@ export async function GET() {
       sourceType: a.pricingMode,
       quantity: a.quantity,
       currentValue: a.currentValue,
+      currentPrice: a.currentPrice,
       gainLoss: a.pnl,
       changePercent: a.pnlPercent,
       icon: a.icon || (a.type === 'crypto' ? 'BitcoinCircle' : 'Reports'),
@@ -144,16 +145,27 @@ export async function POST(request: NextRequest) {
 
     // Create/Ensure Asset if not provided
     if (!targetAssetId) {
-      if (!name || !ticker || !assetType) {
-        return NextResponse.json({ error: 'Asset details required for new asset' }, { status: 400 });
+      if (!name || !assetType) {
+        return NextResponse.json({ error: 'Asset name and type required' }, { status: 400 });
       }
 
+      // For crypto/stock, ticker is usually required to fetch price, but we can be flexible if manual
+      if ((assetType === 'crypto' || assetType === 'stock') && !ticker) {
+          return NextResponse.json({ error: 'Ticker is required for Crypto/Stock assets' }, { status: 400 });
+      }
+
+      // If it's a private asset type (property/custom), we associate it with the user
+      // Stocks/Crypto considered global for now, unless we want to allow "My Private Bitcoin" (maybe later)
+      const isPrivate = assetType === 'property' || assetType === 'custom' || assetType === 'other';
+      const assetUserId = isPrivate ? user.id : undefined;
+
       const asset = await ensureAsset(
-        ticker,
+        ticker || null,
         name,
         assetType as AssetType,
         (pricingMode as PricingMode) || 'manual',
-        coingeckoId
+        coingeckoId,
+        assetUserId
       );
       targetAssetId = asset.id;
     }

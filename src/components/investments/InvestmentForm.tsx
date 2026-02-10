@@ -25,7 +25,7 @@ import { formatDateForDisplay, formatDateToInput } from '@/lib/dateFormatting';
 import Spinner from '@/components/ui/Spinner';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, formatSmartNumber } from '@/lib/utils';
 import AssetLogo from './AssetLogo';
 
 function Skeleton({ className }: { className?: string }) {
@@ -259,16 +259,17 @@ export default function InvestmentForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // For property/custom assets, ensure ticker exists
-    let finalTicker = formState.ticker;
-    if ((formState.assetType === 'property' || formState.assetType === 'custom') && !finalTicker && formState.name) {
-      // Auto-generate a ticker from the name (e.g. "My Apartment" -> "MYAPARTMENT" or just "MY APARTMENT")
-      finalTicker = formState.name.toUpperCase().slice(0, 5);
+    
+    // Validate required fields
+    if (!formState.name) {
+        alert('Name is required');
+        return;
     }
 
     onSave({
       ...formState,
-      ticker: finalTicker,
+      // Ticker is optional now for private assets
+      ticker: formState.ticker || null, 
       quantity: Number(formState.quantity),
       pricePerUnit: Number(formState.pricePerUnit),
       currencyId: formState.currencyId || currency.id,
@@ -315,17 +316,6 @@ export default function InvestmentForm({
               </div>
             </div>
 
-            {(formState.assetType === 'custom' || formState.assetType === 'property') && (
-              <div>
-                <label className="block text-body font-medium mb-2">Name</label>
-                <input
-                  className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
-                  value={formState.name}
-                  onChange={(e) => setFormState(s => ({ ...s, name: e.target.value }))}
-                  placeholder="e.g. My Apartment"
-                />
-              </div>
-            )}
           </div>
         )}
 
@@ -392,13 +382,28 @@ export default function InvestmentForm({
         {step === 'details' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#202020] flex items-center justify-center border border-[#3a3a3a]">
+              <div className="flex items-center gap-3 w-full">
+                <div className="w-10 h-10 rounded-full bg-[#202020] flex items-center justify-center border border-[#3a3a3a] shrink-0">
                   <AssetLogo src={formState.icon} size={22} className="text-[#AC66DA]" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold">{formState.name || 'New Investment'}</h3>
-                  <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  {/* For private assets, allow editing name here if not set or if always editable? 
+                      Actually, step 1 has name input for custom/property. 
+                      Let's allow editing here too for convenience or just display it.
+                      If it was passed from step 1, it's in formState.name.
+                  */}
+                  {(formState.assetType === 'property' || formState.assetType === 'custom') ? (
+                       <input 
+                          value={formState.name}
+                          onChange={(e) => setFormState(s => ({ ...s, name: e.target.value }))}
+                          className="text-lg font-bold bg-transparent border-b border-transparent hover:border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none w-full transition-colors"
+                          placeholder="Asset Name"
+                       />
+                  ) : (
+                      <h3 className="text-lg font-bold">{formState.name || 'New Investment'}</h3>
+                  )}
+                  
+                  <div className="flex items-center gap-2 mt-1">
                     {formState.ticker && (
                       <span className="text-sm font-bold text-[#AC66DA] tracking-wider bg-[#AC66DA]/10 px-2 py-0.5 rounded uppercase">
                         {formState.ticker}
@@ -525,7 +530,7 @@ export default function InvestmentForm({
                     <div className="flex items-center justify-between p-4 bg-[#202020] rounded-xl border border-[#3a3a3a]">
                       <span className="text-helper text-xs uppercase">Total Cost</span>
                       <span className="text-lg font-bold text-primary">
-                        {targetSymbol}{(Number(formState.quantity) * Number(formState.pricePerUnit)).toLocaleString()}
+                        {targetSymbol}{formatSmartNumber(Number(formState.quantity) * Number(formState.pricePerUnit))}
                       </span>
                     </div>
 
@@ -549,7 +554,7 @@ export default function InvestmentForm({
                                 Value at {formState.investmentType === 'buy' ? 'purchase' : 'sale'}
                               </span>
                               <span className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
-                                {currency.symbol}{formatNumber((Number(formState.quantity) * Number(formState.pricePerUnit)) * conversionRate)}
+                                {currency.symbol}{formatSmartNumber((Number(formState.quantity) * Number(formState.pricePerUnit)) * conversionRate)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center text-[10px]" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>

@@ -51,6 +51,14 @@ Cards
 - Maintain clear section separation
 - Shadows minimal or none
 
+Icon Circles (Badges)
+- Circular container for icons (e.g., categories, summary items)
+- Background: Dynamic color at 10% opacity (e.g., `#74C6481a`)
+- Border: `1px solid rgba(231, 228, 228, 0.1)` (Whitish/Greyish)
+- Icon Color: Dynamic solid color matching the background hue
+- Sizes: Standard (48x48px, 24px icon) or Small (40x40px, 20px icon)
+- Alignment: Centered flexbox
+
 Sidebar
 - Dark panel (#282828)
 - Generous logo spacing at top
@@ -291,6 +299,17 @@ Apply the "Sen" font as the primary font via next/font/google and set sizing uti
 .badge-glow {
   background: var(--accent-purple-glow);
   border-radius: 9999px;
+}
+
+### Icon circle
+
+.icon-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(231, 228, 228, 0.1);
+  flex-shrink: 0;
 }
 
 ### Table container (data tables)
