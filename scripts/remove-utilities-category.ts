@@ -29,7 +29,7 @@ async function removeUtilitiesCategory() {
       where: { name: 'Utilities' },
       include: {
         transactions: true,
-        bills: true,
+        recurringTransactions: true,
       },
     });
 
@@ -39,10 +39,10 @@ async function removeUtilitiesCategory() {
     }
 
     const transactionCount = utilitiesCategory.transactions.length;
-    const billCount = utilitiesCategory.bills.length;
+    const recurringCount = utilitiesCategory.recurringTransactions.length;
 
-    if (transactionCount > 0 || billCount > 0) {
-      console.log(`  ⚠️  Found ${transactionCount} transactions and ${billCount} bills using "Utilities" category`);
+    if (transactionCount > 0 || recurringCount > 0) {
+      console.log(`  ⚠️  Found ${transactionCount} transactions and ${recurringCount} recurring transactions using "Utilities" category`);
       console.log('  → Setting these to uncategorized (categoryId = null)...\n');
 
       // Set transactions to uncategorized
@@ -54,13 +54,13 @@ async function removeUtilitiesCategory() {
         console.log(`  ✓ Updated ${transactionCount} transactions to uncategorized`);
       }
 
-      // Set bills to uncategorized
-      if (billCount > 0) {
-        await prisma.bill.updateMany({
+      // Set recurring transactions to uncategorized
+      if (recurringCount > 0) {
+        await prisma.recurringTransaction.updateMany({
           where: { categoryId: utilitiesCategory.id },
           data: { categoryId: null },
         });
-        console.log(`  ✓ Updated ${billCount} bills to uncategorized`);
+        console.log(`  ✓ Updated ${recurringCount} recurring transactions to uncategorized`);
       }
     }
 
