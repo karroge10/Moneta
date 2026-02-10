@@ -36,16 +36,29 @@ model User {
   notificationSettings UserNotificationSettings?
   transactions Transaction[]
   goals       Goal[]
-  bills       Bill[]
   categories  CategoriesCustom[]
   notifications Notification[]
   merchants   Merchant[]
   recurringTransactions RecurringTransaction[]
-  Expense          Expense[]
-  Income           Income[]
-  Trip             Trip[]
   pdfProcessingJobs PdfProcessingJob[]
   feedback         Feedback[]
+  portfolioSnapshots PortfolioSnapshot[]
+  assets           Asset[]
+}
+
+// Portfolio Snapshots for historical tracking
+model PortfolioSnapshot {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  totalValue  Float    // Total value of all assets combined in user's default currency
+  totalCost   Float    // Total cost basis in user's default currency
+  totalPnl    Float    // Value - Cost
+  timestamp   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([timestamp])
 }
 
 // Feedback from Help Center (no email sending; stored in DB only)
@@ -91,6 +104,8 @@ enum InvestmentType {
 enum AssetType {
   crypto
   stock
+  property
+  custom
   other
 }
 
@@ -103,14 +118,20 @@ enum PricingMode {
 model Asset {
   id          Int          @id @default(autoincrement())
   name        String
-  ticker      String
-  assetType   AssetType    // crypto | stock | other
+  ticker      String?      // Optional for manual/private assets
+  assetType   AssetType    // crypto | stock | property | custom | other
   coingeckoId String?
   pricingMode PricingMode  // live | manual
+  
+  // New Fields for Private/Manual Assets
+  userId      Int?         // If set, this is a private asset for this user
+  manualPrice Decimal?     @db.Decimal(18, 8) // User-set price for manual tracking
 
   transactions Transaction[]
+  user        User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@index([ticker])
+  @@index([userId])
 }
 
 // Unified Transaction table replacing Expense and Income
@@ -164,26 +185,6 @@ model Goal {
   @@index([userId])
 }
 
-// Bill table - Recurring bills/subscriptions
-model Bill {
-  id         Int      @id @default(autoincrement())
-  userId     Int
-  name       String
-  date       DateTime
-  amount     Float
-  categoryId Int?
-  icon       String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  // Relations
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category? @relation(fields: [categoryId], references: [id])
-
-  @@index([userId])
-  @@index([date])
-}
-
 // Category table - Standard categories with icon/color mappings
 model Category {
   id        Int      @id @default(autoincrement())
@@ -196,7 +197,6 @@ model Category {
 
   // Relations
   transactions Transaction[]
-  bills         Bill[]
   recurringTransactions RecurringTransaction[]
   customCategories CategoriesCustom[]
   merchants     Merchant[]
@@ -214,8 +214,6 @@ model CategoriesCustom {
   createdAt   DateTime?     // New field to be added
   updatedAt   DateTime?    // New field to be added
   User        User          @relation(fields: [userId], references: [id])
-  Expense     Expense[]
-  TripExpense TripExpense[]
   category    Category?     @relation(fields: [categoryId], references: [id])
 
   @@index([userId])
@@ -304,8 +302,6 @@ model Currency {
   name    String
   symbol  String
   alias   String
-  Expense Expense[]
-  Income  Income[]
   User    User[]
   transactions Transaction[]
   recurringTransactions RecurringTransaction[]
@@ -361,26 +357,6 @@ model Language {
   User  User[]
 }
 
-// Trip and TripExpense tables - Preserved from existing schema (may not be used but keeping for compatibility)
-model Trip {
-  id          Int           @id @default(autoincrement())
-  startDate   DateTime
-  endDate     DateTime
-  userId      Int
-  User        User          @relation(fields: [userId], references: [id])
-  TripExpense TripExpense[]
-}
-
-model TripExpense {
-  id               Int              @id @default(autoincrement())
-  amount           Float
-  tripId           Int
-  categoryId       Int
-  createdAt        DateTime         @default(now())
-  CategoriesCustom CategoriesCustom @relation(fields: [categoryId], references: [id])
-  Trip             Trip             @relation(fields: [tripId], references: [id])
-}
-
 model ExchangeRate {
   id              Int       @id @default(autoincrement())
   baseCurrencyId  Int
@@ -395,33 +371,4 @@ model ExchangeRate {
 
   @@unique([baseCurrencyId, quoteCurrencyId, rateDate])
   @@index([baseCurrencyId, quoteCurrencyId, rateDate])
-}
-
-// Legacy tables - Keep for reference but not used in new schema
-model Expense {
-  id               Int              @id @default(autoincrement())
-  amount           Float
-  categoryId       Int
-  currencyId       Int
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime
-  userId           Int
-  date             DateTime         @default(now())
-  description      String
-  CategoriesCustom CategoriesCustom @relation(fields: [categoryId], references: [id])
-  Currency         Currency         @relation(fields: [currencyId], references: [id])
-  User             User             @relation(fields: [userId], references: [id])
-}
-
-model Income {
-  id         Int      @id @default(autoincrement())
-  amount     Float
-  source     String
-  currencyId Int
-  userId     Int
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime
-  date       DateTime @default(now())
-  Currency   Currency @relation(fields: [currencyId], references: [id])
-  User       User     @relation(fields: [userId], references: [id])
 }

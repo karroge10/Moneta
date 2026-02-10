@@ -7,9 +7,10 @@ interface AssetLogoProps {
     src?: string;
     size?: number;
     className?: string;
+    style?: React.CSSProperties;
 }
 
-export default function AssetLogo({ src, size = 20, className = "" }: AssetLogoProps) {
+export default function AssetLogo({ src, size = 20, className = "", style }: AssetLogoProps) {
     if (!src) return null;
 
     const isUrl = src.startsWith('http') || src.startsWith('/');
@@ -19,7 +20,7 @@ export default function AssetLogo({ src, size = 20, className = "" }: AssetLogoP
             <img
                 src={src}
                 alt="Asset Logo"
-                style={{ width: size, height: size }}
+                style={{ width: size, height: size, ...style }}
                 className={`rounded-full object-contain ${className}`}
                 onError={(e) => {
                     // Fallback to a placeholder or icon if image fails
@@ -30,5 +31,5 @@ export default function AssetLogo({ src, size = 20, className = "" }: AssetLogoP
     }
 
     const Icon = getIcon(src);
-    return <Icon width={size} height={size} strokeWidth={1.5} className={className} />;
+    return <Icon width={size} height={size} strokeWidth={1.5} className={className} style={style} />;
 }

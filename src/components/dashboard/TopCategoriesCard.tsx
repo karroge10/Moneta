@@ -43,10 +43,10 @@ export default function TopCategoriesCard({ categories }: TopCategoriesCardProps
               <div key={category.id} className="flex items-center gap-3 min-w-0">
                 <div className="flex-shrink-0">
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
+                    className="w-12 h-12 icon-circle"
+                    style={{ backgroundColor: `${category.color}1a` }}
                   >
-                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: '#E7E4E4' }} />
+                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: category.color }} />
                   </div>
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden text-body font-medium text-wrap-safe break-words">{category.name}</div>

@@ -3,6 +3,7 @@ import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { calculateGoalProgress } from '@/lib/goalUtils';
 import { getFinancialHealthScore } from '@/lib/financial-health';
+import { getInvestmentsPortfolio } from '@/lib/investments';
 import { TimePeriod, MonthlySummaryRow, StatisticsSummaryItem, DemographicComparison } from '@/types/dashboard';
 import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
 
@@ -199,14 +200,14 @@ export async function GET(request: NextRequest) {
       );
       const totalIncome = userWithConverted.filter((t) => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
       const totalExpenses = userWithConverted.filter((t) => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
-      const [goals, investments] = await Promise.all([
+      const [goals, portfolioSummary] = await Promise.all([
         db.goal.findMany({ where: { userId: user.id } }),
-        db.investment.findMany({ where: { userId: user.id } }),
+        getInvestmentsPortfolio(user.id, userCurrencyRecord),
       ]);
       const totalGoals = goals.length;
       const completedGoals = goals.filter((g) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
       const goalsSuccessRate = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100 * 10) / 10 : 0;
-      const portfolioBalance = investments.reduce((s, i) => s + i.currentValue, 0);
+      const portfolioBalance = portfolioSummary.totalValue;
       let demographicComparisons: DemographicComparison[] = [];
       const demographicComparisonsDisabled = user.dataSharingEnabled !== true;
       const cohortFilters = user.dataSharingEnabled === true
@@ -235,14 +236,14 @@ export async function GET(request: NextRequest) {
               );
               const cohortIncome = withConverted.filter((t) => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
               const cohortExpenses = withConverted.filter((t) => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
-              const [cohortGoals, cohortInvestments] = await Promise.all([
+              const [cohortGoals, cohortPortfolio] = await Promise.all([
                 db.goal.findMany({ where: { userId: cohortUser.id } }),
-                db.investment.findMany({ where: { userId: cohortUser.id } }),
+                getInvestmentsPortfolio(cohortUser.id, userCurrencyRecord),
               ]);
               const cg = cohortGoals.length;
               const cgDone = cohortGoals.filter((g) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
               const goalsSuccessRateC = cg > 0 ? (cgDone / cg) * 100 : 0;
-              const portfolioBal = cohortInvestments.reduce((s, i) => s + i.currentValue, 0);
+              const portfolioBal = cohortPortfolio.totalValue;
               return { income: cohortIncome, expenses: cohortExpenses, goalsSuccessRate: goalsSuccessRateC, portfolioBalance: portfolioBal };
             }),
           );
@@ -491,13 +492,8 @@ export async function GET(request: NextRequest) {
       : 0;
 
     // Fetch investments to calculate portfolio balance
-    const investments = await db.investment.findMany({
-      where: {
-        userId: user.id,
-      },
-    });
-
-    const portfolioBalance = investments.reduce((sum, inv) => sum + inv.currentValue, 0);
+    const portfolioSummary = await getInvestmentsPortfolio(user.id, userCurrencyRecord);
+    const portfolioBalance = portfolioSummary.totalValue;
 
     // Demographic comparisons: only when current user has data sharing enabled
     let demographicComparisons: DemographicComparison[] = [];
@@ -536,14 +532,14 @@ export async function GET(request: NextRequest) {
             const cohortExpenses = withConverted
               .filter((t) => t.type === 'expense')
               .reduce((sum, t) => sum + t.convertedAmount, 0);
-            const [cohortGoals, cohortInvestments] = await Promise.all([
+            const [cohortGoals, cohortPortfolio] = await Promise.all([
               db.goal.findMany({ where: { userId: cohortUser.id } }),
-              db.investment.findMany({ where: { userId: cohortUser.id } }),
+              getInvestmentsPortfolio(cohortUser.id, userCurrencyRecord),
             ]);
             const totalGoals = cohortGoals.length;
             const completedGoals = cohortGoals.filter((g) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
             const goalsSuccessRate = totalGoals > 0 ? (completedGoals / totalGoals) * 100 : 0;
-            const portfolioBal = cohortInvestments.reduce((s, i) => s + i.currentValue, 0);
+            const portfolioBal = cohortPortfolio.totalValue;
             return {
               income: cohortIncome,
               expenses: cohortExpenses,

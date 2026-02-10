@@ -17,12 +17,15 @@ import AssetModal from '@/components/investments/AssetModal';
 import InvestmentTransactionModal from '@/components/investments/InvestmentTransactionModal';
 import PortfolioTrendCard from '@/components/investments/PortfolioTrendCard';
 import TotalInvestedCard from '@/components/investments/TotalInvestedCard';
+import AssetAllocationCard from '@/components/investments/AssetAllocationCard';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
 import AssetLogo from '@/components/investments/AssetLogo';
 import { CompactListDesign, CarouselDesign, TableDesign } from '@/components/investments/PortfolioDesignOptions';
+import { getAssetColor } from '@/lib/asset-utils';
+import { formatSmartNumber } from '@/lib/utils';
 
 interface InvestmentsApiResponse {
   update: {
@@ -230,12 +233,12 @@ export default function InvestmentsNewPage() {
         ) : error ? (
           <div className="w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">
             <p className="text-[#D93F3F] mb-4">{error}</p>
-            <button onClick={fetchInvestments} className="px-4 py-2 bg-[#AC66DA] rounded-lg text-white font-bold">Retry</button>
+            <button onClick={() => fetchInvestments()} className="px-4 py-2 bg-[#AC66DA] rounded-lg text-white font-bold">Retry</button>
           </div>
         ) : (
           <>
-            {/* Top Section: Update Card + Portfolio Trend + Total Invested (3-column Grid) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+            {/* Top Section: Update Card + Portfolio Trend + Total Invested + Allocation (4-column Grid) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {/* Update Card */}
               {data?.update && (
                 <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
@@ -267,6 +270,13 @@ export default function InvestmentsNewPage() {
                     totalCost={data.totalCost}
                     currency={currency}
                   />
+                </div>
+              )}
+
+              {/* Asset Allocation Card */}
+              {data?.portfolio && (
+                <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+                  <AssetAllocationCard portfolio={data.portfolio} />
                 </div>
               )}
             </div>
@@ -313,8 +323,11 @@ export default function InvestmentsNewPage() {
                           >
                             <td className="px-5 py-4 align-top">
                               <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-[#282828] flex items-center justify-center text-[#AC66DA] border border-[#3a3a3a]">
-                                  <AssetLogo src={activity.icon} size={18} />
+                                <div 
+                                  className="w-10 h-10 icon-circle shrink-0"
+                                  style={{ backgroundColor: `${getAssetColor(activity.assetType)}1a` }}
+                                >
+                                  <AssetLogo src={activity.icon} size={20} className="text-current" style={{ color: getAssetColor(activity.assetType) }} />
                                 </div>
                                 <div>
                                   <div className="font-semibold text-sm">{activity.name}</div>
@@ -332,7 +345,7 @@ export default function InvestmentsNewPage() {
                             </td>
                             <td className="px-5 py-4 align-top">
                               <span className={`text-sm font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
-                                {activity.type === 'Buy' ? '+' : '-'}{activity.quantity.toLocaleString()} {activity.ticker}
+                                {activity.type === 'Buy' ? '+' : '-'}{formatSmartNumber(activity.quantity)} {activity.ticker}
                               </span>
                             </td>
                           </tr>

@@ -7,6 +7,7 @@ import { getTrendColor, formatNumber } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 import { StatUp, StatDown } from 'iconoir-react';
 import { NavArrowRight } from 'iconoir-react';
+import { getAssetColor } from '@/lib/asset-utils';
 
 interface InvestmentsCardProps {
   investments: Investment[];
@@ -87,10 +88,10 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
               <div key={investment.id} className="relative flex items-center gap-3 min-w-0">
                 <div className="shrink-0">
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
+                    className="w-12 h-12 icon-circle"
+                    style={{ backgroundColor: `${getAssetColor(investment.assetType)}1a` }}
                   >
-                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: '#E7E4E4' }} />
+                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: getAssetColor(investment.assetType) }} />
                   </div>
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden">

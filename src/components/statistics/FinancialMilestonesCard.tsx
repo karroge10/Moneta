@@ -63,7 +63,11 @@ export default function FinancialMilestonesCard({ milestone, loading = false }: 
             <div className="flex items-start gap-3">
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)', marginTop: '2px' }}
+                style={{ 
+                  backgroundColor: 'rgba(163, 102, 203, 0.1)', 
+                  marginTop: '2px',
+                  border: '1px solid rgba(231, 228, 228, 0.1)'
+                }}
               >
                 <Trophy
                   width={20}

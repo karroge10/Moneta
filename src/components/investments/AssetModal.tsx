@@ -11,6 +11,8 @@ import { formatDateForDisplay } from '@/lib/dateFormatting';
 import { getIcon } from '@/lib/iconMapping';
 import AssetLogo from './AssetLogo';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import { getAssetColor } from '@/lib/asset-utils';
+import { formatSmartNumber } from '@/lib/utils';
 
 interface AssetModalProps {
     isOpen: boolean;
@@ -36,6 +38,12 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
     const [showDeleteAssetConfirm, setShowDeleteAssetConfirm] = useState(false);
     const [transactionToDelete, setTransactionToDelete] = useState<any | null>(null);
 
+    // New State for Renaming and Manual Pricing
+    const [isRenaming, setIsRenaming] = useState(false);
+    const [newName, setNewName] = useState('');
+    const [isUpdatingValue, setIsUpdatingValue] = useState(false);
+    const [newManualPrice, setNewManualPrice] = useState('');
+
     const { data, error, isLoading, isValidating, mutate: mutateAsset } = useSWR(
         isOpen && assetId ? `/api/investments/${assetId}` : null,
         fetcher,
@@ -47,6 +55,37 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
     );
 
     const asset = data?.asset;
+
+    // Sync local state with asset data when loaded
+    useEffect(() => {
+        if (asset) {
+            setNewName(asset.name);
+            setNewManualPrice(asset.manualPrice ? asset.manualPrice.toString() : (asset.currentPrice ? asset.currentPrice.toString() : ''));
+        }
+    }, [asset]);
+
+    const handleUpdateAsset = async (updates: any) => {
+        try {
+            setIsSaving(true);
+            const res = await fetch(`/api/investments/${assetId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+            if (!res.ok) throw new Error('Failed to update asset');
+            
+            await mutateAsset();
+            await mutate('/api/investments');
+            setIsRenaming(false);
+            setIsUpdatingValue(false);
+            if (onSuccess) onSuccess();
+        } catch (e) {
+            console.error(e);
+            alert('Failed to update asset');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     // Use backend calculated stats if available, fallback to frontend only if needed
     const assetStats = useMemo(() => {
@@ -220,7 +259,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                 </>
                             ) : asset ? (
                                 <>
-                                    <div className="w-12 h-12 rounded-full bg-[#202020] flex items-center justify-center border border-[#3a3a3a]">
+                                    <div className="w-12 h-12 icon-circle bg-[#202020]">
                                         <AssetLogo
                                             src={asset.icon || (
                                                 asset.assetType === 'crypto' ? 'BitcoinCircle' :
@@ -229,14 +268,61 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                             'ViewGrid'
                                             )}
                                             size={28}
-                                            className="text-[#AC66DA]"
+                                            style={{ color: getAssetColor(asset.assetType) }}
                                         />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h2 className="text-card-header truncate">{asset.name}</h2>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-sm font-bold text-[#AC66DA] tracking-wider bg-[#AC66DA]/10 px-2 py-0.5 rounded uppercase">{asset.ticker}</span>
-                                            {asset.assetType && <span className="text-xs text-helper capitalize">• {asset.assetType}</span>}
+                                            {isRenaming ? (
+                                                <div className="flex items-center gap-2">
+                                                    <input 
+                                                        value={newName}
+                                                        onChange={(e) => setNewName(e.target.value)}
+                                                        className="text-card-header bg-[#202020] border border-[#3a3a3a] rounded px-2 py-0.5 focus:border-[#AC66DA] focus:outline-none min-w-[200px]"
+                                                        autoFocus
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') handleUpdateAsset({ name: newName });
+                                                            if (e.key === 'Escape') setIsRenaming(false);
+                                                        }}
+                                                    />
+                                                    <button 
+                                                        onClick={() => handleUpdateAsset({ name: newName })}
+                                                        className="text-xs bg-[#AC66DA] text-white px-2 py-1 rounded hover:bg-[#9A4FB8]"
+                                                    >
+                                                        Save
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setIsRenaming(false)}
+                                                        className="text-xs bg-[#3a3a3a] text-white px-2 py-1 rounded hover:bg-[#4a4a4a]"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2 group">
+                                                    <h2 className="text-card-header truncate max-w-[300px]">{asset.name}</h2>
+                                                    {asset.userId && (
+                                                        <button 
+                                                            onClick={() => setIsRenaming(true)}
+                                                            className="opacity-0 group-hover:opacity-100 text-[#AC66DA] hover:text-[#9A4FB8] transition-opacity"
+                                                            title="Rename Asset"
+                                                        >
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor"><path d="M14.363 5.652l1.48-1.48a2 2 0 012.829 0l1.414 1.414a2 2 0 010 2.828l-1.48 1.48m-4.243-4.242l-9.616 9.615a2 2 0 00-.578 1.238l-.242 2.74a1 1 0 001.084 1.085l2.74-.242a2 2 0 001.24-.578l9.615-9.616m-4.243-4.242l4.242 4.242" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            {asset.ticker && (
+                                                <span 
+                                                    className="text-sm font-bold tracking-wider bg-current/10 px-2 py-0.5 rounded uppercase leading-none"
+                                                    style={{ color: getAssetColor(asset.assetType) }}
+                                                >
+                                                    {asset.ticker}
+                                                </span>
+                                            )}
+                                            {asset.assetType && <span className="text-xs font-medium text-helper capitalize">• {asset.assetType}</span>}
                                         </div>
                                     </div>
                                 </>
@@ -263,22 +349,70 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                 {/* Asset Info Overview */}
                                 <div>
                                     <h3 className="text-body font-medium mb-3">Overview</h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                                         {[
                                             { label: 'Total Invested', value: assetStats.totalInvested, isPnL: false },
-                                            { label: 'Current Value', value: assetStats.currentValue, isPnL: false },
+                                            { label: 'Current Value', value: assetStats.currentValue, isPnL: false, isCurrentValue: true },
+                                            { label: 'Quantity', value: assetStats.totalQuantity, isPnL: false, isQuantity: true },
                                             { label: 'P&L', value: assetStats.unrealizedPnL, isPnL: true },
                                             { label: 'ROI', value: assetStats.roi, isPnL: true, isPercent: true },
                                         ].map((stat, i) => (
-                                            <div key={i} className="p-4 bg-[#202020] rounded-2xl border border-[#3a3a3a]">
+                                            <div key={i} className="p-4 bg-[#202020] rounded-2xl border border-[#3a3a3a] relative group">
                                                 <div className="text-xs text-helper uppercase tracking-wider mb-1">{stat.label}</div>
+                                                
+                                                {/* Edit Icon for Manual Assets on Current Value Card */}
+                                                {stat.isCurrentValue && asset?.userId && asset?.pricingMode === 'manual' && !isUpdatingValue && (
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setIsUpdatingValue(true);
+                                                        }}
+                                                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-[#282828]"
+                                                        title="Edit Value"
+                                                    >
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http://www.w3.org/2000/svg" color="#AC66DA">
+                                                            <path d="M14.363 5.652l1.48-1.48a2 2 0 012.829 0l1.414 1.414a2 2 0 010 2.828l-1.48 1.48m-4.243-4.242l-9.616 9.615a2 2 0 00-.578 1.238l-.242 2.74a1 1 0 001.084 1.085l2.74-.242a2 2 0 001.24-.578l9.615-9.616m-4.243-4.242l4.242 4.242" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"></path>
+                                                        </svg>
+                                                    </button>
+                                                )}
+
                                                 {(isLoading || isValidating) ? (
                                                     <div className="h-6 w-24 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                                                ) : stat.isCurrentValue && isUpdatingValue && asset?.userId ? (
+                                                    /* Inline Edit Form for Manual Price */
+                                                    <div className="space-y-2">
+                                                        <input 
+                                                            type="number"
+                                                            value={newManualPrice}
+                                                            onChange={(e) => setNewManualPrice(e.target.value)}
+                                                            className="w-full text-sm bg-[#282828] border border-[#3a3a3a] rounded px-2 py-1 focus:border-[#AC66DA] focus:outline-none"
+                                                            placeholder="Enter price"
+                                                            autoFocus
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleUpdateAsset({ manualPrice: newManualPrice });
+                                                                if (e.key === 'Escape') setIsUpdatingValue(false);
+                                                            }}
+                                                        />
+                                                        <div className="flex gap-1">
+                                                            <button 
+                                                                onClick={() => handleUpdateAsset({ manualPrice: newManualPrice })}
+                                                                className="flex-1 text-xs bg-[#AC66DA] text-white px-2 py-1 rounded hover:bg-[#9A4FB8]"
+                                                            >
+                                                                Save
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => setIsUpdatingValue(false)}
+                                                                className="flex-1 text-xs bg-[#3a3a3a] text-white px-2 py-1 rounded hover:bg-[#4a4a4a]"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 ) : (
                                                     <div className={`text-lg font-bold ${stat.isPnL ? (stat.value >= 0 ? 'text-[#74C648]' : 'text-[#D93F3F]') : ''}`}>
                                                         {stat.isPnL ? (stat.value >= 0 ? '+' : '') : ''}
-                                                        {stat.isPercent ? '' : currencySymbol}
-                                                        {Math.abs(stat.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        {stat.isPercent ? '' : stat.isQuantity ? '' : currencySymbol}
+                                                        {stat.isPercent ? stat.value.toFixed(2) : stat.isQuantity ? formatSmartNumber(stat.value) : formatSmartNumber(Math.abs(stat.value))}
                                                         {stat.isPercent ? '%' : ''}
                                                     </div>
                                                 )}
@@ -368,22 +502,13 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                                         </span>
                                                                     </td>
                                                                     <td className="px-5 py-4 align-top text-right">
-                                                                        <span className="text-sm">{Number(tx.quantity).toLocaleString()}</span>
+                                                                        <span className="text-sm">{Number(tx.quantity).toLocaleString(undefined, { maximumFractionDigits: 8 })}</span>
                                                                     </td>
                                                                     <td className="px-5 py-4 align-top text-right">
-                                                                        <span className="text-sm">{tx.currency?.symbol || currencySymbol}{Number(tx.pricePerUnit).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                                                        <span className="text-sm">{tx.currency?.symbol || currencySymbol}{formatSmartNumber(Number(tx.pricePerUnit))}</span>
                                                                     </td>
-                                                                    <td className="px-5 py-4 align-top text-right flex items-center justify-end gap-3">
-                                                                        <span className="text-sm font-semibold">{tx.currency?.symbol || currencySymbol}{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                                                        <button
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                setTransactionToDelete(tx);
-                                                                            }}
-                                                                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-[#D93F3F]/10 text-[#D93F3F] hover:bg-[#D93F3F]/20 transition-all"
-                                                                        >
-                                                                            <Trash width={16} height={16} strokeWidth={1.5} />
-                                                                        </button>
+                                                                    <td className="px-5 py-4 align-top text-right">
+                                                                        <span className="text-sm font-semibold">{tx.currency?.symbol || currencySymbol}{formatSmartNumber(total)}</span>
                                                                     </td>
                                                                 </tr>
                                                             );

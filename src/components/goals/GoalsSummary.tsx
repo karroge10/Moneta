@@ -103,7 +103,7 @@ export default function GoalsSummary({ goals, compact = false, loading = false }
                   }}
                 >
                   <div
-                    className={`rounded-full flex items-center justify-center shrink-0 ${
+                    className={`icon-circle shrink-0 ${
                       compact ? 'w-10 h-10 sm:w-11 sm:h-11 xl:w-12 xl:h-12' : 'w-12 h-12'
                     }`}
                     style={{ backgroundColor: `${item.color}1a` }}
