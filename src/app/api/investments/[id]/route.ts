@@ -58,12 +58,57 @@ export async function GET(
             totalCost: portfolioAsset?.totalCost || 0,
             pnl: portfolioAsset?.pnl || 0,
             pnlPercent: portfolioAsset?.pnlPercent || 0,
+            pricingMode: asset.pricingMode, // Include pricing mode
+            manualPrice: asset.manualPrice, // Include raw manual price
         };
 
         return NextResponse.json({ asset: assetWithStats });
     } catch (error) {
         console.error('Error fetching asset details:', error);
         return NextResponse.json({ error: 'Failed to fetch asset details' }, { status: 500 });
+    }
+}
+
+export async function PUT(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const { id } = await params;
+        const user = await requireCurrentUserWithLanguage();
+        const assetId = parseInt(id, 10);
+        const body = await request.json();
+
+        if (isNaN(assetId)) {
+            return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+        }
+
+        const asset = await db.asset.findUnique({ where: { id: assetId } });
+        if (!asset) {
+            return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+        }
+
+        // Only allow updating if it's a private asset belonging to this user
+        if (asset.userId !== user.id) {
+            return NextResponse.json({ error: 'Cannot edit global or other users assets' }, { status: 403 });
+        }
+
+        const { name, ticker, manualPrice } = body;
+
+        const updateData: any = {};
+        if (name !== undefined) updateData.name = name;
+        if (ticker !== undefined) updateData.ticker = ticker || null;
+        if (manualPrice !== undefined) updateData.manualPrice = manualPrice;
+
+        const updatedAsset = await db.asset.update({
+            where: { id: assetId },
+            data: updateData,
+        });
+
+        return NextResponse.json({ asset: updatedAsset });
+    } catch (error) {
+        console.error('Error updating asset:', error);
+        return NextResponse.json({ error: 'Failed to update asset' }, { status: 500 });
     }
 }
 
@@ -82,12 +127,26 @@ export async function DELETE(
         }
 
         // "Delete" on Portfolio means removing all Transactions for this asset for the current user.
+        // If it's a private asset, we should probably delete the Asset itself too if user wants?
+        // Current behavior: Deletes transactions.
+        // If private asset, should we delete the asset record too?
+        // User might want to keep the asset record but reset transactions?
+        // Let's stick to deleting transactions for consistency with "Delete from Portfolio".
+        // BUT if it's a private asset and we remove all transactions, it becomes an orphan record in Asset table.
+        // Let's delete the Asset record too IF it is private (userId matches).
+
+        const asset = await db.asset.findUnique({ where: { id: assetId } });
+
         await db.transaction.deleteMany({
             where: {
                 userId: user.id,
                 investmentAssetId: assetId
             }
         });
+
+        if (asset && asset.userId === user.id) {
+            await db.asset.delete({ where: { id: assetId } });
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

@@ -7,7 +7,7 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { formatDateForDisplay, formatDateToInput } from '@/lib/dateFormatting';
 import CurrencySelector from '@/components/transactions/import/CurrencySelector';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, formatSmartNumber } from '@/lib/utils';
 import { CalendarPanel } from '@/components/transactions/shared/CalendarPanel';
 import AssetLogo from './AssetLogo';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -475,7 +475,7 @@ export default function InvestmentTransactionModal({
                                                     Value at {formData.investmentType === 'buy' ? 'purchase' : 'sale'}
                                                 </span>
                                                 <span className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
-                                                    {userCurrency.symbol}{formatNumber(convertedTotal || 0)}
+                                                    {userCurrency.symbol}{formatSmartNumber(convertedTotal || 0)}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between items-center text-xs" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>

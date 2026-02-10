@@ -1,18 +1,35 @@
 import { db } from './db';
 import { Asset, AssetType, PricingMode } from '@prisma/client';
 
-export async function searchAssets(query: string) {
+export async function searchAssets(query: string, userId?: number) {
     if (!query) return [];
 
     return db.asset.findMany({
         where: {
             OR: [
-                { name: { contains: query, mode: 'insensitive' } },
-                { ticker: { contains: query, mode: 'insensitive' } },
+                // Global assets (ticker or name match)
+                {
+                    AND: [
+                        { userId: null },
+                        {
+                            OR: [
+                                { name: { contains: query, mode: 'insensitive' } },
+                                { ticker: { contains: query, mode: 'insensitive' } },
+                            ]
+                        }
+                    ]
+                },
+                // Private assets (name match, userId match)
+                ...(userId ? [{
+                    AND: [
+                        { userId },
+                        { name: { contains: query, mode: 'insensitive' } }
+                    ]
+                }] : [])
             ],
         },
         take: 20,
-        orderBy: { ticker: 'asc' },
+        orderBy: { ticker: 'asc' }, // Note: Ticker might be null now, so this might put nulls last or first depending on DB
     });
 }
 
@@ -23,32 +40,57 @@ export async function getAssetById(id: number) {
 }
 
 export async function ensureAsset(
-    ticker: string,
+    ticker: string | null,
     name: string,
     assetType: AssetType,
     pricingMode: PricingMode,
-    coingeckoId?: string
+    coingeckoId?: string,
+    userId?: number
 ) {
-    // Try to find by ticker first? Or just create?
-    // Ticker isn't unique in schema, but should be treated as unique-ish for same type?
-    // For now, let's assume we search by ticker AND type first.
+    // 1. If ticker is present, try to find global asset first (e.g. BTC, AAPL)
+    if (ticker) {
+        const globalAsset = await db.asset.findFirst({
+            where: {
+                ticker: { equals: ticker, mode: 'insensitive' },
+                assetType: assetType,
+                userId: null
+            }
+        });
+        if (globalAsset) return globalAsset;
+    }
 
-    const existing = await db.asset.findFirst({
-        where: {
-            ticker: { equals: ticker, mode: 'insensitive' },
-            assetType: assetType
+    // 2. If userId provided, try to find private asset by name (and ticker if exists)
+    if (userId) {
+        const privateQuery: any = {
+            userId,
+            assetType,
+            name: { equals: name, mode: 'insensitive' }
+        };
+        
+        // Refine if ticker is provided, though name matching is usually sufficient for private
+        if (ticker) {
+            privateQuery.ticker = { equals: ticker, mode: 'insensitive' };
         }
-    });
 
-    if (existing) return existing;
+        const privateAsset = await db.asset.findFirst({
+            where: privateQuery
+        });
+        if (privateAsset) return privateAsset;
+    }
+
+    // 3. Create new Asset
+    // If no userId, we assume it's a global asset (requires ticker usually, but we'll allow flexible)
+    // If userId, it's private.
 
     return db.asset.create({
         data: {
             name,
-            ticker: ticker.toUpperCase(),
+            ticker: ticker ? ticker.toUpperCase() : null,
             assetType,
             pricingMode,
             coingeckoId,
+            userId,
+            manualPrice: null, // Default to null
         }
     });
 }

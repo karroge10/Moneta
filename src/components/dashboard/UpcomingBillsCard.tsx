@@ -47,10 +47,10 @@ export default function UpcomingBillsCard({ bills, onItemClick }: UpcomingBillsC
               >
                 <div className="flex-shrink-0">
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center"
+                    className="w-12 h-12 icon-circle"
                     style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
                   >
-                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: '#E7E4E4' }} />
+                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: '#AC66DA' }} />
                   </div>
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden">

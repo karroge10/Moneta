@@ -127,7 +127,7 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
       if (item.asset.assetType === 'crypto') {
         const id = item.asset.coingeckoId || coingeckoMap[item.asset.ticker];
         if (id) cryptoIds.push(id);
-      } else if (item.asset.assetType === 'stock') {
+      } else if (item.asset.assetType === 'stock' && item.asset.ticker) {
         stockTickers.push(item.asset.ticker);
       }
     }
@@ -183,16 +183,30 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
 
     if (asset.pricingMode === 'live') {
       if (asset.assetType === 'crypto') {
-        const id = asset.coingeckoId || coingeckoMap[asset.ticker];
+        const id = asset.coingeckoId || (asset.ticker ? coingeckoMap[asset.ticker] : null);
         if (id && cryptoPrices[id]) {
           currentPrice = cryptoPrices[id];
           isLivePriceInUSD = true;
         }
-      } else if (asset.assetType === 'stock') {
+      } else if (asset.assetType === 'stock' && asset.ticker) {
         if (stockPrices[asset.ticker]) {
           currentPrice = stockPrices[asset.ticker];
           isLivePriceInUSD = true;
         }
+      }
+    } else if (asset.pricingMode === 'manual') {
+      // Logic: If user set a manual price, use it. Otherwise fallback to last transaction price (lastPrice).
+      if (asset.manualPrice) {
+        currentPrice = Number(asset.manualPrice); // This is in Asset's native conceptual currency (usually User's default or whatever they bought it in)
+        // Note: For manual assets, we assume the price is in the User's currency unless we track 'currencyId' on Asset.
+        // The current schema doesn't have currencyId on Asset.
+        // However, transactions check currency.
+        // Let's assume manualPrice is in the SAME currency as the Transactions (simplification) OR User's Default.
+        // Given complexity, let's assume manualPrice is entered in User's Default currency for now, or match transaction currency?
+        // Actually, simplest is: Manual Price is in User's Default Currency.
+        // But if I bought in USD and I am EUR user?
+        // To support precise manual valuation, let's assume manualPrice is in the TARGET CURRENCY (User's display currency).
+        // Since it's a manual override for "Present Value", user would likely type it in their current view.
       }
     }
 

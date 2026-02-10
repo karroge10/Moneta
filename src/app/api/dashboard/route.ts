@@ -314,6 +314,7 @@ export async function GET(request: NextRequest) {
         originalCurrencySymbol: t.currency?.symbol,
         originalCurrencyAlias: t.currency?.alias,
         category: t.category?.name || null,
+        color: t.category?.color || '#AC66DA',
         icon: getIconForCategory(t.category?.name || null),
       };
     });

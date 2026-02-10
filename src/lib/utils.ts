@@ -33,6 +33,21 @@ export function formatNumber(amount: number, withDecimals = true): string {
 }
 
 /**
+ * Formats a number smartly:
+ * - If >= 10, shows 2 decimals.
+ * - If < 10, shows up to 8 decimals (for precision assets like Dogecoin/BTC).
+ */
+export function formatSmartNumber(value: number): string {
+  const absValue = Math.abs(value);
+  const maxDecimals = absValue < 10 ? 8 : 2;
+  
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: maxDecimals,
+  });
+}
+
+/**
  * Format amount with currency symbol (for use when you have the symbol directly)
  * @param amount - The amount to format
  * @param symbol - The currency symbol (e.g., '$', '₾', '€')

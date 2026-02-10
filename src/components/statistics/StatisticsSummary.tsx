@@ -87,7 +87,10 @@ export default function StatisticsSummary({ items, loading = false, onFinancialH
             >
               <div
                 className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-                style={{ backgroundColor: `${largeItem.iconColor}1a` }}
+                style={{ 
+                  backgroundColor: `${largeItem.iconColor}1a`,
+                  border: '1px solid rgba(231, 228, 228, 0.1)'
+                }}
               >
                 {(() => {
                   const Icon = getIcon(largeItem.icon);
@@ -169,7 +172,10 @@ function SummaryItem({ item, currency }: { item: StatisticsSummaryItem; currency
     >
       <div
         className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
-        style={{ backgroundColor: `${item.iconColor}1a` }}
+        style={{ 
+          backgroundColor: `${item.iconColor}1a`,
+          border: '1px solid rgba(231, 228, 228, 0.1)'
+        }}
       >
         <Icon width={24} height={24} strokeWidth={1.5} style={{ color: item.iconColor }} />
       </div>
