@@ -45,7 +45,8 @@ export async function ensureAsset(
     assetType: AssetType,
     pricingMode: PricingMode,
     coingeckoId?: string,
-    userId?: number
+    userId?: number,
+    icon?: string
 ) {
     // 1. If ticker is present, try to find global asset first (e.g. BTC, AAPL)
     if (ticker) {
@@ -56,7 +57,11 @@ export async function ensureAsset(
                 userId: null
             }
         });
-        if (globalAsset) return globalAsset;
+        if (globalAsset) {
+            // If it doesn't have an icon, and we have one, update it?
+            // For now just return it.
+            return globalAsset;
+        }
     }
 
     // 2. If userId provided, try to find private asset by name (and ticker if exists)
@@ -79,9 +84,6 @@ export async function ensureAsset(
     }
 
     // 3. Create new Asset
-    // If no userId, we assume it's a global asset (requires ticker usually, but we'll allow flexible)
-    // If userId, it's private.
-
     return db.asset.create({
         data: {
             name,
@@ -90,7 +92,8 @@ export async function ensureAsset(
             pricingMode,
             coingeckoId,
             userId,
-            manualPrice: null, // Default to null
+            icon,
+            manualPrice: null,
         }
     });
 }

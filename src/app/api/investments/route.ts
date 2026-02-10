@@ -36,22 +36,32 @@ export async function GET() {
       take: 10,
     });
 
-    const recentActivities = recentTransactions.map(t => ({
-      id: t.id.toString(),
-      assetId: t.investmentAssetId?.toString(),
-      name: t.asset?.name || 'Unknown Asset',
-      ticker: t.asset?.ticker || '',
-      type: t.investmentType === 'buy' ? 'Buy' : 'Sell',
-      investmentType: t.investmentType,
-      quantity: Number(t.quantity),
-      pricePerUnit: Number(t.pricePerUnit),
-      amount: Number(t.pricePerUnit) * Number(t.quantity),
-      date: t.date.toISOString(), // ISO for better client-side parsing
-      icon: t.asset?.assetType === 'crypto' ? 'BitcoinCircle' :
-        t.asset?.assetType === 'stock' ? 'Cash' :
-          t.asset?.assetType === 'property' ? 'Neighbourhood' : 'Reports',
-      assetType: t.asset?.assetType,
-    }));
+    const recentActivities = recentTransactions.map(t => {
+      const assetIcon = t.asset?.icon || (
+        t.asset?.assetType === 'crypto' ? (
+          t.asset?.pricingMode === 'live' && t.asset?.ticker ? 
+          `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${t.asset.ticker.toLowerCase()}.png` : 
+          'BitcoinCircle'
+        ) :
+        t.asset?.assetType === 'stock' ? `https://images.financialmodelingprep.com/symbol/${t.asset?.ticker?.toUpperCase()}.png` :
+        t.asset?.assetType === 'property' ? 'Neighbourhood' : 'Reports'
+      );
+
+      return {
+        id: t.id.toString(),
+        assetId: t.investmentAssetId?.toString(),
+        name: t.asset?.name || 'Unknown Asset',
+        ticker: t.asset?.ticker || '',
+        type: t.investmentType === 'buy' ? 'Buy' : 'Sell',
+        investmentType: t.investmentType,
+        quantity: Number(t.quantity),
+        pricePerUnit: Number(t.pricePerUnit),
+        amount: Number(t.pricePerUnit) * Number(t.quantity),
+        date: t.date.toISOString(),
+        icon: assetIcon,
+        assetType: t.asset?.assetType,
+      };
+    });
 
     // Map to Frontend expected structure
     const portfolio = summary.assets.map(a => ({
@@ -135,6 +145,7 @@ export async function POST(request: NextRequest) {
       currencyId, // Currency of the transaction
       notes,
       coingeckoId,
+      icon,
     } = body;
 
     if (!investmentType || !quantity || !pricePerUnit) {
@@ -165,7 +176,8 @@ export async function POST(request: NextRequest) {
         assetType as AssetType,
         (pricingMode as PricingMode) || 'manual',
         coingeckoId,
-        assetUserId
+        assetUserId,
+        icon
       );
       targetAssetId = asset.id;
     }

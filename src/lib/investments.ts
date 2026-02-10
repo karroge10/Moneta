@@ -219,6 +219,17 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
     const pnl = currentValue - totalCost;
     const pnlPercent = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
 
+    let derivedIcon = asset.assetType === 'crypto' ? 'BitcoinCircle' : asset.assetType === 'stock' ? 'Cash' : asset.assetType === 'property' ? 'Neighbourhood' : 'Reports';
+    if (asset.pricingMode === 'live') {
+      if (asset.assetType === 'stock' && asset.ticker) {
+        derivedIcon = `https://images.financialmodelingprep.com/symbol/${asset.ticker.toUpperCase()}.png`;
+      } else if (asset.assetType === 'crypto' && asset.ticker) {
+        // Use a reliable crypto icon CDN as fallback for live assets
+        // We use the ticker-based URL which is fairly standard
+        derivedIcon = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${asset.ticker.toLowerCase()}.png`;
+      }
+    }
+
     portfolioAssets.push({
       assetId: asset.id,
       name: asset.name,
@@ -232,7 +243,7 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
       pnl,
       pnlPercent,
       pricingMode: asset.pricingMode,
-      icon: asset.assetType === 'crypto' ? 'BitcoinCircle' : asset.assetType === 'stock' ? 'Cash' : asset.assetType === 'property' ? 'Neighbourhood' : 'Reports',
+      icon: asset.icon || derivedIcon,
     });
 
     globalTotalValue += currentValue;
