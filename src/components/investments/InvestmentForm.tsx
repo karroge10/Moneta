@@ -27,6 +27,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 import { formatNumber, formatSmartNumber } from '@/lib/utils';
 import AssetLogo from './AssetLogo';
+import { getDerivedAssetIcon } from '@/lib/asset-utils';
 
 function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse bg-[#3a3a3a] rounded-xl ${className}`} />;
@@ -71,7 +72,7 @@ export default function InvestmentForm({
     investmentType: 'buy' as 'buy' | 'sell',
     quantity: '',
     pricePerUnit: '',
-    date: '',
+    date: new Date().toISOString(),
     coingeckoId: initialAsset?.coingeckoId || '',
     pricingMode: 'manual' as 'live' | 'manual',
     currencyId: currency?.id || null,
@@ -102,7 +103,7 @@ export default function InvestmentForm({
     }
     try {
       setSearchLoading(true);
-      const res = await fetch(`/api/investments/search?q=${encodeURIComponent(searchQuery)}`);
+      const res = await fetch(`/api/investments/search?q=${encodeURIComponent(searchQuery)}&type=${formState.assetType}`);
       const data = await res.json();
       setSearchResults(data.assets || []);
     } catch {
@@ -222,6 +223,9 @@ export default function InvestmentForm({
       pricingMode = 'live';
     }
 
+    // Default to USD for live assets if available
+    const usdCurrency = propCurrencyOptions.find(c => c.alias === 'USD');
+
     setFormState((s) => ({
       ...s,
       name: asset.name,
@@ -231,6 +235,7 @@ export default function InvestmentForm({
       pricingMode: pricingMode as any,
       pricePerUnit: asset.price ? asset.price.toString() : '',
       icon: asset.icon,
+      currencyId: (asset.type === 'crypto' || asset.type === 'stock') && usdCurrency ? usdCurrency.id : s.currencyId,
     }));
     setStep('details');
   };
@@ -247,13 +252,31 @@ export default function InvestmentForm({
 
   const handleBack = () => {
     if (step === 'details') {
+      // Reset name, ticker and price when going back to search/type selection
+      // This ensures a clean slate for the user
+      if (!initialAsset) {
+        setFormState(s => ({
+          ...s,
+          name: '',
+          ticker: '',
+          pricePerUnit: '',
+          coingeckoId: '',
+          pricingMode: 'manual',
+          icon: getDerivedAssetIcon(s.assetType, null, 'manual')
+        }));
+      }
+
       if (formState.assetType === 'crypto' || formState.assetType === 'stock') {
         setStep('search');
+        setSearchQuery('');
+        setSearchResults([]);
       } else {
         setStep('type_selection');
       }
     } else if (step === 'search') {
       setStep('type_selection');
+      setSearchQuery('');
+      setSearchResults([]);
     }
   };
 
@@ -302,6 +325,12 @@ export default function InvestmentForm({
                     onClick={() => setFormState((s) => ({
                       ...s,
                       assetType: opt.id as any,
+                      // Reset live-asset specific fields when manually changing type
+                      name: '',
+                      ticker: '',
+                      coingeckoId: '',
+                      pricingMode: 'manual',
+                      pricePerUnit: '',
                       icon: opt.id === 'crypto' ? 'BitcoinCircle' : opt.id === 'property' ? 'Neighbourhood' : opt.id === 'custom' ? 'ViewGrid' : 'Cash'
                     }))}
                     className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${formState.assetType === opt.id
@@ -350,14 +379,37 @@ export default function InvestmentForm({
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#282828] flex items-center justify-center text-[#AC66DA]">
-                          <AssetLogo src={asset.icon} size={18} />
+                          <AssetLogo 
+                            src={asset.icon} 
+                            size={18} 
+                            fallback={getDerivedAssetIcon(asset.type, asset.ticker, 'manual')} 
+                          />
                         </div>
                         <div>
                           <div className="text-sm font-semibold text-primary">{asset.name}</div>
                           <div className="text-[10px] text-helper uppercase">{asset.symbol}</div>
                         </div>
                       </div>
-                      <NavArrowRight className="text-helper opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" width={16} />
+                      <div className="flex items-center gap-2">
+                        {asset.price !== undefined && (
+                          <div className="text-right mr-1">
+                            <div className="text-sm font-bold text-primary">${formatSmartNumber(asset.price)}</div>
+                            {(() => {
+                              const usdId = propCurrencyOptions.find(c => c.alias === 'USD')?.id;
+                              const rate = usdId ? prefetchRates[usdId] : null;
+                              if (rate && currency && usdId !== currency.id) {
+                                return (
+                                  <div className="text-[10px] text-helper">
+                                    ≈ {currency.symbol}{formatSmartNumber(asset.price * rate)}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        )}
+                        <NavArrowRight className="text-helper opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" width={16} />
+                      </div>
                     </button>
                   ))
                 ) : (
@@ -455,7 +507,8 @@ export default function InvestmentForm({
               <button
                 type="button"
                 onClick={() => setFormState(s => ({ ...s, investmentType: 'buy' }))}
-                className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${formState.investmentType === 'buy'
+                disabled={isSaving}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${formState.investmentType === 'buy'
                   ? 'bg-[#74C648] text-white shadow-sm'
                   : 'bg-transparent text-[#8C8C8C] hover:text-[#E7E4E4]'
                   }`}
@@ -465,7 +518,8 @@ export default function InvestmentForm({
               <button
                 type="button"
                 onClick={() => setFormState(s => ({ ...s, investmentType: 'sell' }))}
-                className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${formState.investmentType === 'sell'
+                disabled={isSaving}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${formState.investmentType === 'sell'
                   ? 'bg-[#D93F3F] text-white shadow-sm'
                   : 'bg-transparent text-[#8C8C8C] hover:text-[#E7E4E4]'
                   }`}
@@ -523,7 +577,8 @@ export default function InvestmentForm({
                       type="button"
                       ref={dateTriggerRef}
                       onClick={() => setIsDateOpen(!isDateOpen)}
-                      className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] text-left hover:border-[#AC66DA] transition-all flex items-center justify-between cursor-pointer"
+                      disabled={isSaving}
+                      className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] text-left hover:border-[#AC66DA] transition-all flex items-center justify-between cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <span className={formState.date ? 'text-primary' : 'text-helper'}>
                         {formState.date ? formatDateForDisplay(formState.date) : 'Today'}
@@ -553,6 +608,7 @@ export default function InvestmentForm({
                       options={currencyOptions}
                       selectedCurrencyId={formState.currencyId}
                       onSelect={(id) => setFormState((s) => ({ ...s, currencyId: id }))}
+                      disabled={isSaving}
                     />
                   </div>
                 </div>
@@ -616,6 +672,7 @@ export default function InvestmentForm({
         <div className="flex items-center justify-end gap-3 pt-4">
           <button
             onClick={onCancel}
+            disabled={isSaving}
             className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#4a4a4a]"
             style={{
               backgroundColor: '#282828',
@@ -638,6 +695,7 @@ export default function InvestmentForm({
               {step === 'search' && (
                 <button
                   onClick={handleBack}
+                  disabled={isSaving}
                   className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#4a4a4a] flex items-center gap-2"
                   style={{
                     backgroundColor: '#282828',
@@ -675,6 +733,7 @@ export default function InvestmentForm({
               {(!initialAsset || step !== 'details') && (
                 <button
                   onClick={handleBack}
+                  disabled={isSaving}
                   className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#4a4a4a] flex items-center gap-2"
                   style={{
                     backgroundColor: '#282828',

@@ -325,7 +325,18 @@ export default function InvestmentsNewPage() {
                                   className="w-10 h-10 icon-circle shrink-0"
                                   style={{ backgroundColor: `${getAssetColor(activity.assetType)}1a` }}
                                 >
-                                  <AssetLogo src={activity.icon} size={20} className="text-current" style={{ color: getAssetColor(activity.assetType) }} />
+                                  <AssetLogo 
+                                    src={activity.icon} 
+                                    size={20} 
+                                    className="text-current" 
+                                    style={{ color: getAssetColor(activity.assetType) }} 
+                                    fallback={
+                                      activity.assetType === 'crypto' ? 'BitcoinCircle' :
+                                      activity.assetType === 'stock' ? 'Cash' :
+                                      activity.assetType === 'property' ? 'Neighbourhood' :
+                                      'Reports'
+                                    }
+                                  />
                                 </div>
                                 <div>
                                   <div className="font-semibold text-sm">{activity.name}</div>
