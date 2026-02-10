@@ -37,12 +37,11 @@ export function CompactListDesign({ portfolio, currency, onAssetClick }: Portfol
                             <div className="min-w-0 flex-1">
                                 <div className="font-bold text-sm truncate group-hover:text-[#AC66DA] transition-colors">{item.name}</div>
                                 <div className="flex items-center gap-1.5 min-w-0">
-                                    <span className="text-[10px] text-helper uppercase tracking-wider shrink-0">{item.ticker}</span>
+                                    <span className="text-[10px] text-helper uppercase tracking-wider shrink-0">
+                                        {item.quantity ? formatSmartNumber(item.quantity) : '0'} {item.ticker || (item.quantity === 1 ? 'Item' : 'Items')}
+                                    </span>
                                     {item.sourceType === 'live' && item.currentPrice && (
                                         <span className="text-[10px] text-helper/50 truncate">• {currency.symbol}{formatSmartNumber(item.currentPrice)}</span>
-                                    )}
-                                    {item.quantity && (
-                                        <span className="text-[10px] text-helper/50 truncate">• Qty: {formatSmartNumber(item.quantity)}</span>
                                     )}
                                 </div>
                             </div>
@@ -113,26 +112,15 @@ export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioD
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="font-bold text-base truncate">{item.name}</div>
-                                    <div className="text-xs text-helper uppercase tracking-widest">{item.ticker}</div>
+                                    <div className="text-xs text-helper uppercase tracking-widest mt-0.5">
+                                        {item.quantity ? formatSmartNumber(item.quantity) : '0'} {item.ticker || (item.quantity === 1 ? 'Item' : 'Items')}
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <div className="text-[10px] text-helper uppercase tracking-wider mb-1">Current Value</div>
-                                    <div className="text-xl font-bold">{currency.symbol}{formatSmartNumber(item.currentValue || 0)}</div>
-                                </div>
-                                {item.sourceType === 'live' && item.currentPrice ? (
-                                    <div className="text-right">
-                                        <div className="text-[10px] text-helper uppercase tracking-wider mb-1">Price</div>
-                                        <div className="text-base font-bold text-helper">{currency.symbol}{formatSmartNumber(item.currentPrice)}</div>
-                                    </div>
-                                ) : item.quantity ? (
-                                    <div className="text-right">
-                                        <div className="text-[10px] text-helper uppercase tracking-wider mb-1">Quantity</div>
-                                        <div className="text-base font-bold text-helper">{formatSmartNumber(item.quantity)}</div>
-                                    </div>
-                                ) : null}
+                            <div className="mb-4">
+                                <div className="text-[10px] text-helper uppercase tracking-wider mb-1">Current Value</div>
+                                <div className="text-xl font-bold">{currency.symbol}{formatSmartNumber(item.currentValue || 0)}</div>
                             </div>
 
                             {/* Performance Badge */}

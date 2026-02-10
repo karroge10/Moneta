@@ -387,21 +387,53 @@ export default function InvestmentForm({
                   <AssetLogo src={formState.icon} size={22} className="text-[#AC66DA]" />
                 </div>
                 <div className="flex-1">
-                  {/* For private assets, allow editing name here if not set or if always editable? 
-                      Actually, step 1 has name input for custom/property. 
-                      Let's allow editing here too for convenience or just display it.
-                      If it was passed from step 1, it's in formState.name.
-                  */}
+                  {/* ========================================
+                      MANUAL NAME INPUT DESIGN OPTIONS
+                      Choose one version below
+                  ======================================== */}
+                  
+                  {/* VERSION 1: Standard Input Field (ACTIVE) - Matches other form inputs */}
                   {(formState.assetType === 'property' || formState.assetType === 'custom') ? (
-                       <input 
-                          value={formState.name}
-                          onChange={(e) => setFormState(s => ({ ...s, name: e.target.value }))}
-                          className="text-lg font-bold bg-transparent border-b border-transparent hover:border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none w-full transition-colors"
-                          placeholder="Asset Name"
-                       />
+                    <div>
+                      <input 
+                        value={formState.name}
+                        onChange={(e) => setFormState(s => ({ ...s, name: e.target.value }))}
+                        className="w-full px-4 py-2 rounded-xl bg-[#202020] text-lg font-bold border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C]"
+                        style={{ color: 'var(--text-primary)' }}
+                        placeholder="Asset Name"
+                      />
+                    </div>
                   ) : (
-                      <h3 className="text-lg font-bold">{formState.name || 'New Investment'}</h3>
+                    <h3 className="text-lg font-bold">{formState.name || 'New Investment'}</h3>
                   )}
+
+                  {/* VERSION 2: Inline Editable with Underline (COMMENTED OUT)
+                  {(formState.assetType === 'property' || formState.assetType === 'custom') ? (
+                    <input 
+                      value={formState.name}
+                      onChange={(e) => setFormState(s => ({ ...s, name: e.target.value }))}
+                      className="text-lg font-bold bg-transparent border-b-2 border-[#3a3a3a] hover:border-[#AC66DA] focus:border-[#AC66DA] focus:outline-none w-full transition-colors placeholder:text-[#8C8C8C] pb-1"
+                      style={{ color: 'var(--text-primary)' }}
+                      placeholder="Asset Name"
+                    />
+                  ) : (
+                    <h3 className="text-lg font-bold">{formState.name || 'New Investment'}</h3>
+                  )}
+                  */}
+
+                  {/* VERSION 3: Subtle Background with Rounded Corners (COMMENTED OUT)
+                  {(formState.assetType === 'property' || formState.assetType === 'custom') ? (
+                    <input 
+                      value={formState.name}
+                      onChange={(e) => setFormState(s => ({ ...s, name: e.target.value }))}
+                      className="text-lg font-bold bg-[#202020]/50 border border-transparent hover:border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none w-full transition-colors placeholder:text-[#8C8C8C] px-3 py-1.5 rounded-lg"
+                      style={{ color: 'var(--text-primary)' }}
+                      placeholder="Asset Name"
+                    />
+                  ) : (
+                    <h3 className="text-lg font-bold">{formState.name || 'New Investment'}</h3>
+                  )}
+                  */}
                   
                   <div className="flex items-center gap-2 mt-1">
                     {formState.ticker && (
