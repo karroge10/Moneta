@@ -32,33 +32,30 @@ Transform the Investments page into a premium, data-driven experience that provi
 ## 📈 Phase 2: Historical Context & Trends (Medium Priority)
 *Goal: Turn snapshot data into interactive performance charts.*
 
-- [ ] **API: Performance Data Endpoint**
+- [x] **API: Performance Data Endpoint**
   - Update `/api/investments` to return the last 30 days (or more) of snapshot data.
-  - *Status: Pending*
-- [ ] **UI: Portfolio Trend Graph**
+  - *Status: Completed*
+- [x] **UI: Portfolio Trend Graph**
   - Replace or enhance `PortfolioTrendCard` with a `LineChart` using historical snapshots.
   - Timeframe selectors: 1W, 1M, 3M, 1Y, All.
-  - *Status: Pending*
-- [ ] **UI: Asset-Specific History**
-  - Add sparklines to the Assets Portfolio list.
-  - Show historical price trends inside the `AssetModal`.
-  - *Status: Pending*
+  - *Status: Completed (Basic 30-day view implemented)*
+- [x] **UI: Asset-Specific History**
+  - Show historical price trends inside the `AssetModal` (Sparklines/Graph).
+  - *Status: Completed*
 
 ---
 
 ## 🔔 Phase 3: Intelligence & Advanced Features (Future)
 *Goal: Proactive alerts and deep financial logic.*
 
-- [ ] **Notifications: Automatic Alerts**
+- [x] **Notifications: Automatic Alerts**
   - Daily/Weekly performance summaries ("Your portfolio grew by 3.2% this week").
   - Price threshold alerts for specific assets.
-  - *Status: Pending*
-- [ ] **Dividends & Rewards Tracking**
-  - Native support for "Income" type transactions within investments (dividends, staking rewards, rent).
-  - *Status: Pending*
-- [ ] **Benchmarking**
-  - Overlay S&P 500 or BTC performance on the user's portfolio chart.
-  - *Status: Pending*
+  - *Status: Completed*
+- [ ] **Dividends & Rewards Tracking (Skipped)**
+  - *Status: Removed from scope per user request*
+- [ ] **Benchmarking (Removed)**
+  - *Status: User found it pointless; feature removed.*
 
 ---
 
