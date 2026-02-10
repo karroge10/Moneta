@@ -8,19 +8,23 @@ export interface PortfolioAsset {
   ticker: string;
   type: AssetType;
   quantity: number;
-  avgPrice: number; // Average buy price
+  avgPrice: number; // Average buy price of REMAINING holdings (FIFO basis)
   currentPrice: number;
   currentValue: number;
-  totalCost: number;
-  pnl: number;
-  pnlPercent: number;
+  totalCost: number; // Cost of remaining quantity
+  unrealizedPnl: number;
+  unrealizedPnlPercent: number;
+  realizedPnl: number; // Profit/Loss from items already sold
+  pnl: number; // Total PnL (Realized + Unrealized)
   pricingMode: PricingMode;
-  icon?: string; // Derived or optional
+  icon?: string;
 }
 
 export interface PortfolioSummary {
   totalValue: number;
   totalCost: number;
+  totalUnrealizedPnl: number;
+  totalRealizedPnl: number;
   totalPnl: number;
   pnlPercent: number;
   assets: PortfolioAsset[];
@@ -141,13 +145,15 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
   const portfolioAssets: PortfolioAsset[] = [];
   let globalTotalValue = 0;
   let globalTotalCost = 0;
+  let globalTotalRealizedPnl = 0;
 
   // 4. Aggregation Logic
   for (const [assetId, { asset, txs }] of assetMap) {
     if (!asset) continue;
 
-    let quantity = 0;
-    let totalCost = 0;
+    // FIFO Lots tracking
+    let buyLots: { qty: number; costPerUnit: number }[] = [];
+    let realizedPnl = 0;
     let lastPrice = 0;
 
     for (const t of txs) {
@@ -156,26 +162,32 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
       if (t.currencyId !== targetCurrency.id) {
         pricePerUnit = await convertAmount(pricePerUnit, t.currencyId, targetCurrency.id, t.date);
       }
-
-      const txCost = qty * pricePerUnit;
+      lastPrice = pricePerUnit;
 
       if (t.investmentType === 'buy') {
-        quantity += qty;
-        totalCost += txCost;
-        lastPrice = pricePerUnit;
+        buyLots.push({ qty, costPerUnit: pricePerUnit });
       } else if (t.investmentType === 'sell') {
-        if (quantity > 0) {
-          const ratio = qty / quantity;
-          totalCost -= totalCost * ratio;
+        let remainingToSell = qty;
+        while (remainingToSell > 0 && buyLots.length > 0) {
+          const lot = buyLots[0];
+          const sellQty = Math.min(remainingToSell, lot.qty);
+          
+          // Calculate gain for this portion of the sell
+          const gain = sellQty * (pricePerUnit - lot.costPerUnit);
+          realizedPnl += gain;
+
+          lot.qty -= sellQty;
+          remainingToSell -= sellQty;
+          if (lot.qty <= 0.00000001) { // Use a small epsilon for float comparison
+            buyLots.shift();
+          }
         }
-        quantity -= qty;
-        lastPrice = pricePerUnit;
       }
     }
 
-    if (quantity < 0.00000001) quantity = 0;
-
-    let avgPrice = quantity > 0 ? totalCost / quantity : 0;
+    const remainingQty = buyLots.reduce((sum, l) => sum + l.qty, 0);
+    const remainingCost = buyLots.reduce((sum, l) => sum + (l.qty * l.costPerUnit), 0);
+    const avgPrice = remainingQty > 0 ? remainingCost / remainingQty : 0;
 
     // Determine Current Price
     let currentPrice = lastPrice;
@@ -194,20 +206,8 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
           isLivePriceInUSD = true;
         }
       }
-    } else if (asset.pricingMode === 'manual') {
-      // Logic: If user set a manual price, use it. Otherwise fallback to last transaction price (lastPrice).
-      if (asset.manualPrice) {
-        currentPrice = Number(asset.manualPrice); // This is in Asset's native conceptual currency (usually User's default or whatever they bought it in)
-        // Note: For manual assets, we assume the price is in the User's currency unless we track 'currencyId' on Asset.
-        // The current schema doesn't have currencyId on Asset.
-        // However, transactions check currency.
-        // Let's assume manualPrice is in the SAME currency as the Transactions (simplification) OR User's Default.
-        // Given complexity, let's assume manualPrice is entered in User's Default currency for now, or match transaction currency?
-        // Actually, simplest is: Manual Price is in User's Default Currency.
-        // But if I bought in USD and I am EUR user?
-        // To support precise manual valuation, let's assume manualPrice is in the TARGET CURRENCY (User's display currency).
-        // Since it's a manual override for "Present Value", user would likely type it in their current view.
-      }
+    } else if (asset.pricingMode === 'manual' && asset.manualPrice) {
+      currentPrice = Number(asset.manualPrice);
     }
 
     // Convert Live USD price to Target Currency immediately if needed
@@ -215,9 +215,10 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
       currentPrice = await convertAmount(currentPrice, usd.id, targetCurrency.id, new Date());
     }
 
-    const currentValue = quantity * currentPrice;
-    const pnl = currentValue - totalCost;
-    const pnlPercent = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
+    const currentValue = remainingQty * currentPrice;
+    const unrealizedPnl = currentValue - remainingCost;
+    const unrealizedPnlPercent = remainingCost > 0 ? (unrealizedPnl / remainingCost) * 100 : 0;
+    const totalPnl = realizedPnl + unrealizedPnl;
 
     let derivedIcon = asset.assetType === 'crypto' ? 'BitcoinCircle' : asset.assetType === 'stock' ? 'Cash' : asset.assetType === 'property' ? 'Neighbourhood' : 'Reports';
     if (asset.pricingMode === 'live') {
@@ -235,28 +236,34 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
       name: asset.name,
       ticker: asset.ticker,
       type: asset.assetType,
-      quantity,
+      quantity: remainingQty,
       avgPrice,
       currentPrice,
       currentValue,
-      totalCost,
-      pnl,
-      pnlPercent,
+      totalCost: remainingCost,
+      unrealizedPnl,
+      unrealizedPnlPercent,
+      realizedPnl,
+      pnl: totalPnl,
       pricingMode: asset.pricingMode,
       icon: asset.icon || derivedIcon,
     });
 
     globalTotalValue += currentValue;
-    globalTotalCost += totalCost;
+    globalTotalCost += remainingCost;
+    globalTotalRealizedPnl += realizedPnl;
   }
 
-  const globalPnl = globalTotalValue - globalTotalCost;
-  const globalPnlPercent = globalTotalCost > 0 ? (globalPnl / globalTotalCost) * 100 : 0;
+  const globalUnrealizedPnl = globalTotalValue - globalTotalCost;
+  const globalTotalPnl = globalTotalRealizedPnl + globalUnrealizedPnl;
+  const globalPnlPercent = globalTotalCost > 0 ? (globalTotalPnl / globalTotalCost) * 100 : 0;
 
   return {
     totalValue: globalTotalValue,
     totalCost: globalTotalCost,
-    totalPnl: globalPnl,
+    totalUnrealizedPnl: globalUnrealizedPnl,
+    totalRealizedPnl: globalTotalRealizedPnl,
+    totalPnl: globalTotalPnl,
     pnlPercent: globalPnlPercent,
     assets: portfolioAssets
   };

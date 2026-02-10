@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
       by: ['categoryId'],
       where: {
         userId: user.id,
+        investmentAssetId: null,
         categoryId: {
           not: null,
         },

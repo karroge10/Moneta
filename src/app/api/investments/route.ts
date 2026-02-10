@@ -74,8 +74,11 @@ export async function GET() {
       quantity: a.quantity,
       currentValue: a.currentValue,
       currentPrice: a.currentPrice,
+      totalCost: a.totalCost,
       gainLoss: a.pnl,
-      changePercent: a.pnlPercent,
+      changePercent: a.unrealizedPnlPercent, // Use unrealized % for current holdings
+      unrealizedPnl: a.unrealizedPnl,
+      realizedPnl: a.realizedPnl,
       icon: a.icon || (a.type === 'crypto' ? 'BitcoinCircle' : 'Reports'),
       priceHistory: [], // Not supported in MVP refactor
     }));
@@ -104,6 +107,33 @@ export async function GET() {
       isUnread: false,
     };
 
+    // 3. Fetch Portfolio Snapshots (Last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const snapshots = await db.portfolioSnapshot.findMany({
+        where: {
+            userId: user.id,
+            timestamp: { gte: thirtyDaysAgo }
+        },
+        orderBy: { timestamp: 'asc' },
+        select: {
+            timestamp: true,
+            totalValue: true,
+            totalCost: true,
+            totalPnl: true
+        }
+    });
+
+    const graphData = snapshots.map(s => ({
+        date: s.timestamp.toISOString().split('T')[0], // YYYY-MM-DD
+        value: s.totalValue,
+        cost: s.totalCost,
+        pnl: s.totalPnl
+    }));
+
+    // If we have snapshots, use the latest one's PnL for the trend if live data is stagnant (optional logic, keeping live for now)
+
     const responsePayload = {
       update,
       balance: {
@@ -115,7 +145,7 @@ export async function GET() {
       performance: {
         trend: summary.pnlPercent,
         trendText: summary.totalPnl >= 0 ? `+${summary.totalPnl.toFixed(2)}` : `${summary.totalPnl.toFixed(2)}`,
-        data: [], // Graph data removed as per refactor plan (no cron)
+        data: graphData, 
       },
       recentActivities,
     };

@@ -390,14 +390,8 @@ export default function GoalForm({
               }
             }}
           >
-            {isSaving ? (
-              <>
-                <Spinner size={16} color="var(--text-primary)" />
-                <span>Saving...</span>
-              </>
-            ) : (
-              <span>{mode === 'add' ? 'Add Goal' : 'Save Changes'}</span>
-            )}
+            {isSaving && <Spinner size={16} color="var(--text-primary)" />}
+            <span>{mode === 'add' ? 'Add Goal' : 'Save Changes'}</span>
           </button>
         </div>
       </div>

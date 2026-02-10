@@ -116,7 +116,7 @@ export default function ConfirmModal({
               className="px-6 py-2 rounded-full text-body font-semibold transition-opacity hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               style={confirmButtonStyle}
             >
-              {isLoading ? 'Processing...' : confirmLabel}
+              {confirmLabel}
             </button>
           </div>
         </div>

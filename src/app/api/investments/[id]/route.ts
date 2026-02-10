@@ -57,7 +57,9 @@ export async function GET(
             currentValue: portfolioAsset?.currentValue || 0,
             totalCost: portfolioAsset?.totalCost || 0,
             pnl: portfolioAsset?.pnl || 0,
-            pnlPercent: portfolioAsset?.pnlPercent || 0,
+            pnlPercent: portfolioAsset?.unrealizedPnlPercent || 0,
+            unrealizedPnl: portfolioAsset?.unrealizedPnl || 0,
+            realizedPnl: portfolioAsset?.realizedPnl || 0,
             pricingMode: asset.pricingMode, // Include pricing mode
             manualPrice: asset.manualPrice, // Include raw manual price
             icon: portfolioAsset?.icon || asset.icon, // Use derived icon from portfolio

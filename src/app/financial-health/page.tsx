@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
-import { getHealthColor, getTrendColor } from '@/lib/utils';
+import { getHealthColor } from '@/lib/utils';
 import type { FinancialHealthDetails, TimePeriod } from '@/types/dashboard';
 
 const PILLARS: { key: keyof FinancialHealthDetails['details']; label: string; description: string }[] = [
@@ -47,7 +47,6 @@ export default function FinancialHealthPage() {
   const score = data?.score ?? 0;
   const trend = data?.trend ?? 0;
   const details = data?.details;
-  const showTrend = trend !== 0;
   const isEmpty = score === 0 && !loading && !error;
 
   return (
@@ -92,11 +91,6 @@ export default function FinancialHealthPage() {
               >
                 {score}
               </span>
-              {showTrend && (
-                <span className="text-helper mt-2" style={{ color: getTrendColor(trend) }}>
-                  {trend > 0 ? '+' : ''}{trend} vs last period
-                </span>
-              )}
             </div>
 
             <div className="card-surface rounded-[30px] p-6">

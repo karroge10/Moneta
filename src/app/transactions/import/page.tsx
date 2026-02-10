@@ -1123,9 +1123,6 @@ export default function ImportTransactionsPage() {
                       className="w-10 h-10 rounded-full border-2 animate-spin"
                       style={{ borderColor: 'rgba(172,102,218,0.4)', borderTopColor: 'var(--accent-purple)' }}
                     />
-                    <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                      {isConfirming ? 'Saving transactions…' : 'Loading transactions…'}
-                    </p>
                   </div>
                 )}
                 <table className="min-w-full table-fixed">
@@ -1379,7 +1376,8 @@ export default function ImportTransactionsPage() {
                     className="rounded-full px-6 py-2.5 font-semibold transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap hover:scale-105 active:scale-95"
                     style={{ backgroundColor: 'var(--accent-purple)', color: '#E7E4E4' }}
                   >
-                    {isConfirming ? 'Saving…' : 'Confirm Import'}
+                    {isConfirming && <Spinner size={16} color="var(--text-primary)" />}
+                    Confirm Import
                   </button>
                   {currencySelectionError && (
                     <p className="text-xs" style={{ color: 'var(--error)' }}>
