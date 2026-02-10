@@ -40,7 +40,7 @@ interface InvestmentTransactionModalProps {
     transaction: InvestmentTransaction | null;
     onClose: () => void;
     onSave: (transaction: InvestmentTransaction) => void;
-    onDelete?: () => void;
+    onDelete?: () => Promise<void> | void;
     isSaving?: boolean;
     isDeleting?: boolean;
     currencySymbol: string;
@@ -328,7 +328,7 @@ export default function InvestmentTransactionModal({
                                 <button
                                     type="button"
                                     onClick={() => setFormData(prev => ({ ...prev, investmentType: 'buy' }))}
-                                    disabled={isSaving}
+                                    disabled={isSaving || isDeleting}
                                     className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer ${formData.investmentType === 'buy'
                                         ? 'bg-[#74C648] text-white shadow-sm'
                                         : 'bg-transparent text-[#8C8C8C] hover:text-[#E7E4E4]'
@@ -339,7 +339,7 @@ export default function InvestmentTransactionModal({
                                 <button
                                     type="button"
                                     onClick={() => setFormData(prev => ({ ...prev, investmentType: 'sell' }))}
-                                    disabled={isSaving}
+                                    disabled={isSaving || isDeleting}
                                     className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer ${formData.investmentType === 'sell'
                                         ? 'bg-[#D93F3F] text-white shadow-sm'
                                         : 'bg-transparent text-[#8C8C8C] hover:text-[#E7E4E4]'
@@ -361,7 +361,7 @@ export default function InvestmentTransactionModal({
                                             const sanitized = e.target.value.replace(/[^0-9.,]/g, '');
                                             setQuantityInput(sanitized);
                                         }}
-                                        disabled={isSaving}
+                                        disabled={isSaving || isDeleting}
                                         className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
                                         style={{ color: 'var(--text-primary)' }}
                                         placeholder="0.00"
@@ -385,7 +385,7 @@ export default function InvestmentTransactionModal({
                                                 const sanitized = e.target.value.replace(/[^0-9.,]/g, '');
                                                 setPriceInput(sanitized);
                                             }}
-                                            disabled={isSaving}
+                                            disabled={isSaving || isDeleting}
                                             className="w-full pl-8 pr-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
                                             style={{ color: 'var(--text-primary)' }}
                                             placeholder="0.00"
@@ -403,7 +403,7 @@ export default function InvestmentTransactionModal({
                                             type="button"
                                             ref={dateTriggerRef}
                                             onClick={() => setIsDateOpen(prev => !prev)}
-                                            disabled={isSaving}
+                                            disabled={isSaving || isDeleting}
                                             className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                             style={{ color: 'var(--text-primary)' }}
                                         >
@@ -450,7 +450,7 @@ export default function InvestmentTransactionModal({
                                         options={currencyOptions}
                                         selectedCurrencyId={selectedCurrencyId}
                                         onSelect={setSelectedCurrencyId}
-                                        disabled={isSaving}
+                                        disabled={isSaving || isDeleting}
                                     />
                                 </div>
                             </div>
@@ -572,11 +572,14 @@ export default function InvestmentTransactionModal({
                         isOpen={showDeleteConfirm}
                         title="Delete Transaction"
                         message="Are you sure you want to delete this transaction? This action cannot be undone."
-                        confirmLabel="Delete"
+                        confirmLabel="Confirm"
                         cancelLabel="Cancel"
-                        onConfirm={() => {
-                            if (onDelete) onDelete();
+                        onConfirm={async () => {
                             setShowDeleteConfirm(false);
+                            if (onDelete) {
+                                await onDelete();
+                                onClose();
+                            }
                         }}
                         onCancel={() => setShowDeleteConfirm(false)}
                         isLoading={isDeleting}
