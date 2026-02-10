@@ -10,7 +10,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
 import AssetLogo from './AssetLogo';
 import ConfirmModal from '@/components/ui/ConfirmModal';
-import { getAssetColor } from '@/lib/asset-utils';
+import { getAssetColor, getDerivedAssetIcon } from '@/lib/asset-utils';
 import { formatSmartNumber } from '@/lib/utils';
 
 interface AssetModalProps {
@@ -264,82 +264,81 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                 <>
                                     <div className="w-12 h-12 icon-circle bg-[#202020]">
                                         <AssetLogo
-                                            src={asset.icon || (
-                                                asset.assetType === 'crypto' ? 'BitcoinCircle' :
-                                                    asset.assetType === 'stock' ? 'Cash' :
-                                                        asset.assetType === 'property' ? 'Neighbourhood' :
-                                                            'ViewGrid'
-                                            )}
+                                            src={asset.icon || getDerivedAssetIcon(asset.assetType, asset.ticker, asset.pricingMode)}
                                             size={28}
                                             style={{ color: getAssetColor(asset.assetType) }}
+                                            fallback={getDerivedAssetIcon(asset.assetType, asset.ticker, 'manual')}
                                         />
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-4">
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    {isRenaming ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <input 
-                                                                value={newName}
-                                                                onChange={(e) => setNewName(e.target.value)}
-                                                                className="text-card-header bg-[#202020] border border-[#3a3a3a] rounded px-2 py-0.5 focus:border-[#AC66DA] focus:outline-none min-w-[200px]"
-                                                                autoFocus
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') handleUpdateAsset({ name: newName });
-                                                                    if (e.key === 'Escape') setIsRenaming(false);
-                                                                }}
-                                                            />
+                                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                        {/* Row 1: Name & Price */}
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div className="flex-1 min-w-0">
+                                                {isRenaming ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <input 
+                                                            value={newName}
+                                                            onChange={(e) => setNewName(e.target.value)}
+                                                            className="text-card-header bg-[#202020] border border-[#3a3a3a] rounded px-2 py-0.5 focus:border-[#AC66DA] focus:outline-none min-w-[200px]"
+                                                            autoFocus
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleUpdateAsset({ name: newName });
+                                                                if (e.key === 'Escape') setIsRenaming(false);
+                                                            }}
+                                                        />
+                                                        <button 
+                                                            onClick={() => handleUpdateAsset({ name: newName })}
+                                                            className="text-xs bg-[#AC66DA] text-white px-2 py-1 rounded hover:bg-[#9A4FB8]"
+                                                        >
+                                                            Save
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => setIsRenaming(false)}
+                                                            className="text-xs bg-[#3a3a3a] text-white px-2 py-1 rounded hover:bg-[#4a4a4a]"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2 group min-w-0">
+                                                        <h2 className="text-card-header truncate max-w-[300px] leading-tight">{asset.name}</h2>
+                                                        {asset.userId && (
                                                             <button 
-                                                                onClick={() => handleUpdateAsset({ name: newName })}
-                                                                className="text-xs bg-[#AC66DA] text-white px-2 py-1 rounded hover:bg-[#9A4FB8]"
+                                                                onClick={() => setIsRenaming(true)}
+                                                                className="opacity-0 group-hover:opacity-100 text-[#AC66DA] hover:text-[#9A4FB8] transition-opacity shrink-0"
+                                                                title="Rename Asset"
                                                             >
-                                                                Save
+                                                                <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor"><path d="M14.363 5.652l1.48-1.48a2 2 0 012.829 0l1.414 1.414a2 2 0 010 2.828l-1.48 1.48m-4.243-4.242l-9.616 9.615a2 2 0 00-.578 1.238l-.242 2.74a1 1 0 001.084 1.085l2.74-.242a2 2 0 001.24-.578l9.615-9.616m-4.243-4.242l4.242 4.242" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"></path></svg>
                                                             </button>
-                                                            <button 
-                                                                onClick={() => setIsRenaming(false)}
-                                                                className="text-xs bg-[#3a3a3a] text-white px-2 py-1 rounded hover:bg-[#4a4a4a]"
-                                                            >
-                                                                Cancel
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-center gap-2 group min-w-0">
-                                                            <h2 className="text-card-header truncate max-w-[300px] leading-tight py-0.5">{asset.name}</h2>
-                                                            {asset.userId && (
-                                                                <button 
-                                                                    onClick={() => setIsRenaming(true)}
-                                                                    className="opacity-0 group-hover:opacity-100 text-[#AC66DA] hover:text-[#9A4FB8] transition-opacity shrink-0"
-                                                                    title="Rename Asset"
-                                                                >
-                                                                    <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor"><path d="M14.363 5.652l1.48-1.48a2 2 0 012.829 0l1.414 1.414a2 2 0 010 2.828l-1.48 1.48m-4.243-4.242l-9.616 9.615a2 2 0 00-.578 1.238l-.242 2.74a1 1 0 001.084 1.085l2.74-.242a2 2 0 001.24-.578l9.615-9.616m-4.243-4.242l4.242 4.242" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span 
-                                                        className="text-sm font-bold tracking-wider bg-current/10 px-2 py-0.5 rounded uppercase leading-none"
-                                                        style={{ color: getAssetColor(asset.assetType) }}
-                                                    >
-                                                        {assetStats.totalQuantity ? formatSmartNumber(assetStats.totalQuantity) : '0'} {asset.ticker || (assetStats.totalQuantity === 1 ? 'Item' : 'Items')}
-                                                    </span>
-                                                    {asset.assetType && <span className="text-xs font-medium text-helper capitalize">• {asset.assetType}</span>}
-                                                </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
-                                            
-                                            {/* Price per Unit in Header */}
+
                                             {asset.pricingMode === 'live' && asset.currentPrice && (
                                                 <div className="text-right shrink-0">
-                                                    <div className="text-base font-bold text-[#E7E4E4] leading-tight py-0.5">
+                                                    <div className="text-base font-bold text-[#E7E4E4] leading-tight">
                                                         {currencySymbol}{formatSmartNumber(asset.currentPrice)}
                                                     </div>
-                                                    <div className="mt-1 flex justify-end">
-                                                        <div className="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#202020] border border-[#3a3a3a] text-secondary leading-none">
-                                                            Per 1 {asset.ticker}
-                                                        </div>
-                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Row 2: Details & Ticker Label */}
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div className="flex items-center gap-2">
+                                                <span 
+                                                    className="text-sm font-bold tracking-wider bg-current/10 px-2 py-0.5 rounded uppercase leading-none"
+                                                    style={{ color: getAssetColor(asset.assetType) }}
+                                                >
+                                                    {assetStats.totalQuantity ? formatSmartNumber(assetStats.totalQuantity) : '0'} {asset.ticker || (assetStats.totalQuantity === 1 ? 'Item' : 'Items')}
+                                                </span>
+                                                {asset.assetType && <span className="text-xs font-medium text-helper capitalize">• {asset.assetType}</span>}
+                                            </div>
+
+                                            {asset.pricingMode === 'live' && asset.currentPrice && (
+                                                <div className="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#202020] border border-[#3a3a3a] text-secondary leading-none shrink-0">
+                                                    Per 1 {asset.ticker}
                                                 </div>
                                             )}
                                         </div>
@@ -385,7 +384,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                             e.stopPropagation();
                                                             setIsUpdatingValue(true);
                                                         }}
-                                                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-[#282828]"
+                                                        className="absolute top-2 right-2 transition-opacity p-1.5 rounded-full hover:bg-[#282828]"
                                                         title="Edit Value"
                                                     >
                                                         <svg width="14" height="14" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http://www.w3.org/2000/svg" color="#AC66DA">

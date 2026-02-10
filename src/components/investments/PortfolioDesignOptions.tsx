@@ -32,7 +32,13 @@ export function CompactListDesign({ portfolio, currency, onAssetClick }: Portfol
                                 className="w-10 h-10 icon-circle flex-shrink-0"
                                 style={{ backgroundColor: `${getAssetColor(item.assetType)}1a` }}
                             >
-                                <AssetLogo src={item.icon} size={22} className="text-current" style={{ color: getAssetColor(item.assetType) }} />
+                                <AssetLogo 
+                                    src={item.icon} 
+                                    size={22} 
+                                    className="text-current" 
+                                    style={{ color: getAssetColor(item.assetType) }} 
+                                    fallback={item.assetType === 'crypto' ? 'BitcoinCircle' : item.assetType === 'stock' ? 'Cash' : item.assetType === 'property' ? 'Neighbourhood' : 'Reports'}
+                                />
                             </div>
                             <div className="min-w-0 flex-1">
                                 <div className="font-bold text-sm truncate group-hover:text-[#AC66DA] transition-colors">{item.name}</div>
@@ -108,7 +114,13 @@ export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioD
                                     className="w-14 h-14 icon-circle shrink-0"
                                     style={{ backgroundColor: `${getAssetColor(item.assetType)}1a` }}
                                 >
-                                    <AssetLogo src={item.icon} size={28} className="text-current" style={{ color: getAssetColor(item.assetType) }} />
+                                    <AssetLogo 
+                                        src={item.icon} 
+                                        size={28} 
+                                        className="text-current" 
+                                        style={{ color: getAssetColor(item.assetType) }} 
+                                        fallback={item.assetType === 'crypto' ? 'BitcoinCircle' : item.assetType === 'stock' ? 'Cash' : item.assetType === 'property' ? 'Neighbourhood' : 'Reports'}
+                                    />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="font-bold text-base truncate">{item.name}</div>
@@ -270,7 +282,13 @@ export function TableDesign({ portfolio, currency, onAssetClick }: PortfolioDesi
                                             className="w-9 h-9 icon-circle flex-shrink-0"
                                             style={{ backgroundColor: `${getAssetColor(item.assetType)}1a` }}
                                         >
-                                            <AssetLogo src={item.icon} size={20} className="text-current" style={{ color: getAssetColor(item.assetType) }} />
+                                            <AssetLogo 
+                                                src={item.icon} 
+                                                size={20} 
+                                                className="text-current" 
+                                                style={{ color: getAssetColor(item.assetType) }} 
+                                                fallback={item.assetType === 'crypto' ? 'BitcoinCircle' : item.assetType === 'stock' ? 'Cash' : item.assetType === 'property' ? 'Neighbourhood' : 'Reports'}
+                                            />
                                         </div>
                                         <div className="min-w-0">
                                             <div className="font-bold text-sm truncate group-hover:text-[#AC66DA] transition-colors">{item.name}</div>
