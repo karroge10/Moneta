@@ -9,11 +9,11 @@ import { StatUp, StatDown } from 'iconoir-react';
 import { NavArrowRight } from 'iconoir-react';
 import { getAssetColor } from '@/lib/asset-utils';
 
+import Link from 'next/link';
+
 interface InvestmentsCardProps {
   investments: Investment[];
 }
-
-
 
 export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
   const { currency } = useCurrency();
@@ -55,11 +55,12 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
     >
       <div className="flex flex-col flex-1 mt-2">
         <div className="space-y-4 flex-1">
-          {investments.map((investment) => {
+          {investments.slice(0, 4).map((investment) => {
             const Icon = getIcon(investment.icon);
-            const isPositive = investment.changePercent >= 0;
+            const changePercent = investment.changePercent ?? 0;
+            const isPositive = changePercent >= 0;
             const TrendIcon = isPositive ? StatUp : StatDown;
-            const trendColor = getTrendColor(investment.changePercent);
+            const trendColor = getTrendColor(changePercent);
             
             return (
               <div key={investment.id} className="relative flex items-center gap-3 min-w-0">
@@ -81,16 +82,20 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
                   </div>
                   <div className="flex items-center gap-1 text-sm whitespace-nowrap" style={{ color: trendColor }}>
                     <TrendIcon width={14} height={14} strokeWidth={2} />
-                    <span>{investment.changePercent >= 0 ? '+' : ''}{investment.changePercent.toFixed(2)}%</span>
+                    <span>{changePercent >= 0 ? '+' : ''}{changePercent.toFixed(2)}%</span>
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
-        <div className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors">
+        <Link 
+          href="/investments" 
+          className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors"
+          onClick={(e) => e.stopPropagation()}
+        >
           View All <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
-        </div>
+        </Link>
       </div>
     </Card>
   );
