@@ -86,3 +86,26 @@ export function formatPercentage(value: number, includeSign = false): string {
   return `${sign}${value.toFixed(2)}%`;
 }
 
+/**
+ * Formats a number in a compact way (e.g., 1.2K, 10.4M) to avoid UI overflow.
+ * Used for large totals in cards.
+ */
+export function formatCompactNumber(value: number): string {
+  const absValue = Math.abs(value);
+  
+  // For numbers under 1,000,000, keep decimals if small, otherwise whole number
+  if (absValue < 1000000) {
+    return value.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: absValue < 1000 ? 2 : 0,
+    });
+  }
+  
+  // For anything over 1M, use compact notation (M, B, T)
+  return new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    compactDisplay: 'short',
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+

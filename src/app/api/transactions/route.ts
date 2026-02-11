@@ -537,6 +537,34 @@ export async function PUT(request: NextRequest) {
     // Get language alias from user (already fetched with language relation)
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
 
+    // Validation for Investment Transactions
+    if (existingTransaction.investmentAssetId && (investmentType || quantity)) {
+      const { getAssetHolding } = await import('@/lib/investments');
+      const currentHolding = await getAssetHolding(user.id, existingTransaction.investmentAssetId);
+      
+      // Calculate what the balance WOULD BE after this change
+      const oldQty = Number(existingTransaction.quantity || 0);
+      const oldType = existingTransaction.investmentType;
+      const newQty = quantity !== undefined ? Number(quantity) : oldQty;
+      const newType = investmentType || oldType;
+
+      // Reverse old impact
+      let adjustedHolding = currentHolding;
+      if (oldType === 'buy') adjustedHolding -= oldQty;
+      else if (oldType === 'sell') adjustedHolding += oldQty;
+
+      // Apply new impact
+      if (newType === 'buy') adjustedHolding += newQty;
+      else if (newType === 'sell') adjustedHolding -= newQty;
+
+      const epsilon = 0.00000001;
+      if (adjustedHolding + epsilon < 0) {
+        return NextResponse.json({ 
+          error: `Invalid transaction update. This would result in a negative holding (${adjustedHolding.toLocaleString(undefined, { maximumFractionDigits: 8 })}).` 
+        }, { status: 400 });
+      }
+    }
+
     // Update transaction (save full description to database)
     const updatedTransaction = await db.transaction.update({
       where: { id: parseInt(id) },
@@ -670,6 +698,27 @@ export async function DELETE(request: NextRequest) {
         { error: 'Transaction not found' },
         { status: 404 }
       );
+    }
+
+    // Validation for Investment Transactions
+    if (existingTransaction.investmentAssetId) {
+      const { getAssetHolding } = await import('@/lib/investments');
+      const currentHolding = await getAssetHolding(user.id, existingTransaction.investmentAssetId);
+      
+      const qty = Number(existingTransaction.quantity || 0);
+      const type = existingTransaction.investmentType;
+
+      // If we delete, we reverse the impact
+      let predictedTotal = currentHolding;
+      if (type === 'buy') predictedTotal -= qty;
+      else if (type === 'sell') predictedTotal += qty;
+
+      const epsilon = 0.00000001;
+      if (predictedTotal + epsilon < 0) {
+        return NextResponse.json({ 
+          error: `Cannot delete this transaction. It would result in a negative holding (${predictedTotal.toLocaleString(undefined, { maximumFractionDigits: 8 })}).` 
+        }, { status: 400 });
+      }
     }
 
     // Delete transaction

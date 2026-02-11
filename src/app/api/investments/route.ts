@@ -241,6 +241,19 @@ export async function POST(request: NextRequest) {
     // Determine Transaction Type string (legacy)
     const legacyType = investmentType === 'buy' ? 'expense' : 'income';
 
+    // Validation: Prevent selling more than owned
+    if (investmentType === 'sell') {
+      const { getAssetHolding } = await import('@/lib/investments');
+      const currentHolding = await getAssetHolding(user.id, targetAssetId);
+      const epsilon = 0.00000001; // Handle float precision
+      
+      if (currentHolding + epsilon < Number(quantity)) {
+        return NextResponse.json({ 
+          error: `Insufficient holdings. You only own ${currentHolding.toLocaleString(undefined, { maximumFractionDigits: 8 })} of this asset.` 
+        }, { status: 400 });
+      }
+    }
+
     // Create Transaction
     const transaction = await db.transaction.create({
       data: {

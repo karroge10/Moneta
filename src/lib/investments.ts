@@ -337,3 +337,31 @@ export async function getInvestmentPriceHistory(assetId: number, maxPoints: numb
       };
     });
 }
+
+/**
+ * Calculates current quantity of an asset owned by a user
+ */
+export async function getAssetHolding(userId: number, assetId: number): Promise<number> {
+  const transactions = await db.transaction.findMany({
+    where: {
+      userId,
+      investmentAssetId: assetId,
+    },
+    select: {
+      quantity: true,
+      investmentType: true,
+    },
+  });
+
+  let totalQuantity = 0;
+  for (const t of transactions) {
+    const qty = Number(t.quantity || 0);
+    if (t.investmentType === 'buy') {
+      totalQuantity += qty;
+    } else if (t.investmentType === 'sell') {
+      totalQuantity -= qty;
+    }
+  }
+
+  return totalQuantity;
+}

@@ -48,9 +48,12 @@ interface InvestmentFormProps {
   currencyOptions: CurrencyOption[];
   isSaving?: boolean;
   onFloatingPanelToggle?: (isOpen: boolean) => void;
+  portfolio?: Investment[];
 }
 
 type Step = 'type_selection' | 'search' | 'details';
+
+const EMPTY_PORTFOLIO: Investment[] = [];
 
 export default function InvestmentForm({
   mode,
@@ -60,6 +63,7 @@ export default function InvestmentForm({
   currencyOptions: propCurrencyOptions,
   isSaving = false,
   onFloatingPanelToggle,
+  portfolio = EMPTY_PORTFOLIO,
 }: InvestmentFormProps) {
   const { currency } = useCurrency();
   const { currencyOptions, rates: prefetchRates } = useCurrencyOptions();
@@ -82,6 +86,8 @@ export default function InvestmentForm({
     icon: initialAsset?.icon || 'BitcoinCircle',
   });
 
+  const [availableQuantity, setAvailableQuantity] = useState<number | null>(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -159,6 +165,25 @@ export default function InvestmentForm({
   useEffect(() => {
     onFloatingPanelToggle?.(isDateOpen);
   }, [isDateOpen, onFloatingPanelToggle]);
+
+  // Determine if the selected asset is already in our portfolio
+  // This is used to decide if we can sell it
+  useEffect(() => {
+    if (step === 'details' && (formState.name || formState.ticker)) {
+      const portfolioAsset = portfolio.find((a: any) => 
+        (formState.ticker && a.ticker === formState.ticker) || 
+        (a.name.toLowerCase() === formState.name.toLowerCase())
+      );
+      
+      if (portfolioAsset) {
+        setAvailableQuantity(portfolioAsset.quantity || 0);
+      } else {
+        setAvailableQuantity(0);
+        // If it's a new asset, force to Buy mode
+        setFormState(prev => ({ ...prev, investmentType: 'buy' }));
+      }
+    }
+  }, [step, formState.name, formState.ticker, portfolio]);
 
   const updateDateDropdownPosition = useCallback(() => {
     if (!isDateOpen || !dateTriggerRef.current || !datePortalRef.current) return;
@@ -522,11 +547,12 @@ export default function InvestmentForm({
               <button
                 type="button"
                 onClick={() => setFormState(s => ({ ...s, investmentType: 'sell' }))}
-                disabled={isSaving}
+                disabled={isSaving || (availableQuantity !== null && availableQuantity <= 0)}
                 className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${formState.investmentType === 'sell'
                   ? 'bg-[#D93F3F] text-white shadow-sm'
                   : 'bg-transparent text-[#8C8C8C] hover:text-[#E7E4E4]'
                   }`}
+                title={availableQuantity !== null && availableQuantity <= 0 ? "You don't own this asset" : ""}
               >
                 <span>Sell</span>
               </button>
@@ -541,11 +567,27 @@ export default function InvestmentForm({
                     type="number"
                     step="any"
                     disabled={isSaving}
-                    className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors disabled:cursor-not-allowed"
+                    className={`w-full px-4 py-2 rounded-xl bg-[#202020] text-body border transition-colors disabled:cursor-not-allowed ${
+                      formState.investmentType === 'sell' && availableQuantity !== null && Number(formState.quantity) > availableQuantity
+                        ? 'border-[#D93F3F] focus:border-[#D93F3F]'
+                        : 'border-[#3a3a3a] focus:border-[#AC66DA]'
+                    }`}
                     value={formState.quantity}
                     onChange={(e) => setFormState(s => ({ ...s, quantity: e.target.value }))}
                     placeholder="0.00"
                   />
+                  {formState.investmentType === 'sell' && (
+                    <div className="mt-1.5 px-1 flex items-center justify-between">
+                      <div className="text-[10px] text-helper flex items-center gap-1">
+                         Available: {isLoadingBalance ? '...' : (availableQuantity !== null ? formatSmartNumber(availableQuantity) : '0')} {formState.ticker}
+                      </div>
+                      {availableQuantity !== null && Number(formState.quantity) > availableQuantity && (
+                        <div className="text-[10px] text-[#D93F3F] font-bold">
+                          Insufficient holdings
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-body font-medium mb-2">Price per Unit</label>
@@ -744,7 +786,12 @@ export default function InvestmentForm({
               )}
               <button
                 onClick={handleSubmit}
-                disabled={isSaving || !formState.quantity || !formState.pricePerUnit}
+                disabled={
+                  isSaving || 
+                  !formState.quantity || 
+                  !formState.pricePerUnit || 
+                  (formState.investmentType === 'sell' && availableQuantity !== null && Number(formState.quantity) > availableQuantity + 0.00000001)
+                }
                 className="px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
                 onMouseEnter={(e) => {

@@ -45,7 +45,7 @@ export default function TransactionModal({
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && !isSaving && !isDeleting) {
         onClose();
       }
     };
@@ -72,7 +72,7 @@ export default function TransactionModal({
           pointerDownOnOverlay.current = true;
         }}
         onMouseUp={() => {
-          if (pointerDownOnOverlay.current && overlayRef.current) {
+          if (pointerDownOnOverlay.current && overlayRef.current && !isSaving && !isDeleting) {
             onClose();
           }
           pointerDownOnOverlay.current = false;
@@ -98,7 +98,8 @@ export default function TransactionModal({
             </h2>
             <button
               onClick={onClose}
-              className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer"
+              disabled={isSaving || isDeleting}
+              className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Close"
             >
               <Xmark width={24} height={24} strokeWidth={1.5} />

@@ -11,6 +11,8 @@ import { CalendarPanel } from '@/components/transactions/shared/CalendarPanel';
 import { formatDateForDisplay, formatDateToInput } from '@/lib/dateFormatting';
 import type { CurrencyOption } from '@/lib/currency-country-map';
 
+import ConfirmModal from '@/components/ui/ConfirmModal';
+
 interface GoalFormProps {
   goal: Goal;
   mode: 'add' | 'edit';
@@ -53,6 +55,7 @@ export default function GoalForm({
   
   const [targetAmountInput, setTargetAmountInput] = useState(goal.targetAmount.toString());
   const [currentAmountInput, setCurrentAmountInput] = useState(goal.currentAmount.toString());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     // Sync goal prop to form state
@@ -168,9 +171,14 @@ export default function GoalForm({
   };
 
   const handleDelete = async () => {
-    if (onDelete && window.confirm('Are you sure you want to delete this goal?')) {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (onDelete) {
       onDelete();
     }
+    setShowDeleteConfirm(false);
   };
 
   const handleDateSelect = (value: string) => {
@@ -395,6 +403,23 @@ export default function GoalForm({
           </button>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Goal"
+        message={
+          <>
+            Are you sure you want to delete your goal <span className="font-bold text-[#E7E4E4]">{formData.name || 'this goal'}</span>?
+            <br /><br />
+            This will permanently remove the goal and all tracked progress. This action cannot be undone.
+          </>
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteConfirm(false)}
+        isLoading={isSaving}
+        variant="danger"
+      />
     </form>
   );
 }
