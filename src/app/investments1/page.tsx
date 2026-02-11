@@ -302,14 +302,14 @@ export default function InvestmentsLayout1() {
             <Card title="Recent Activities">
               <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020' }}>
                 {data?.recentActivities && data.recentActivities.length > 0 ? (
-                  <div className="flex-1 overflow-y-auto max-h-[400px]">
+                  <div className="flex-1 overflow-y-auto max-h-[400px] custom-scrollbar pr-1">
                     <table className="min-w-full">
                       <thead className="sticky top-0 bg-[#202020] z-10">
                         <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
                           <th className="px-5 py-3 align-top">Asset</th>
                           <th className="px-5 py-3 align-top">Date</th>
                           <th className="px-5 py-3 align-top">Type</th>
-                          <th className="px-5 py-3 align-top">Quantity</th>
+                          <th className="px-5 py-3 align-top text-right">Value</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -353,9 +353,14 @@ export default function InvestmentsLayout1() {
                               </span>
                             </td>
                             <td className="px-5 py-4 align-top">
-                              <span className="text-sm font-semibold">
+                              <div className="text-sm font-semibold text-nowrap">
                                 {formatSmartNumber(activity.quantity)} {activity.ticker}
-                              </span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 align-top text-right">
+                              <div className="text-sm font-bold text-nowrap">
+                                {currency.symbol}{Math.round(activity.amount).toLocaleString()}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -422,14 +427,14 @@ export default function InvestmentsLayout1() {
             <Card title="Recent Activities" className="h-[500px]">
               <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020' }}>
                 {data?.recentActivities && data.recentActivities.length > 0 ? (
-                  <div className="flex-1 overflow-y-auto">
+                  <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
                     <table className="min-w-full">
                       <thead className="sticky top-0 bg-[#202020] z-10">
                         <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
                           <th className="px-5 py-3 align-top">Asset</th>
                           <th className="px-5 py-3 align-top">Date</th>
                           <th className="px-5 py-3 align-top">Type</th>
-                          <th className="px-5 py-3 align-top">Quantity</th>
+                          <th className="px-5 py-3 align-top text-right">Value</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -473,9 +478,14 @@ export default function InvestmentsLayout1() {
                               </span>
                             </td>
                             <td className="px-5 py-4 align-top">
-                              <span className="text-sm font-semibold">
+                              <div className="text-sm font-semibold text-nowrap">
                                 {formatSmartNumber(activity.quantity)} {activity.ticker}
-                              </span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 align-top text-right">
+                              <div className="text-sm font-bold text-nowrap">
+                                {currency.symbol}{Math.round(activity.amount).toLocaleString()}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -495,20 +505,26 @@ export default function InvestmentsLayout1() {
       <div className="hidden 2xl:grid 2xl:grid-cols-4 2xl:gap-4 2xl:px-6 2xl:pb-6">
         {loading ? (
           <>
-            <div className="col-span-3 flex flex-col gap-4">
-              <div className="grid grid-cols-3 gap-4">
-                <CardSkeleton title="Update" variant="update" />
-                <CardSkeleton title="Total Value" variant="value" />
-                <CardSkeleton title="Total Invested" variant="value" />
+            {/* Top Section: Top Cards + Charts + Assets */}
+            <div className="col-span-4 grid grid-cols-4 gap-4">
+              <div className="col-span-3 flex flex-col gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <CardSkeleton title="Update" variant="update" />
+                  <CardSkeleton title="Total Value" variant="value" />
+                  <CardSkeleton title="Total Invested" variant="value" />
+                </div>
+                <div className="grid grid-cols-5 gap-4">
+                  <div className="col-span-3"><CardSkeleton title="Performance" variant="list" /></div>
+                  <div className="col-span-2"><CardSkeleton title="Allocation" variant="value" /></div>
+                </div>
               </div>
-              <div className="grid grid-cols-5 gap-4">
-                <div className="col-span-3"><CardSkeleton title="Performance" variant="list" /></div>
-                <div className="col-span-2"><CardSkeleton title="Allocation" variant="value" /></div>
+              <div className="col-span-1">
+                <CardSkeleton title="Assets" variant="list" />
               </div>
-              <CardSkeleton title="Recent Activities" variant="list" />
             </div>
-            <div className="col-span-1">
-              <CardSkeleton title="Assets" variant="list" />
+            {/* Bottom Section: Recent Activities */}
+            <div className="col-span-4">
+              <CardSkeleton title="Recent Activities" variant="list" />
             </div>
           </>
         ) : error ? (
@@ -518,48 +534,71 @@ export default function InvestmentsLayout1() {
           </div>
         ) : (
           <>
-            {/* Left side: 3 columns */}
-            <div className="col-span-3 flex flex-col gap-4">
-              {/* Row 1: Update, Total Value, Total Invested */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  {data?.update && <UpdateCard {...data.update} linkHref="/notifications" />}
+            {/* Top Section: Master-Slave height alignment */}
+            <div className="col-span-4 grid grid-cols-4 gap-4">
+              {/* Master column: This column defines the height of the row */}
+              <div className="col-span-3 flex flex-col gap-4">
+                {/* Row 1: Update, Total Value, Total Invested */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+                    {data?.update && <UpdateCard {...data.update} linkHref="/notifications" />}
+                  </div>
+                  <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+                    {data?.balance && <PortfolioTrendCard balance={data.balance} currency={currency} />}
+                  </div>
+                  <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+                    {data?.totalCost !== undefined && (
+                      <TotalInvestedCard
+                        totalCost={data.totalCost}
+                        trend={data.totalCostTrend}
+                        comparisonLabel={data.totalCostComparisonLabel}
+                        currency={currency}
+                      />
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  {data?.balance && <PortfolioTrendCard balance={data.balance} currency={currency} />}
-                </div>
-                <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  {data?.totalCost !== undefined && (
-                    <TotalInvestedCard
-                      totalCost={data.totalCost}
-                      trend={data.totalCostTrend}
-                      comparisonLabel={data.totalCostComparisonLabel}
-                      currency={currency}
+
+                {/* Row 2: Performance (3/5) + Allocation (2/5) */}
+                <div className="grid grid-cols-5 gap-4 h-[500px]">
+                  <div className="col-span-3 flex flex-col min-h-0 [&>.card-surface]:h-full">
+                    <PortfolioPerformanceChart
+                      data={performanceData}
+                      currencySymbol={currency.symbol}
+                      onRangeChange={handleRangeChange}
+                      isLoading={isPerformanceLoading}
                     />
-                  )}
+                  </div>
+                  <div className="col-span-2 flex flex-col min-h-0 [&>.card-surface]:h-full">
+                    {data?.portfolio && <AssetAllocationCard portfolio={data.portfolio} />}
+                  </div>
                 </div>
               </div>
 
-              {/* Row 2: Performance Chart (3/5) + Allocation (2/5) */}
-              <div className="grid grid-cols-5 gap-4">
-                <div className="col-span-3 h-[400px] flex flex-col [&>.card-surface]:h-full">
-                  <PortfolioPerformanceChart
-                    data={performanceData}
-                    currencySymbol={currency.symbol}
-                    onRangeChange={handleRangeChange}
-                    isLoading={isPerformanceLoading}
-                  />
-                </div>
-                <div className="col-span-2 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  {data?.portfolio && <AssetAllocationCard portfolio={data.portfolio} />}
+              {/* Slave column: Assets card matches the master height without expanding it */}
+              <div className="col-span-1 relative">
+                <div className="absolute inset-0 flex flex-col min-h-0">
+                  <Card title="Assets" className="h-full flex flex-col min-h-0 overflow-hidden">
+                    {data?.portfolio && data.portfolio.length > 0 ? (
+                      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                           <CompactListDesign portfolio={data.portfolio} currency={currency} onAssetClick={openAssetDetails} />
+                      </div>
+                    ) : (
+                      <div className="p-16 text-center text-secondary h-full flex flex-col items-center justify-center">
+                        <p className="mb-4">No investments tracked yet.</p>
+                        <button onClick={() => openAddTransaction()} className="text-[#AC66DA] font-bold hover:underline">Start your portfolio</button>
+                      </div>
+                    )}
+                  </Card>
                 </div>
               </div>
+            </div>
 
-              {/* Row 3: Recent Activities */}
+            {/* Bottom Section: Recent Activities (Full Width) */}
+            <div className="col-span-4">
               <Card title="Recent Activities">
                 <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020' }}>
                   {data?.recentActivities && data.recentActivities.length > 0 ? (
-                    <div className="flex-1 overflow-y-auto max-h-[400px]">
+                    <div className="flex-1 overflow-y-auto max-h-[400px] custom-scrollbar pr-1">
                       <table className="min-w-full">
                         <thead className="sticky top-0 bg-[#202020] z-10">
                           <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
@@ -567,6 +606,7 @@ export default function InvestmentsLayout1() {
                             <th className="px-5 py-3 align-top">Date</th>
                             <th className="px-5 py-3 align-top">Type</th>
                             <th className="px-5 py-3 align-top">Quantity</th>
+                            <th className="px-5 py-3 align-top text-right">Value</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -610,9 +650,14 @@ export default function InvestmentsLayout1() {
                                 </span>
                               </td>
                               <td className="px-5 py-4 align-top">
-                                <span className="text-sm font-semibold">
+                                <div className="text-sm font-semibold">
                                   {formatSmartNumber(activity.quantity)} {activity.ticker}
-                                </span>
+                                </div>
+                              </td>
+                              <td className="px-5 py-4 align-top text-right">
+                                <div className="text-sm font-bold">
+                                  {currency.symbol}{Math.round(activity.amount).toLocaleString()}
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -623,20 +668,6 @@ export default function InvestmentsLayout1() {
                     <div className="p-16 text-center text-secondary">No recent investment activity.</div>
                   )}
                 </div>
-              </Card>
-            </div>
-
-            {/* Right side: Assets List (1 column) */}
-            <div className="col-span-1 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-              <Card title="Assets">
-                {data?.portfolio && data.portfolio.length > 0 ? (
-                  <CompactListDesign portfolio={data.portfolio} currency={currency} onAssetClick={openAssetDetails} />
-                ) : (
-                  <div className="p-16 text-center text-secondary h-full flex flex-col items-center justify-center">
-                    <p className="mb-4">No investments tracked yet.</p>
-                    <button onClick={() => openAddTransaction()} className="text-[#AC66DA] font-bold hover:underline">Start your portfolio</button>
-                  </div>
-                )}
               </Card>
             </div>
           </>

@@ -25,7 +25,7 @@ export default function PortfolioPerformanceChart({ data, currencySymbol, onRang
     };
 
     return (
-        <Card title="Performance" className="h-full flex flex-col min-h-[400px]">
+        <Card title="Performance" className="h-full flex flex-col min-h-0 overflow-hidden">
             <div className="flex items-center justify-end gap-2 mb-4">
                 <div className="flex bg-[#202020] rounded-lg p-1 border border-[#3a3a3a]">
                     {['1W', '1M', '3M', '1Y', 'All'].map((tf) => (

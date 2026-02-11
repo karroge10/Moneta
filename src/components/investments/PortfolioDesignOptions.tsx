@@ -18,7 +18,7 @@ interface PortfolioDesignProps {
 // ============================================
 export function CompactListDesign({ portfolio, currency, onAssetClick }: PortfolioDesignProps) {
     return (
-        <div className="h-full overflow-y-auto pr-2 -mr-2">
+        <div className="h-full overflow-y-auto pr-2 custom-scrollbar">
             <div className="space-y-2">
                 {portfolio.map((item) => (
                     <div
@@ -189,7 +189,7 @@ export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioD
 // ============================================
 // OPTION 3: TABLE VIEW WITH SORTABLE COLUMNS
 // ============================================
-type SortField = 'name' | 'type' | 'value' | 'change';
+type SortField = 'name' | 'assetType' | 'value' | 'change';
 type SortDirection = 'asc' | 'desc';
 
 export function TableDesign({ portfolio, currency, onAssetClick }: PortfolioDesignProps) {
@@ -211,8 +211,8 @@ export function TableDesign({ portfolio, currency, onAssetClick }: PortfolioDesi
             case 'name':
                 comparison = a.name.localeCompare(b.name);
                 break;
-            case 'type':
-                comparison = a.type.localeCompare(b.type);
+            case 'assetType':
+                comparison = (a.assetType || '').localeCompare(b.assetType || '');
                 break;
             case 'value':
                 comparison = (a.currentValue || 0) - (b.currentValue || 0);
@@ -247,9 +247,9 @@ export function TableDesign({ portfolio, currency, onAssetClick }: PortfolioDesi
                             </th>
                             <th
                                 className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors"
-                                onClick={() => handleSort('type')}
+                                onClick={() => handleSort('assetType')}
                             >
-                                Type <SortIcon field="type" />
+                                Type <SortIcon field="assetType" />
                             </th>
                             <th
                                 className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors text-right"
@@ -298,8 +298,8 @@ export function TableDesign({ portfolio, currency, onAssetClick }: PortfolioDesi
                                     </div>
                                 </td>
                                 <td className="px-5 py-4 align-top">
-                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#282828] border border-[#3a3a3a] text-xs font-medium">
-                                        {item.type}
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#282828] border border-[#3a3a3a] text-xs font-medium capitalize">
+                                        {item.assetType}
                                     </span>
                                 </td>
                                 <td className="px-5 py-4 align-top text-right">
