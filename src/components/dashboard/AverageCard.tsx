@@ -2,7 +2,7 @@
 
 import Card from '@/components/ui/Card';
 import TrendIndicator from '@/components/ui/TrendIndicator';
-import { formatNumber } from '@/lib/utils';
+import { formatCompactNumber } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 
 interface AverageCardProps {
@@ -22,7 +22,7 @@ export default function AverageCard({ amount, trend, subtitle, trendLabel = 'fro
         )}
         <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
           <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
-          <span className="text-card-value break-all min-w-0">{formatNumber(amount)}</span>
+          <span className="text-card-value break-all min-w-0">{formatCompactNumber(amount)}</span>
         </div>
         <TrendIndicator value={trend} label={trendLabel} />
       </div>

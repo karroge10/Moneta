@@ -12,6 +12,9 @@ import { CalendarPanel } from '@/components/transactions/shared/CalendarPanel';
 import AssetLogo from './AssetLogo';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { getDerivedAssetIcon } from '@/lib/asset-utils';
+import { Investment } from '@/types/dashboard';
+
+import Spinner from '@/components/ui/Spinner';
 
 function Skeleton({ className }: { className?: string }) {
     return <div className={`animate-pulse bg-[#3a3a3a] rounded-xl ${className}`} />;
@@ -45,7 +48,10 @@ interface InvestmentTransactionModalProps {
     isSaving?: boolean;
     isDeleting?: boolean;
     currencySymbol: string;
+    portfolio?: Investment[];
 }
+
+const EMPTY_PORTFOLIO: Investment[] = [];
 
 export default function InvestmentTransactionModal({
     transaction,
@@ -55,6 +61,7 @@ export default function InvestmentTransactionModal({
     isSaving = false,
     isDeleting = false,
     currencySymbol: userCurrencySymbol,
+    portfolio = EMPTY_PORTFOLIO,
 }: InvestmentTransactionModalProps) {
     const { currency: userCurrency } = useCurrency();
     const { currencyOptions, rates: prefetchRates } = useCurrencyOptions();
@@ -79,6 +86,8 @@ export default function InvestmentTransactionModal({
     const [isLoadingRate, setIsLoadingRate] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [availableQuantity, setAvailableQuantity] = useState<number | null>(null);
+    const [isLoadingBalance, setIsLoadingBalance] = useState(false);
 
     useEffect(() => {
         const timer = setTimeout(() => setIsInitialLoading(false), 300);
@@ -105,8 +114,20 @@ export default function InvestmentTransactionModal({
             if (initialDate) {
                 setCurrentMonth(new Date(initialDate));
             }
+
+            // Use the passed portfolio data to find the current balance for this asset
+            const portfolioAsset = portfolio.find((a: any) => 
+                (transaction.assetTicker && a.ticker === transaction.assetTicker) || 
+                (a.name.toLowerCase() === (transaction.assetName || '').toLowerCase())
+            );
+            
+            if (portfolioAsset) {
+                setAvailableQuantity(portfolioAsset.quantity || 0);
+            } else {
+                setAvailableQuantity(0);
+            }
         }
-    }, [transaction, userCurrency.id]);
+    }, [transaction, userCurrency.id, portfolio]);
 
     // Calendar positioning logic
     const updateDateDropdownPosition = useCallback(() => {
@@ -212,7 +233,7 @@ export default function InvestmentTransactionModal({
 
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
+            if (event.key === 'Escape' && !isSaving && !isDeleting) {
                 onClose();
             }
         };
@@ -267,7 +288,7 @@ export default function InvestmentTransactionModal({
                     pointerDownOnOverlay.current = true;
                 }}
                 onMouseUp={() => {
-                    if (pointerDownOnOverlay.current && overlayRef.current) {
+                    if (pointerDownOnOverlay.current && overlayRef.current && !isSaving && !isDeleting) {
                         onClose();
                     }
                     pointerDownOnOverlay.current = false;
@@ -291,7 +312,8 @@ export default function InvestmentTransactionModal({
                         <h2 className="text-card-header">Edit Investment Transaction</h2>
                         <button
                             onClick={onClose}
-                            className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer"
+                            disabled={isSaving || isDeleting}
+                            className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label="Close"
                         >
                             <Xmark width={24} height={24} strokeWidth={1.5} />
@@ -368,10 +390,55 @@ export default function InvestmentTransactionModal({
                                             setQuantityInput(sanitized);
                                         }}
                                         disabled={isSaving || isDeleting}
-                                        className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className={`w-full px-4 py-2 rounded-xl bg-[#202020] text-body border transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
+                                            (() => {
+                                                if (availableQuantity === null) return 'border-[#3a3a3a]';
+                                                
+                                                // Calculate if this change creates a negative balance
+                                                const currentTotal = availableQuantity;
+                                                const oldQty = transaction?.quantity || 0;
+                                                const oldType = transaction?.investmentType;
+                                                const newQty = parseFloat(quantityInput) || 0;
+                                                const newType = formData.investmentType;
+                                                
+                                                let predictedTotal = currentTotal;
+                                                // Reverse old
+                                                if (oldType === 'buy') predictedTotal -= oldQty;
+                                                else if (oldType === 'sell') predictedTotal += oldQty;
+                                                // Apply new
+                                                if (newType === 'buy') predictedTotal += newQty;
+                                                else if (newType === 'sell') predictedTotal -= newQty;
+                                                
+                                                return predictedTotal < -0.00000001 ? 'border-[#D93F3F] focus:border-[#D93F3F]' : 'border-[#3a3a3a] focus:border-[#AC66DA]';
+                                            })()
+                                        }`}
                                         style={{ color: 'var(--text-primary)' }}
                                         placeholder="0.00"
                                     />
+                                    <div className="mt-1.5 px-1 flex items-center justify-between">
+                                        <div className="text-[10px] text-helper flex items-center gap-1">
+                                            Current Portfolio: {isLoadingBalance ? '...' : (availableQuantity !== null ? formatSmartNumber(availableQuantity) : '0')} {formData.assetTicker}
+                                        </div>
+                                        {(() => {
+                                            if (availableQuantity === null) return null;
+                                            const currentTotal = availableQuantity;
+                                            const oldQty = transaction?.quantity || 0;
+                                            const oldType = transaction?.investmentType;
+                                            const newQty = parseFloat(quantityInput) || 0;
+                                            const newType = formData.investmentType;
+                                            
+                                            let predictedTotal = currentTotal;
+                                            if (oldType === 'buy') predictedTotal -= oldQty;
+                                            else if (oldType === 'sell') predictedTotal += oldQty;
+                                            if (newType === 'buy') predictedTotal += newQty;
+                                            else if (newType === 'sell') predictedTotal -= newQty;
+
+                                            if (predictedTotal < -0.00000001) {
+                                                return <div className="text-[10px] text-[#D93F3F] font-bold">Negative holding: {formatSmartNumber(predictedTotal)}</div>;
+                                            }
+                                            return null;
+                                        })()}
+                                    </div>
                                 </div>
 
                                 <div>
@@ -549,7 +616,28 @@ export default function InvestmentTransactionModal({
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={isSaving || isDeleting}
+                                    disabled={
+                                        isSaving || 
+                                        isDeleting || 
+                                        !quantityInput || 
+                                        !priceInput || 
+                                        (() => {
+                                            if (availableQuantity === null) return false;
+                                            const currentTotal = availableQuantity;
+                                            const oldQty = transaction?.quantity || 0;
+                                            const oldType = transaction?.investmentType;
+                                            const newQty = parseFloat(quantityInput) || 0;
+                                            const newType = formData.investmentType;
+                                            
+                                            let predictedTotal = currentTotal;
+                                            if (oldType === 'buy') predictedTotal -= oldQty;
+                                            else if (oldType === 'sell') predictedTotal += oldQty;
+                                            if (newType === 'buy') predictedTotal += newQty;
+                                            else if (newType === 'sell') predictedTotal -= newQty;
+                                            
+                                            return predictedTotal < -0.00000001;
+                                        })()
+                                    }
                                     className="px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                     style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
                                     onMouseEnter={(e) => {
@@ -574,7 +662,13 @@ export default function InvestmentTransactionModal({
                     <ConfirmModal
                         isOpen={showDeleteConfirm}
                         title="Delete Transaction"
-                        message="Are you sure you want to delete this transaction? This action cannot be undone."
+                        message={
+                            <>
+                                Are you sure you want to delete this <span className="font-bold text-[#E7E4E4]">{formData.investmentType === 'buy' ? 'purchase' : 'sale'}</span> transaction for <span className="font-bold text-[#E7E4E4]">{formData.quantity} {formData.assetTicker}</span>?
+                                <br /><br />
+                                This action cannot be undone.
+                            </>
+                        }
                         confirmLabel="Confirm"
                         cancelLabel="Cancel"
                         onConfirm={async () => {

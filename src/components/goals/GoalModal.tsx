@@ -32,7 +32,7 @@ export default function GoalModal({
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && !isSaving) {
         onClose();
       }
     };
@@ -59,7 +59,7 @@ export default function GoalModal({
           pointerDownOnOverlay.current = true;
         }}
         onMouseUp={() => {
-          if (pointerDownOnOverlay.current && overlayRef.current) {
+          if (pointerDownOnOverlay.current && overlayRef.current && !isSaving) {
             onClose();
           }
           pointerDownOnOverlay.current = false;
@@ -85,7 +85,8 @@ export default function GoalModal({
             </h2>
             <button
               onClick={onClose}
-              className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer"
+              disabled={isSaving}
+              className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Close"
             >
               <Xmark width={24} height={24} strokeWidth={1.5} />

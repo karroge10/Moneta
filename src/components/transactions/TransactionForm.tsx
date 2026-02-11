@@ -997,7 +997,13 @@ export default function TransactionForm({
       <ConfirmModal
         isOpen={showDeleteConfirm}
         title="Delete Transaction"
-        message="Are you sure you want to delete this transaction? This action cannot be undone."
+        message={
+          <>
+            Are you sure you want to delete <span className="font-bold text-[#E7E4E4]">{formData.name || 'this transaction'}</span>?
+            <br /><br />
+            This action cannot be undone and will remove the record from your history.
+          </>
+        }
         confirmLabel="Delete"
         cancelLabel="Cancel"
         onConfirm={handleDeleteConfirm}
