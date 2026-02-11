@@ -123,6 +123,19 @@ export default function InvestmentsPage() {
     fetchInvestments();
   }, [fetchInvestments]);
 
+  useEffect(() => {
+    if (!isAddModalOpen) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSaving) {
+        setAddModalOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isAddModalOpen, isSaving]);
+
   const handleSaveInvestment = async (formData: any) => {
     setIsSaving(true);
     try {
@@ -669,7 +682,8 @@ export default function InvestmentsPage() {
               <h2 className="text-card-header">Add Investment Transaction</h2>
               <button
                 onClick={() => setAddModalOpen(false)}
-                className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer"
+                disabled={isSaving}
+                className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Close"
               >
                 <Xmark width={24} height={24} strokeWidth={1.5} />

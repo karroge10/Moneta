@@ -124,6 +124,19 @@ export default function InvestmentsLayout1() {
     fetchInvestments();
   }, [fetchInvestments]);
 
+  useEffect(() => {
+    if (!isAddModalOpen) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSaving) {
+        setAddModalOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isAddModalOpen, isSaving]);
+
   // Handle Add Transaction (Success)
   const handleSaveInvestment = async (formData: any) => {
     setIsSaving(true);
@@ -256,10 +269,10 @@ export default function InvestmentsLayout1() {
               <CardSkeleton title="Total Value" variant="value" />
               <CardSkeleton title="Total Invested" variant="value" />
             </div>
-            <CardSkeleton title="Allocation" variant="value" />
-            <CardSkeleton title="Performance" variant="list" />
-            <CardSkeleton title="Assets" variant="list" />
-            <CardSkeleton title="Recent Activities" variant="list" />
+            <CardSkeleton title="Allocation" variant="donut" />
+            <CardSkeleton title="Performance" variant="chart" className="h-[400px]" />
+            <CardSkeleton title="Assets" variant="list" className="h-[400px]" />
+            <CardSkeleton title="Recent Activities" variant="table" />
           </>
         ) : error ? (
           <div className="w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">
@@ -306,9 +319,10 @@ export default function InvestmentsLayout1() {
                     <table className="min-w-full">
                       <thead className="sticky top-0 bg-[#202020] z-10">
                         <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                          <th className="px-5 py-3 align-top">Asset</th>
+                          <th className="px-5 py-3 align-top w-[35%]">Asset</th>
                           <th className="px-5 py-3 align-top">Date</th>
                           <th className="px-5 py-3 align-top">Type</th>
+                          <th className="px-5 py-3 align-top text-right">Quantity</th>
                           <th className="px-5 py-3 align-top text-right">Value</th>
                         </tr>
                       </thead>
@@ -319,7 +333,7 @@ export default function InvestmentsLayout1() {
                             className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
                             onClick={() => handleTransactionClick(activity)}
                           >
-                            <td className="px-5 py-4 align-top">
+                            <td className="px-5 py-4 align-middle">
                               <div className="flex items-center gap-3">
                                 <div
                                   className="w-10 h-10 icon-circle shrink-0"
@@ -344,20 +358,20 @@ export default function InvestmentsLayout1() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-5 py-4 align-top">
+                            <td className="px-5 py-4 align-middle">
                               <span className="text-sm">{formatDateForDisplay(activity.date)}</span>
                             </td>
-                            <td className="px-5 py-4 align-top">
+                            <td className="px-5 py-4 align-middle">
                               <span className={`text-sm font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
                                 {activity.type}
                               </span>
                             </td>
-                            <td className="px-5 py-4 align-top">
+                            <td className="px-5 py-4 align-middle text-right">
                               <div className="text-sm font-semibold text-nowrap">
                                 {formatSmartNumber(activity.quantity)} {activity.ticker}
                               </div>
                             </td>
-                            <td className="px-5 py-4 align-top text-right">
+                            <td className="px-5 py-4 align-middle text-right">
                               <div className="text-sm font-bold text-nowrap">
                                 {currency.symbol}{Math.round(activity.amount).toLocaleString()}
                               </div>
@@ -383,10 +397,10 @@ export default function InvestmentsLayout1() {
             <CardSkeleton title="Update" variant="update" />
             <CardSkeleton title="Total Value" variant="value" />
             <CardSkeleton title="Total Invested" variant="value" />
-            <CardSkeleton title="Allocation" variant="value" />
-            <div className="col-span-2"><CardSkeleton title="Performance" variant="list" /></div>
-            <CardSkeleton title="Assets" variant="list" />
-            <CardSkeleton title="Recent Activities" variant="list" />
+            <CardSkeleton title="Allocation" variant="donut" />
+            <div className="col-span-2"><CardSkeleton title="Performance" variant="chart" className="h-[500px]" /></div>
+            <CardSkeleton title="Assets" variant="list" className="h-[500px]" />
+            <CardSkeleton title="Recent Activities" variant="table" className="h-[500px]" />
           </>
         ) : error ? (
           <div className="col-span-2 w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">
@@ -431,9 +445,10 @@ export default function InvestmentsLayout1() {
                     <table className="min-w-full">
                       <thead className="sticky top-0 bg-[#202020] z-10">
                         <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                          <th className="px-5 py-3 align-top">Asset</th>
+                          <th className="px-5 py-3 align-top w-[35%]">Asset</th>
                           <th className="px-5 py-3 align-top">Date</th>
                           <th className="px-5 py-3 align-top">Type</th>
+                          <th className="px-5 py-3 align-top text-right">Quantity</th>
                           <th className="px-5 py-3 align-top text-right">Value</th>
                         </tr>
                       </thead>
@@ -444,7 +459,7 @@ export default function InvestmentsLayout1() {
                             className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
                             onClick={() => handleTransactionClick(activity)}
                           >
-                            <td className="px-5 py-4 align-top">
+                            <td className="px-5 py-4 align-middle">
                               <div className="flex items-center gap-3">
                                 <div
                                   className="w-10 h-10 icon-circle shrink-0"
@@ -469,20 +484,20 @@ export default function InvestmentsLayout1() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-5 py-4 align-top">
+                            <td className="px-5 py-4 align-middle">
                               <span className="text-sm">{formatDateForDisplay(activity.date)}</span>
                             </td>
-                            <td className="px-5 py-4 align-top">
+                            <td className="px-5 py-4 align-middle">
                               <span className={`text-sm font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
                                 {activity.type}
                               </span>
                             </td>
-                            <td className="px-5 py-4 align-top">
+                            <td className="px-5 py-4 align-middle text-right">
                               <div className="text-sm font-semibold text-nowrap">
                                 {formatSmartNumber(activity.quantity)} {activity.ticker}
                               </div>
                             </td>
-                            <td className="px-5 py-4 align-top text-right">
+                            <td className="px-5 py-4 align-middle text-right">
                               <div className="text-sm font-bold text-nowrap">
                                 {currency.symbol}{Math.round(activity.amount).toLocaleString()}
                               </div>
@@ -513,18 +528,18 @@ export default function InvestmentsLayout1() {
                   <CardSkeleton title="Total Value" variant="value" />
                   <CardSkeleton title="Total Invested" variant="value" />
                 </div>
-                <div className="grid grid-cols-5 gap-4">
-                  <div className="col-span-3"><CardSkeleton title="Performance" variant="list" /></div>
-                  <div className="col-span-2"><CardSkeleton title="Allocation" variant="value" /></div>
+                <div className="grid grid-cols-5 gap-4 h-[500px]">
+                  <div className="col-span-3 flex flex-col [&>.card-surface]:h-full"><CardSkeleton title="Performance" variant="chart" /></div>
+                  <div className="col-span-2 flex flex-col [&>.card-surface]:h-full"><CardSkeleton title="Allocation" variant="donut" /></div>
                 </div>
               </div>
               <div className="col-span-1">
-                <CardSkeleton title="Assets" variant="list" />
+                <CardSkeleton title="Assets" variant="list" className="h-full" />
               </div>
             </div>
             {/* Bottom Section: Recent Activities */}
             <div className="col-span-4">
-              <CardSkeleton title="Recent Activities" variant="list" />
+              <CardSkeleton title="Recent Activities" variant="table" />
             </div>
           </>
         ) : error ? (
@@ -602,10 +617,10 @@ export default function InvestmentsLayout1() {
                       <table className="min-w-full">
                         <thead className="sticky top-0 bg-[#202020] z-10">
                           <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                            <th className="px-5 py-3 align-top">Asset</th>
+                            <th className="px-5 py-3 align-top w-[35%]">Asset</th>
                             <th className="px-5 py-3 align-top">Date</th>
                             <th className="px-5 py-3 align-top">Type</th>
-                            <th className="px-5 py-3 align-top">Quantity</th>
+                            <th className="px-5 py-3 align-top text-right">Quantity</th>
                             <th className="px-5 py-3 align-top text-right">Value</th>
                           </tr>
                         </thead>
@@ -616,7 +631,7 @@ export default function InvestmentsLayout1() {
                               className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => handleTransactionClick(activity)}
                             >
-                              <td className="px-5 py-4 align-top">
+                              <td className="px-5 py-4 align-middle">
                                 <div className="flex items-center gap-3">
                                   <div
                                     className="w-10 h-10 icon-circle shrink-0"
@@ -641,21 +656,21 @@ export default function InvestmentsLayout1() {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-5 py-4 align-top">
+                              <td className="px-5 py-4 align-middle">
                                 <span className="text-sm">{formatDateForDisplay(activity.date)}</span>
                               </td>
-                              <td className="px-5 py-4 align-top">
+                              <td className="px-5 py-4 align-middle">
                                 <span className={`text-sm font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
                                   {activity.type}
                                 </span>
                               </td>
-                              <td className="px-5 py-4 align-top">
-                                <div className="text-sm font-semibold">
+                              <td className="px-5 py-4 align-middle text-right">
+                                <div className="text-sm font-semibold text-nowrap">
                                   {formatSmartNumber(activity.quantity)} {activity.ticker}
                                 </div>
                               </td>
-                              <td className="px-5 py-4 align-top text-right">
-                                <div className="text-sm font-bold">
+                              <td className="px-5 py-4 align-middle text-right">
+                                <div className="text-sm font-bold text-nowrap">
                                   {currency.symbol}{Math.round(activity.amount).toLocaleString()}
                                 </div>
                               </td>
@@ -684,6 +699,7 @@ export default function InvestmentsLayout1() {
           isSaving={isSavingTx}
           isDeleting={isDeletingTx}
           currencySymbol={currency.symbol}
+          portfolio={data?.portfolio}
         />
       )}
 
@@ -702,7 +718,8 @@ export default function InvestmentsLayout1() {
               <h2 className="text-card-header">Add Investment Transaction</h2>
               <button
                 onClick={() => setAddModalOpen(false)}
-                className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer"
+                disabled={isSaving}
+                className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Close"
               >
                 <Xmark width={24} height={24} strokeWidth={1.5} />
@@ -718,6 +735,7 @@ export default function InvestmentsLayout1() {
                 currencyOptions={currencyOptions}
                 isSaving={isSaving}
                 onFloatingPanelToggle={() => { }}
+                portfolio={data?.portfolio}
               />
             </div>
           </div>
