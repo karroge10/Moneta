@@ -172,7 +172,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
 
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
+            if (event.key === 'Escape' && !isSaving && !isDeleting && !isDeletingTransaction) {
                 onClose();
             }
         };
@@ -204,16 +204,31 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
 
     const handleDeleteTransaction = async () => {
         if (!transactionToDelete) return;
+        setIsDeletingTransaction(true);
         try {
             await fetch(`/api/transactions?id=${transactionToDelete.id}`, { method: 'DELETE' });
-            await mutateAsset();
+            
+            let assetExists = true;
+            try {
+                const updated = await mutateAsset();
+                if (!updated) assetExists = false;
+            } catch (err) {
+                assetExists = false;
+            }
+
             await mutate('/api/investments');
             addToast('Transaction deleted');
             if (onSuccess) onSuccess();
             setTransactionToDelete(null);
+
+            if (!assetExists) {
+                onClose();
+            }
         } catch (e) {
             console.error(e);
             addToast('Failed to delete transaction', 'error');
+        } finally {
+            setIsDeletingTransaction(false);
         }
     };
 
@@ -261,11 +276,23 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
         setIsDeletingTransaction(true);
         try {
             await fetch(`/api/transactions?id=${txId}`, { method: 'DELETE' });
-            await mutateAsset();
+
+            let assetExists = true;
+            try {
+                const updated = await mutateAsset();
+                if (!updated) assetExists = false;
+            } catch (err) {
+                assetExists = false;
+            }
+
             await mutate('/api/investments');
             addToast('Transaction deleted');
             if (onSuccess) onSuccess();
             setEditingTransaction(null);
+
+            if (!assetExists) {
+                onClose();
+            }
         } catch (e) {
             console.error(e);
             addToast('Failed to delete transaction', 'error');
@@ -276,11 +303,17 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
 
     const currencySymbol = currency.symbol;
 
+    const memoizedPortfolio = useMemo(() => asset ? [asset] : [], [asset]);
+
     return createPortal(
         <>
             <div
                 className="fixed inset-0 bg-black/60 z-50 animate-in fade-in duration-200"
-                onClick={onClose}
+                onClick={() => {
+                    if (!isSaving && !isDeleting && !isDeletingTransaction) {
+                        onClose();
+                    }
+                }}
             />
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in zoom-in-95 duration-200 pointer-events-none">
                 <div
@@ -353,14 +386,15 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                         {asset.userId && (
                                                             <button 
                                                                 onClick={() => setIsRenaming(true)}
-                                                                className="opacity-0 group-hover:opacity-100 text-[#AC66DA] hover:text-[#9A4FB8] transition-opacity shrink-0"
+                                                                disabled={isSaving || isDeleting || isDeletingTransaction || isLoading}
+                                                                className="opacity-0 group-hover:opacity-100 text-[#AC66DA] hover:text-[#9A4FB8] transition-opacity shrink-0 disabled:opacity-0"
                                                                 title="Rename Asset"
                                                             >
                                                                 <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor"><path d="M14.363 5.652l1.48-1.48a2 2 0 012.829 0l1.414 1.414a2 2 0 010 2.828l-1.48 1.48m-4.243-4.242l-9.616 9.615a2 2 0 00-.578 1.238l-.242 2.74a1 1 0 001.084 1.085l2.74-.242a2 2 0 001.24-.578l9.615-9.616m-4.243-4.242l4.242 4.242" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"></path></svg>
                                                             </button>
                                                         )}
                                                     </div>
-                                                )}
+                                                )      }
                                             </div>
 
                                             {asset.pricingMode === 'live' && asset.currentPrice && (
@@ -396,7 +430,8 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                         </div>
                         <button
                             onClick={onClose}
-                            className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer flex-shrink-0"
+                            disabled={isSaving || isDeleting || isDeletingTransaction}
+                            className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label="Close"
                         >
                             <Xmark width={24} height={24} strokeWidth={1.5} />
@@ -417,10 +452,10 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                     <h3 className="text-body font-medium mb-3">Overview</h3>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         {[
-                                            { label: 'Total Invested', value: assetStats.totalInvested, isPnL: false },
-                                            { label: 'Current Value', value: assetStats.currentValue, isPnL: false, isCurrentValue: true },
-                                            { label: 'P&L', value: assetStats.totalPnL, isPnL: true },
-                                            { label: 'ROI', value: assetStats.roi, isPnL: true, isPercent: true },
+                                            { label: 'Total Invested', value: assetStats.totalInvested, isPnL: false, isQuantity: false },
+                                            { label: 'Current Value', value: assetStats.currentValue, isPnL: false, isCurrentValue: true, isQuantity: false },
+                                            { label: 'P&L', value: assetStats.totalPnL, isPnL: true, isQuantity: false },
+                                            { label: 'ROI', value: assetStats.roi, isPnL: true, isPercent: true, isQuantity: false },
                                         ].map((stat, i) => (
                                             <div key={i} className="p-4 bg-[#202020] rounded-2xl border border-[#3a3a3a] relative group">
                                                 <div className="text-xs text-helper uppercase tracking-wider mb-1">{stat.label}</div>
@@ -477,7 +512,8 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                             e.stopPropagation();
                                                             setIsUpdatingValue(true);
                                                         }}
-                                                        className="absolute top-2 right-2 transition-opacity p-1.5 rounded-full hover:bg-[#282828]"
+                                                        disabled={isSaving || isDeleting || isDeletingTransaction || isLoading}
+                                                        className="absolute top-2 right-2 transition-opacity p-1.5 rounded-full hover:bg-[#282828] disabled:opacity-0"
                                                         title="Edit Value"
                                                     >
                                                         <svg width="14" height="14" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http://www.w3.org/2000/svg" color="#AC66DA">
@@ -500,12 +536,12 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                     <button
                                                         key={range}
                                                         onClick={() => setHistoryRange(range)}
-                                                        disabled={isHistoryLoading}
+                                                        disabled={isHistoryLoading || isSaving || isDeleting || isDeletingTransaction}
                                                         className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${
                                                             historyRange === range
                                                             ? 'bg-[#AC66DA] text-white' 
                                                             : 'text-secondary hover:text-white'
-                                                        } ${isHistoryLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        } ${isHistoryLoading || isSaving || isDeleting || isDeletingTransaction ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                     >
                                                         {range}
                                                     </button>
@@ -603,8 +639,12 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                             return (
                                                                 <tr
                                                                     key={tx.id}
-                                                                    className="border-t border-[#2A2A2A] group cursor-pointer hover:opacity-80 transition-opacity relative"
-                                                                    onClick={() => handleEditTransaction(tx)}
+                                                                    className={`border-t border-[#2A2A2A] group transition-opacity relative ${isSaving || isDeleting || isDeletingTransaction || isLoading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:opacity-80'}`}
+                                                                    onClick={() => {
+                                                                        if (!isSaving && !isDeleting && !isDeletingTransaction && !isLoading) {
+                                                                            handleEditTransaction(tx);
+                                                                        }
+                                                                    }}
                                                                 >
                                                                     <td className="px-5 py-4 align-top">
                                                                         <span className="text-sm">{formatDateForDisplay(tx.date)}</span>
@@ -636,8 +676,8 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                 <div className="flex items-center justify-end gap-3 pt-4">
                                     <button
                                         onClick={() => setShowDeleteAssetConfirm(true)}
-                                        disabled={isDeleting}
-                                        className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer hover:bg-[#B82E2E] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#D93F3F]"
+                                        disabled={isDeleting || isSaving || isDeletingTransaction || isLoading}
+                                        className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer hover:bg-[#B82E2E] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#D93F3F] disabled:active:scale-100"
                                         style={{ backgroundColor: '#D93F3F', color: 'var(--text-primary)' }}
                                     >
                                         <Trash width={16} height={16} strokeWidth={1.5} />
@@ -645,7 +685,8 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                     </button>
                                     <button
                                         onClick={onClose}
-                                        className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#4a4a4a]"
+                                        disabled={isSaving || isDeleting || isDeletingTransaction || isLoading}
+                                        className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 hover:border-[#4a4a4a]"
                                         style={{
                                             backgroundColor: '#282828',
                                             color: 'var(--text-primary)',
@@ -664,7 +705,8 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                     </button>
                                     <button
                                         onClick={() => onAddTransaction(asset)}
-                                        className="px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                        disabled={isSaving || isDeleting || isDeletingTransaction || isLoading || !asset}
+                                        className="px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2"
                                         style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
                                         onMouseEnter={(e) => {
                                             e.currentTarget.style.backgroundColor = '#9A4FB8';
@@ -696,13 +738,20 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                     isSaving={isSaving}
                     isDeleting={isDeletingTransaction}
                     currencySymbol={currencySymbol}
+                    portfolio={memoizedPortfolio}
                 />
             )}
 
             <ConfirmModal
                 isOpen={showDeleteAssetConfirm}
                 title="Delete Asset"
-                message={`Are you sure you want to remove ${asset?.name}? This will permanently delete the asset and ALL its associated transactions from your portfolio. This action cannot be undone.`}
+                message={
+                    <>
+                        Are you sure you want to remove <span className="font-bold text-[#E7E4E4]">{asset?.name || 'this asset'}</span>?
+                        <br /><br />
+                        This will permanently delete the asset and <span className="font-bold text-[#D93F3F]">ALL</span> its associated transactions from your portfolio. This action cannot be undone.
+                    </>
+                }
                 confirmLabel="Confirm"
                 cancelLabel="Cancel"
                 onConfirm={handleDeleteAsset}
@@ -714,11 +763,18 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
             <ConfirmModal
                 isOpen={!!transactionToDelete}
                 title="Delete Transaction"
-                message="Are you sure you want to delete this transaction? This action cannot be undone."
+                message={
+                    <>
+                        Are you sure you want to delete this <span className="font-bold text-[#E7E4E4]">{transactionToDelete?.investmentType === 'buy' ? 'purchase' : 'sale'}</span> of <span className="font-bold text-[#E7E4E4]">{transactionToDelete?.quantity} {asset?.ticker}</span>?
+                        <br /><br />
+                        This action cannot be undone.
+                    </>
+                }
                 confirmLabel="Confirm"
                 cancelLabel="Cancel"
                 onConfirm={handleDeleteTransaction}
                 onCancel={() => setTransactionToDelete(null)}
+                isLoading={isDeletingTransaction}
                 variant="danger"
             />
         </>,

@@ -2,7 +2,7 @@
 
 import Card from '@/components/ui/Card';
 import TrendIndicator from '@/components/ui/TrendIndicator';
-import { formatNumber } from '@/lib/utils';
+import { formatCompactNumber } from '@/lib/utils';
 
 interface TotalInvestedCardProps {
     totalCost: number;
@@ -20,7 +20,7 @@ export default function TotalInvestedCard({ totalCost, trend, comparisonLabel, c
                 <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
                     <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
                     <span className="text-card-value break-all min-w-0">
-                        {formatNumber(totalCost)}
+                        {formatCompactNumber(totalCost)}
                     </span>
                 </div>
                 {trend !== undefined && comparisonLabel && comparisonLabel.trim() !== '' && (

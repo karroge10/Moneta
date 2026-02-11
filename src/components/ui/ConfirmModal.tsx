@@ -6,7 +6,7 @@ import { Xmark } from 'iconoir-react';
 interface ConfirmModalProps {
   isOpen: boolean;
   title: string;
-  message: string;
+  message: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   onConfirm: () => void;
@@ -94,12 +94,12 @@ export default function ConfirmModal({
               </button>
             )}
           </div>
-          <div className="overflow-y-auto p-6 pb-8">
-            <p className="text-body" style={{ color: 'var(--text-primary)' }}>
+          <div className="overflow-y-auto p-6 pb-2">
+            <div className="text-body leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
               {message}
-            </p>
+            </div>
           </div>
-          <div className="flex items-center gap-3 justify-end p-6">
+          <div className="flex items-center gap-3 justify-end p-6 pt-4">
             <button
               type="button"
               onClick={onCancel}
