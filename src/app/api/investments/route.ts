@@ -36,7 +36,7 @@ export async function GET() {
       take: 10,
     });
 
-    const recentActivities = recentTransactions.map(t => {
+    const recentActivities = await Promise.all(recentTransactions.map(async (t) => {
       const assetIcon = t.asset?.icon || (
         t.asset?.assetType === 'crypto' ? (
           t.asset?.pricingMode === 'live' && t.asset?.ticker ? 
@@ -47,6 +47,10 @@ export async function GET() {
         t.asset?.assetType === 'property' ? 'Neighbourhood' : 'Reports'
       );
 
+      const txAmountInTxCurrency = Number(t.pricePerUnit) * Number(t.quantity);
+      // Convert to user currency
+      const amountInUserCurrency = await convertAmount(txAmountInTxCurrency, t.currencyId, userCurrency.id, t.date);
+
       return {
         id: t.id.toString(),
         assetId: t.investmentAssetId?.toString(),
@@ -56,12 +60,12 @@ export async function GET() {
         investmentType: t.investmentType,
         quantity: Number(t.quantity),
         pricePerUnit: Number(t.pricePerUnit),
-        amount: Number(t.pricePerUnit) * Number(t.quantity),
+        amount: amountInUserCurrency,
         date: t.date.toISOString(),
         icon: assetIcon,
         assetType: t.asset?.assetType,
       };
-    });
+    }));
 
     // Map to Frontend expected structure
     const portfolio = summary.assets.map(a => ({
@@ -134,6 +138,22 @@ export async function GET() {
 
     // If we have snapshots, use the latest one's PnL for the trend if live data is stagnant (optional logic, keeping live for now)
 
+    // Calculate Total Invested Trend (vs 30 days ago)
+    let totalCostTrend = 0;
+    let totalCostComparisonLabel = 'vs last 30 days';
+
+    if (snapshots.length > 0) {
+        const startSnapshot = snapshots[0];
+        const prevTotalCost = startSnapshot.totalCost || 0;
+        
+        if (prevTotalCost > 0) {
+            const diff = summary.totalCost - prevTotalCost;
+            totalCostTrend = (diff / prevTotalCost) * 100;
+        } else if (summary.totalCost > 0) {
+             totalCostTrend = 100; // From 0 to something is technically infinite increase, treat as 100% for UI
+        }
+    }
+
     const responsePayload = {
       update,
       balance: {
@@ -141,6 +161,8 @@ export async function GET() {
         trend: summary.pnlPercent,
       },
       totalCost: summary.totalCost,
+      totalCostTrend,
+      totalCostComparisonLabel,
       portfolio,
       performance: {
         trend: summary.pnlPercent,

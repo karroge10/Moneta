@@ -87,9 +87,10 @@ export default function PortfolioCard({ investments, onEdit }: PortfolioCardProp
         <div className="space-y-4 flex-1 overflow-y-auto pr-4 scroll-list-portfolio transition-all">
           {investments.map((investment) => {
             const Icon = getIcon(investment.icon);
-            const isPositive = investment.changePercent >= 0;
+            const changePercent = investment.changePercent ?? 0;
+            const isPositive = changePercent >= 0;
             const TrendIcon = isPositive ? StatUp : StatDown;
-            const trendColor = getTrendColor(investment.changePercent);
+            const trendColor = getTrendColor(changePercent);
 
             return (
               <button
@@ -118,7 +119,7 @@ export default function PortfolioCard({ investments, onEdit }: PortfolioCardProp
                   </div>
                   <div className="flex items-center gap-1 text-sm whitespace-nowrap" style={{ color: trendColor }}>
                     <TrendIcon width={14} height={14} strokeWidth={2} />
-                    <span>{investment.changePercent >= 0 ? '+' : ''}{investment.changePercent.toFixed(2)}%</span>
+                    <span>{changePercent >= 0 ? '+' : ''}{changePercent.toFixed(2)}%</span>
                   </div>
                 </div>
               </button>

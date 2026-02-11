@@ -3,13 +3,13 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface DonutChartProps {
-  data: Array<{ name: string; value: number; color: string }>;
+  data: Array<{ name: string; value: number; color: string; displayPct?: string }>;
 }
 
 interface TooltipPayloadItem {
   name: string;
   value: number;
-  payload: { name: string; value: number; color: string };
+  payload: { name: string; value: number; color: string; displayPct?: string };
 }
 
 interface CustomTooltipProps {
@@ -24,7 +24,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
       <div className="tooltip-surface">
         <p className="tooltip-label" style={{ marginBottom: '2px' }}>{item.payload.name}</p>
         <p className="tooltip-value" style={{ color: item.payload.color }}>
-          {item.value}%
+          {item.payload.displayPct || item.value}%
         </p>
       </div>
     );
