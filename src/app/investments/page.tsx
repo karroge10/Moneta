@@ -3,13 +3,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { mutate } from 'swr';
-import { Investment, PerformanceDataPoint, InvestmentActivity } from '@/types/dashboard';
-import { Plus, BitcoinCircle, Reports, Cash, Neighbourhood, ViewGrid, Xmark } from 'iconoir-react';
-import { getIcon } from '@/lib/iconMapping';
+import { Investment, PerformanceDataPoint } from '@/types/dashboard';
+import { Plus, Xmark } from 'iconoir-react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import Card from '@/components/ui/Card';
-import Spinner from '@/components/ui/Spinner';
 import CardSkeleton from '@/components/dashboard/CardSkeleton';
 import UpdateCard from '@/components/dashboard/UpdateCard';
 import InvestmentForm from '@/components/investments/InvestmentForm';
@@ -23,7 +21,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
 import AssetLogo from '@/components/investments/AssetLogo';
-import { CompactListDesign, CarouselDesign, TableDesign } from '@/components/investments/PortfolioDesignOptions';
+import { CompactListDesign } from '@/components/investments/PortfolioDesignOptions';
 import { getAssetColor } from '@/lib/asset-utils';
 import { formatSmartNumber } from '@/lib/utils';
 import { useToast } from '@/contexts/ToastContext';
@@ -42,6 +40,8 @@ interface InvestmentsApiResponse {
     trendText?: string;
   };
   totalCost: number;
+  totalCostTrend?: number;
+  totalCostComparisonLabel?: string;
   portfolio: Investment[];
   performance: {
     trend: number;
@@ -51,7 +51,7 @@ interface InvestmentsApiResponse {
   recentActivities: any[];
 }
 
-export default function InvestmentsNewPage() {
+export default function InvestmentsPage() {
   const { currency } = useCurrency();
   const { currencyOptions } = useCurrencyOptions();
   const { addToast } = useToast();
@@ -85,14 +85,13 @@ export default function InvestmentsNewPage() {
       const newData = await res.json();
       setPerformanceData(newData);
     } catch (error) {
-        console.error(error);
-        addToast('Failed to update chart', 'error');
+      console.error(error);
+      addToast('Failed to update chart', 'error');
     } finally {
       setIsPerformanceLoading(false);
     }
   };
 
-  // Fetch Data
   const fetchInvestments = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
@@ -124,7 +123,6 @@ export default function InvestmentsNewPage() {
     fetchInvestments();
   }, [fetchInvestments]);
 
-  // Handle Add Transaction (Success)
   const handleSaveInvestment = async (formData: any) => {
     setIsSaving(true);
     try {
@@ -246,21 +244,21 @@ export default function InvestmentsNewPage() {
         />
       </div>
 
-      <div className="px-4 md:px-6 pb-6 flex flex-col min-h-[calc(100vh-120px)] relative">
-        {(loading || isRefreshing || isSaving || isSavingTx) ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <CardSkeleton title="Update" variant="update" />
-              <CardSkeleton title="Total Portfolio Value" variant="value" />
+      {/* Layout: Desktop Bento Grid (Balanced) */}
+      {/* Mobile: Stack everything */}
+      <div className="flex flex-col gap-4 px-4 pb-4 md:hidden">
+        {loading ? (
+          <>
+            <CardSkeleton title="Update" variant="update" />
+            <div className="grid grid-cols-2 gap-4">
+              <CardSkeleton title="Total Value" variant="value" />
               <CardSkeleton title="Total Invested" variant="value" />
-              <CardSkeleton title="Allocation" variant="value" />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 <CardSkeleton title="Performance" variant="list" />
-                 <CardSkeleton title="Assets Portfolio" variant="list" />
-            </div>
+            <CardSkeleton title="Allocation" variant="value" />
+            <CardSkeleton title="Performance" variant="list" />
+            <CardSkeleton title="Assets" variant="list" />
             <CardSkeleton title="Recent Activities" variant="list" />
-          </div>
+          </>
         ) : error ? (
           <div className="w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">
             <p className="text-[#D93F3F] mb-4">{error}</p>
@@ -268,85 +266,37 @@ export default function InvestmentsNewPage() {
           </div>
         ) : (
           <>
-            {/* Top Section: Update Card + Portfolio Trend + Total Invested + Allocation (4-column Grid) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              {/* Update Card */}
-              {data?.update && (
-                <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  <UpdateCard
-                    date={data.update.date}
-                    message={data.update.message}
-                    highlight={data.update.highlight}
-                    link={data.update.link}
-                    linkHref="/notifications"
-                    isUnread={data.update.isUnread}
-                  />
-                </div>
-              )}
-
-              {/* Total Portfolio Value Card (No Graph) */}
-              {data?.balance && (
-                <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  <PortfolioTrendCard
-                    balance={data.balance}
-                    currency={currency}
-                  />
-                </div>
-              )}
-
-              {/* Total Invested Card */}
+            {data?.update && <UpdateCard {...data.update} linkHref="/notifications" />}
+            <div className="grid grid-cols-2 gap-4">
+              {data?.balance && <PortfolioTrendCard balance={data.balance} currency={currency} />}
               {data?.totalCost !== undefined && (
-                <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  <TotalInvestedCard
-                    totalCost={data.totalCost}
-                    currency={currency}
-                  />
-                </div>
-              )}
-
-              {/* Asset Allocation Card */}
-              {data?.portfolio && (
-                <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  <AssetAllocationCard portfolio={data.portfolio} />
-                </div>
+                <TotalInvestedCard
+                  totalCost={data.totalCost}
+                  trend={data.totalCostTrend}
+                  comparisonLabel={data.totalCostComparisonLabel}
+                  currency={currency}
+                />
               )}
             </div>
-
-
-
-            {/* Middle Section: Big Chart + Assets List (2-column Grid) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                {/* 1. Large Portfolio Performance Chart */}
-                <div className="h-[500px] flex flex-col [&>.card-surface]:h-full">
-                     <PortfolioPerformanceChart 
-                        data={performanceData}
-                        currencySymbol={currency.symbol}
-                        onRangeChange={handleRangeChange}
-                        isLoading={isPerformanceLoading}
-                    />
-                </div>
-
-                {/* 2. Assets Portfolio List */}
-                <Card
-                  title="Assets"
-                  className="h-[500px]"
-                >
-                  {data?.portfolio && data.portfolio.length > 0 ? (
-                    <CompactListDesign
-                      portfolio={data.portfolio}
-                      currency={currency}
-                      onAssetClick={openAssetDetails}
-                    />
-                  ) : (
-                    <div className="p-16 text-center text-secondary h-full flex flex-col items-center justify-center">
-                      <p className="mb-4">No investments tracked yet.</p>
-                      <button onClick={() => openAddTransaction()} className="text-[#AC66DA] font-bold hover:underline">Start your portfolio</button>
-                    </div>
-                  )}
-                </Card>
+            {data?.portfolio && <AssetAllocationCard portfolio={data.portfolio} />}
+            <div className="h-[400px]">
+              <PortfolioPerformanceChart
+                data={performanceData}
+                currencySymbol={currency.symbol}
+                onRangeChange={handleRangeChange}
+                isLoading={isPerformanceLoading}
+              />
             </div>
-
-            {/* Recent Activities Card */}
+            <Card title="Assets" className="h-[400px]">
+              {data?.portfolio && data.portfolio.length > 0 ? (
+                <CompactListDesign portfolio={data.portfolio} currency={currency} onAssetClick={openAssetDetails} />
+              ) : (
+                <div className="p-16 text-center text-secondary h-full flex flex-col items-center justify-center">
+                  <p className="mb-4">No investments tracked yet.</p>
+                  <button onClick={() => openAddTransaction()} className="text-[#AC66DA] font-bold hover:underline">Start your portfolio</button>
+                </div>
+              )}
+            </Card>
             <Card title="Recent Activities">
               <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020' }}>
                 {data?.recentActivities && data.recentActivities.length > 0 ? (
@@ -369,20 +319,20 @@ export default function InvestmentsNewPage() {
                           >
                             <td className="px-5 py-4 align-top">
                               <div className="flex items-center gap-3">
-                                <div 
+                                <div
                                   className="w-10 h-10 icon-circle shrink-0"
                                   style={{ backgroundColor: `${getAssetColor(activity.assetType)}1a` }}
                                 >
-                                  <AssetLogo 
-                                    src={activity.icon} 
-                                    size={20} 
-                                    className="text-current" 
-                                    style={{ color: getAssetColor(activity.assetType) }} 
+                                  <AssetLogo
+                                    src={activity.icon}
+                                    size={20}
+                                    className="text-current"
+                                    style={{ color: getAssetColor(activity.assetType) }}
                                     fallback={
                                       activity.assetType === 'crypto' ? 'BitcoinCircle' :
-                                      activity.assetType === 'stock' ? 'Cash' :
-                                      activity.assetType === 'property' ? 'Neighbourhood' :
-                                      'Reports'
+                                        activity.assetType === 'stock' ? 'Cash' :
+                                          activity.assetType === 'property' ? 'Neighbourhood' :
+                                            'Reports'
                                     }
                                   />
                                 </div>
@@ -411,9 +361,7 @@ export default function InvestmentsNewPage() {
                     </table>
                   </div>
                 ) : (
-                  <div className="p-16 text-center text-secondary">
-                    No recent investment activity.
-                  </div>
+                  <div className="p-16 text-center text-secondary">No recent investment activity.</div>
                 )}
               </div>
             </Card>
@@ -421,75 +369,341 @@ export default function InvestmentsNewPage() {
         )}
       </div>
 
-      {/* Edit Transaction Modal */}
-      {
-        editingTransaction && (
-          <InvestmentTransactionModal
-            transaction={editingTransaction}
-            onClose={() => setEditingTransaction(null)}
-            onSave={handleSaveTransaction}
-            onDelete={handleDeleteTransaction}
-            isSaving={isSavingTx}
-            isDeleting={isDeletingTx}
-            currencySymbol={currency.symbol}
-          />
-        )
-      }
-
-      {/* Add Investment Modal */}
-      {
-        isAddModalOpen && typeof document !== 'undefined' && createPortal(
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div
-              className="absolute inset-0 bg-black/60"
-              onClick={() => !isSaving && setAddModalOpen(false)}
-            />
-            <div 
-              className="relative w-full max-w-2xl max-h-[94vh] rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300 overflow-hidden flex flex-col"
-              style={{ backgroundColor: 'var(--bg-surface)' }}
-            >
-              <div className="flex items-center justify-between p-6 border-b border-[#3a3a3a]">
-                <h2 className="text-card-header">Add Investment Transaction</h2>
-                <button
-                  onClick={() => setAddModalOpen(false)}
-                  className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer"
-                  aria-label="Close"
-                >
-                  <Xmark width={24} height={24} strokeWidth={1.5} />
-                </button>
+      {/* Tablet: 2-column layout (768px - 1536px) */}
+      <div className="hidden md:grid 2xl:hidden md:grid-cols-2 md:gap-4 md:px-6 md:pb-6">
+        {loading ? (
+          <>
+            <CardSkeleton title="Update" variant="update" />
+            <CardSkeleton title="Total Value" variant="value" />
+            <CardSkeleton title="Total Invested" variant="value" />
+            <CardSkeleton title="Allocation" variant="value" />
+            <div className="col-span-2"><CardSkeleton title="Performance" variant="list" /></div>
+            <div className="col-span-2"><CardSkeleton title="Assets" variant="list" /></div>
+            <div className="col-span-2"><CardSkeleton title="Recent Activities" variant="list" /></div>
+          </>
+        ) : error ? (
+          <div className="col-span-2 w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">
+            <p className="text-[#D93F3F] mb-4">{error}</p>
+            <button onClick={() => fetchInvestments()} className="px-4 py-2 bg-[#AC66DA] rounded-lg text-white font-bold">Retry</button>
+          </div>
+        ) : (
+          <>
+            {data?.update && <UpdateCard {...data.update} linkHref="/notifications" />}
+            {data?.balance && <PortfolioTrendCard balance={data.balance} currency={currency} />}
+            {data?.totalCost !== undefined && (
+              <TotalInvestedCard
+                totalCost={data.totalCost}
+                trend={data.totalCostTrend}
+                comparisonLabel={data.totalCostComparisonLabel}
+                currency={currency}
+              />
+            )}
+            {data?.portfolio && <AssetAllocationCard portfolio={data.portfolio} />}
+            <div className="col-span-2 h-[500px]">
+              <PortfolioPerformanceChart
+                data={performanceData}
+                currencySymbol={currency.symbol}
+                onRangeChange={handleRangeChange}
+                isLoading={isPerformanceLoading}
+              />
+            </div>
+            <div className="col-span-2 h-[500px]">
+               <Card title="Assets">
+                {data?.portfolio && data.portfolio.length > 0 ? (
+                  <div className='flex flex-col h-full'>
+                      <CompactListDesign portfolio={data.portfolio} currency={currency} onAssetClick={openAssetDetails} />
+                  </div>
+                ) : (
+                  <div className="p-16 text-center text-secondary h-full flex flex-col items-center justify-center">
+                    <p className="mb-4">No investments tracked yet.</p>
+                    <button onClick={() => openAddTransaction()} className="text-[#AC66DA] font-bold hover:underline">Start your portfolio</button>
+                  </div>
+                )}
+              </Card>
+            </div>
+            <div className="col-span-2">
+                <Card title="Recent Activities">
+              <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020' }}>
+                {data?.recentActivities && data.recentActivities.length > 0 ? (
+                  <div className="flex-1 overflow-y-auto max-h-[500px]">
+                    <table className="min-w-full">
+                      <thead className="sticky top-0 bg-[#202020] z-10">
+                        <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+                          <th className="px-5 py-3 align-top">Asset</th>
+                          <th className="px-5 py-3 align-top">Date</th>
+                          <th className="px-5 py-3 align-top">Type</th>
+                          <th className="px-5 py-3 align-top">Quantity</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.recentActivities.map((activity: any) => (
+                          <tr
+                            key={activity.id}
+                            className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => handleTransactionClick(activity)}
+                          >
+                            <td className="px-5 py-4 align-top">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="w-10 h-10 icon-circle shrink-0"
+                                  style={{ backgroundColor: `${getAssetColor(activity.assetType)}1a` }}
+                                >
+                                  <AssetLogo
+                                    src={activity.icon}
+                                    size={20}
+                                    className="text-current"
+                                    style={{ color: getAssetColor(activity.assetType) }}
+                                    fallback={
+                                      activity.assetType === 'crypto' ? 'BitcoinCircle' :
+                                        activity.assetType === 'stock' ? 'Cash' :
+                                          activity.assetType === 'property' ? 'Neighbourhood' :
+                                            'Reports'
+                                    }
+                                  />
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-sm">{activity.name}</div>
+                                  <div className="text-xs text-helper uppercase tracking-wider">{activity.ticker}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <span className="text-sm">{formatDateForDisplay(activity.date)}</span>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <span className={`text-sm font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
+                                {activity.type}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 align-top">
+                              <span className="text-sm font-semibold">
+                                {formatSmartNumber(activity.quantity)} {activity.ticker}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-16 text-center text-secondary">No recent investment activity.</div>
+                )}
               </div>
+            </Card>
+            </div>
+          </>
+        )}
+      </div>
 
-              <div className="flex-1 overflow-y-auto">
-                <InvestmentForm
-                  mode="add"
-                  initialAsset={initialAssetForAdd}
-                  onSave={handleSaveInvestment}
-                  onCancel={() => setAddModalOpen(false)}
-                  currencyOptions={currencyOptions}
-                  isSaving={isSaving}
-                  onFloatingPanelToggle={() => { }}
-                />
+      {/* Desktop: Bento Grid Layout (Modified Layout 1) (≥1536px) */}
+      <div className="hidden 2xl:grid 2xl:grid-cols-4 2xl:gap-4 2xl:px-6 2xl:pb-6">
+        {loading ? (
+          <>
+            <div className="col-span-4 grid grid-cols-3 gap-4">
+              <CardSkeleton title="Update" variant="update" />
+              <CardSkeleton title="Total Value" variant="value" />
+              <CardSkeleton title="Total Invested" variant="value" />
+            </div>
+            <div className="col-span-2"><CardSkeleton title="Performance" variant="list" /></div>
+            <div className="col-span-1"><CardSkeleton title="Allocation" variant="value" /></div>
+            <div className="col-span-1"><CardSkeleton title="Assets" variant="list" /></div>
+            <div className="col-span-4"><CardSkeleton title="Recent Activities" variant="list" /></div>
+          </>
+        ) : error ? (
+          <div className="col-span-4 w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">
+            <p className="text-[#D93F3F] mb-4">{error}</p>
+            <button onClick={() => fetchInvestments()} className="px-4 py-2 bg-[#AC66DA] rounded-lg text-white font-bold">Retry</button>
+          </div>
+        ) : (
+          <>
+            {/* Row 1: Top 3 Cards Spanning Full Width (using 3-col subgrid) */}
+            <div className="col-span-4 grid grid-cols-3 gap-4">
+              <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+                {data?.update && <UpdateCard {...data.update} linkHref="/notifications" />}
+              </div>
+              <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+                {data?.balance && <PortfolioTrendCard balance={data.balance} currency={currency} />}
+              </div>
+              <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+                {data?.totalCost !== undefined && (
+                  <TotalInvestedCard
+                    totalCost={data.totalCost}
+                    trend={data.totalCostTrend}
+                    comparisonLabel={data.totalCostComparisonLabel}
+                    currency={currency}
+                  />
+                )}
               </div>
             </div>
-          </div>,
-          document.body
-        )
-      }
+
+            {/* Row 2: Performance (2/4), Allocation (1/4), Assets (1/4) */}
+            {/* Performance Chart */}
+            <div className="col-span-2 h-[450px] flex flex-col [&>.card-surface]:h-full">
+              <PortfolioPerformanceChart
+                data={performanceData}
+                currencySymbol={currency.symbol}
+                onRangeChange={handleRangeChange}
+                isLoading={isPerformanceLoading}
+              />
+            </div>
+
+            {/* Allocation */}
+            <div className="col-span-1 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+              {data?.portfolio && <AssetAllocationCard portfolio={data.portfolio} />}
+            </div>
+
+            {/* Assets */}
+            <div className="col-span-1 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+              <Card title="Assets">
+                {data?.portfolio && data.portfolio.length > 0 ? (
+                   <CompactListDesign portfolio={data.portfolio} currency={currency} onAssetClick={openAssetDetails} />
+                ) : (
+                  <div className="p-16 text-center text-secondary h-full flex flex-col items-center justify-center">
+                    <p className="mb-4">No investments tracked yet.</p>
+                    <button onClick={() => openAddTransaction()} className="text-[#AC66DA] font-bold hover:underline">Start your portfolio</button>
+                  </div>
+                )}
+              </Card>
+            </div>
+
+            {/* Row 3: Recent Activities (Full Width) */}
+            <div className="col-span-4">
+              <Card title="Recent Activities">
+                <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020' }}>
+                  {data?.recentActivities && data.recentActivities.length > 0 ? (
+                    <div className="flex-1 overflow-y-auto max-h-[400px]">
+                      <table className="min-w-full">
+                        <thead className="sticky top-0 bg-[#202020] z-10">
+                          <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+                            <th className="px-5 py-3 align-top">Asset</th>
+                            <th className="px-5 py-3 align-top">Date</th>
+                            <th className="px-5 py-3 align-top">Type</th>
+                            <th className="px-5 py-3 align-top">Quantity</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.recentActivities.map((activity: any) => (
+                            <tr
+                              key={activity.id}
+                              className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => handleTransactionClick(activity)}
+                            >
+                              <td className="px-5 py-4 align-top">
+                                <div className="flex items-center gap-3">
+                                  <div
+                                    className="w-10 h-10 icon-circle shrink-0"
+                                    style={{ backgroundColor: `${getAssetColor(activity.assetType)}1a` }}
+                                  >
+                                    <AssetLogo
+                                      src={activity.icon}
+                                      size={20}
+                                      className="text-current"
+                                      style={{ color: getAssetColor(activity.assetType) }}
+                                      fallback={
+                                        activity.assetType === 'crypto' ? 'BitcoinCircle' :
+                                          activity.assetType === 'stock' ? 'Cash' :
+                                            activity.assetType === 'property' ? 'Neighbourhood' :
+                                              'Reports'
+                                      }
+                                    />
+                                  </div>
+                                  <div>
+                                    <div className="font-semibold text-sm">{activity.name}</div>
+                                    <div className="text-xs text-helper uppercase tracking-wider">{activity.ticker}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-5 py-4 align-top">
+                                <span className="text-sm">{formatDateForDisplay(activity.date)}</span>
+                              </td>
+                              <td className="px-5 py-4 align-top">
+                                <span className={`text-sm font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
+                                  {activity.type}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 align-top">
+                                <span className="text-sm font-semibold">
+                                  {formatSmartNumber(activity.quantity)} {activity.ticker}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="p-16 text-center text-secondary">No recent investment activity.</div>
+                  )}
+                </div>
+              </Card>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Edit Transaction Modal */}
+      {editingTransaction && (
+        <InvestmentTransactionModal
+          transaction={editingTransaction}
+          onClose={() => setEditingTransaction(null)}
+          onSave={handleSaveTransaction}
+          onDelete={handleDeleteTransaction}
+          isSaving={isSavingTx}
+          isDeleting={isDeletingTx}
+          currencySymbol={currency.symbol}
+        />
+      )}
+
+      {/* Add Investment Modal */}
+      {isAddModalOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => !isSaving && setAddModalOpen(false)}
+          />
+          <div
+            className="relative w-full max-w-2xl max-h-[94vh] rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300 overflow-hidden flex flex-col"
+            style={{ backgroundColor: 'var(--bg-surface)' }}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-[#3a3a3a]">
+              <h2 className="text-card-header">Add Investment Transaction</h2>
+              <button
+                onClick={() => setAddModalOpen(false)}
+                className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <Xmark width={24} height={24} strokeWidth={1.5} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              <InvestmentForm
+                mode="add"
+                initialAsset={initialAssetForAdd}
+                onSave={handleSaveInvestment}
+                onCancel={() => setAddModalOpen(false)}
+                currencyOptions={currencyOptions}
+                isSaving={isSaving}
+                onFloatingPanelToggle={() => { }}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Asset Details Modal */}
-      {
-        selectedAssetId && (
-          <AssetModal
-            isOpen={!!selectedAssetId}
-            onClose={() => setSelectedAssetId(null)}
-            assetId={selectedAssetId}
-            onAddTransaction={(asset) => {
-              openAddTransaction(asset);
-            }}
-            onSuccess={() => fetchInvestments(true)}
-          />
-        )
-      }
-    </main >
+      {selectedAssetId && (
+        <AssetModal
+          isOpen={!!selectedAssetId}
+          onClose={() => setSelectedAssetId(null)}
+          assetId={selectedAssetId}
+          onAddTransaction={(asset) => {
+            openAddTransaction(asset);
+          }}
+          onSuccess={() => fetchInvestments(true)}
+        />
+      )}
+    </main>
   );
 }

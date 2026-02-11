@@ -397,11 +397,11 @@ export async function GET(request: NextRequest) {
         currentValue: a.currentValue,
         currentPrice: a.currentPrice,
         gainLoss: a.pnl,
-        changePercent: a.pnlPercent,
+        changePercent: a.unrealizedPnlPercent,
         icon: a.icon || (a.type === 'crypto' ? 'BitcoinCircle' : 'Reports'),
         priceHistory: [],
       })),
-      portfolioBalance: investmentsPortfolio.balance,
+      portfolioBalance: investmentsPortfolio.totalValue,
       financialHealth: {
         score: financialHealth.score,
         trend: financialHealth.trend,
