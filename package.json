@@ -23,7 +23,7 @@
     "@prisma/client": "^6.19.0",
     "detect-port": "^1.6.1",
     "iconoir-react": "^7.11.0",
-    "next": "16.0.7",
+    "next": "16.0.10",
     "prisma": "^6.19.0",
     "react": "19.2.1",
     "react-dom": "19.2.1",
