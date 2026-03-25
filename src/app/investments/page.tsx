@@ -551,7 +551,7 @@ export default function InvestmentsPage() {
 
             {/* Row 2: Performance (2/4), Allocation (1/4), Assets (1/4) */}
             {/* Performance Chart */}
-            <div className="col-span-2 h-[450px] flex flex-col [&>.card-surface]:h-full">
+            <div className="col-span-2 h-[500px] flex flex-col [&>.card-surface]:h-full">
               <PortfolioPerformanceChart
                 data={performanceData}
                 currencySymbol={currency.symbol}
@@ -561,12 +561,12 @@ export default function InvestmentsPage() {
             </div>
 
             {/* Allocation */}
-            <div className="col-span-1 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+            <div className="col-span-1 h-[500px] flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
               {data?.portfolio && <AssetAllocationCard portfolio={data.portfolio} />}
             </div>
 
             {/* Assets */}
-            <div className="col-span-1 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+            <div className="col-span-1 h-[500px] flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
               <Card title="Assets">
                 {data?.portfolio && data.portfolio.length > 0 ? (
                    <CompactListDesign portfolio={data.portfolio} currency={currency} onAssetClick={openAssetDetails} />
