@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useClerk } from "@clerk/nextjs";
+import { useClerk, SignedIn, SignedOut } from "@clerk/nextjs";
 import { NavArrowLeft } from "iconoir-react";
 
 function UnauthorizedContent() {
@@ -48,32 +48,52 @@ function UnauthorizedContent() {
 
         {/* Description */}
         <div className="space-y-4">
-          <p className="text-body text-[#E7E4E4] opacity-90 leading-relaxed">
-            You need to be signed in to access this page. Please authenticate
-            to continue.
-          </p>
-          <p className="text-helper text-[#E7E4E4]">
-            If you already have an account, sign in below. Otherwise, create a
-            new account to get started.
-          </p>
+          <SignedOut>
+            <p className="text-body text-[#E7E4E4] opacity-90 leading-relaxed">
+              You need to be signed in to access this page. Please authenticate
+              to continue.
+            </p>
+            <p className="text-helper text-[#E7E4E4]">
+              If you already have an account, sign in below. Otherwise, create a
+              new account to get started.
+            </p>
+          </SignedOut>
+          <SignedIn>
+            <p className="text-body text-[#E7E4E4] opacity-90 leading-relaxed">
+              You're already signed in, but you don't have access to this page or were redirected here.
+            </p>
+            <p className="text-helper text-[#E7E4E4]">
+              Return to your dashboard or contact support if you believe this is an error.
+            </p>
+          </SignedIn>
         </div>
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-          <button 
-            type="button" 
-            onClick={handleSignIn}
-            className="px-8 py-3.5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity w-full sm:w-auto flex items-center justify-center gap-2"
-          >
-            Sign In
-          </button>
-          <button 
-            type="button" 
-            onClick={handleSignUp}
-            className="px-8 py-3.5 rounded-full border border-[#3a3a3a] text-[#E7E4E4] font-semibold text-body hover:bg-[#282828] transition-colors w-full sm:w-auto"
-          >
-            Create Account
-          </button>
+          <SignedOut>
+            <button 
+              type="button" 
+              onClick={handleSignIn}
+              className="px-8 py-3.5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity w-full sm:w-auto flex items-center justify-center gap-2"
+            >
+              Sign In
+            </button>
+            <button 
+              type="button" 
+              onClick={handleSignUp}
+              className="px-8 py-3.5 rounded-full border border-[#3a3a3a] text-[#E7E4E4] font-semibold text-body hover:bg-[#282828] transition-colors w-full sm:w-auto"
+            >
+              Create Account
+            </button>
+          </SignedOut>
+          <SignedIn>
+            <Link
+              href="/dashboard"
+              className="px-8 py-3.5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity w-full sm:w-auto flex items-center justify-center"
+            >
+              Go to Dashboard
+            </Link>
+          </SignedIn>
         </div>
 
         {/* Back to Home Link */}

@@ -13,6 +13,7 @@ const isInternalRoute = createRouteMatcher([
 
 export default clerkMiddleware(async (auth, request) => {
   const pathname = request.nextUrl.pathname;
+  console.log(`[middleware] Request: ${pathname}`);
   
   // Handle cron routes - they have their own security (User-Agent or CRON_SECRET)
   if (pathname.startsWith("/api/cron")) {
@@ -35,9 +36,11 @@ export default clerkMiddleware(async (auth, request) => {
   // Protect all non-public routes
   if (!isPublicRoute(request)) {
     const { userId } = await auth();
+    console.log(`[middleware] Path: ${pathname}, UserId: ${userId}`);
     
     // If not authenticated, redirect to unauthorized page
     if (!userId) {
+      console.log(`[middleware] No userId, redirecting to /unauthorized from ${pathname}`);
       const unauthorizedUrl = new URL("/unauthorized", request.url);
       // Preserve the original URL they tried to access for redirect after sign-in
       unauthorizedUrl.searchParams.set("redirect", request.url);
