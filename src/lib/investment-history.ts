@@ -26,7 +26,13 @@ export async function fetchAssetHistory(
   const rangeConfig = RANGE_MAP[range] || RANGE_MAP['1M'];
 
   if (assetType === 'crypto') {
-    return fetchCryptoHistory(coingeckoId || ticker, rangeConfig.cg);
+    const cgHistory = await fetchCryptoHistory(coingeckoId || ticker, rangeConfig.cg);
+    if (cgHistory.length > 0) return cgHistory;
+    
+    // Fallback to Yahoo Finance for crypto if CoinGecko fails (e.g. range > 365 days on free tier)
+    const yahooTicker = ticker.toUpperCase().endsWith('-USD') ? ticker : `${ticker}-USD`;
+    console.log(`[history] Falling back to Yahoo Finance for crypto ticker: ${yahooTicker}`);
+    return fetchStockHistory(yahooTicker, rangeConfig.yf, rangeConfig.yfInterval);
   } else if (assetType === 'stock') {
     return fetchStockHistory(ticker, rangeConfig.yf, rangeConfig.yfInterval);
   }
@@ -45,7 +51,11 @@ async function fetchCryptoHistory(id: string, days: string): Promise<HistoryData
     const res = await fetch(url, { next: { revalidate: 3600 } });
     
     if (!res.ok) {
-      console.warn(`Failed to fetch crypto history for ${cleanId}: ${res.statusText}`);
+      if (res.status === 401 || res.status === 403) {
+        console.warn(`[history] CoinGecko restricted range/unauthorized for ${cleanId} (${days} days). This is likely the 365-day public API limit.`);
+      } else {
+        console.warn(`[history] Failed to fetch crypto history for ${cleanId}: ${res.status} ${res.statusText}`);
+      }
       return [];
     }
 
