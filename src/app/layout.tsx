@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Sen } from "next/font/google";
-import { ClerkProvider, SignedIn, SignedOut } from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
+import DynamicLayout from "@/components/layout/DynamicLayout";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ToastProvider } from "@/contexts/ToastContext";
@@ -75,41 +76,12 @@ export default async function RootLayout({
           <CurrencyProvider>
             <NotificationProvider>
               <ToastProvider>
-                {isUnauthorizedPage ? (
-                  // Always render unauthorized page without sidebar (signed out context)
-                  <SignedOut>
-                    {children}
-                  </SignedOut>
-                ) : isLandingPage ? (
-                  // Always render landing page without sidebar (but allow signed in state)
-                  <>
-                    <SignedIn>
-                      {children}
-                    </SignedIn>
-                    <SignedOut>
-                      {children}
-                    </SignedOut>
-                  </>
-                ) : (
-                  // Regular pages with sidebar for signed in users
-                  <>
-                    <SignedIn>
-                      <div style={{ display: "flex", minHeight: "100vh" }}>
-                        <div className="hidden md:block">
-                          <Sidebar />
-                        </div>
-                        <div
-                          className="flex-1 transition-all duration-200 ease-in-out md:ml-[var(--sidebar-width)]"
-                        >
-                          {children}
-                        </div>
-                      </div>
-                    </SignedIn>
-                    <SignedOut>
-                      {children}
-                    </SignedOut>
-                  </>
-                )}
+                <DynamicLayout
+                  initialIsUnauthorized={isUnauthorizedPage}
+                  initialIsLanding={isLandingPage}
+                >
+                  {children}
+                </DynamicLayout>
               </ToastProvider>
             </NotificationProvider>
           </CurrencyProvider>
