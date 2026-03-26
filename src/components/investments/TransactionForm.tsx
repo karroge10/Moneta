@@ -7,6 +7,13 @@ import { CalendarPanel } from '@/components/transactions/shared/CalendarPanel';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
 import Spinner from '@/components/ui/Spinner';
 
+function toLocalDateInputString(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 interface TransactionFormProps {
     transaction?: any;
     assetTicker: string;
@@ -29,7 +36,11 @@ export default function TransactionForm({
     const [type, setType] = useState<'buy' | 'sell'>(transaction?.investmentType || 'buy');
     const [quantity, setQuantity] = useState(transaction?.quantity?.toString() || '');
     const [pricePerUnit, setPricePerUnit] = useState(transaction?.pricePerUnit?.toString() || '');
-    const [date, setDate] = useState(transaction?.date ? new Date(transaction.date) : new Date());
+    const [date, setDate] = useState<string>(() =>
+        transaction?.date
+            ? toLocalDateInputString(new Date(transaction.date))
+            : toLocalDateInputString(new Date())
+    );
     const [notes, setNotes] = useState(transaction?.description || ''); // Description used as notes/details
 
     const [isDateOpen, setIsDateOpen] = useState(false);
@@ -74,7 +85,7 @@ export default function TransactionForm({
             investmentType: type,
             quantity: Number(quantity),
             pricePerUnit: Number(pricePerUnit),
-            date: date.toISOString(),
+            date: new Date(`${date}T12:00:00`).toISOString(),
             description: notes,
         });
     };
@@ -160,7 +171,10 @@ export default function TransactionForm({
                         <CalendarPanel
                             selectedDate={date}
                             currentMonth={calendarMonth}
-                            onChange={(d) => { setDate(d); setIsDateOpen(false); }}
+                            onChange={(d) => {
+                                setDate(d);
+                                setIsDateOpen(false);
+                            }}
                             onMonthChange={setCalendarMonth}
                         />
                     </div>,

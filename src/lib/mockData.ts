@@ -1204,56 +1204,64 @@ export const mockNotifications: NotificationEntry[] = [
     date: '22.01.2023', 
     time: '20:32:10', 
     type: 'Upcoming Bills', 
-    text: 'Your Netflix Subscription is due in 1 day' 
+    text: 'Your Netflix Subscription is due in 1 day',
+    read: false,
   },
   { 
     id: '2', 
     date: '22.01.2023', 
     time: '18:15:42', 
     type: 'Goal Update', 
-    text: "You're halfway there to reaching your savings goal!" 
+    text: "You're halfway there to reaching your savings goal!",
+    read: false,
   },
   { 
     id: '3', 
     date: '21.01.2023', 
     time: '14:28:55', 
     type: 'Upcoming Income', 
-    text: 'Almost there! Less than 100$ left in your budget' 
+    text: 'Almost there! Less than 100$ left in your budget',
+    read: true,
   },
   { 
     id: '4', 
     date: '21.01.2023', 
     time: '10:45:30', 
     type: 'Upcoming Income', 
-    text: 'You will receive $1,400 next week!' 
+    text: 'You will receive $1,400 next week!',
+    read: true,
   },
   { 
     id: '5', 
     date: '20.01.2023', 
     time: '16:20:15', 
     type: 'Investments', 
-    text: 'Your Bitcoin portfolio increased by 5.2%' 
+    text: 'Your Bitcoin portfolio increased by 5.2%',
+    read: false,
   },
   { 
     id: '6', 
     date: '20.01.2023', 
     time: '09:10:05', 
     type: 'Goals', 
-    text: 'Congratulations! You completed your emergency fund goal' 
+    text: 'Congratulations! You completed your emergency fund goal',
+    read: true,
   },
   { 
     id: '7', 
     date: '19.01.2023', 
     time: '22:05:18', 
     type: 'AI Insights', 
-    text: 'New spending pattern detected: Consider reviewing your subscription costs' 
+    text: 'New spending pattern detected: Consider reviewing your subscription costs',
+    read: false,
   },
   { 
     id: '8', 
     date: '19.01.2023', 
     time: '11:30:00', 
     type: 'Upcoming Bills', 
-    text: 'Electricity bill of $85.50 is due in 3 days' 
+    text: 'Electricity bill of $85.50 is due in 3 days',
+    read: true,
   },
 ];
 
@@ -1263,28 +1271,32 @@ export const mockDeletedNotifications: NotificationEntry[] = [
     date: '18.01.2023', 
     time: '15:22:33', 
     type: 'Upcoming Bills', 
-    text: 'Your Netflix Sub...' 
+    text: 'Your Netflix Sub...',
+    read: true,
   },
   { 
     id: 'd2', 
     date: '17.01.2023', 
     time: '12:10:20', 
     type: 'Goal Update', 
-    text: "You're halfway t..." 
+    text: "You're halfway t...",
+    read: true,
   },
   { 
     id: 'd3', 
     date: '16.01.2023', 
     time: '08:45:10', 
     type: 'Upcoming Income', 
-    text: 'Almost there! Le...' 
+    text: 'Almost there! Le...',
+    read: true,
   },
   { 
     id: 'd4', 
     date: '15.01.2023', 
     time: '19:30:45', 
     type: 'Upcoming Income', 
-    text: 'You will recieve...' 
+    text: 'You will recieve...',
+    read: true,
   },
 ];
 
