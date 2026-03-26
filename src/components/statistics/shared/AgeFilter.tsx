@@ -36,7 +36,7 @@ export default function AgeFilter({ selectedAgeGroup, onSelect }: AgeFilterProps
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors cursor-pointer w-full justify-between"
-        style={{ backgroundColor: '#202020', color: textColor }}
+        style={{ backgroundColor: 'var(--bg-primary)', color: textColor }}
       >
         <div className="flex items-center gap-2">
           <Filter width={18} height={18} strokeWidth={1.5} style={{ color: textColor }} />
@@ -46,7 +46,7 @@ export default function AgeFilter({ selectedAgeGroup, onSelect }: AgeFilterProps
       </button>
       
       {isOpen && (
-        <div className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: '#202020' }}>
+        <div className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
           {ageGroupOptions.map((option) => {
             const isSelected = selectedAgeGroup === option;
             return (

@@ -949,7 +949,7 @@ export default function ImportTransactionsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#202020]">
+    <main className="min-h-screen bg-background">
       <div className="hidden md:block">
         <DashboardHeader pageName="Import Transactions" />
       </div>
@@ -1111,7 +1111,7 @@ export default function ImportTransactionsPage() {
 
               <div
                 className="relative w-full overflow-x-auto overflow-y-auto rounded-3xl border border-[#3a3a3a] flex-1"
-                style={{ backgroundColor: '#202020' }}
+                style={{ backgroundColor: 'var(--bg-primary)' }}
                 aria-busy={isReviewLoading}
               >
                 {(isReviewLoading || isConfirming) && (
@@ -1292,7 +1292,7 @@ export default function ImportTransactionsPage() {
                                 type="button"
                                 onClick={() => handleRowDelete(row.id)}
                                 className="p-2 rounded-full transition-colors hover:opacity-80 cursor-pointer"
-                                style={{ backgroundColor: '#202020', color: '#D93F3F' }}
+                                style={{ backgroundColor: 'var(--bg-primary)', color: '#D93F3F' }}
                                 title="Delete transaction"
                               >
                                 <Trash width={16} height={16} strokeWidth={1.5} />
@@ -1317,7 +1317,7 @@ export default function ImportTransactionsPage() {
                       onClick={() => setReviewPage(prev => Math.max(1, prev - 1))}
                       disabled={reviewPage === 1}
                       className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
-                      style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                      style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                     >
                       Prev
                     </button>
@@ -1338,7 +1338,7 @@ export default function ImportTransactionsPage() {
                         }}
                         onBlur={handleReviewPageInputSubmit}
                         className="w-16 rounded-full border-none px-3 py-1 text-xs font-semibold text-center"
-                        style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                        style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                       />
                       <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
                         of {reviewTotalPages || 1}
@@ -1349,7 +1349,7 @@ export default function ImportTransactionsPage() {
                       onClick={() => setReviewPage(prev => Math.min(reviewTotalPages, prev + 1))}
                       disabled={reviewPage >= reviewTotalPages}
                       className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
-                      style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                      style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                     >
                       Next
                     </button>

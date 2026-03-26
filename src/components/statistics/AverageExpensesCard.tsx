@@ -63,7 +63,7 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
       >
         {loading ? (
           <>
-            <div className="w-full shrink-0 rounded-2xl flex items-center justify-center" style={{ height: DONUT_HEIGHT, backgroundColor: '#202020' }}>
+            <div className="w-full shrink-0 rounded-2xl flex items-center justify-center" style={{ height: DONUT_HEIGHT, backgroundColor: 'var(--bg-primary)' }}>
               <div className="w-32 h-32 rounded-full animate-pulse" style={SKELETON_STYLE} />
             </div>
             <div className="overflow-hidden mt-4 pr-2 flex-1 min-h-0">
@@ -72,7 +72,7 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
                   <div
                     key={i}
                     className="flex items-center gap-3 min-w-0 px-4 py-3 rounded-2xl"
-                    style={{ backgroundColor: '#202020' }}
+                    style={{ backgroundColor: 'var(--bg-primary)' }}
                   >
                     <div className="w-10 h-10 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
                     <div className="h-4 flex-1 max-w-[120px] rounded animate-pulse" style={SKELETON_STYLE} />
@@ -119,7 +119,7 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
                     <div
                       key={expense.id}
                       className="flex items-center gap-3 min-w-0 px-4 py-3 rounded-2xl"
-                      style={{ backgroundColor: '#202020' }}
+                      style={{ backgroundColor: 'var(--bg-primary)' }}
                     >
                       <div
                         className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"

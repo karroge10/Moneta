@@ -42,7 +42,7 @@ export default function StatisticsSummary({ items, loading = false, onFinancialH
           {/* Same order as content: 5 small rows (Income, Expenses, Income Saved, Goals, Portfolio) then Financial Health block right under */}
           <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0 space-y-3 pr-2">
             {Array.from({ length: SKELETON_ITEMS }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-3xl" style={{ backgroundColor: '#202020' }}>
+              <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-3xl" style={{ backgroundColor: 'var(--bg-primary)' }}>
                 <div className="w-12 h-12 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
                 <div className="flex-1 min-w-0 space-y-2">
                   <div className="h-4 w-28 rounded animate-pulse" style={SKELETON_STYLE} />
@@ -51,7 +51,7 @@ export default function StatisticsSummary({ items, loading = false, onFinancialH
                 <div className="h-4 w-14 rounded animate-pulse shrink-0" style={SKELETON_STYLE} />
               </div>
             ))}
-            <div className="p-6 mt-4 rounded-3xl min-h-[200px] flex flex-col items-center justify-center" style={{ backgroundColor: '#202020' }}>
+            <div className="p-6 mt-4 rounded-3xl min-h-[200px] flex flex-col items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
               <div className="w-16 h-16 rounded-full animate-pulse mb-4" style={SKELETON_STYLE} />
               <div className="h-6 w-32 rounded animate-pulse mb-4" style={SKELETON_STYLE} />
               <div className="h-12 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
@@ -79,7 +79,7 @@ export default function StatisticsSummary({ items, loading = false, onFinancialH
               key={largeItem.id}
               className="flex flex-col items-center justify-center p-6 mt-4"
               style={{
-                backgroundColor: '#202020',
+                backgroundColor: 'var(--bg-primary)',
                 borderRadius: '30px',
                 width: '100%',
                 minHeight: '200px',
@@ -165,7 +165,7 @@ function SummaryItem({ item, currency }: { item: StatisticsSummaryItem; currency
     <div
       className="flex items-center gap-3 px-4 py-3 relative"
       style={{
-        backgroundColor: '#202020',
+        backgroundColor: 'var(--bg-primary)',
         borderRadius: '30px',
         width: '100%',
       }}

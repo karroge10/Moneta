@@ -123,14 +123,14 @@ export function CalendarPanel({
                 onClick={() => { setYearOpen(false); setMonthOpen((o) => !o); }}
                 aria-label="Select month"
                 aria-expanded={monthOpen}
-                className="relative h-10 bg-[#202020] border border-[#3a3a3a] text-body text-sm rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:border-[var(--accent-purple)] cursor-pointer flex items-center gap-2 min-w-[100px]"
+                className="relative h-10 bg-background border border-[#3a3a3a] text-body text-sm rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:border-[var(--accent-purple)] cursor-pointer flex items-center gap-2 min-w-[100px]"
                 style={{ color: 'var(--text-primary)' }}
               >
                 <span className="truncate">{monthNames[currentMonth.getMonth()]}</span>
                 <NavArrowDown width={14} height={14} strokeWidth={2} className="absolute right-2 top-1/2 -translate-y-1/2 shrink-0" style={{ color: '#B9B9B9' }} />
               </button>
               {monthOpen && (
-                <div className="absolute top-full left-0 mt-1 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[100px] max-h-[200px] overflow-y-auto" style={{ backgroundColor: '#202020', border: '1px solid #3a3a3a' }}>
+                <div className="absolute top-full left-0 mt-1 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[100px] max-h-[200px] overflow-y-auto" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid #3a3a3a' }}>
                   {monthNames.map((name, idx) => (
                     <button
                       key={name}
@@ -151,14 +151,14 @@ export function CalendarPanel({
                 onClick={() => { setMonthOpen(false); setYearOpen((o) => !o); }}
                 aria-label="Select year"
                 aria-expanded={yearOpen}
-                className="relative h-10 bg-[#202020] border border-[#3a3a3a] text-body text-sm rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:border-[var(--accent-purple)] cursor-pointer flex items-center gap-2 min-w-[72px]"
+                className="relative h-10 bg-background border border-[#3a3a3a] text-body text-sm rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:border-[var(--accent-purple)] cursor-pointer flex items-center gap-2 min-w-[72px]"
                 style={{ color: 'var(--text-primary)' }}
               >
                 <span>{currentMonth.getFullYear()}</span>
                 <NavArrowDown width={14} height={14} strokeWidth={2} className="absolute right-2 top-1/2 -translate-y-1/2 shrink-0" style={{ color: '#B9B9B9' }} />
               </button>
               {yearOpen && (
-                <div className="absolute top-full left-0 mt-1 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[72px] max-h-[200px] overflow-y-auto" style={{ backgroundColor: '#202020', border: '1px solid #3a3a3a' }}>
+                <div className="absolute top-full left-0 mt-1 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[72px] max-h-[200px] overflow-y-auto" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid #3a3a3a' }}>
                   {years.map((y) => (
                     <button
                       key={y}

@@ -324,7 +324,7 @@ export default function InvestmentTransactionModal({
                             {transaction.assetName && (
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-[#202020] flex items-center justify-center border border-[#3a3a3a]">
+                                        <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center border border-[#3a3a3a]">
                                             <AssetLogo 
                                                 src={transaction.icon || getDerivedAssetIcon(transaction.assetType, transaction.assetTicker, 'live')} 
                                                 size={22} 
@@ -352,7 +352,7 @@ export default function InvestmentTransactionModal({
                             )}
 
                             {/* Row 1: Type Selection (Buy/Sell) */}
-                            <div className="relative bg-[#202020] border border-[#3a3a3a] rounded-xl p-0.5 flex gap-0.5 h-[42px]">
+                            <div className="relative bg-background border border-[#3a3a3a] rounded-xl p-0.5 flex gap-0.5 h-[42px]">
                                 <button
                                     type="button"
                                     onClick={() => setFormData(prev => ({ ...prev, investmentType: 'buy' }))}
@@ -390,7 +390,7 @@ export default function InvestmentTransactionModal({
                                             setQuantityInput(sanitized);
                                         }}
                                         disabled={isSaving || isDeleting}
-                                        className={`w-full px-4 py-2 rounded-xl bg-[#202020] text-body border transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
+                                        className={`w-full px-4 py-2 rounded-xl bg-background text-body border transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
                                             (() => {
                                                 if (availableQuantity === null) return 'border-[#3a3a3a]';
                                                 
@@ -459,7 +459,7 @@ export default function InvestmentTransactionModal({
                                                 setPriceInput(sanitized);
                                             }}
                                             disabled={isSaving || isDeleting}
-                                            className="w-full pl-8 pr-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full pl-8 pr-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
                                             style={{ color: 'var(--text-primary)' }}
                                             placeholder="0.00"
                                         />
@@ -477,7 +477,7 @@ export default function InvestmentTransactionModal({
                                             ref={dateTriggerRef}
                                             onClick={() => setIsDateOpen(prev => !prev)}
                                             disabled={isSaving || isDeleting}
-                                            className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                             style={{ color: 'var(--text-primary)' }}
                                         >
                                             <span
@@ -492,7 +492,7 @@ export default function InvestmentTransactionModal({
                                         {isDateOpen && typeof document !== 'undefined' && createPortal(
                                             <div
                                                 ref={datePortalRef}
-                                                className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden bg-[#202020]"
+                                                className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden bg-background"
                                                 style={{
                                                     ...(dateDropdownStyle ?? {
                                                         position: 'fixed',
@@ -529,7 +529,7 @@ export default function InvestmentTransactionModal({
                             </div>
 
                             {isDifferentCurrency && (
-                                <div className="p-4 rounded-2xl bg-[#202020] border border-[#3a3a3a] min-h-[86px] flex flex-col justify-center">
+                                <div className="p-4 rounded-2xl bg-background border border-[#3a3a3a] min-h-[86px] flex flex-col justify-center">
                                     {isLoadingRate ? (
                                         <div className="space-y-3 animate-pulse">
                                             <div className="flex justify-between items-center">

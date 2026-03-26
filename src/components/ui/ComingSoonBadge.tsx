@@ -10,7 +10,7 @@ export default function ComingSoonBadge({ size = 'md' }: ComingSoonBadgeProps) {
   return (
     <span 
       className={`coming-soon-badge ${sizeClasses} rounded-full font-semibold`}
-      style={{ backgroundColor: '#202020', color: '#E7E4E4' }}
+      style={{ backgroundColor: 'var(--bg-primary)', color: '#E7E4E4' }}
     >
       Coming Soon
     </span>

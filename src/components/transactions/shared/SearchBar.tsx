@@ -50,7 +50,7 @@ export default function SearchBar({ placeholder = 'Search...', value, onChange }
         onBlur={() => setIsFocused(false)}
         className={`w-full pl-10 pr-4 py-2 rounded-full text-body border-none focus:outline-none ${isActive ? 'search-input-active' : 'search-input-inactive'}`}
         style={{ 
-          backgroundColor: '#202020',
+          backgroundColor: 'var(--bg-primary)',
           color: activeColor,
           transition: 'color 150ms ease-in-out'
         }}

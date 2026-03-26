@@ -50,7 +50,7 @@ export default function FinancialHealthPage() {
   const isEmpty = score === 0 && !loading && !error;
 
   return (
-    <main className="min-h-screen bg-[#202020]">
+    <main className="min-h-screen bg-background">
       <div className="hidden md:block">
         <DashboardHeader pageName="Financial Health" />
       </div>
@@ -108,7 +108,7 @@ export default function FinancialHealthPage() {
                       <div
                         key={key}
                         className="rounded-2xl border border-[#3a3a3a] p-4"
-                        style={{ backgroundColor: '#202020' }}
+                        style={{ backgroundColor: 'var(--bg-primary)' }}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-card-header">{label}</span>

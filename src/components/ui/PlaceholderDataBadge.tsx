@@ -10,7 +10,7 @@ export default function PlaceholderDataBadge({ size = 'md' }: PlaceholderDataBad
   return (
     <span 
       className={`placeholder-data-badge ${sizeClasses} rounded-full font-semibold`}
-      style={{ backgroundColor: '#202020', color: '#E7E4E4', opacity: 0.7 }}
+      style={{ backgroundColor: 'var(--bg-primary)', color: '#E7E4E4', opacity: 0.7 }}
     >
       Placeholder Data
     </span>

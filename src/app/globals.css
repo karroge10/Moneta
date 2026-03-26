@@ -2,8 +2,10 @@
 
 :root {
   /* MONETA Design Tokens */
-  --bg-primary: #202020;
+  --bg-primary: #1a1a1a;
   --bg-surface: #282828;
+  /* Very soft elevation for cards (used by .card-surface) */
+  --shadow-card: 0 2px 14px rgba(0, 0, 0, 0.22);
   --text-primary: #E7E4E4;
   --text-secondary: rgba(231, 228, 228, 0.7);
   --accent-green: #74C648;
@@ -72,6 +74,12 @@ body.sidebar-collapsed {
   border-radius: var(--radius-card);
   padding: var(--space-l);
   overflow: hidden; /* Prevent content from overflowing card boundaries */
+  box-shadow: var(--shadow-card);
+}
+
+/* Same soft elevation when a panel uses surface fill without .card-surface padding/layout */
+.surface-elevated {
+  box-shadow: var(--shadow-card);
 }
 
 /* Scrollable list containers with consistent cutoff */
@@ -159,7 +167,7 @@ body.sidebar-collapsed {
 /* Global Custom Scrollbar - Standard for all scrollable elements */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #E7E4E4 #202020;
+  scrollbar-color: #E7E4E4 var(--bg-primary);
 }
 
 *::-webkit-scrollbar {
@@ -167,14 +175,14 @@ body.sidebar-collapsed {
 }
 
 *::-webkit-scrollbar-track {
-  background: #202020;
+  background: var(--bg-primary);
   border-radius: 4px;
 }
 
 *::-webkit-scrollbar-thumb {
   background: #E7E4E4;
   border-radius: 4px;
-  border: 2px solid #202020;
+  border: 2px solid var(--bg-primary);
 }
 
 *::-webkit-scrollbar-thumb:hover {
@@ -184,7 +192,7 @@ body.sidebar-collapsed {
 /* Custom scrollbar class for explicit use */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #E7E4E4 #202020;
+  scrollbar-color: #E7E4E4 var(--bg-primary);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -262,10 +270,10 @@ body.sidebar-collapsed {
 
 /* Custom thin themed scrollbar */
 .sidebar-scroll::-webkit-scrollbar { width: 8px; }
-.sidebar-scroll::-webkit-scrollbar-track { background: #202020; }
+.sidebar-scroll::-webkit-scrollbar-track { background: var(--bg-primary); }
 .sidebar-scroll::-webkit-scrollbar-thumb { background: #393939; border-radius: 8px; }
 .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: #4a4a4a; }
-.sidebar-scroll { scrollbar-color: #393939 #202020; scrollbar-width: thin; }
+.sidebar-scroll { scrollbar-color: #393939 var(--bg-primary); scrollbar-width: thin; }
 
 .sidebar-section-title {
   text-transform: uppercase;
@@ -316,14 +324,14 @@ body.sidebar-collapsed {
   gap: 8px;
   justify-content: center;
   padding: 10px 16px; /* match sidebar item padding */
-  background: #202020; /* requested */
+  background: var(--bg-primary); /* requested */
   border-radius: var(--radius-sidebar-active); /* same as active item */
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease;
   overflow: hidden; /* prevent hidden label from affecting layout */
 }
 
-.sidebar-logout:hover { background: #202020; color: var(--accent-purple); }
+.sidebar-logout:hover { background: var(--bg-primary); color: var(--accent-purple); }
 .sidebar-logout svg { stroke: currentColor; }
 
 /* Fixed avatar slot so skeleton and UserButton match (no layout shift) */
@@ -387,12 +395,12 @@ body.sidebar-collapsed .sidebar .sidebar-scroll { overflow: hidden; }
   width: 40px;
   height: 40px;
   border-radius: var(--radius-sidebar-active);
-  background: #202020; /* match logout default */
+  background: var(--bg-primary); /* match logout default */
   transition: background-color 0.2s ease, color 0.2s ease;
   cursor: pointer;
   color: var(--text-primary);
 }
-.collapse-btn:hover { background: #202020; color: var(--accent-purple); }
+.collapse-btn:hover { background: var(--bg-primary); color: var(--accent-purple); }
 .collapse-btn svg { stroke: currentColor; }
 
 /* Hide section labels when collapsed */

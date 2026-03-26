@@ -424,7 +424,7 @@ export default function ExpensesPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#202020]">
+      <main className="min-h-screen bg-background">
         {/* Desktop Header */}
         <div className="hidden md:block">
           <DashboardHeader 
@@ -473,7 +473,7 @@ export default function ExpensesPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-[#202020]">
+      <main className="min-h-screen bg-background">
         {/* Desktop Header */}
         <div className="hidden md:block">
           <DashboardHeader 
@@ -529,7 +529,7 @@ export default function ExpensesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#202020]">
+    <main className="min-h-screen bg-background">
       {/* Desktop Header */}
       <div className="hidden md:block">
         <DashboardHeader 

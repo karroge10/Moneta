@@ -83,7 +83,7 @@ export default function FAQSection({ faqItems }: FAQSectionProps) {
               onMouseEnter={() => setIsFilterHovered(true)}
               onMouseLeave={() => setIsFilterHovered(false)}
               className="flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer w-full justify-between"
-              style={{ backgroundColor: '#202020' }}
+              style={{ backgroundColor: 'var(--bg-primary)' }}
             >
               <div className="flex items-center gap-2" style={{ color: filterTextColor, transition: 'color 0.15s ease' }}>
                 <SelectedIcon width={18} height={18} strokeWidth={1.5} style={{ color: filterTextColor, transition: 'color 0.15s ease' }} />
@@ -93,7 +93,7 @@ export default function FAQSection({ faqItems }: FAQSectionProps) {
             </button>
             
             {isFilterOpen && (
-              <div className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: '#202020' }}>
+              <div className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
                 {categories.map((category) => {
                   const isSelected = selectedCategory === category.value;
                   const CategoryIcon = category.icon;
