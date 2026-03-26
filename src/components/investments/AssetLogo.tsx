@@ -31,5 +31,9 @@ export default function AssetLogo({ src, size = 20, className = "", style, fallb
     }
 
     const Icon = getIcon(error && fallback ? fallback : src);
-    return <Icon width={size} height={size} strokeWidth={1.5} className={className} style={style} />;
+    return (
+        <span className={className} style={style}>
+            <Icon width={size} height={size} strokeWidth={1.5} />
+        </span>
+    );
 }

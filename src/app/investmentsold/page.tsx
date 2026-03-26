@@ -262,7 +262,6 @@ export default function InvestmentsNewPage() {
                   <PortfolioTrendCard
                     balance={data.balance}
                     currency={currency}
-                    graphData={data.performance.data}
                   />
                 </div>
               )}
