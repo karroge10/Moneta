@@ -1,5 +1,5 @@
 import { db } from './db';
-import { Asset, AssetType, PricingMode } from '@prisma/client';
+import { Asset, AssetType, PricingMode, Prisma } from '@prisma/client';
 
 export async function searchAssets(query: string, userId?: number) {
     if (!query) return [];
@@ -13,8 +13,8 @@ export async function searchAssets(query: string, userId?: number) {
                         { userId: null },
                         {
                             OR: [
-                                { name: { contains: query, mode: 'insensitive' } },
-                                { ticker: { contains: query, mode: 'insensitive' } },
+                                { name: { contains: query, mode: Prisma.QueryMode.insensitive } },
+                                { ticker: { contains: query, mode: Prisma.QueryMode.insensitive } },
                             ]
                         }
                     ]
@@ -23,7 +23,7 @@ export async function searchAssets(query: string, userId?: number) {
                 ...(userId ? [{
                     AND: [
                         { userId },
-                        { name: { contains: query, mode: 'insensitive' } }
+                        { name: { contains: query, mode: Prisma.QueryMode.insensitive } }
                     ]
                 }] : [])
             ],

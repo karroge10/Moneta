@@ -18,6 +18,7 @@ import { TransactionUploadResponse, TransactionUploadMetadata, UploadedTransacti
 import { Upload, WarningTriangle, Reports, Language, Trash, NavArrowUp, NavArrowDown } from 'iconoir-react';
 import { useCurrency } from '@/hooks/useCurrency';
 import Toast, { ToastContainer, type ToastType } from '@/components/ui/Toast';
+import Spinner from '@/components/ui/Spinner';
 import { useCategories } from '@/hooks/useCategories';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 
