@@ -10,7 +10,7 @@
  * If you previously ran with country codes (US, GE, DE), delete demo users first and re-run.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
@@ -270,20 +270,33 @@ async function main() {
 
   const investmentUsers = createdUsers.slice(0, 8);
   for (const u of investmentUsers) {
-    await prisma.investment.create({
+    const purchasePrice = 5000;
+    const currentValue = purchasePrice * (0.85 + Math.random() * 0.3);
+    const asset = await prisma.asset.create({
+      data: {
+        name: 'Demo Portfolio',
+        ticker: null,
+        assetType: 'custom',
+        coingeckoId: null,
+        pricingMode: 'manual',
+        icon: 'BitcoinCircle',
+        userId: u.id,
+        manualPrice: new Prisma.Decimal(currentValue),
+      },
+    });
+    await prisma.transaction.create({
       data: {
         userId: u.id,
-        name: 'Demo Portfolio',
-        subtitle: 'Stocks & bonds',
-        assetType: 'stock',
-        sourceType: 'manual',
-        quantity: 1,
-        purchasePrice: 5000,
-        purchaseDate: new Date(now.getFullYear() - 1, 0, 1),
-        purchaseCurrencyId: usd.id,
-        currentValue: 5000 * (0.85 + Math.random() * 0.3),
-        changePercent: -15 + Math.random() * 25,
-        icon: 'BitcoinCircle',
+        type: 'expense',
+        amount: 0,
+        description: 'Bought 1 Demo Portfolio (demographic seed)',
+        source: 'demographic_seed',
+        date: new Date(now.getFullYear() - 1, 0, 1),
+        currencyId: usd.id,
+        investmentAssetId: asset.id,
+        investmentType: 'buy',
+        quantity: new Prisma.Decimal(1),
+        pricePerUnit: new Prisma.Decimal(purchasePrice),
       },
     });
   }

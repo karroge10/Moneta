@@ -6,7 +6,6 @@ import { Investment } from '@/types/dashboard';
 import { getAssetColor } from '@/lib/asset-utils';
 import { BitcoinCircle, Cash, Neighbourhood, Reports } from 'iconoir-react';
 import { useCurrency } from '@/hooks/useCurrency';
-import { formatNumber } from '@/lib/utils'; // Assuming formatNumber is available
 
 interface AssetAllocationCardProps {
     portfolio: Investment[];
@@ -71,19 +70,16 @@ export default function AssetAllocationCard({ portfolio }: AssetAllocationCardPr
 
     return (
         <Card title="Allocation" className="h-full flex flex-col min-h-0 overflow-hidden">
-            <div className="flex flex-col h-full mt-2 min-h-0">
-                {/* Chart Section */}
-                <div className="w-full h-[180px] flex-shrink-0 flex justify-center mb-4">
+            <div className="flex flex-col flex-1 min-h-0 h-full mt-2 gap-3">
+                <div className="flex-1 min-h-0 w-full flex justify-center items-center">
                     <DonutChart data={data} />
                 </div>
 
-                {/* Legend Section */}
-                <div className="flex-1 space-y-3 w-full overflow-y-auto min-h-0 custom-scrollbar pr-2">
+                <div className="shrink-0 max-h-[45%] space-y-3 w-full overflow-y-auto min-h-0 custom-scrollbar pr-2">
                     {data.map((item) => {
                         const Icon = TYPE_ICONS[item.type] || Reports;
                         return (
                             <div key={item.name} className="flex items-center gap-3">
-                                {/* Icon Circle */}
                                 <div 
                                     className="w-10 h-10 flex items-center justify-center rounded-full flex-shrink-0" 
                                     style={{ backgroundColor: `${item.color}1a` }}
@@ -91,15 +87,12 @@ export default function AssetAllocationCard({ portfolio }: AssetAllocationCardPr
                                      <Icon width={20} height={20} strokeWidth={1.5} style={{ color: item.color }} />
                                 </div>
                                 
-                                {/* Name */}
                                 <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-medium text-primary truncate">{item.name}</div>
-                                    <div className="text-xs text-secondary">{item.displayPct}%</div>
+                                    <div className="text-body font-medium text-primary truncate">{item.name}</div>
+                                    <div className="text-helper text-secondary">{item.displayPct}%</div>
                                 </div>
 
-                                {/* Amount (Optional) or just Value */}
-                                <div className="text-sm font-semibold flex-shrink-0 tabular-nums">
-                                     {/* Use helper formatNumber usually */}
+                                <div className="text-body font-semibold flex-shrink-0 tabular-nums text-primary">
                                      {currency.symbol}{Math.round(item.amount).toLocaleString()}
                                 </div>
                             </div>

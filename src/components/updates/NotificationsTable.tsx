@@ -1,6 +1,7 @@
 'use client';
 
 import { NotificationEntry } from '@/types/dashboard';
+import { notificationTextForDisplay } from '@/lib/notification-display';
 
 interface NotificationsTableProps {
   notifications: NotificationEntry[];
@@ -72,7 +73,7 @@ export default function NotificationsTable({
                     <span className="text-sm">{notification.type}</span>
                   </td>
                   <td className="px-5 py-4 align-top">
-                    <span className="text-sm">{notification.text}</span>
+                    <span className="text-sm">{notificationTextForDisplay(notification.text)}</span>
                   </td>
                 </tr>
               ))

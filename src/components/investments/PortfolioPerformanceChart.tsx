@@ -33,7 +33,7 @@ export default function PortfolioPerformanceChart({ data, currencySymbol, onRang
                             key={tf}
                             onClick={() => handleTimeframeChange(tf)}
                             disabled={isLoading}
-                            className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${
+                            className={`px-3 py-1 rounded-md text-helper font-semibold transition-colors ${
                                 timeframe === tf
                                 ? 'bg-[#AC66DA] text-white' 
                                 : 'text-secondary hover:text-white'
