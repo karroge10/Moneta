@@ -116,7 +116,7 @@ export default function FinancialHealthModal({
                         <div
                           key={key}
                           className="rounded-2xl border border-[#3a3a3a] p-4"
-                          style={{ backgroundColor: '#202020' }}
+                          style={{ backgroundColor: 'var(--bg-primary)' }}
                         >
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-card-header">{label}</span>

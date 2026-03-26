@@ -439,7 +439,7 @@ export default function IncomePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#202020]">
+      <main className="min-h-screen bg-background">
         {/* Desktop Header */}
         <div className="hidden md:block">
           <DashboardHeader 
@@ -488,7 +488,7 @@ export default function IncomePage() {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-[#202020]">
+      <main className="min-h-screen bg-background">
         {/* Desktop Header */}
         <div className="hidden md:block">
           <DashboardHeader 
@@ -544,7 +544,7 @@ export default function IncomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#202020]">
+    <main className="min-h-screen bg-background">
       {/* Desktop Header */}
       <div className="hidden md:block">
         <DashboardHeader 

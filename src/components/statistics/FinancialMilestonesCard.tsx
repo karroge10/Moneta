@@ -22,7 +22,7 @@ export default function FinancialMilestonesCard({ milestone, loading = false }: 
         className="flex flex-col shrink-0"
       >
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden" style={{ minHeight: contentMinHeight }}>
-          <div className="p-3 mb-4 rounded-2xl" style={{ backgroundColor: '#202020' }}>
+          <div className="p-3 mb-4 rounded-2xl" style={{ backgroundColor: 'var(--bg-primary)' }}>
             <div className="h-3 w-16 rounded animate-pulse mb-2" style={SKELETON_STYLE} />
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
@@ -55,7 +55,7 @@ export default function FinancialMilestonesCard({ milestone, loading = false }: 
           <div 
             className="p-3 mb-4"
             style={{
-              backgroundColor: '#202020',
+              backgroundColor: 'var(--bg-primary)',
               borderRadius: '15px',
             }}
           >

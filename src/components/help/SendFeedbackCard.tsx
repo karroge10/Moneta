@@ -94,7 +94,7 @@ export default function SendFeedbackCard() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
+              className="w-full pl-10 pr-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
               style={{ color: 'var(--text-primary)' }}
             />
           </div>
@@ -107,7 +107,7 @@ export default function SendFeedbackCard() {
             <button
               type="button"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full flex items-center gap-2 px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors text-left"
+              className="w-full flex items-center gap-2 px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors text-left"
               style={{ color: 'var(--text-primary)' }}
             >
               <WarningTriangle 
@@ -152,7 +152,7 @@ export default function SendFeedbackCard() {
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Describe your issue or feedback"
             rows={6}
-            className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors resize-none"
+            className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors resize-none"
             style={{ color: 'var(--text-primary)' }}
           />
         </div>
@@ -162,7 +162,7 @@ export default function SendFeedbackCard() {
           type="submit"
           disabled={isSubmitting}
           className="w-full px-6 py-3 rounded-full text-body font-semibold transition-colors cursor-pointer hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
-          style={{ backgroundColor: '#E7E4E4', color: '#202020' }}
+          style={{ backgroundColor: '#E7E4E4', color: 'var(--bg-primary)' }}
         >
           {isSubmitting ? 'Sending…' : 'Send Message'}
         </button>

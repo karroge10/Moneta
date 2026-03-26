@@ -94,11 +94,11 @@ export default function TransactionForm({
             </div>
 
             {/* Buy / Sell Toggle */}
-            <div className="grid grid-cols-2 bg-[#202020] p-1 rounded-xl border border-[#3a3a3a]">
+            <div className="grid grid-cols-2 bg-background p-1 rounded-xl border border-[#3a3a3a]">
                 <button
                     type="button"
                     onClick={() => setType('buy')}
-                    className={`py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${type === 'buy' ? 'bg-[#74C648] text-[#202020]' : 'text-helper hover:text-white'
+                    className={`py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${type === 'buy' ? 'bg-[#74C648] text-background' : 'text-helper hover:text-white'
                         }`}
                 >
                     <Plus width={16} height={16} strokeWidth={2.5} /> Buy
@@ -119,7 +119,7 @@ export default function TransactionForm({
                     <input
                         type="number"
                         step="any"
-                        className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
+                        className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
                         value={quantity}
                         onChange={(e) => setQuantity(e.target.value)}
                         placeholder="0.00"
@@ -130,7 +130,7 @@ export default function TransactionForm({
                     <input
                         type="number"
                         step="any"
-                        className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
+                        className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
                         value={pricePerUnit}
                         onChange={(e) => setPricePerUnit(e.target.value)}
                         placeholder="0.00"
@@ -144,7 +144,7 @@ export default function TransactionForm({
                     type="button"
                     ref={dateTriggerRef}
                     onClick={() => setIsDateOpen(!isDateOpen)}
-                    className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] text-left hover:border-[#AC66DA] transition-all flex items-center justify-between cursor-pointer"
+                    className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] text-left hover:border-[#AC66DA] transition-all flex items-center justify-between cursor-pointer"
                 >
                     <span className="text-primary">
                         {formatDateForDisplay(date)}
@@ -154,7 +154,7 @@ export default function TransactionForm({
                 {isDateOpen && typeof document !== 'undefined' && createPortal(
                     <div
                         ref={datePortalRef}
-                        className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden bg-[#202020]"
+                        className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden bg-background"
                         style={dateDropdownStyle ?? { display: 'none' }}
                     >
                         <CalendarPanel
@@ -171,14 +171,14 @@ export default function TransactionForm({
             <div>
                 <label className="block text-body font-medium mb-2">Notes</label>
                 <input
-                    className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
+                    className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Optional notes"
                 />
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-[#202020] rounded-xl border border-[#3a3a3a]">
+            <div className="flex items-center justify-between p-4 bg-background rounded-xl border border-[#3a3a3a]">
                 <span className="text-helper text-xs uppercase">Total {type === 'buy' ? 'Cost' : 'Value'}</span>
                 <span className="text-lg font-bold text-primary">
                     {currencySymbol}{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

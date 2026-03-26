@@ -24,7 +24,7 @@ export function CompactListDesign({ portfolio, currency, onAssetClick }: Portfol
                     <div
                         key={item.id}
                         onClick={() => onAssetClick(item)}
-                        className="flex items-center gap-3 p-3 bg-[#202020] rounded-xl border border-[#3a3a3a] cursor-pointer hover:border-[#AC66DA] transition-colors group"
+                        className="flex items-center gap-3 p-3 bg-background rounded-xl border border-[#3a3a3a] cursor-pointer hover:border-[#AC66DA] transition-colors group"
                     >
                         {/* Icon + Name */}
                         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -102,7 +102,7 @@ export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioD
                         <div
                             key={item.id}
                             onClick={() => onAssetClick(item)}
-                            className="p-5 bg-[#202020] rounded-3xl border-2 border-[#3a3a3a] cursor-pointer hover:border-[#AC66DA] transition-colors"
+                            className="p-5 bg-background rounded-3xl border-2 border-[#3a3a3a] cursor-pointer hover:border-[#AC66DA] transition-colors"
                         >
                             {/* Header with Icon */}
                             <div className="flex items-center gap-3 mb-4">
@@ -234,10 +234,10 @@ export function TableDesign({ portfolio, currency, onAssetClick }: PortfolioDesi
     };
 
     return (
-        <div className="rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020' }}>
+        <div className="rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
             <div className="max-h-[400px] overflow-y-auto">
                 <table className="min-w-full">
-                    <thead className="sticky top-0 bg-[#202020] z-10 border-b border-[#3a3a3a]">
+                    <thead className="sticky top-0 bg-background z-10 border-b border-[#3a3a3a]">
                         <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
                             <th
                                 className="px-5 py-3 align-top cursor-pointer hover:text-[#E7E4E4] transition-colors"

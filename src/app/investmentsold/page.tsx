@@ -201,7 +201,7 @@ export default function InvestmentsNewPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#202020]">
+    <main className="min-h-screen bg-background">
       {/* Desktop Header */}
       <div className="hidden md:block">
         <DashboardHeader
@@ -306,11 +306,11 @@ export default function InvestmentsNewPage() {
 
             {/* Recent Activities Card */}
             <Card title="Recent Activities">
-              <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020' }}>
+              <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
                 {data?.recentActivities && data.recentActivities.length > 0 ? (
                   <div className="flex-1 overflow-y-auto max-h-[400px]">
                     <table className="min-w-full">
-                      <thead className="sticky top-0 bg-[#202020] z-10">
+                      <thead className="sticky top-0 bg-background z-10">
                         <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
                           <th className="px-5 py-3 align-top">Asset</th>
                           <th className="px-5 py-3 align-top">Date</th>

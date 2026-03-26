@@ -96,7 +96,7 @@ export default function LearningCenterCard() {
               key={lesson.id}
               onClick={() => toggleLesson(lesson.id)}
               className="flex flex-col items-center h-full p-4 rounded-[30px] cursor-pointer transition-colors hover:opacity-90"
-              style={{ backgroundColor: '#202020' }}
+              style={{ backgroundColor: 'var(--bg-primary)' }}
             >
               {/* Title - Always at top with fixed height */}
               <h3 

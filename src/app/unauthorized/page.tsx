@@ -25,7 +25,7 @@ function UnauthorizedContent() {
   };
   
   return (
-    <div className="min-h-screen bg-[#202020] flex flex-col items-center justify-center px-6 md:px-8 py-12">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 md:px-8 py-12">
       <div className="max-w-2xl mx-auto text-center space-y-8">
         {/* Logo in Circle */}
         <div className="flex justify-center">
@@ -114,7 +114,7 @@ function UnauthorizedContent() {
 export default function UnauthorizedPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#202020] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-body text-[#E7E4E4] opacity-70">Loading...</div>
       </div>
     }>

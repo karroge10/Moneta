@@ -185,7 +185,7 @@ export default function GoalsPage() {
 
   if (fetchError && goals.length === 0) {
     return (
-      <main className="min-h-screen bg-[#202020]">
+      <main className="min-h-screen bg-background">
         <div className="hidden md:block">
           <DashboardHeader pageName="Goals" actionButton={{ label: 'Add Goal', onClick: handleAddGoalClick }} />
         </div>
@@ -206,7 +206,7 @@ export default function GoalsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#202020]">
+    <main className="min-h-screen bg-background">
       {/* Desktop Header */}
       <div className="hidden md:block">
         <DashboardHeader 

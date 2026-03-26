@@ -13,7 +13,7 @@ export default function HelpPage() {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('All Time');
 
   return (
-    <main className="min-h-screen bg-[#202020]">
+    <main className="min-h-screen bg-background">
       {/* Desktop Header */}
       <div className="hidden md:block">
         <DashboardHeader 

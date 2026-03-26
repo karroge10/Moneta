@@ -17,11 +17,11 @@ export default function NotificationsTable({
   return (
     <div
       className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden"
-      style={{ backgroundColor: '#202020' }}
+      style={{ backgroundColor: 'var(--bg-primary)' }}
     >
       <div className="flex-1 min-h-0 overflow-auto">
         <table className="min-w-full">
-          <thead className="sticky top-0 z-10" style={{ backgroundColor: '#202020' }}>
+          <thead className="sticky top-0 z-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
             <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
               <th className="px-5 py-3 align-top">Date</th>
               <th className="px-5 py-3 align-top">Time</th>

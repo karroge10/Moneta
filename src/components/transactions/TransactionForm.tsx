@@ -492,7 +492,7 @@ export default function TransactionForm({
             value={formData.name}
             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             disabled={isSaving}
-            className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ color: 'var(--text-primary)' }}
             placeholder="Enter a name"
             title={formData.name}
@@ -515,7 +515,7 @@ export default function TransactionForm({
             type="button"
             onClick={() => setIsCategoryOpen(prev => !prev)}
             disabled={isSaving}
-            className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ color: 'var(--text-primary)' }}
           >
             <span
@@ -533,7 +533,7 @@ export default function TransactionForm({
           {isCategoryOpen && (
             <div
               className="absolute top-full left-0 right-0 mt-2 rounded-2xl shadow-lg overflow-hidden z-10 border border-[#3a3a3a]"
-              style={{ backgroundColor: '#202020' }}
+              style={{ backgroundColor: 'var(--bg-primary)' }}
             >
               <div className="max-h-64 overflow-y-auto">
                 <button
@@ -586,7 +586,7 @@ export default function TransactionForm({
               ref={dateTriggerRef}
               onClick={() => setIsDateOpen(prev => !prev)}
               disabled={isSaving}
-              className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: 'var(--text-primary)' }}
             >
               <span
@@ -603,7 +603,7 @@ export default function TransactionForm({
                 ref={datePortalRef}
                 className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden"
                 style={{
-                  backgroundColor: '#202020',
+                  backgroundColor: 'var(--bg-primary)',
                   ...(dateDropdownStyle ?? {
                     position: 'fixed',
                     top: -9999,
@@ -641,7 +641,7 @@ export default function TransactionForm({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-body font-medium mb-2">Type</label>
-          <div className="relative bg-[#202020] border border-[#3a3a3a] rounded-xl p-0.5 flex gap-0.5 h-[42px]">
+          <div className="relative bg-background border border-[#3a3a3a] rounded-xl p-0.5 flex gap-0.5 h-[42px]">
             <button
               type="button"
               onClick={() => setTransactionType('income')}
@@ -693,7 +693,7 @@ export default function TransactionForm({
                   }));
                 }}
                 disabled={isSaving}
-                className="w-full pl-8 pr-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full pl-8 pr-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ color: 'var(--text-primary)' }}
                 placeholder="0.00"
               />
@@ -711,7 +711,7 @@ export default function TransactionForm({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-[#3a3a3a] p-4 bg-[#202020] flex flex-col gap-4">
+      <div className="rounded-2xl border border-[#3a3a3a] p-4 bg-background flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-body font-medium">Recurring</p>
@@ -753,7 +753,7 @@ export default function TransactionForm({
                     ref={recurringStartTriggerRef}
                     onClick={() => setIsRecurringStartOpen(prev => !prev)}
                     disabled={isSaving}
-                    className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ color: 'var(--text-primary)' }}
                   >
                     <span
@@ -770,7 +770,7 @@ export default function TransactionForm({
                       ref={recurringStartPortalRef}
                       className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden"
                       style={{
-                        backgroundColor: '#202020',
+                        backgroundColor: 'var(--bg-primary)',
                         ...(recurringStartDropdownStyle ?? {
                           position: 'fixed',
                           top: -9999,
@@ -804,7 +804,7 @@ export default function TransactionForm({
                   value={recurringInterval}
                   onChange={(e) => setRecurringInterval(parseInt(e.target.value, 10) || 1)}
                   disabled={isSaving}
-                  className="col-span-2 px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="col-span-2 px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ color: 'var(--text-primary)' }}
                 />
                 <div className="col-span-3 relative">
@@ -813,7 +813,7 @@ export default function TransactionForm({
                     ref={recurringUnitTriggerRef}
                     onClick={() => setIsRecurringUnitOpen(prev => !prev)}
                     disabled={isSaving}
-                    className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ color: 'var(--text-primary)' }}
                   >
                     <span className="text-body font-semibold capitalize">{recurringUnit}</span>
@@ -822,7 +822,7 @@ export default function TransactionForm({
                   {isRecurringUnitOpen && (
                     <div
                       className={`absolute left-0 right-0 rounded-2xl shadow-lg overflow-hidden border border-[#3a3a3a] z-10 ${recurringUnitOpenUpward ? 'bottom-full mb-2' : 'top-full mt-2'}`}
-                      style={{ backgroundColor: '#202020' }}
+                      style={{ backgroundColor: 'var(--bg-primary)' }}
                     >
                       {(['day', 'week', 'month', 'year'] as RecurringFrequencyUnit[]).map((unit) => (
                         <button
@@ -855,7 +855,7 @@ export default function TransactionForm({
                   ref={recurringEndTriggerRef}
                   onClick={() => setIsRecurringEndOpen(prev => !prev)}
                   disabled={isSaving}
-                  className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ color: 'var(--text-primary)' }}
                 >
                   <span
@@ -872,7 +872,7 @@ export default function TransactionForm({
                     ref={recurringEndPortalRef}
                     className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden"
                     style={{
-                      backgroundColor: '#202020',
+                      backgroundColor: 'var(--bg-primary)',
                       ...(recurringEndDropdownStyle ?? {
                         position: 'fixed',
                         top: -9999,

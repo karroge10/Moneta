@@ -48,7 +48,7 @@ export default function NotificationsPage() {
   }, [notificationSettings, fetchNotificationSettings]);
 
   return (
-    <main className="min-h-screen bg-[#202020]">
+    <main className="min-h-screen bg-background">
       <div className="hidden md:block">
         <DashboardHeader pageName="Notifications" />
       </div>

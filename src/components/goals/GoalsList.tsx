@@ -36,7 +36,7 @@ export default function GoalsList({ goals, currencyOptions = [], onGoalClick, lo
           <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 min-h-0 mb-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {Array.from({ length: SKELETON_CARDS }).map((_, idx) => (
-                <div key={idx} className="flex flex-col p-6 rounded-[30px] gap-4 animate-pulse" style={{ backgroundColor: '#202020' }}>
+                <div key={idx} className="flex flex-col p-6 rounded-[30px] gap-4 animate-pulse" style={{ backgroundColor: 'var(--bg-primary)' }}>
                   <div className="h-6 w-3/4 rounded" style={SKELETON_STYLE} />
                   <div className="flex items-center justify-between">
                     <div className="h-4 w-24 rounded" style={SKELETON_STYLE} />

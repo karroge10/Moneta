@@ -209,7 +209,7 @@ export default function GoalForm({
           value={formData.name}
           onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
           disabled={isSaving}
-          className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ color: 'var(--text-primary)' }}
           placeholder="Enter goal name"
           required
@@ -224,7 +224,7 @@ export default function GoalForm({
             ref={dateTriggerRef}
             onClick={() => setIsDateOpen(prev => !prev)}
             disabled={isSaving}
-            className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ color: 'var(--text-primary)' }}
           >
             <span
@@ -241,7 +241,7 @@ export default function GoalForm({
               ref={datePortalRef}
               className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden"
               style={{
-                backgroundColor: '#202020',
+                backgroundColor: 'var(--bg-primary)',
                 ...(dateDropdownStyle ?? {
                   position: 'fixed',
                   top: -9999,
@@ -301,7 +301,7 @@ export default function GoalForm({
                 }
               }}
               disabled={isSaving}
-              className="w-full pl-8 pr-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full pl-8 pr-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: 'var(--text-primary)' }}
               placeholder="0.00"
               required
@@ -334,7 +334,7 @@ export default function GoalForm({
                 }
               }}
               disabled={isSaving}
-              className="w-full pl-8 pr-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full pl-8 pr-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors placeholder:text-[#8C8C8C] disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: 'var(--text-primary)' }}
               placeholder="0.00"
               required

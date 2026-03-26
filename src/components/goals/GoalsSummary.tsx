@@ -42,7 +42,7 @@ export default function GoalsSummary({ goals, compact = false, loading = false }
           <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 pr-2">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-1">
               {Array.from({ length: SKELETON_ITEMS }).map((_, idx) => (
-                <div key={idx} className="flex items-center gap-3 px-4 py-3 rounded-[30px]" style={{ backgroundColor: '#202020' }}>
+                <div key={idx} className="flex items-center gap-3 px-4 py-3 rounded-[30px]" style={{ backgroundColor: 'var(--bg-primary)' }}>
                   <div className="w-12 h-12 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
                   <div className="h-4 flex-1 max-w-[120px] rounded animate-pulse" style={SKELETON_STYLE} />
                   <div className="h-4 w-16 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
@@ -97,7 +97,7 @@ export default function GoalsSummary({ goals, compact = false, loading = false }
                   key={item.label}
                   className="flex items-center gap-3 px-4 py-3"
                   style={{
-                    backgroundColor: '#202020',
+                    backgroundColor: 'var(--bg-primary)',
                     borderRadius: '30px',
                     width: '100%',
                   }}
