@@ -68,13 +68,13 @@ export default function DemographicComparisonsSection({
         className="flex flex-col min-h-0 flex-1"
       >
         <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden" style={{ minHeight: contentMinHeight }}>
-          <div className="w-full flex items-center gap-2 px-4 py-2 rounded-full" style={{ backgroundColor: '#202020' }}>
+          <div className="w-full flex items-center gap-2 px-4 py-2 rounded-full" style={{ backgroundColor: 'var(--bg-primary)' }}>
             <div className="w-5 h-5 rounded animate-pulse shrink-0" style={SKELETON_STYLE} />
             <div className="h-5 flex-1 max-w-[140px] rounded animate-pulse" style={SKELETON_STYLE} />
           </div>
           <div className="flex flex-col gap-3 pr-2">
             {Array.from({ length: SKELETON_ITEMS }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-3xl" style={{ backgroundColor: '#202020' }}>
+              <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-3xl" style={{ backgroundColor: 'var(--bg-primary)' }}>
                 <div className="w-12 h-12 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
                 <div className="flex-1 min-w-0 space-y-2">
                   <div className="h-4 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
@@ -168,7 +168,7 @@ export default function DemographicComparisonsSection({
               onMouseEnter={() => setDimensionHovered(true)}
               onMouseLeave={() => setDimensionHovered(false)}
               className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors duration-150 cursor-pointer w-full justify-between text-body"
-              style={{ backgroundColor: '#202020', color: textColor, transitionProperty: 'color' }}
+              style={{ backgroundColor: 'var(--bg-primary)', color: textColor, transitionProperty: 'color' }}
             >
               <div className="flex items-center gap-2">
                 {demographicDimension === 'age' && <User width={ICON_SIZE} height={ICON_SIZE} strokeWidth={1.5} style={{ color: textColor, transition: 'color 150ms ease-in-out' }} />}
@@ -179,7 +179,7 @@ export default function DemographicComparisonsSection({
               <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: textColor, transition: 'color 150ms ease-in-out' }} />
             </button>
             {dimensionOpen && (
-              <div className="absolute top-full mt-2 left-0 right-0 min-w-[200px] rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: '#202020' }}>
+              <div className="absolute top-full mt-2 left-0 right-0 min-w-[200px] rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
                 {(['age', 'country', 'profession'] as const).map((dim) => {
                   const isSelected = demographicDimension === dim;
                   const Icon = dim === 'age' ? User : dim === 'country' ? City : Suitcase;
@@ -238,7 +238,7 @@ export default function DemographicComparisonsSection({
                   key={comparison.id}
                   className="flex items-center gap-3 px-4 py-3"
                   style={{
-                    backgroundColor: '#202020',
+                    backgroundColor: 'var(--bg-primary)',
                     borderRadius: '30px',
                   }}
                 >

@@ -25,7 +25,7 @@ export default function GoalCard({ goal, currencyOptions = [], onClick }: GoalCa
     <div 
       className="flex flex-col p-6 cursor-pointer transition-opacity hover:opacity-90"
       style={{ 
-        backgroundColor: '#202020',
+        backgroundColor: 'var(--bg-primary)',
         borderRadius: '30px',
       }}
       onClick={onClick}

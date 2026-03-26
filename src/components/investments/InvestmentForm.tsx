@@ -362,7 +362,7 @@ export default function InvestmentForm({
                     }))}
                     className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${formState.assetType === opt.id
                       ? 'border-[#AC66DA] bg-[#AC66DA]/10'
-                      : 'border-[#3a3a3a] bg-[#202020] hover:border-[#4a4a4a]'
+                      : 'border-[#3a3a3a] bg-background hover:border-[#4a4a4a]'
                       }`}
                   >
                     <opt.icon className={formState.assetType === opt.id ? 'text-[#AC66DA]' : 'text-helper'} width={20} height={20} strokeWidth={1.5} />
@@ -381,7 +381,7 @@ export default function InvestmentForm({
             <div className="relative">
               <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-helper" width={20} height={20} />
               <input
-                className="w-full px-12 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-12 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={formState.assetType === 'crypto' ? 'Search BTC, Ethereum...' : 'Search AAPL, TSLA...'}
@@ -392,7 +392,7 @@ export default function InvestmentForm({
 
             <div className="space-y-2">
               <h4 className="text-helper text-xs uppercase tracking-wider ml-1">Results</h4>
-              <div className="rounded-xl border border-[#3a3a3a] bg-[#202020] divide-y divide-[#2a2a2a] overflow-hidden max-h-[300px] overflow-y-auto custom-scrollbar">
+              <div className="rounded-xl border border-[#3a3a3a] bg-background divide-y divide-[#2a2a2a] overflow-hidden max-h-[300px] overflow-y-auto custom-scrollbar">
                 {searchLoading ? (
                   <div className="p-8 flex flex-col items-center justify-center text-helper">
                     <Spinner size={24} />
@@ -463,7 +463,7 @@ export default function InvestmentForm({
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 w-full">
-                <div className="w-10 h-10 rounded-full bg-[#202020] flex items-center justify-center border border-[#3a3a3a] shrink-0">
+                <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center border border-[#3a3a3a] shrink-0">
                   <AssetLogo src={formState.icon} size={22} className="text-[#AC66DA]" />
                 </div>
                 <div className="flex-1">
@@ -507,7 +507,7 @@ export default function InvestmentForm({
                     <input 
                       value={formState.name}
                       onChange={(e) => setFormState(s => ({ ...s, name: e.target.value }))}
-                      className="text-lg font-bold bg-[#202020]/50 border border-transparent hover:border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none w-full transition-colors placeholder:text-[#8C8C8C] px-3 py-1.5 rounded-lg"
+                      className="text-lg font-bold bg-background/50 border border-transparent hover:border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none w-full transition-colors placeholder:text-[#8C8C8C] px-3 py-1.5 rounded-lg"
                       style={{ color: 'var(--text-primary)' }}
                       placeholder="Asset Name"
                     />
@@ -532,7 +532,7 @@ export default function InvestmentForm({
               </div>
             </div>
 
-            <div className="relative bg-[#202020] border border-[#3a3a3a] rounded-xl p-0.5 flex gap-0.5 h-[42px]">
+            <div className="relative bg-background border border-[#3a3a3a] rounded-xl p-0.5 flex gap-0.5 h-[42px]">
               <button
                 type="button"
                 onClick={() => setFormState(s => ({ ...s, investmentType: 'buy' }))}
@@ -567,7 +567,7 @@ export default function InvestmentForm({
                     type="number"
                     step="any"
                     disabled={isSaving}
-                    className={`w-full px-4 py-2 rounded-xl bg-[#202020] text-body border transition-colors disabled:cursor-not-allowed ${
+                    className={`w-full px-4 py-2 rounded-xl bg-background text-body border transition-colors disabled:cursor-not-allowed ${
                       formState.investmentType === 'sell' && availableQuantity !== null && Number(formState.quantity) > availableQuantity
                         ? 'border-[#D93F3F] focus:border-[#D93F3F]'
                         : 'border-[#3a3a3a] focus:border-[#AC66DA]'
@@ -595,7 +595,7 @@ export default function InvestmentForm({
                     type="number"
                     step="any"
                     disabled={isSaving}
-                    className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors disabled:cursor-not-allowed"
                     value={formState.pricePerUnit}
                     onChange={(e) => setFormState(s => ({ ...s, pricePerUnit: e.target.value }))}
                     placeholder="0.00"
@@ -611,7 +611,7 @@ export default function InvestmentForm({
                     ref={dateTriggerRef}
                     onClick={() => setIsDateOpen(!isDateOpen)}
                     disabled={isSaving}
-                    className="w-full px-4 py-2 rounded-xl bg-[#202020] text-body border border-[#3a3a3a] text-left hover:border-[#AC66DA] transition-all flex items-center justify-between cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] text-left hover:border-[#AC66DA] transition-all flex items-center justify-between cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className={formState.date ? 'text-primary' : 'text-helper'}>
                       {formState.date ? formatDateForDisplay(formState.date) : 'Today'}
@@ -621,7 +621,7 @@ export default function InvestmentForm({
                   {isDateOpen && typeof document !== 'undefined' && createPortal(
                     <div
                       ref={datePortalRef}
-                      className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden bg-[#202020]"
+                      className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden bg-background"
                       style={dateDropdownStyle ?? { display: 'none' }}
                     >
                       <CalendarPanel
@@ -648,7 +648,7 @@ export default function InvestmentForm({
 
               {formState.quantity && formState.pricePerUnit && (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-4 bg-[#202020] rounded-xl border border-[#3a3a3a]">
+                  <div className="flex items-center justify-between p-4 bg-background rounded-xl border border-[#3a3a3a]">
                     <span className="text-helper text-xs uppercase">Total Cost</span>
                     <span className="text-lg font-bold text-primary">
                       {targetSymbol}{formatSmartNumber(Number(formState.quantity) * Number(formState.pricePerUnit))}
@@ -656,7 +656,7 @@ export default function InvestmentForm({
                   </div>
 
                   {formState.currencyId && currency?.id && formState.currencyId !== currency.id && (
-                    <div className="p-4 rounded-xl bg-[#202020] border border-[#3a3a3a] min-h-[80px] flex flex-col justify-center">
+                    <div className="p-4 rounded-xl bg-background border border-[#3a3a3a] min-h-[80px] flex flex-col justify-center">
                       {isLoadingRate ? (
                         <div className="space-y-3 animate-pulse">
                           <div className="flex justify-between items-center">

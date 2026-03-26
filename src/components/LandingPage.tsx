@@ -63,11 +63,11 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#202020]">
+    <div className="min-h-screen bg-background">
       {/* Navbar - Fixed on Scroll */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b border-[#3a3a3a] ${
-          isScrolled ? "bg-[#202020]/95 backdrop-blur-sm" : "bg-transparent"
+          isScrolled ? "bg-background/95 backdrop-blur-sm" : "bg-transparent"
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 md:px-8 py-6 flex justify-between items-center">
@@ -207,7 +207,7 @@ export default function LandingPage() {
           {/* Dashboard Screenshot - Transitions into next section with fade */}
           <div className="relative -mb-24 md:-mb-32">
             <div className="card-surface p-4 md:p-6 rounded-t-[30px] border-b-0 relative overflow-hidden">
-              <div className="aspect-video bg-[#202020] rounded-[20px] border border-[#3a3a3a] flex items-center justify-center relative">
+              <div className="aspect-video bg-background rounded-[20px] border border-[#3a3a3a] flex items-center justify-center relative">
                 <div className="text-center space-y-4">
                   <div className="text-body text-[#E7E4E4] opacity-50">Dashboard Preview</div>
                   <div className="text-helper text-[#E7E4E4] opacity-30">
@@ -215,7 +215,7 @@ export default function LandingPage() {
                   </div>
                 </div>
                 {/* Fade gradient at bottom */}
-                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#202020] to-transparent pointer-events-none" />
+                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
               </div>
             </div>
           </div>

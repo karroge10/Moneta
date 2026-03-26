@@ -48,7 +48,7 @@ export default function TypeFilter({ value, onChange }: TypeFilterProps) {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors duration-150 cursor-pointer w-full justify-between text-body"
-        style={{ backgroundColor: '#202020', color: textColor, transitionProperty: 'color' }}
+        style={{ backgroundColor: 'var(--bg-primary)', color: textColor, transitionProperty: 'color' }}
       >
         <div className="flex items-center gap-2">
           <SelectedIcon width={20} height={20} strokeWidth={1.5} style={{ color: textColor, transition: 'color 150ms ease-in-out' }} />
@@ -58,7 +58,7 @@ export default function TypeFilter({ value, onChange }: TypeFilterProps) {
       </button>
       
       {isOpen && (
-        <div className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: '#202020' }}>
+        <div className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
           {options.map((option) => {
             const isSelected = value === option.value;
             const OptionIcon = option.icon;

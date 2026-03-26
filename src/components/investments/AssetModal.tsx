@@ -340,7 +340,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                 </>
                             ) : asset ? (
                                 <>
-                                    <div className="w-12 h-12 icon-circle bg-[#202020]">
+                                    <div className="w-12 h-12 icon-circle bg-background">
                                         <AssetLogo
                                             src={asset.icon || getDerivedAssetIcon(asset.assetType, asset.ticker, asset.pricingMode)}
                                             size={28}
@@ -358,7 +358,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                             value={newName}
                                                             onChange={(e) => setNewName(e.target.value)}
                                                             disabled={isSaving}
-                                                            className="text-card-header bg-[#202020] border border-[#3a3a3a] rounded px-2 py-0.5 focus:border-[#AC66DA] focus:outline-none min-w-[200px] disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className="text-card-header bg-background border border-[#3a3a3a] rounded px-2 py-0.5 focus:border-[#AC66DA] focus:outline-none min-w-[200px] disabled:opacity-50 disabled:cursor-not-allowed"
                                                             autoFocus
                                                             onKeyDown={(e) => {
                                                                 if (e.key === 'Enter') handleUpdateAsset({ name: newName });
@@ -419,7 +419,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                             </div>
 
                                             {asset.pricingMode === 'live' && asset.currentPrice && (
-                                                <div className="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#202020] border border-[#3a3a3a] text-secondary leading-none shrink-0">
+                                                <div className="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-background border border-[#3a3a3a] text-secondary leading-none shrink-0">
                                                     Per 1 {asset.ticker}
                                                 </div>
                                             )}
@@ -457,7 +457,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                             { label: 'P&L', value: assetStats.totalPnL, isPnL: true, isQuantity: false },
                                             { label: 'ROI', value: assetStats.roi, isPnL: true, isPercent: true, isQuantity: false },
                                         ].map((stat, i) => (
-                                            <div key={i} className="p-4 bg-[#202020] rounded-2xl border border-[#3a3a3a] relative group">
+                                            <div key={i} className="p-4 bg-background rounded-2xl border border-[#3a3a3a] relative group">
                                                 <div className="text-xs text-helper uppercase tracking-wider mb-1">{stat.label}</div>
                                                 
                                                 {/* ... (rest of card contents adjusted) */}
@@ -528,7 +528,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
 
                                 {/* Historical Performance Chart */}
                                 {asset?.pricingMode === 'live' && (
-                                    <div className="bg-[#202020] rounded-3xl border border-[#3a3a3a] p-6 relative overflow-hidden">
+                                    <div className="bg-background rounded-3xl border border-[#3a3a3a] p-6 relative overflow-hidden">
                                         <div className="flex items-center justify-between mb-6">
                                             <h3 className="text-body font-medium">Price History</h3>
                                             <div className="flex bg-[#282828] rounded-lg p-1 border border-[#3a3a3a]">
@@ -551,7 +551,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                         
                                         <div className="h-[300px] w-full -ml-4 relative">
                                             {isHistoryLoading && (
-                                                <div className="absolute inset-0 z-10 bg-[#202020]/50 flex items-center justify-center backdrop-blur-sm">
+                                                <div className="absolute inset-0 z-10 bg-background/50 flex items-center justify-center backdrop-blur-sm">
                                                     <Spinner size={24} />
                                                 </div>
                                             )}
@@ -578,15 +578,15 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                     </div>
 
                                     {(isLoading || isValidating) ? (
-                                        <div className="rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020' }}>
+                                        <div className="rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
                                             <table className="min-w-full">
-                                                <thead className="sticky top-0 z-10 bg-[#202020]">
+                                                <thead className="sticky top-0 z-10 bg-background">
                                                     <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                                                        <th className="px-5 py-3 align-top bg-[#202020]">Date</th>
-                                                        <th className="px-5 py-3 align-top bg-[#202020]">Type</th>
-                                                        <th className="px-5 py-3 align-top text-right bg-[#202020]">Quantity</th>
-                                                        <th className="px-5 py-3 align-top text-right bg-[#202020]">Price</th>
-                                                        <th className="px-5 py-3 align-top text-right bg-[#202020]">Total</th>
+                                                        <th className="px-5 py-3 align-top bg-background">Date</th>
+                                                        <th className="px-5 py-3 align-top bg-background">Type</th>
+                                                        <th className="px-5 py-3 align-top text-right bg-background">Quantity</th>
+                                                        <th className="px-5 py-3 align-top text-right bg-background">Price</th>
+                                                        <th className="px-5 py-3 align-top text-right bg-background">Total</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -613,7 +613,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                             </table>
                                         </div>
                                     ) : (
-                                        <div className="rounded-3xl border border-[#3a3a3a] overflow-hidden relative" style={{ backgroundColor: '#202020' }}>
+                                        <div className="rounded-3xl border border-[#3a3a3a] overflow-hidden relative" style={{ backgroundColor: 'var(--bg-primary)' }}>
                                             {(isSaving || isDeleting) && (
                                                 <div className="absolute inset-0 z-10 bg-black/5 backdrop-blur-[1px] flex items-center justify-center transition-all duration-300">
                                                     <div className="bg-[#282828] p-3 rounded-2xl shadow-xl border border-[#3a3a3a] flex items-center justify-center">
@@ -623,13 +623,13 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                             )}
                                             <div className="overflow-x-auto max-h-[40vh]">
                                                 <table className="min-w-full">
-                                                    <thead className="sticky top-0 z-10 bg-[#202020]">
+                                                    <thead className="sticky top-0 z-10 bg-background">
                                                         <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                                                            <th className="px-5 py-3 align-top bg-[#202020]">Date</th>
-                                                            <th className="px-5 py-3 align-top bg-[#202020]">Type</th>
-                                                            <th className="px-5 py-3 align-top text-right bg-[#202020]">Quantity</th>
-                                                            <th className="px-5 py-3 align-top text-right bg-[#202020]">Price</th>
-                                                            <th className="px-5 py-3 align-top text-right bg-[#202020]">Total</th>
+                                                            <th className="px-5 py-3 align-top bg-background">Date</th>
+                                                            <th className="px-5 py-3 align-top bg-background">Type</th>
+                                                            <th className="px-5 py-3 align-top text-right bg-background">Quantity</th>
+                                                            <th className="px-5 py-3 align-top text-right bg-background">Price</th>
+                                                            <th className="px-5 py-3 align-top text-right bg-background">Total</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>

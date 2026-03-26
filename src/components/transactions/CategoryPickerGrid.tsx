@@ -26,7 +26,7 @@ export default function CategoryPickerGrid({ categories, selectedCategoryId, onS
                 isSelected ? 'ring-2 ring-[#AC66DA]' : ''
               } hover:opacity-80`}
               style={{ 
-                backgroundColor: '#202020',
+                backgroundColor: 'var(--bg-primary)',
                 borderRadius: '30px'
               }}
             >

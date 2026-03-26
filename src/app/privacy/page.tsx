@@ -7,10 +7,10 @@ export const metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-[#202020]">
+    <main className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-6 md:px-8 py-12 md:py-16">
         <div
-          className="rounded-[30px] p-6 md:p-8"
+          className="rounded-[30px] p-6 md:p-8 surface-elevated"
           style={{ backgroundColor: 'var(--bg-surface)' }}
         >
           <h1 className="text-page-title text-[#E7E4E4] font-bold mb-4">

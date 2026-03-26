@@ -189,7 +189,7 @@ export default function PricingTiers() {
                 className="relative flex flex-col rounded-3xl p-6"
                 style={{ 
                   position: 'relative',
-                  backgroundColor: '#202020'
+                  backgroundColor: 'var(--bg-primary)'
                 }}
               >
                 {/* Badges */}
@@ -251,7 +251,7 @@ export default function PricingTiers() {
                         <button
                           type="button"
                           disabled={loading || currentPlan === tier.id}
-                          className="mt-4 w-full py-3 px-6 rounded-lg text-body font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 ring-2 ring-[#AC66DA]/50 ring-offset-2 ring-offset-[#202020]"
+                          className="mt-4 w-full py-3 px-6 rounded-lg text-body font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 ring-2 ring-[#AC66DA]/50 ring-offset-2 ring-offset-background"
                           style={{ backgroundColor: 'var(--accent-purple)', color: '#E7E4E4' }}
                         >
                           {currentPlan === tier.id ? 'Current Plan' : tier.ctaText}
@@ -262,7 +262,7 @@ export default function PricingTiers() {
                       <button
                         type="button"
                         disabled
-                        className="mt-4 w-full py-3 px-6 rounded-lg text-body font-semibold opacity-60 cursor-not-allowed ring-2 ring-[#AC66DA]/50 ring-offset-2 ring-offset-[#202020]"
+                        className="mt-4 w-full py-3 px-6 rounded-lg text-body font-semibold opacity-60 cursor-not-allowed ring-2 ring-[#AC66DA]/50 ring-offset-2 ring-offset-background"
                         style={{ backgroundColor: 'var(--accent-purple)', color: '#E7E4E4' }}
                       >
                         Sign in to upgrade
@@ -274,7 +274,7 @@ export default function PricingTiers() {
                     type="button"
                     onClick={() => handleSelectPlan(tier)}
                     disabled={loading || updatingTierId !== null || currentPlan === tier.id || currentPlan === null}
-                    className="mt-4 py-3 px-6 rounded-lg text-body font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 ring-2 ring-[#AC66DA]/50 ring-offset-2 ring-offset-[#202020]"
+                    className="mt-4 py-3 px-6 rounded-lg text-body font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 ring-2 ring-[#AC66DA]/50 ring-offset-2 ring-offset-background"
                     style={{ backgroundColor: 'var(--accent-purple)', color: '#E7E4E4' }}
                   >
                     {updatingTierId === tier.id ? 'Updating…' : currentPlan === tier.id ? 'Current Plan' : tier.ctaText}

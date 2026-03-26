@@ -58,7 +58,7 @@ export default function CategoryGrid({
                   key={category.id}
                   className="w-full flex items-center gap-3 p-3 transition-all cursor-pointer hover:opacity-80"
                   style={{ 
-                    backgroundColor: '#202020',
+                    backgroundColor: 'var(--bg-primary)',
                     borderRadius: '30px'
                   }}
                 >

@@ -132,7 +132,7 @@ export default function SettingsField({
         <label className="text-body" style={{ color: '#E7E4E4' }}>
           {label}
         </label>
-        <div className="flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a]" style={{ backgroundColor: '#202020' }}>
+        <div className="flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a]" style={{ backgroundColor: 'var(--bg-primary)' }}>
           <div className="shrink-0">{icon}</div>
           <div className="flex-1 min-w-0">
             <ReviewDatePicker
@@ -180,7 +180,7 @@ export default function SettingsField({
         {isEditableInput ? (
           <div
             className={`flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a] ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-            style={{ backgroundColor: '#202020', color: '#B9B9B9' }}
+            style={{ backgroundColor: 'var(--bg-primary)', color: '#B9B9B9' }}
           >
             <div className="shrink-0">{icon}</div>
             <input
@@ -205,7 +205,7 @@ export default function SettingsField({
         ) : (
           <div
             className={`flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a] ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
-            style={{ backgroundColor: '#202020', color: '#B9B9B9' }}
+            style={{ backgroundColor: 'var(--bg-primary)', color: '#B9B9B9' }}
             onClick={() => {
               if (disabled) return;
               if (type === 'select') {
@@ -249,7 +249,7 @@ export default function SettingsField({
         {type === 'select' && isOpen && (
           <div
             className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10 border border-[#3a3a3a]"
-            style={{ backgroundColor: '#202020' }}
+            style={{ backgroundColor: 'var(--bg-primary)' }}
           >
             {searchable && (
               <div className="p-2 border-b border-[#2A2A2A]">

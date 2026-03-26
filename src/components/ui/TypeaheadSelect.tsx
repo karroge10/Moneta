@@ -282,7 +282,7 @@ export default function TypeaheadSelect({
         onClick={handleTriggerClick}
         className="flex items-center justify-between gap-3 px-4 py-2 rounded-xl w-full text-body cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         style={{
-          backgroundColor: '#202020',
+          backgroundColor: 'var(--bg-primary)',
           color: selectedOption ? '#E7E4E4' : 'var(--text-secondary)',
           border: '1px solid #3a3a3a',
         }}
@@ -343,7 +343,7 @@ export default function TypeaheadSelect({
           className={`absolute left-0 right-0 rounded-2xl shadow-lg overflow-hidden border border-[#3a3a3a] z-50 ${
             openUpward ? 'bottom-full mb-2' : 'top-full mt-2'
           }`}
-          style={{ backgroundColor: '#202020' }}
+          style={{ backgroundColor: 'var(--bg-primary)' }}
           role="listbox"
         >
           {dropdownContent}
@@ -357,7 +357,7 @@ export default function TypeaheadSelect({
             style={{
               position: 'fixed',
               zIndex: PORTAL_Z_INDEX,
-              backgroundColor: '#202020',
+              backgroundColor: 'var(--bg-primary)',
             }}
             role="listbox"
           >

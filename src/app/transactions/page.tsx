@@ -615,7 +615,7 @@ export default function TransactionsPage() {
   const displayTotalPages = viewMode === 'past' ? totalPages : recurringRowsData.totalPages;
 
   return (
-    <main className="min-h-screen bg-[#202020]">
+    <main className="min-h-screen bg-background">
       {/* Desktop Header */}
       <div className="hidden md:block">
         <DashboardHeader
@@ -656,7 +656,7 @@ export default function TransactionsPage() {
           customHeader={
             <div className="mb-4 flex items-center justify-between gap-4">
               <h2 className="text-card-header">{viewMode === 'past' ? 'History' : 'Upcoming'}</h2>
-              <div className="flex rounded-full p-1 border border-[#3a3a3a]" style={{ backgroundColor: '#202020' }} role="tablist" aria-label="Time range">
+              <div className="flex rounded-full p-1 border border-[#3a3a3a]" style={{ backgroundColor: 'var(--bg-primary)' }} role="tablist" aria-label="Time range">
                 <button
                   type="button"
                   role="tab"
@@ -715,7 +715,7 @@ export default function TransactionsPage() {
             </div>
 
             {/* Table */}
-            <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: '#202020', minHeight: (viewMode === 'past' ? transactions.length === 0 : recurringRowsData.rows.length === 0) && !displayLoading ? 'calc(100vh - 400px)' : 'auto' }}>
+            <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)', minHeight: (viewMode === 'past' ? transactions.length === 0 : recurringRowsData.rows.length === 0) && !displayLoading ? 'calc(100vh - 400px)' : 'auto' }}>
               <div className="flex-1 overflow-x-auto">
                 <table className="min-w-full" style={{ height: (viewMode === 'past' ? transactions.length === 0 : recurringRowsData.rows.length === 0) && !displayLoading ? '100%' : 'auto' }}>
                   <thead>
@@ -988,7 +988,7 @@ export default function TransactionsPage() {
                   onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1 || loading}
                   className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
-                  style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                  style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                 >
                   Prev
                 </button>
@@ -1009,7 +1009,7 @@ export default function TransactionsPage() {
                     }}
                     onBlur={handlePageInputSubmit}
                     className="w-16 rounded-full border-none px-3 py-1 text-xs font-semibold text-center"
-                    style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                    style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                   />
                   <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
                     of {totalPages || 1}
@@ -1020,7 +1020,7 @@ export default function TransactionsPage() {
                   onClick={() => handlePageChange(Math.min(totalPages || 1, currentPage + 1))}
                   disabled={currentPage >= (totalPages || 1) || loading}
                   className="px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
-                  style={{ backgroundColor: '#202020', color: 'var(--text-primary)' }}
+                  style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                 >
                   Next
                 </button>

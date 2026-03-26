@@ -117,7 +117,7 @@ export default function ReviewDatePicker({ value, onChange, disabled = false, pl
           ref={dropdownRef}
           className="rounded-2xl shadow-lg border border-[#3a3a3a] overflow-hidden w-[280px] max-w-[min(280px,100vw)]"
           style={{
-            backgroundColor: '#202020',
+            backgroundColor: 'var(--bg-primary)',
             ...(dropdownStyle ?? {
               position: 'fixed',
               top: -9999,

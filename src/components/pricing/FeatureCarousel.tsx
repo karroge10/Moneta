@@ -63,7 +63,7 @@ export default function FeatureCarousel() {
               <div 
                 key={card.id} 
                 className="flex flex-col items-center text-center gap-4 p-6 rounded-2xl transition-all hover:scale-105 cursor-pointer"
-                style={{ backgroundColor: '#202020' }}
+                style={{ backgroundColor: 'var(--bg-primary)' }}
               >
                 {IconComponent && (
                   <div className="w-16 h-16 rounded-full flex items-center justify-center transition-colors" style={{ backgroundColor: 'rgba(172, 102, 218, 0.1)' }}>

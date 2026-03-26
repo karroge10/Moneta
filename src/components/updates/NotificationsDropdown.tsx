@@ -107,7 +107,7 @@ export default function NotificationsDropdown({
                       <span
                         className="text-xs px-2.5 py-1 rounded-full"
                         style={{
-                          backgroundColor: '#202020',
+                          backgroundColor: 'var(--bg-primary)',
                           color: '#E7E4E4'
                         }}
                       >
