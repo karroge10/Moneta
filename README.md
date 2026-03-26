@@ -101,6 +101,7 @@ For any deployment, set these environment variables:
 - `PYTHON_PATH` - Path to Python executable (default: `python3` on Linux/Mac, `python` on Windows)
 - `CATEGORIES_MODEL_PATH` - Path to the ML model file (optional, defaults to `python/models/categories.ftz`)
 - `TMPDIR` - Temporary directory for uploaded PDFs (optional)
+- `NEXT_PUBLIC_CONTACT_EMAIL` - (optional) Public support address used for the landing page mailto link; defaults to `hello@moneta.app` if unset
 
 ### Static Assets
 - Replace `python/models/categories.ftz` with the trained model or download from object storage at runtime

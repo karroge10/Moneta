@@ -13,7 +13,8 @@
     "seed:merchants": "tsx prisma/seed-merchants.ts",
     "setup": "npm install && node scripts/setup-python.js",
     "postinstall": "prisma generate && node scripts/setup-python.js",
-    "test:build": "tsx scripts/test-build.ts"
+    "test:build": "tsx scripts/test-build.ts",
+    "verify:cron": "tsx scripts/verify-cron.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

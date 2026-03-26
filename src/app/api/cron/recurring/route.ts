@@ -118,6 +118,9 @@ export async function GET(request: NextRequest) {
           }
         }
 
+        const { runUserScheduledNotifications } = await import('@/lib/cron-notifications');
+        await runUserScheduledNotifications(user.id, now);
+
         usersProcessed += 1;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
