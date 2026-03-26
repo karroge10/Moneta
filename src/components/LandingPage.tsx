@@ -5,18 +5,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import {
-  Wallet,
-  ShoppingBag,
   Reports,
   Spark,
-  HomeSimpleDoor,
   LotOfCash,
   BitcoinCircle,
   CalendarCheck,
   StatUp,
   Check,
   CheckCircle,
+  HeadsetHelp,
 } from "iconoir-react";
+
+const CONTACT_EMAIL_FALLBACK = "hello@moneta.app";
+
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
@@ -458,8 +459,45 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Contact */}
+      <section
+        id="contact"
+        className="py-16 md:py-20 px-6 md:px-8 border-t border-[#3a3a3a]"
+      >
+        <div className="max-w-6xl mx-auto">
+          <div className="card-surface flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className="p-3 rounded-full bg-[#282828] border border-[#3a3a3a] shrink-0">
+                <HeadsetHelp width={28} height={28} strokeWidth={1.5} className="text-[#AC66DA]" />
+              </div>
+              <div className="space-y-3 min-w-0">
+                <h2 className="text-card-header text-[#E7E4E4]">Contact</h2>
+                <p className="text-body text-[#E7E4E4] opacity-70 max-w-xl">
+                  Questions, feedback, or partnership ideas? Reach out by email. If you already use Moneta, you can
+                  also visit the Help Center after signing in.
+                </p>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+                  <a
+                    href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? CONTACT_EMAIL_FALLBACK}?subject=Moneta%20inquiry`}
+                    className="text-body font-semibold text-[#AC66DA] hover:opacity-90 transition-opacity break-all"
+                  >
+                    {process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? CONTACT_EMAIL_FALLBACK}
+                  </a>
+                  <Link
+                    href="/help"
+                    className="text-body font-semibold text-[#E7E4E4] opacity-80 hover:text-[#AC66DA] transition-colors"
+                  >
+                    Help Center
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer id="contact" className="py-12 md:py-16 px-6 md:px-8 border-t border-[#3a3a3a]">
+      <footer className="py-12 md:py-16 px-6 md:px-8 border-t border-[#3a3a3a]">
         <div className="max-w-6xl mx-auto">
           {/* Main Footer Content */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-8">

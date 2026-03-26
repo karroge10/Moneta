@@ -41,9 +41,9 @@ export function CompactListDesign({ portfolio, currency, onAssetClick }: Portfol
                                 />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <div className="font-bold text-sm truncate group-hover:text-[#AC66DA] transition-colors">{item.name}</div>
+                                <div className="text-body font-semibold truncate group-hover:text-[#AC66DA] transition-colors">{item.name}</div>
                                 <div className="flex items-center gap-1.5 min-w-0">
-                                    <span className="text-[10px] text-helper uppercase tracking-wider shrink-0">
+                                    <span className="text-helper uppercase tracking-wider shrink-0">
                                         {item.quantity ? formatSmartNumber(item.quantity) : '0'} {item.ticker || (item.quantity === 1 ? 'Item' : 'Items')}
                                     </span>
 
@@ -55,8 +55,8 @@ export function CompactListDesign({ portfolio, currency, onAssetClick }: Portfol
 
                         {/* Value + Change */}
                         <div className="text-right flex-shrink-0">
-                            <div className="font-bold text-sm">{currency.symbol}{formatSmartNumber(item.currentValue || 0)}</div>
-                            <div className={`text-xs font-bold flex items-center justify-end gap-1 ${(item.changePercent || 0) >= 0 ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
+                            <div className="text-body font-semibold tabular-nums">{currency.symbol}{formatSmartNumber(item.currentValue || 0)}</div>
+                            <div className={`text-helper font-semibold flex items-center justify-end gap-1 ${(item.changePercent || 0) >= 0 ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
                                 {(item.changePercent || 0) >= 0 ? (
                                     <StatUp width={14} height={14} strokeWidth={2.5} />
                                 ) : (

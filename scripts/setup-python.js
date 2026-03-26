@@ -10,6 +10,12 @@ const fs = require('fs');
 
 const requirementsPath = path.join(__dirname, '..', 'python', 'requirements.txt');
 
+// Vercel (and similar CI) use an externally managed Python (PEP 668); PDF/worker deps are not needed for Next build.
+if (process.env.VERCEL === '1' || process.env.CI === 'true') {
+  console.log('⏭️  Skipping Python dependency install (Vercel/CI — not required for app build).');
+  process.exit(0);
+}
+
 // Check if requirements.txt exists
 if (!fs.existsSync(requirementsPath)) {
   console.log('⚠️  python/requirements.txt not found, skipping Python dependency installation');

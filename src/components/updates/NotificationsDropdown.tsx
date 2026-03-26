@@ -4,6 +4,7 @@ import { useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { NotificationEntry } from '@/types/dashboard';
 import { useNotificationContext } from '@/contexts/NotificationContext';
+import { notificationTextForDisplay } from '@/lib/notification-display';
 
 interface NotificationsDropdownProps {
   notifications: NotificationEntry[];
@@ -114,7 +115,7 @@ export default function NotificationsDropdown({
                       </span>
                     </div>
                     <p className="text-xs line-clamp-2" style={{ color: '#E7E4E4' }}>
-                      {notification.text}
+                      {notificationTextForDisplay(notification.text)}
                     </p>
                   </div>
                 </div>

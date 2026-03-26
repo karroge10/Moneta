@@ -274,8 +274,8 @@ export default function InvestmentsPage() {
           </>
         ) : error ? (
           <div className="w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">
-            <p className="text-[#D93F3F] mb-4">{error}</p>
-            <button onClick={() => fetchInvestments()} className="px-4 py-2 bg-[#AC66DA] rounded-lg text-white font-bold">Retry</button>
+            <p className="text-body text-[#D93F3F] mb-4">{error}</p>
+            <button type="button" onClick={() => fetchInvestments()} className="px-4 py-2 bg-[#AC66DA] rounded-full text-primary text-body font-semibold hover:opacity-90">Retry</button>
           </div>
         ) : (
           <>
@@ -306,7 +306,7 @@ export default function InvestmentsPage() {
               ) : (
                 <div className="p-16 text-center text-secondary h-full flex flex-col items-center justify-center">
                   <p className="mb-4">No investments tracked yet.</p>
-                  <button onClick={() => openAddTransaction()} className="text-[#AC66DA] font-bold hover:underline">Start your portfolio</button>
+                  <button type="button" onClick={() => openAddTransaction()} className="text-body font-semibold text-[#AC66DA] hover:underline">Start your portfolio</button>
                 </div>
               )}
             </Card>
@@ -350,21 +350,21 @@ export default function InvestmentsPage() {
                                   />
                                 </div>
                                 <div>
-                                  <div className="font-semibold text-sm">{activity.name}</div>
-                                  <div className="text-xs text-helper uppercase tracking-wider">{activity.ticker}</div>
+                                  <div className="text-body font-semibold">{activity.name}</div>
+                                  <div className="text-helper uppercase tracking-wider">{activity.ticker}</div>
                                 </div>
                               </div>
                             </td>
                             <td className="px-5 py-4 align-top">
-                              <span className="text-sm">{formatDateForDisplay(activity.date)}</span>
+                              <span className="text-body">{formatDateForDisplay(activity.date)}</span>
                             </td>
                             <td className="px-5 py-4 align-top">
-                              <span className={`text-sm font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
+                              <span className={`text-body font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
                                 {activity.type}
                               </span>
                             </td>
                             <td className="px-5 py-4 align-top">
-                              <span className="text-sm font-semibold">
+                              <span className="text-body font-semibold tabular-nums">
                                 {formatSmartNumber(activity.quantity)} {activity.ticker}
                               </span>
                             </td>
@@ -396,8 +396,8 @@ export default function InvestmentsPage() {
           </>
         ) : error ? (
           <div className="col-span-2 w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">
-            <p className="text-[#D93F3F] mb-4">{error}</p>
-            <button onClick={() => fetchInvestments()} className="px-4 py-2 bg-[#AC66DA] rounded-lg text-white font-bold">Retry</button>
+            <p className="text-body text-[#D93F3F] mb-4">{error}</p>
+            <button type="button" onClick={() => fetchInvestments()} className="px-4 py-2 bg-[#AC66DA] rounded-full text-primary text-body font-semibold hover:opacity-90">Retry</button>
           </div>
         ) : (
           <>
@@ -429,7 +429,7 @@ export default function InvestmentsPage() {
                 ) : (
                   <div className="p-16 text-center text-secondary h-full flex flex-col items-center justify-center">
                     <p className="mb-4">No investments tracked yet.</p>
-                    <button onClick={() => openAddTransaction()} className="text-[#AC66DA] font-bold hover:underline">Start your portfolio</button>
+                    <button type="button" onClick={() => openAddTransaction()} className="text-body font-semibold text-[#AC66DA] hover:underline">Start your portfolio</button>
                   </div>
                 )}
               </Card>
@@ -475,21 +475,21 @@ export default function InvestmentsPage() {
                                   />
                                 </div>
                                 <div>
-                                  <div className="font-semibold text-sm">{activity.name}</div>
-                                  <div className="text-xs text-helper uppercase tracking-wider">{activity.ticker}</div>
+                                  <div className="text-body font-semibold">{activity.name}</div>
+                                  <div className="text-helper uppercase tracking-wider">{activity.ticker}</div>
                                 </div>
                               </div>
                             </td>
                             <td className="px-5 py-4 align-top">
-                              <span className="text-sm">{formatDateForDisplay(activity.date)}</span>
+                              <span className="text-body">{formatDateForDisplay(activity.date)}</span>
                             </td>
                             <td className="px-5 py-4 align-top">
-                              <span className={`text-sm font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
+                              <span className={`text-body font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
                                 {activity.type}
                               </span>
                             </td>
                             <td className="px-5 py-4 align-top">
-                              <span className="text-sm font-semibold">
+                              <span className="text-body font-semibold tabular-nums">
                                 {formatSmartNumber(activity.quantity)} {activity.ticker}
                               </span>
                             </td>
@@ -524,8 +524,8 @@ export default function InvestmentsPage() {
           </>
         ) : error ? (
           <div className="col-span-4 w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">
-            <p className="text-[#D93F3F] mb-4">{error}</p>
-            <button onClick={() => fetchInvestments()} className="px-4 py-2 bg-[#AC66DA] rounded-lg text-white font-bold">Retry</button>
+            <p className="text-body text-[#D93F3F] mb-4">{error}</p>
+            <button type="button" onClick={() => fetchInvestments()} className="px-4 py-2 bg-[#AC66DA] rounded-full text-primary text-body font-semibold hover:opacity-90">Retry</button>
           </div>
         ) : (
           <>
@@ -573,7 +573,7 @@ export default function InvestmentsPage() {
                 ) : (
                   <div className="p-16 text-center text-secondary h-full flex flex-col items-center justify-center">
                     <p className="mb-4">No investments tracked yet.</p>
-                    <button onClick={() => openAddTransaction()} className="text-[#AC66DA] font-bold hover:underline">Start your portfolio</button>
+                    <button type="button" onClick={() => openAddTransaction()} className="text-body font-semibold text-[#AC66DA] hover:underline">Start your portfolio</button>
                   </div>
                 )}
               </Card>
@@ -621,21 +621,21 @@ export default function InvestmentsPage() {
                                     />
                                   </div>
                                   <div>
-                                    <div className="font-semibold text-sm">{activity.name}</div>
-                                    <div className="text-xs text-helper uppercase tracking-wider">{activity.ticker}</div>
+                                    <div className="text-body font-semibold">{activity.name}</div>
+                                    <div className="text-helper uppercase tracking-wider">{activity.ticker}</div>
                                   </div>
                                 </div>
                               </td>
                               <td className="px-5 py-4 align-top">
-                                <span className="text-sm">{formatDateForDisplay(activity.date)}</span>
+                                <span className="text-body">{formatDateForDisplay(activity.date)}</span>
                               </td>
                               <td className="px-5 py-4 align-top">
-                                <span className={`text-sm font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
+                                <span className={`text-body font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
                                   {activity.type}
                                 </span>
                               </td>
                               <td className="px-5 py-4 align-top">
-                                <span className="text-sm font-semibold">
+                                <span className="text-body font-semibold tabular-nums">
                                   {formatSmartNumber(activity.quantity)} {activity.ticker}
                                 </span>
                               </td>
