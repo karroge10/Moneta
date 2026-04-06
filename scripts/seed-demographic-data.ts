@@ -117,8 +117,6 @@ async function main() {
     const user = await prisma.user.create({
       data: {
         userName,
-        firstName: `Demo`,
-        lastName: `User ${u + 1}`,
         dateOfBirth,
         country: cfg.country,
         profession: cfg.profession,
@@ -139,8 +137,6 @@ async function main() {
     const user = await prisma.user.create({
       data: {
         userName,
-        firstName: 'Demo',
-        lastName: `Georgia Dev ${i + 1}`,
         dateOfBirth,
         country: 'Georgia',
         profession: 'Developer',

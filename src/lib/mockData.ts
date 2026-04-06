@@ -1128,7 +1128,6 @@ export const mockUserSettings: UserSettings = {
   jobPosition: '',
   age: 0,
   country: '',
-  language: 'English',
   currency: '$ USD',
   dateOfBirth: '',
   profession: '',

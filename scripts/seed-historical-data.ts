@@ -416,7 +416,7 @@ async function main() {
     console.log('   Please sign in first to create your user account.\n');
     return;
   }
-  console.log(`✓ Found user: ${user.firstName || user.userName || `ID ${user.id}`}\n`);
+  console.log(`✓ Found user: ${user.userName || `ID ${user.id}`}\n`);
 
   // Get category name -> ID mapping
   const categories = await prisma.category.findMany();
