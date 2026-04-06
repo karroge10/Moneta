@@ -113,17 +113,15 @@ export default function GoalsCard({ goals, currencyOptions = [], onGoalClick }: 
               }}
             >
               <span className="text-body font-semibold" style={{ color: 'var(--accent-purple)' }}>
-                {displayCurrency.symbol}{goal.targetAmount.toLocaleString('en-US')}
+                <span className="opacity-50">{displayCurrency.symbol}</span> {goal.targetAmount.toLocaleString('en-US')}
               </span>
             </div>
           </div>
           
           {/* Current amount */}
           <div className="flex items-baseline gap-2 mb-4 min-w-0 flex-wrap">
-            <span className="text-card-currency flex-shrink-0">{displayCurrency.symbol}</span>
-            <span className="text-card-value break-all min-w-0">
-              {goal.currentAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
+            <span className="text-card-currency flex-shrink-0 opacity-50">{displayCurrency.symbol}</span>
+            <span className="text-card-value break-all min-w-0"> {goal.currentAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
           
           {/* Progress bar */}
@@ -135,7 +133,7 @@ export default function GoalsCard({ goals, currencyOptions = [], onGoalClick }: 
           <div className="flex items-start gap-2 mt-4 text-sm min-w-0" style={{ color: 'var(--accent-purple)' }}>
             <InfoCircle width={18} height={18} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" />
             <span className="text-wrap-safe break-words leading-tight">
-              Save {displayCurrency.symbol}{(goal.targetAmount - goal.currentAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} more to reach your goal!
+              Save {displayCurrency.symbol} {(goal.targetAmount - goal.currentAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} more to reach your goal!
             </span>
           </div>
         )}

@@ -44,7 +44,7 @@ export default function EstimatedTaxCard({ taxRate, totalIncome }: EstimatedTaxC
 
   return (
     <ValueCard title="Estimated Tax" bottomRow={taxSettingsLink}>
-      <span className="text-card-currency shrink-0">{currency.symbol}</span>
+      <span className="text-card-currency shrink-0 opacity-50">{currency.symbol}</span>
       <span className="text-card-value break-all min-w-0">{formatNumber(estimatedAmount)}</span>
     </ValueCard>
   );

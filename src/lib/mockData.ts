@@ -1,4 +1,4 @@
-import { Transaction, Bill, Goal, Investment, ExpenseCategory, LatestExpense, LatestIncome, IncomeSource, PerformanceDataPoint, Category, InvestmentActivity, FinancialMilestone, DemographicComparison, MonthlySummaryRow, StatisticsSummaryItem, UserSettings, LoginHistoryEntry, Achievement, NotificationEntry, NotificationSettings } from '@/types/dashboard';
+import { Transaction, Bill, Goal, Investment, ExpenseCategory, LatestExpense, LatestIncome, IncomeSource, PerformanceDataPoint, Category, InvestmentActivity, DemographicComparison, MonthlySummaryRow, StatisticsSummaryItem, UserSettings, LoginHistoryEntry, NotificationEntry, NotificationSettings } from '@/types/dashboard';
 
 export const mockIncome = {
   amount: 151349,
@@ -340,14 +340,6 @@ export const mockInvestments: Investment[] = [
   },
 ];
 
-export const mockInsight = {
-  title: 'By using the round-up feature, you could save',
-  amount: 214.13,
-  message: 'Investing that in BTC would earn you',
-  investmentAmount: 423.58,
-  trend: 1,
-};
-
 export const mockTopExpenses: ExpenseCategory[] = [
   {
     id: '1',
@@ -398,13 +390,6 @@ export const emptyTransactions: Transaction[] = [];
 export const emptyGoals: Goal[] = [];
 export const emptyFinancialHealth = 0;
 export const emptyInvestments: Investment[] = [];
-export const emptyInsight = {
-  title: 'Start tracking your finances',
-  amount: 0,
-  message: 'Add transactions to see insights here',
-  investmentAmount: 0,
-  trend: 0,
-};
 export const emptyTopExpenses: ExpenseCategory[] = [];
 
 // Minimal content data (user with some data)
@@ -468,13 +453,6 @@ export const minimalGoals: Goal[] = [
 
 export const minimalFinancialHealth = 45;
 export const minimalInvestments: Investment[] = [];
-export const minimalInsight = {
-  title: 'You\'re on the right track!',
-  amount: 12.50,
-  message: 'Add more transactions to see personalized insights',
-  investmentAmount: 0,
-  trend: 0,
-};
 export const minimalTopExpenses: ExpenseCategory[] = [
   {
     id: '1',
@@ -618,13 +596,6 @@ export const mockExpensesPage = {
     percentage: 12,
     percentageLabel: '12%',
     link: 'Statistics',
-  },
-  insight: {
-    title: 'By using the round-up feature, you could save',
-    amount: 214.13,
-    message: 'Investing that in BTC would earn you',
-    investmentAmount: 423.58,
-    trend: 1,
   },
 };
 
@@ -1033,11 +1004,6 @@ export const mockInvestmentsPage = {
 
 // Statistics Page Mock Data
 export const mockStatisticsPage = {
-  milestone: {
-    date: 'Dec 25th 2024',
-    message: 'Completed 5 goals this year.',
-    completedGoals: 5,
-  } as FinancialMilestone,
   demographicComparisons: [
     {
       id: '1',
@@ -1157,8 +1123,6 @@ export const mockStatisticsPage = {
 
 export const mockUserSettings: UserSettings = {
   name: '',
-  firstName: '',
-  lastName: '',
   username: '',
   email: '',
   jobPosition: '',
@@ -1168,8 +1132,6 @@ export const mockUserSettings: UserSettings = {
   currency: '$ USD',
   dateOfBirth: '',
   profession: '',
-  defaultPage: 'Dashboard',
-  plan: 'basic',
   incomeTaxRate: null,
 };
 
@@ -1181,21 +1143,6 @@ export const mockLoginHistory: LoginHistoryEntry[] = [
   { date: '19.01.2023', time: '10:22:33', device: 'Desktop PC', location: '—' },
   { date: '18.01.2023', time: '16:55:42', device: 'iPhone 16 Pro', location: '—' },
   { date: '17.01.2023', time: '09:11:28', device: 'Desktop PC', location: '—' },
-];
-
-export const mockAchievements: Achievement[] = [
-  { id: '1', name: 'First Savings', unlocked: true, icon: 'LotOfCash' },
-  { id: '2', name: 'Goal Achiever', unlocked: true, icon: 'LotOfCash' },
-  { id: '3', name: 'Budget Master', unlocked: true, icon: 'LotOfCash' },
-  { id: '4', name: 'Investment Starter', unlocked: true, icon: 'LotOfCash' },
-  { id: '5', name: 'Consistent Saver', unlocked: true, icon: 'LotOfCash' },
-  { id: '6', name: 'Millionaire', unlocked: false, icon: 'LotOfCash' },
-  { id: '7', name: 'Early Retiree', unlocked: false, icon: 'LotOfCash' },
-  { id: '8', name: 'Debt Free', unlocked: false, icon: 'LotOfCash' },
-  { id: '9', name: 'Financial Guru', unlocked: false, icon: 'LotOfCash' },
-  { id: '10', name: 'Wealth Builder', unlocked: false, icon: 'LotOfCash' },
-  { id: '11', name: 'Smart Investor', unlocked: false, icon: 'LotOfCash' },
-  { id: '12', name: 'Expense Tracker', unlocked: false, icon: 'LotOfCash' },
 ];
 
 export const mockNotifications: NotificationEntry[] = [
@@ -1251,8 +1198,8 @@ export const mockNotifications: NotificationEntry[] = [
     id: '7', 
     date: '19.01.2023', 
     time: '22:05:18', 
-    type: 'AI Insights', 
-    text: 'New spending pattern detected: Consider reviewing your subscription costs',
+    type: 'Round-up',
+    text: 'Your hypothetical round-up for this month would be about $42 at 1% of spending.',
     read: false,
   },
   { 

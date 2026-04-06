@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { type Category } from '@/types/dashboard';
 import { idbGet, idbSet } from '@/lib/idb';
 
@@ -34,12 +35,15 @@ async function loadCategories(force = false): Promise<Category[]> {
 }
 
 export function useCategories() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const authReady = isLoaded && isSignedIn;
   const [categories, setCategories] = useState<Category[]>(cachedCategories ?? []);
   const [loading, setLoading] = useState(!cachedCategories);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     if (cachedCategories) return;
+    if (!authReady) return;
     let cancelled = false;
 
     const hydrate = async () => {
@@ -77,7 +81,7 @@ export function useCategories() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authReady]);
 
   const refetch = useCallback(async () => {
     setLoading(true);

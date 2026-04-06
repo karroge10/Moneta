@@ -6,6 +6,7 @@ import { formatTransactionName } from '@/lib/transaction-utils';
 import { convertTransactionsToTargetSimple } from '@/lib/currency-conversion';
 import { getFinancialHealthScore } from '@/lib/financial-health';
 import { getInvestmentsPortfolio } from '@/lib/investments';
+import { computeRoundupInsight } from '@/lib/roundup-insight';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -371,7 +372,10 @@ export async function GET(request: NextRequest) {
     // Investments (live)
     const investmentsPortfolio = await getInvestmentsPortfolio(user.id, userCurrencyRecord);
 
-    const financialHealth = await getFinancialHealthScore(user.id, timePeriod, targetCurrencyId);
+    const [financialHealth, roundupInsight] = await Promise.all([
+      getFinancialHealthScore(user.id, timePeriod, targetCurrencyId),
+      computeRoundupInsight(selectedPeriodExpenses, investmentsPortfolio.assets),
+    ]);
 
     return NextResponse.json({
       income: {
@@ -407,6 +411,7 @@ export async function GET(request: NextRequest) {
         trend: financialHealth.trend,
         details: financialHealth.details,
       },
+      roundupInsight,
     });
   } catch (error) {
     console.error('Error fetching dashboard data:', error);

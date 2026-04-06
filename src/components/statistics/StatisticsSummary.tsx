@@ -38,7 +38,7 @@ export default function StatisticsSummary({ items, loading = false, onFinancialH
         className="h-full flex flex-col min-h-0 flex-1"
         showActions={false}
       >
-        <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0 overflow-hidden" style={{ minHeight: contentMinHeight }}>
+        <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0" style={{ minHeight: contentMinHeight }}>
           {/* Same order as content: 5 small rows (Income, Expenses, Income Saved, Goals, Portfolio) then Financial Health block right under */}
           <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0 space-y-3 pr-2">
             {Array.from({ length: SKELETON_ITEMS }).map((_, i) => (

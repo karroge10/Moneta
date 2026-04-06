@@ -302,9 +302,9 @@ export async function GET(request: NextRequest) {
           ? 0
           : comparisonRange && comparisonIncome > 0
             ? Math.round(((selectedPeriodIncome - comparisonIncome) / comparisonIncome) * 100)
-            : comparisonRange && selectedPeriodIncome > 0
-              ? 100
-              : 0;
+            : 0;
+
+    const trendSkipped = skipComparison || (timePeriod !== 'All Time' && (!comparisonRange || comparisonIncome === 0));
 
     // Calculate top income sources (grouped by merchant/category)
     const sourceTotals = new Map<string, { amount: number; categoryName: string | null; merchantName: string }>();
@@ -439,9 +439,9 @@ export async function GET(request: NextRequest) {
     const averageTrend =
       avgMonthlyLastYear > 0
         ? Math.round(((avgMonthlyCurrentYear - avgMonthlyLastYear) / avgMonthlyLastYear) * 100)
-        : avgMonthlyCurrentYear > 0
-          ? 100
-          : 0;
+        : 0;
+    
+    const averageTrendSkipped = avgMonthlyLastYear === 0;
 
 
     // Calculate average monthly income (or average daily for single month periods)
@@ -461,16 +461,45 @@ export async function GET(request: NextRequest) {
 
     const comparisonLabel = getComparisonLabel(timePeriod);
 
-    // Generate trend text for performance (skip when not enough data or All Time has special handling)
-    const noComparison = skipComparison || (timePeriod !== 'All Time' && !comparisonRange);
-    const periodSuffix = timePeriod === 'All Time' ? 'since beginning' : 'over selected time period';
-    const trendText = noComparison
-      ? 'Not enough data to compare yet'
-      : incomeTrend > 0
-        ? `Your income grew +${incomeTrend}% ${periodSuffix}`
-        : incomeTrend < 0
-          ? `Your income decreased ${Math.abs(incomeTrend)}% ${periodSuffix}`
-          : `Your income remained stable ${periodSuffix}`;
+    // Calculate internal trend for performance graph
+    const firstPerfValue = performanceData.length > 0 ? performanceData[0].value : 0;
+    const lastPerfValue = performanceData.length > 0 ? performanceData[performanceData.length - 1].value : 0;
+    const internalTrend = firstPerfValue > 0 
+      ? Math.round(((lastPerfValue - firstPerfValue) / firstPerfValue) * 100) 
+      : (lastPerfValue > 0 ? 100 : 0);
+
+    // Use internal trend for performance text to match graph visual
+    const performanceTrendText = performanceData.length < 2
+      ? 'Not enough data to show trends'
+      : internalTrend > 0
+        ? `Your income grew +${internalTrend}% ${timePeriod.toLowerCase()}`
+        : internalTrend < 0
+          ? `Your income decreased ${Math.abs(internalTrend)}% ${timePeriod.toLowerCase()}`
+          : `Your income remained stable ${timePeriod.toLowerCase()}`;
+
+    // Demographic Comparison calculation
+    let demographicPercentage = 0;
+    let demographicMessage = '';
+    const demographicComparisonsDisabled = user.dataSharingEnabled !== true;
+
+    if (demographicComparisonsDisabled) {
+      demographicMessage = 'Enable data sharing in Settings to see how you compare to others.';
+      demographicPercentage = 0;
+    } else {
+      const REGIONAL_AVERAGE_INCOME = 4500;
+      if (averageMonthlyIncome > 0) {
+        if (averageMonthlyIncome > REGIONAL_AVERAGE_INCOME) {
+          demographicPercentage = Math.round(((averageMonthlyIncome - REGIONAL_AVERAGE_INCOME) / REGIONAL_AVERAGE_INCOME) * 100);
+          demographicMessage = `Your average income is ${demographicPercentage}% higher than of users in your region. Great job!`;
+        } else {
+          demographicPercentage = Math.round(((REGIONAL_AVERAGE_INCOME - averageMonthlyIncome) / REGIONAL_AVERAGE_INCOME) * 100);
+          demographicMessage = `Your average income is ${demographicPercentage}% lower than of users in your region.`;
+        }
+      } else {
+        demographicMessage = `Add more transactions to see how you compare to others.`;
+        demographicPercentage = 0;
+      }
+    }
 
     // Calculate next month prediction (only for "This Month")
     let nextMonthPrediction = 0;
@@ -500,18 +529,19 @@ export async function GET(request: NextRequest) {
       total: {
         amount: Math.round(selectedPeriodIncome),
         trend: incomeTrend,
-        trendSkipped: skipComparison,
+        trendSkipped: trendSkipped,
       },
       topSources,
       latestIncomes,
       performance: {
-        trend: incomeTrend,
-        trendText,
+        trend: internalTrend,
+        trendText: performanceTrendText,
         data: performanceData,
       },
       average: {
         amount: Math.round(averageMonthlyIncome),
         trend: averageTrend,
+        trendSkipped: averageTrendSkipped,
         subtitle: 'Monthly average based on selected time period',
       },
       averageDaily: isMonthlyPeriod ? {
@@ -519,6 +549,13 @@ export async function GET(request: NextRequest) {
         trend: averageTrend,
       } : null,
       nextMonthPrediction: timePeriod === 'This Month' ? Math.round(nextMonthPrediction) : null,
+      demographicComparison: {
+        message: demographicMessage,
+        percentage: demographicPercentage,
+        percentageLabel: demographicPercentage > 0 ? `${demographicPercentage}%` : '',
+        link: demographicComparisonsDisabled ? 'Settings' : 'Statistics',
+      },
+      demographicComparisonsDisabled,
     });
   } catch (error) {
     console.error('Error fetching income data:', error);

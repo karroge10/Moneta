@@ -10,13 +10,14 @@ import PerformanceCard from '@/components/dashboard/PerformanceCard';
 import TopCategoriesCard from '@/components/dashboard/TopCategoriesCard';
 import DemographicComparisonCard from '@/components/dashboard/DemographicComparisonCard';
 import InsightCard from '@/components/dashboard/InsightCard';
-import AverageMonthlyCard from '@/components/dashboard/AverageMonthlyCard';
+import AverageCard from '@/components/dashboard/AverageCard';
 import AverageDailyCard from '@/components/dashboard/AverageDailyCard';
 import ValueCard from '@/components/dashboard/ValueCard';
 import CardSkeleton from '@/components/dashboard/CardSkeleton';
 import TrendIndicator from '@/components/ui/TrendIndicator';
 import TransactionModal from '@/components/transactions/TransactionModal';
 import { mockExpensesPage } from '@/lib/mockData';
+import { emptyRoundupInsight, type RoundupInsightDto } from '@/lib/roundup-insight';
 import { TimePeriod, LatestExpense, ExpenseCategory, PerformanceDataPoint, Transaction, Bill, RecurringItem } from '@/types/dashboard';
 import { buildTransactionFromRecurring } from '@/lib/recurring-utils';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
@@ -24,13 +25,15 @@ import { formatNumber } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useCategories } from '@/hooks/useCategories';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
+import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 
 export default function ExpensesPage() {
+  const authReady = useAuthReadyForApi();
   const { currency } = useCurrency();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Year');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [total, setTotal] = useState({ amount: 0, trend: 0 });
+  const [total, setTotal] = useState<{ amount: number; trend: number; trendSkipped?: boolean }>({ amount: 0, trend: 0 });
   const [topCategories, setTopCategories] = useState<ExpenseCategory[]>([]);
   const [latestExpenses, setLatestExpenses] = useState<LatestExpense[]>([]);
   const [performance, setPerformance] = useState<{ trend: number; trendText: string; data: PerformanceDataPoint[] }>({
@@ -38,9 +41,11 @@ export default function ExpensesPage() {
     trendText: '',
     data: [],
   });
-  const [averageMonthly, setAverageMonthly] = useState({ amount: 0, trend: 0 });
-  const [averageDaily, setAverageDaily] = useState<{ amount: number; trend: number } | null>(null);
+  const [averageMonthly, setAverageMonthly] = useState<{ amount: number; trend: number; trendSkipped?: boolean }>({ amount: 0, trend: 0 });
+  const [averageDaily, setAverageDaily] = useState<{ amount: number; trend: number; trendSkipped?: boolean } | null>(null);
   const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
+  const [roundupInsight, setRoundupInsight] = useState<RoundupInsightDto | null>(null);
+  const [demographicComparison, setDemographicComparison] = useState<{ message: string; percentage: number; percentageLabel: string; link: string } | null>(null);
   const { categories } = useCategories();
   const { currencyOptions, loading: currencyOptionsLoading } = useCurrencyOptions();
 
@@ -68,8 +73,6 @@ export default function ExpensesPage() {
   
   // Keep mock data for components not requested to be changed
   const update = mockExpensesPage.update;
-  const insight = mockExpensesPage.insight;
-  const demographicComparison = mockExpensesPage.demographicComparison;
   
   const fetchExpensesData = useCallback(async () => {
     try {
@@ -84,22 +87,32 @@ export default function ExpensesPage() {
       }
       
       const data = await response.json();
-      setTotal({
-        amount: data.total?.amount || 0,
-        trend: data.total?.trend || 0,
-      });
-      setTopCategories(data.topCategories || []);
-      setLatestExpenses(data.latestExpenses || []);
-      setPerformance({
-        trend: data.performance?.trend || 0,
-        trendText: data.performance?.trendText || '',
-        data: data.performance?.data || [],
-      });
-      setAverageMonthly({
-        amount: data.averageMonthly?.amount || 0,
-        trend: data.averageMonthly?.trend || 0,
-      });
-      setAverageDaily(data.averageDaily ?? null);
+      if (data && !data.error) {
+        setTotal({
+          amount: data.total?.amount || 0,
+          trend: data.total?.trend || 0,
+          trendSkipped: data.total?.trendSkipped,
+        });
+        setTopCategories(data.topCategories || []);
+        setLatestExpenses(data.latestExpenses || []);
+        setPerformance({
+          trend: data.performance?.trend || 0,
+          trendText: data.performance?.trendText || '',
+          data: data.performance?.data || [],
+        });
+        setAverageMonthly({
+          amount: data.averageMonthly?.amount || 0,
+          trend: data.averageMonthly?.trend || 0,
+          trendSkipped: data.averageMonthly?.trendSkipped,
+        });
+        setAverageDaily(data.averageDaily ? {
+          amount: data.averageDaily.amount,
+          trend: data.averageDaily.trend,
+          trendSkipped: data.averageDaily.trendSkipped,
+        } : null);
+        setRoundupInsight(data.roundupInsight ?? emptyRoundupInsight());
+        setDemographicComparison(data.demographicComparison || null);
+      }
 
       const recurringResponse = await fetch('/api/recurring?type=expense');
       if (recurringResponse.ok) {
@@ -117,15 +130,18 @@ export default function ExpensesPage() {
       setPerformance({ trend: 0, trendText: '', data: [] });
       setAverageMonthly({ amount: 0, trend: 0 });
       setAverageDaily(null);
+      setRoundupInsight(null);
       setRecurringItems([]);
+      setDemographicComparison(null);
     } finally {
       setLoading(false);
     }
   }, [timePeriod]);
 
   useEffect(() => {
+    if (!authReady) return;
     fetchExpensesData();
-  }, [fetchExpensesData]);
+  }, [authReady, fetchExpensesData]);
 
   // Create draft expense transaction (negative amount for expense)
   const createDraftExpense = (): Transaction => ({
@@ -361,7 +377,7 @@ export default function ExpensesPage() {
         <CardSkeleton title="Performance" variant="chart" />
         <CardSkeleton title="Top Categories" variant="chart" />
         <CardSkeleton title="Demographic Comparison" variant="value" />
-        <CardSkeleton title="Insight" variant="value" />
+        <CardSkeleton title="Round-up" variant="value" />
       </div>
 
       {/* Two-column layout: 768px - 1536px */}
@@ -374,7 +390,7 @@ export default function ExpensesPage() {
         <CardSkeleton title="Performance" variant="chart" />
         <CardSkeleton title="Top Categories" variant="chart" />
         <CardSkeleton title="Demographic Comparison" variant="value" />
-        <CardSkeleton title="Insight" variant="value" />
+        <CardSkeleton title="Round-up" variant="value" />
       </div>
 
       {/* Desktop: Pure Tailwind Bento Grid (>= 1536px) */}
@@ -391,9 +407,9 @@ export default function ExpensesPage() {
               <CardSkeleton title={getAverageCardTitle()} variant="value" />
             </div>
           </div>
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-5 gap-4 flex-1">
             <div className="col-span-3 flex flex-col gap-4">
-              <div className="flex-7 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+              <div className="flex-[7] min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <CardSkeleton title="Latest Expenses" variant="list" />
               </div>
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
@@ -405,7 +421,7 @@ export default function ExpensesPage() {
                 <CardSkeleton title="Performance" variant="chart" />
               </div>
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                <CardSkeleton title="Insight" variant="value" />
+                <CardSkeleton title="Round-up" variant="value" />
               </div>
             </div>
           </div>
@@ -534,10 +550,10 @@ export default function ExpensesPage() {
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Expenses"
-actionButton={{
-              label: 'Add Expense',
-              onClick: handleAddExpenseClick,
-            }}
+          actionButton={{
+            label: 'Add Expense',
+            onClick: handleAddExpenseClick,
+          }}
           timePeriod={timePeriod}
           onTimePeriodChange={setTimePeriod}
         />
@@ -565,15 +581,24 @@ actionButton={{
         <div className="grid grid-cols-2 gap-4">
           <ValueCard
             title="Total"
-            bottomRow={<TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />}
+            bottomRow={total.trendSkipped ? (
+              <span className="text-helper">Not enough data to compare yet</span>
+            ) : (
+              <TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />
+            )}
           >
-            <span className="text-card-currency shrink-0">{currency.symbol}</span>
+            <span className="text-card-currency shrink-0 opacity-50">{currency.symbol}</span>
             <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
           </ValueCard>
           {(timePeriod === 'This Month' || timePeriod === 'Last Month') && averageDaily !== null ? (
-            <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} isExpense={true} />
+            <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} trendSkipped={averageDaily.trendSkipped} isExpense />
           ) : (
-            <AverageMonthlyCard amount={averageMonthly.amount} trend={averageMonthly.trend} isExpense={true} trendLabel="compared to last year" />
+            <AverageCard 
+              amount={averageMonthly.amount} 
+              trend={averageMonthly.trend} 
+              trendSkipped={averageMonthly.trendSkipped}
+              trendLabel={getComparisonLabel(timePeriod)}
+            />
           )}
         </div>
         <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
@@ -586,20 +611,13 @@ actionButton={{
         />
         <TopCategoriesCard categories={topCategories} />
         <DemographicComparisonCard
-          message={demographicComparison.message}
-          percentage={demographicComparison.percentage}
-          percentageLabel={demographicComparison.percentageLabel}
-          link={demographicComparison.link}
-          linkHref="/statistics"
+          message={demographicComparison?.message || ''}
+          percentage={demographicComparison?.percentage || 0}
+          percentageLabel={demographicComparison?.percentageLabel || ''}
+          link={demographicComparison?.link || 'Statistics'}
+          linkHref={demographicComparison?.link === 'Settings' ? '/settings' : '/statistics'}
         />
-        <InsightCard
-          title={insight.title}
-          amount={insight.amount}
-          message={insight.message}
-          investmentAmount={insight.investmentAmount}
-          trend={insight.trend}
-          shortRow
-        />
+        <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} shortRow />
       </div>
 
       {/* Two-column layout: 768px - 1536px */}
@@ -613,15 +631,24 @@ actionButton={{
         />
         <ValueCard
           title="Total"
-          bottomRow={<TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />}
+          bottomRow={total.trendSkipped ? (
+            <span className="text-helper">Not enough data to compare yet</span>
+          ) : (
+            <TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />
+          )}
         >
-          <span className="text-card-currency shrink-0">{currency.symbol}</span>
+          <span className="text-card-currency shrink-0 opacity-50">{currency.symbol}</span>
           <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
         </ValueCard>
         {(timePeriod === 'This Month' || timePeriod === 'Last Month') && averageDaily !== null ? (
-          <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} isExpense={true} />
+          <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} trendSkipped={averageDaily.trendSkipped} isExpense />
         ) : (
-          <AverageMonthlyCard amount={averageMonthly.amount} trend={averageMonthly.trend} isExpense={true} trendLabel="compared to last year" />
+          <AverageCard 
+            amount={averageMonthly.amount} 
+            trend={averageMonthly.trend} 
+            trendSkipped={averageMonthly.trendSkipped}
+            trendLabel={getComparisonLabel(timePeriod)}
+          />
         )}
         <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
         <LatestExpensesCard expenses={latestExpenses} onItemClick={handleLatestExpenseClick} />
@@ -633,19 +660,13 @@ actionButton={{
         />
         <TopCategoriesCard categories={topCategories} />
         <DemographicComparisonCard
-          message={demographicComparison.message}
-          percentage={demographicComparison.percentage}
-          percentageLabel={demographicComparison.percentageLabel}
-          link={demographicComparison.link}
-          linkHref="/statistics"
+          message={demographicComparison?.message || ''}
+          percentage={demographicComparison?.percentage || 0}
+          percentageLabel={demographicComparison?.percentageLabel || ''}
+          link={demographicComparison?.link || 'Statistics'}
+          linkHref={demographicComparison?.link === 'Settings' ? '/settings' : '/statistics'}
         />
-        <InsightCard
-          title={insight.title}
-          amount={insight.amount}
-          message={insight.message}
-          investmentAmount={insight.investmentAmount}
-          trend={insight.trend}
-        />
+        <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} />
       </div>
 
       {/* Desktop: Pure Tailwind Bento Grid (>= 1536px) */}
@@ -666,35 +687,44 @@ actionButton={{
             <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
               <ValueCard
                 title="Total"
-                bottomRow={<TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />}
+                bottomRow={total.trendSkipped ? (
+                  <span className="text-helper">Not enough data to compare yet</span>
+                ) : (
+                  <TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} isExpense={true} />
+                )}
               >
-                <span className="text-card-currency shrink-0">{currency.symbol}</span>
+                <span className="text-card-currency shrink-0 opacity-50">{currency.symbol}</span>
                 <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
               </ValueCard>
             </div>
             <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
               {(timePeriod === 'This Month' || timePeriod === 'Last Month') && averageDaily !== null ? (
-                <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} isExpense={true} />
+                <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} trendSkipped={averageDaily.trendSkipped} isExpense />
               ) : (
-                <AverageMonthlyCard amount={averageMonthly.amount} trend={averageMonthly.trend} isExpense={true} trendLabel="compared to last year" />
+                <AverageCard 
+                  amount={averageMonthly.amount} 
+                  trend={averageMonthly.trend} 
+                  trendSkipped={averageMonthly.trendSkipped}
+                  trendLabel={getComparisonLabel(timePeriod)}
+                />
               )}
             </div>
           </div>
 
           {/* Row 2: Sub-bento grid */}
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-5 gap-4 flex-1">
             {/* Left column (3 cols): Latest Expenses + Demographic Comparison stacked */}
             <div className="col-span-3 flex flex-col gap-4">
-              <div className="flex-7 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+              <div className="flex-[7] min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <LatestExpensesCard expenses={latestExpenses} onItemClick={handleLatestExpenseClick} />
               </div>
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <DemographicComparisonCard
-                  message={demographicComparison.message}
-                  percentage={demographicComparison.percentage}
-                  percentageLabel={demographicComparison.percentageLabel}
-                  link={demographicComparison.link}
-                  linkHref="/statistics"
+                  message={demographicComparison?.message || ''}
+                  percentage={demographicComparison?.percentage || 0}
+                  percentageLabel={demographicComparison?.percentageLabel || ''}
+                  link={demographicComparison?.link || 'Statistics'}
+                  linkHref={demographicComparison?.link === 'Settings' ? '/settings' : '/statistics'}
                 />
               </div>
             </div>
@@ -713,13 +743,7 @@ actionButton={{
               
               {/* Bottom row: Insight */}
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                <InsightCard
-                  title={insight.title}
-                  amount={insight.amount}
-                  message={insight.message}
-                  investmentAmount={insight.investmentAmount}
-                  trend={insight.trend}
-                />
+                <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} />
               </div>
             </div>
           </div>

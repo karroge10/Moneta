@@ -122,7 +122,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
       {/* Footer with Auth */}
       <div className="sidebar-footer">
         <ClerkLoading>
-          <div className="sidebar-logout pointer-events-none cursor-default opacity-80" aria-hidden="true">
+          <div className="sidebar-logout pointer-events-none" aria-hidden="true">
             <div className="sidebar-account-avatar-slot">
               <div className="w-full h-full rounded-full bg-[#3a3a3a] animate-pulse" />
             </div>

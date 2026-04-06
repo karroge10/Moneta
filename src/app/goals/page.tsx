@@ -12,8 +12,10 @@ import { Goal } from '@/types/dashboard';
 import { TimePeriod } from '@/types/dashboard';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
+import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 
 export default function GoalsPage() {
+  const authReady = useAuthReadyForApi();
   const { currency: userCurrency } = useCurrency();
   const { currencyOptions } = useCurrencyOptions();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Year');
@@ -56,8 +58,9 @@ export default function GoalsPage() {
   }, [addToast]);
 
   useEffect(() => {
+    if (!authReady) return;
     fetchGoals();
-  }, [fetchGoals]);
+  }, [authReady, fetchGoals]);
 
   // Create draft goal for adding
   const createDraftGoal = (): Goal => {

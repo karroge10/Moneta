@@ -20,7 +20,7 @@ const settingRows: SettingRow[] = [
   { key: 'investments', label: 'Investments' },
   { key: 'goals', label: 'Goals' },
   { key: 'promotionalEmail', label: 'Promotional Email' },
-  { key: 'aiInsights', label: 'AI Insights' },
+  { key: 'aiInsights', label: 'Round-up summaries' },
 ];
 
 export default function NotificationSettingsForm({

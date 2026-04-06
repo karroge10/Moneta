@@ -8,11 +8,12 @@ import { useCurrency } from '@/hooks/useCurrency';
 interface AverageCardProps {
   amount: number;
   trend: number;
+  trendSkipped?: boolean;
   subtitle?: string;
   trendLabel?: string;
 }
 
-export default function AverageCard({ amount, trend, subtitle, trendLabel = 'from last year' }: AverageCardProps) {
+export default function AverageCard({ amount, trend, trendSkipped, subtitle, trendLabel = 'from last year' }: AverageCardProps) {
   const { currency } = useCurrency();
   return (
     <Card title="Average">
@@ -20,11 +21,21 @@ export default function AverageCard({ amount, trend, subtitle, trendLabel = 'fro
         {subtitle && (
           <div className="text-helper mb-2">{subtitle}</div>
         )}
-        <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-          <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
-          <span className="text-card-value break-all min-w-0">{formatCompactNumber(amount)}</span>
+        <div className="flex flex-col justify-center items-start flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-card-currency shrink-0 opacity-50">{currency.symbol}</span>
+            <span className="text-card-value break-all min-w-0">{formatCompactNumber(amount)}</span>
+          </div>
         </div>
-        <TrendIndicator value={trend} label={trendLabel} />
+        {trendSkipped ? (
+          <div className="mt-3">
+            <span className="text-helper">Not enough data to compare yet</span>
+          </div>
+        ) : (
+          <div className="mt-3">
+            <TrendIndicator value={trend} label={trendLabel} />
+          </div>
+        )}
       </div>
     </Card>
   );

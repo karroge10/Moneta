@@ -3,18 +3,17 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton, ClerkLoaded, ClerkLoading } from "@clerk/nextjs";
 import {
-  Reports,
   Spark,
-  LotOfCash,
   BitcoinCircle,
   CalendarCheck,
   StatUp,
-  Check,
   CheckCircle,
   HeadsetHelp,
+  LotOfCash,
 } from "iconoir-react";
+import SendFeedbackCard from '@/components/help/SendFeedbackCard';
 
 const CONTACT_EMAIL_FALLBACK = "hello@moneta.app";
 
@@ -27,7 +26,7 @@ export default function LandingPage() {
       setIsScrolled(window.scrollY > 50);
 
       // Update active section based on scroll position
-      const sections = ["home", "about", "features", "contact"];
+      const sections = ["home", "features", "about", "contact"];
       const scrollPosition = window.scrollY + 100;
 
       for (const section of sections) {
@@ -43,6 +42,7 @@ export default function LandingPage() {
     };
 
     window.addEventListener("scroll", handleScroll);
+    handleScroll(); // Call it immediately to set initial state correctly on refresh
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -70,17 +70,19 @@ export default function LandingPage() {
           isScrolled ? "bg-background/95 backdrop-blur-sm" : "bg-transparent"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-6 md:px-8 py-6 flex justify-between items-center">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <Image
-              src="/monetalogo.png"
-              alt="Moneta"
-              width={40}
-              height={40}
-              priority
-            />
-            <span className="text-sidebar-title text-[#E7E4E4]">MONETA</span>
+        <div className="max-w-7xl mx-auto px-6 md:px-8 py-6 flex items-center">
+          {/* Logo Container */}
+          <div className="flex-1 flex justify-start">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/monetalogo.png"
+                alt="Moneta"
+                width={40}
+                height={40}
+                priority
+              />
+              <span className="text-sidebar-title text-[#E7E4E4]">MONETA</span>
+            </div>
           </div>
 
           {/* Center Navigation */}
@@ -95,13 +97,6 @@ export default function LandingPage() {
               Home
             </a>
             <a
-              href="#about"
-              onClick={(e) => handleNavClick(e, "about")}
-              className="text-body font-semibold text-[#E7E4E4] hover:text-[#AC66DA] transition-colors"
-            >
-              About
-            </a>
-            <a
               href="#features"
               onClick={(e) => handleNavClick(e, "features")}
               className={`text-body font-semibold transition-colors ${
@@ -109,6 +104,15 @@ export default function LandingPage() {
               }`}
             >
               Features
+            </a>
+            <a
+              href="#about"
+              onClick={(e) => handleNavClick(e, "about")}
+              className={`text-body font-semibold transition-colors ${
+                activeSection === "about" ? "text-[#AC66DA]" : "text-[#E7E4E4] hover:text-[#AC66DA]"
+              }`}
+            >
+              About
             </a>
             <a
               href="#contact"
@@ -121,109 +125,142 @@ export default function LandingPage() {
             </a>
           </nav>
 
-          {/* Right CTA */}
-          <div className="flex items-center gap-4">
-            <SignedIn>
-              <Link
-                href="/dashboard"
-                className="flex items-center justify-center h-8 px-4 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity"
+          {/* Right CTA Container */}
+          <div className="flex-1 flex justify-end items-center gap-4">
+            <ClerkLoading>
+              <button
+                type="button"
+                className="flex items-center justify-center h-9 sm:h-10 min-w-[120px] sm:min-w-[140px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] text-[#E7E4E4] font-semibold text-sm sm:text-base border border-[#AC66DA]/50 shadow-[0_4px_12px_rgba(172,102,218,0.2)]"
               >
-                <span className="hidden sm:inline">Open Dashboard</span>
-                <span className="sm:hidden">Open</span>
-              </Link>
-              <UserButton
-                appearance={{
-                  elements: {
-                    avatarBox: "w-8 h-8",
-                    userButtonPopoverCard: "bg-[#282828] border border-[#3a3a3a]",
-                    userButtonPopoverActionButton: "text-[#E7E4E4] hover:bg-[#3a3a3a]",
-                    userButtonPopoverActionButtonText: "text-[#E7E4E4]",
-                  },
-                }}
-              />
-            </SignedIn>
-            <SignedOut>
-              <SignInButton mode="modal" fallbackRedirectUrl="/dashboard">
-                <button
-                  type="button"
-                  className="hidden sm:block px-6 py-2.5 rounded-full text-body font-semibold text-[#E7E4E4] hover:opacity-80 transition-opacity"
-                >
-                  Sign In
-                </button>
-              </SignInButton>
-              <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard">
-                <button
-                  type="button"
-                  className="px-6 py-2.5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold hover:opacity-90 transition-opacity"
-                >
-                  Get Started
-                </button>
-              </SignUpButton>
-            </SignedOut>
+                Get Started
+              </button>
+            </ClerkLoading>
+            <ClerkLoaded>
+              <SignedIn>
+                <div className="flex items-center gap-4">
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center justify-center h-9 sm:h-10 min-w-[120px] sm:min-w-[140px] px-5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity"
+                  >
+                    <span className="hidden sm:inline">Dashboard</span>
+                    <span className="sm:hidden">Open</span>
+                  </Link>
+                  <UserButton
+                    appearance={{
+                      elements: {
+                        avatarBox: "w-8 h-8 sm:w-10 sm:h-10",
+                        userButtonPopoverCard: "bg-[#282828] border border-[#3a3a3a]",
+                        userButtonPopoverActionButton: "text-[#E7E4E4] hover:bg-[#3a3a3a]",
+                        userButtonPopoverActionButtonText: "text-[#E7E4E4]",
+                      },
+                    }}
+                  />
+                </div>
+              </SignedIn>
+              <SignedOut>
+                <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard">
+                  <button
+                    type="button"
+                    className="flex items-center justify-center h-9 sm:h-10 min-w-[120px] sm:min-w-[140px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] text-[#E7E4E4] font-semibold hover:opacity-90 transition-all text-sm sm:text-base border border-[#AC66DA]/50 shadow-[0_4px_12px_rgba(172,102,218,0.2)] hover:scale-[1.02]"
+                  >
+                    Get Started
+                  </button>
+                </SignUpButton>
+              </SignedOut>
+            </ClerkLoaded>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section id="home" className="pt-32 pb-0 md:pt-40 px-6 md:px-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center space-y-8 mb-12">
-            {/* Main Heading - 2 lines - Bigger */}
-            <h1 className="text-[48px] md:text-[64px] lg:text-[72px] text-[#E7E4E4] font-bold leading-tight">
-              Smart Financial Dashboard
-              <br />
-              for Modern Life
-            </h1>
+      <section
+        id="home"
+        className="relative pt-28 pb-16 md:pt-36 md:pb-24 px-6 md:px-8 overflow-x-clip"
+      >
+        {/* Soft ambient background */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-40"
+          aria-hidden
+        >
+          <div className="absolute -top-32 left-1/2 h-[420px] w-[min(90vw,720px)] -translate-x-1/2 rounded-full bg-[#AC66DA]/25 blur-[100px]" />
+          <div className="absolute top-1/3 right-0 h-[280px] w-[min(50vw,400px)] translate-x-1/4 rounded-full bg-[#74C648]/10 blur-[90px]" />
+        </div>
 
-            {/* Subtitle */}
-            <p className="text-body text-[#E7E4E4] opacity-90 max-w-2xl mx-auto leading-relaxed text-lg">
-              Take control of your finances with intelligent insights, automated tracking, and
-              personalized recommendations. All in one beautiful, secure dashboard.
-            </p>
-
-            {/* CTA Button */}
-            <div className="pt-4">
-              <SignedOut>
-                <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard">
+        <div className="relative z-10 mx-auto max-w-7xl">
+          <div className="flex flex-col items-center gap-8 md:gap-10">
+            {/* Copy */}
+            <div className="space-y-8 text-center max-w-5xl mx-auto z-10 pt-8 md:pt-12">
+              <h1 className="text-[54px] md:text-[78px] lg:text-[86px] font-bold leading-[1.05] text-[#E7E4E4] tracking-tight">
+                <span className="md:whitespace-nowrap">Smart financial dashboard</span> <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#AC66DA] to-[#E7E4E4] pb-2 inline-block">for modern life</span>
+              </h1>
+              <p className="mx-auto max-w-2xl text-[1.125rem] md:text-[1.25rem] leading-relaxed text-[#E7E4E4]/90 pt-4">
+                Manage your money with clear analytics, automated tracking, and personalized insights built for security.
+              </p>
+              <div className="flex flex-col items-center justify-center gap-4 sm:flex-row min-h-[60px]">
+                <ClerkLoading>
                   <button
                     type="button"
-                    className="px-8 py-3.5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity"
+                    className="w-full min-w-[200px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] px-8 py-4 text-lg font-semibold text-[#E7E4E4] shadow-[0_8px_16px_-4px_rgba(172,102,218,0.3)] sm:w-auto border border-[#AC66DA]/50"
                   >
-                    Start Free Trial
+                    Get Started
                   </button>
-                </SignUpButton>
-              </SignedOut>
-              <SignedIn>
-                <Link
-                  href="/dashboard"
-                  className="inline-block px-8 py-3.5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity"
-                >
-                  Open Dashboard
-                </Link>
-              </SignedIn>
+                </ClerkLoading>
+                <ClerkLoaded>
+                  <SignedOut>
+                    <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard">
+                      <button
+                        type="button"
+                        className="w-full min-w-[200px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] px-8 py-4 text-lg font-semibold text-[#E7E4E4] shadow-[0_8px_16px_-4px_rgba(172,102,218,0.3)] transition-all hover:opacity-90 hover:scale-[1.02] hover:shadow-[0_10px_20px_-2px_rgba(172,102,218,0.4)] sm:w-auto border border-[#AC66DA]/50"
+                      >
+                        Get Started
+                      </button>
+                    </SignUpButton>
+                  </SignedOut>
+                  <SignedIn>
+                    <Link
+                      href="/dashboard"
+                      className="inline-flex w-full min-w-[200px] items-center justify-center rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] px-8 py-4 text-lg font-semibold text-[#E7E4E4] shadow-[0_8px_16px_-4px_rgba(172,102,218,0.3)] transition-all hover:opacity-90 hover:scale-[1.02] hover:shadow-[0_10px_20px_-2px_rgba(172,102,218,0.4)] sm:w-auto border border-[#AC66DA]/50"
+                    >
+                      Open dashboard
+                    </Link>
+                  </SignedIn>
+                </ClerkLoaded>
+              </div>
             </div>
-          </div>
 
-          {/* Dashboard Screenshot - Transitions into next section with fade */}
-          <div className="relative -mb-24 md:-mb-32">
-            <div className="card-surface p-4 md:p-6 rounded-t-[30px] border-b-0 relative overflow-hidden">
-              <div className="aspect-video bg-background rounded-[20px] border border-[#3a3a3a] flex items-center justify-center relative">
-                <div className="text-center space-y-4">
-                  <div className="text-body text-[#E7E4E4] opacity-50">Dashboard Preview</div>
-                  <div className="text-helper text-[#E7E4E4] opacity-30">
-                    Screenshot placeholder - Replace with actual dashboard image
+            {/* Product screenshot */}
+            <div className="relative mx-auto w-full max-w-[1280px] mt-2 mb-0 lg:mb-4 z-20 group">
+              <div className="card-surface p-2 md:p-3 transition-transform duration-500 group-hover:-translate-y-2">
+                <div className="mb-2 flex items-center justify-center border-b border-[#3a3a3a]/50 pb-2 md:mb-3 relative">
+                  <div className="absolute left-2 md:left-4 flex gap-1.5 md:gap-2">
+                    <span className="size-2.5 md:size-3 rounded-full bg-[#D93F3F]/80 shadow-inner" aria-hidden />
+                    <span className="size-2.5 md:size-3 rounded-full bg-[#E7E4E4]/40 shadow-inner" aria-hidden />
+                    <span className="size-2.5 md:size-3 rounded-full bg-[#74C648]/80 shadow-inner" aria-hidden />
+                  </div>
+                  <span className="text-[10px] md:text-xs font-semibold uppercase tracking-widest text-[#9CA3AF]">
+                    moneta.app
+                  </span>
+                </div>
+                <div className="relative overflow-hidden rounded-[20px] border border-[#1a1a1a] bg-[#1a1a1a] flex">
+                  <div className="relative w-full h-auto">
+                    <Image
+                      src="/dashboard.png"
+                      alt="Moneta dashboard showing balances, goals, and recent activity"
+                      width={1904}
+                      height={923}
+                      className="w-full h-auto block"
+                      priority
+                    />
                   </div>
                 </div>
-                {/* Fade gradient at bottom */}
-                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* About Section - Bento Grid */}
-      <section id="about" className="pt-48 md:pt-56 pb-16 md:pb-24 px-6 md:px-8">
+      {/* Features Section - Bento Grid */}
+      <section id="features" className="pt-16 pb-16 md:pt-24 md:pb-24 px-6 md:px-8 bg-gradient-to-b from-transparent to-[#1f1f1f]">
         <div className="max-w-6xl mx-auto">
           {/* Section Title */}
           <div className="text-center mb-16 space-y-6">
@@ -233,17 +270,14 @@ export default function LandingPage() {
               Start in seconds
             </h2>
             <p className="text-body text-[#E7E4E4] opacity-70 max-w-2xl mx-auto text-lg">
-              Experience lightning-fast setup with intelligent features designed to optimize your workflow instantly.
+              Get started in seconds with tools that handle the heavy lifting for you.
             </p>
           </div>
 
           {/* Bento Grid: 3 items first row, 2 items second row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             {/* Row 1 - Item 1 */}
-            <div className="card-surface flex flex-col gap-4 relative overflow-hidden">
-              <div className="absolute top-4 right-4">
-                <Spark width={32} height={32} strokeWidth={1.5} className="text-[#AC66DA] opacity-30" />
-              </div>
+            <div className="card-surface h-full flex flex-col gap-4 group hover:-translate-y-1 transition-all duration-300">
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-full bg-[#282828] border border-[#3a3a3a]">
                   <Spark width={24} height={24} strokeWidth={1.5} className="text-[#AC66DA]" />
@@ -251,25 +285,24 @@ export default function LandingPage() {
                 <h3 className="text-card-header text-[#E7E4E4]">Smart Automation</h3>
               </div>
               <p className="text-body text-[#E7E4E4] opacity-70">
-                Automatically categorize transactions and track your spending patterns without manual input.
+                Your transactions categorized automatically so you don’t have to lift a finger.
               </p>
-              {/* Mini graph visualization */}
-              <div className="mt-4 h-16 flex items-end gap-1">
-                {[40, 60, 45, 75, 55, 80].map((height, idx) => (
-                  <div
-                    key={idx}
-                    className="flex-1 bg-[#AC66DA] rounded-t"
-                    style={{ height: `${height}%`, opacity: 0.6 }}
+              {/* Screenshot visualization */}
+              <div className="mt-auto pt-6 relative -mx-6 -mb-6">
+                <div className="bg-[#1a1a1a] rounded-t-2xl border-t border-[#3a3a3a] overflow-hidden">
+                  <Image
+                    src="/expenses.png"
+                    alt="Automation"
+                    width={800}
+                    height={450}
+                    className="w-full h-auto block opacity-80 group-hover:opacity-100 transition-transform duration-700 group-hover:scale-[1.02]"
                   />
-                ))}
+                </div>
               </div>
             </div>
 
             {/* Row 1 - Item 2 */}
-            <div className="card-surface flex flex-col gap-4 relative overflow-hidden">
-              <div className="absolute top-4 right-4">
-                <StatUp width={32} height={32} strokeWidth={1.5} className="text-[#74C648] opacity-30" />
-              </div>
+            <div className="card-surface h-full flex flex-col gap-4 group hover:-translate-y-1 transition-all duration-300">
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-full bg-[#282828] border border-[#3a3a3a]">
                   <StatUp width={24} height={24} strokeWidth={1.5} className="text-[#74C648]" />
@@ -277,53 +310,51 @@ export default function LandingPage() {
                 <h3 className="text-card-header text-[#E7E4E4]">Real-Time Insights</h3>
               </div>
               <p className="text-body text-[#E7E4E4] opacity-70">
-                Get instant visibility into your financial health with real-time analytics and trends.
+                Stop wondering where your money goes. See every trend as it happens.
               </p>
-              {/* Mini chart visualization */}
-              <div className="mt-4 h-16 flex items-end gap-1">
-                {[30, 50, 65, 55, 70, 85].map((height, idx) => (
-                  <div
-                    key={idx}
-                    className="flex-1 bg-[#74C648] rounded-t"
-                    style={{ height: `${height}%`, opacity: 0.6 }}
+              {/* Screenshot visualization */}
+              <div className="mt-auto pt-6 relative -mx-6 -mb-6">
+                <div className="bg-[#1a1a1a] rounded-t-2xl border-t border-[#3a3a3a] overflow-hidden">
+                  <Image
+                    src="/statistics.png"
+                    alt="Insights"
+                    width={800}
+                    height={450}
+                    className="w-full h-auto block opacity-80 group-hover:opacity-100 transition-transform duration-700 group-hover:scale-[1.02]"
                   />
-                ))}
+                </div>
               </div>
             </div>
 
             {/* Row 1 - Item 3 */}
-            <div className="card-surface flex flex-col gap-4 relative overflow-hidden">
-              <div className="absolute top-4 right-4">
-                <CheckCircle width={32} height={32} strokeWidth={1.5} className="text-[#AC66DA] opacity-30" />
-              </div>
+            <div className="card-surface h-full flex flex-col gap-4 group hover:-translate-y-1 transition-all duration-300">
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-full bg-[#282828] border border-[#3a3a3a]">
-                  <CheckCircle width={24} height={24} strokeWidth={1.5} className="text-[#AC66DA]" />
+                  <LotOfCash width={24} height={24} strokeWidth={1.5} className="text-[#AC66DA]" />
                 </div>
-                <h3 className="text-card-header text-[#E7E4E4]">Secure & Private</h3>
+                <h3 className="text-card-header text-[#E7E4E4]">All Your Transactions</h3>
               </div>
               <p className="text-body text-[#E7E4E4] opacity-70">
-                Your financial data is encrypted and stored securely. We never share your information.
+                Instantly track every transaction across all your accounts. Find what you need, when you need it.
               </p>
-              {/* Security indicator visualization */}
-              <div className="mt-4 flex items-center gap-2">
-                {[1, 2, 3, 4].map((idx) => (
-                  <div
-                    key={idx}
-                    className="flex-1 h-2 bg-[#AC66DA] rounded-full"
-                    style={{ opacity: 0.3 + idx * 0.2 }}
+              {/* Screenshot visualization */}
+              <div className="mt-auto pt-6 relative -mx-6 -mb-6">
+                <div className="bg-[#1a1a1a] rounded-t-2xl border-t border-[#3a3a3a] overflow-hidden">
+                  <Image
+                    src="/transactions.png"
+                    alt="Transactions"
+                    width={800}
+                    height={450}
+                    className="w-full h-auto block opacity-80 group-hover:opacity-100 transition-transform duration-700 group-hover:scale-[1.02]"
                   />
-                ))}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Row 2 - 2 items */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="card-surface flex flex-col gap-4 relative overflow-hidden">
-              <div className="absolute top-4 right-4">
-                <CalendarCheck width={32} height={32} strokeWidth={1.5} className="text-[#74C648] opacity-30" />
-              </div>
+            <div className="card-surface h-full flex flex-col gap-4 group hover:-translate-y-1 transition-all duration-300">
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-full bg-[#282828] border border-[#3a3a3a]">
                   <CalendarCheck width={24} height={24} strokeWidth={1.5} className="text-[#74C648]" />
@@ -331,42 +362,23 @@ export default function LandingPage() {
                 <h3 className="text-card-header text-[#E7E4E4]">Goal Tracking</h3>
               </div>
               <p className="text-body text-[#E7E4E4] opacity-70">
-                Set financial goals and track your progress with detailed milestones and personalized recommendations.
+                Pick a goal, set a target, and watch your progress update in real-time.
               </p>
-              {/* Progress circle visualization */}
-              <div className="mt-4 flex items-center justify-center">
-                <div className="relative w-20 h-20">
-                  <svg className="transform -rotate-90" width="80" height="80">
-                    <circle
-                      cx="40"
-                      cy="40"
-                      r="30"
-                      stroke="#3a3a3a"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <circle
-                      cx="40"
-                      cy="40"
-                      r="30"
-                      stroke="#74C648"
-                      strokeWidth="4"
-                      fill="none"
-                      strokeDasharray={`${2 * Math.PI * 30 * 0.75} ${2 * Math.PI * 30}`}
-                      style={{ opacity: 0.6 }}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-body font-semibold text-[#74C648]">75%</span>
-                  </div>
+              {/* Screenshot visualization */}
+              <div className="mt-auto pt-6 relative -mx-6 -mb-6">
+                <div className="bg-[#1a1a1a] rounded-t-2xl border-t border-[#3a3a3a] overflow-hidden">
+                  <Image
+                    src="/goals.png"
+                    alt="Goals"
+                    width={800}
+                    height={450}
+                    className="w-full h-auto block opacity-80 group-hover:opacity-100 transition-transform duration-700 group-hover:scale-[1.02]"
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="card-surface flex flex-col gap-4 relative overflow-hidden">
-              <div className="absolute top-4 right-4">
-                <BitcoinCircle width={32} height={32} strokeWidth={1.5} className="text-[#AC66DA] opacity-30" />
-              </div>
+            <div className="card-surface h-full flex flex-col gap-4 group hover:-translate-y-1 transition-all duration-300">
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-full bg-[#282828] border border-[#3a3a3a]">
                   <BitcoinCircle width={24} height={24} strokeWidth={1.5} className="text-[#AC66DA]" />
@@ -374,87 +386,75 @@ export default function LandingPage() {
                 <h3 className="text-card-header text-[#E7E4E4]">Investment Portfolio</h3>
               </div>
               <p className="text-body text-[#E7E4E4] opacity-70">
-                Monitor your investments across stocks, crypto, and other assets with comprehensive portfolio analytics.
+                Keep an eye on everything from Bitcoin to stocks in one unified dashboard.
               </p>
-              {/* Portfolio distribution visualization */}
-              <div className="mt-4 flex items-end gap-2 h-16">
-                <div className="flex-1 bg-[#AC66DA] rounded-t" style={{ height: "100%", opacity: 0.6 }} />
-                <div className="flex-1 bg-[#74C648] rounded-t" style={{ height: "75%", opacity: 0.6 }} />
-                <div className="flex-1 bg-[#AC66DA] rounded-t" style={{ height: "60%", opacity: 0.6 }} />
-                <div className="flex-1 bg-[#74C648] rounded-t" style={{ height: "45%", opacity: 0.6 }} />
+              {/* Screenshot visualization */}
+              <div className="mt-auto pt-6 relative -mx-6 -mb-6">
+                <div className="bg-[#1a1a1a] rounded-t-2xl border-t border-[#3a3a3a] overflow-hidden">
+                  <Image
+                    src="/investments.png"
+                    alt="Portfolio"
+                    width={800}
+                    height={450}
+                    className="w-full h-auto block opacity-80 group-hover:opacity-100 transition-transform duration-700 group-hover:scale-[1.02]"
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Grid (6 Cards) */}
-      <section id="features" className="py-16 md:py-24 px-6 md:px-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Section Title */}
-          <div className="text-center mb-16 space-y-6">
-            <h2 className="text-[40px] md:text-[56px] lg:text-[64px] text-[#E7E4E4] font-bold leading-tight">
-              Key Features
-            </h2>
-            <p className="text-body text-[#E7E4E4] opacity-70 max-w-2xl mx-auto text-lg">
-              Explore a range of cutting-edge tools designed to improve your financial health,
-              simplify your processes, and deliver impactful results.
-            </p>
-          </div>
-
-          {/* 3x2 Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                icon: LotOfCash,
-                title: "Transaction Management",
-                description: "Track every transaction with smart categorization and automatic tagging.",
-                color: "#AC66DA",
-              },
-              {
-                icon: StatUp,
-                title: "Real-Time Analytics",
-                description: "Get instant insights into your spending patterns and financial trends.",
-                color: "#74C648",
-              },
-              {
-                icon: Spark,
-                title: "AI-Powered Insights",
-                description: "Receive personalized recommendations to optimize your financial decisions.",
-                color: "#AC66DA",
-              },
-              {
-                icon: CalendarCheck,
-                title: "Goal Setting",
-                description: "Set financial goals and track your progress with detailed milestones.",
-                color: "#74C648",
-              },
-              {
-                icon: BitcoinCircle,
-                title: "Investment Tracking",
-                description: "Monitor your portfolio performance across multiple asset classes.",
-                color: "#AC66DA",
-              },
-              {
-                icon: Reports,
-                title: "Detailed Reports",
-                description: "Generate comprehensive reports to understand your financial health.",
-                color: "#74C648",
-              },
-            ].map((feature, idx) => {
-              const IconComponent = feature.icon;
-              return (
-                <div key={idx} className="card-surface text-center space-y-6 py-12 flex flex-col items-center justify-center min-h-[320px]">
-                  <div className="flex justify-center">
-                    <div className="p-4 rounded-full bg-[#282828] border border-[#3a3a3a]">
-                      <IconComponent width={48} height={48} strokeWidth={1.5} style={{ color: feature.color }} />
-                    </div>
+      {/* About Section */}
+      <section id="about" className="py-16 md:py-24 px-6 md:px-8 bg-[#1f1f1f]">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center gap-12 lg:gap-20">
+            <div className="md:w-1/2 space-y-6 text-center md:text-left">
+              <h2 className="text-[32px] md:text-[44px] lg:text-[48px] text-[#E7E4E4] font-bold leading-tight tracking-tight">
+                A new standard for<br/>your financial life
+              </h2>
+              <p className="text-body text-[#E7E4E4] opacity-70 text-lg leading-relaxed max-w-md mx-auto md:mx-0">
+                Moneta was engineered to solve a clear problem: financial apps are often cluttered and designed to sell user data. Managing your money shouldn't be a chore.
+              </p>
+            </div>
+            
+            <div className="md:w-1/2 w-full card-surface space-y-8">
+              <div className="space-y-1">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-[#AC66DA]/10 border border-[#AC66DA]/20">
+                    <CheckCircle width={18} height={18} className="text-[#AC66DA]" strokeWidth={2} />
                   </div>
-                  <h3 className="text-card-header text-[#E7E4E4]">{feature.title}</h3>
-                  <p className="text-body text-[#E7E4E4] opacity-70">{feature.description}</p>
+                  <h3 className="text-card-header text-[#E7E4E4]">Radical Clarity</h3>
                 </div>
-              );
-            })}
+                <p className="text-[#E7E4E4] opacity-70 text-body leading-relaxed pl-11">
+                  The noise is stripped away so you can focus directly on your goals.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-[#74C648]/10 border border-[#74C648]/20">
+                    <Spark width={18} height={18} className="text-[#74C648]" strokeWidth={2} />
+                  </div>
+                  <h3 className="text-card-header text-[#E7E4E4]">Privacy First</h3>
+                </div>
+                <p className="text-[#E7E4E4] opacity-70 text-body leading-relaxed pl-11">
+                  No information is sold, and no credit cards are pushed. Secure by design.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-[#AC66DA]/10 border border-[#AC66DA]/20">
+                    <StatUp width={18} height={18} className="text-[#AC66DA]" strokeWidth={2} />
+                  </div>
+                  <h3 className="text-card-header text-[#E7E4E4]">Built for Action</h3>
+                </div>
+                <p className="text-[#E7E4E4] opacity-70 text-body leading-relaxed pl-11">
+                  Smart projections and real-time tracking for an active financial life.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -462,99 +462,77 @@ export default function LandingPage() {
       {/* Contact */}
       <section
         id="contact"
-        className="py-16 md:py-20 px-6 md:px-8 border-t border-[#3a3a3a]"
+        className="py-16 md:py-20 px-6 md:px-8 border-t border-[#2a2a2a] bg-gradient-to-b from-[#1f1f1f] to-background"
       >
-        <div className="max-w-6xl mx-auto">
-          <div className="card-surface flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-            <div className="flex items-start gap-4 min-w-0">
-              <div className="p-3 rounded-full bg-[#282828] border border-[#3a3a3a] shrink-0">
-                <HeadsetHelp width={28} height={28} strokeWidth={1.5} className="text-[#AC66DA]" />
-              </div>
-              <div className="space-y-3 min-w-0">
-                <h2 className="text-card-header text-[#E7E4E4]">Contact</h2>
-                <p className="text-body text-[#E7E4E4] opacity-70 max-w-xl">
-                  Questions, feedback, or partnership ideas? Reach out by email. If you already use Moneta, you can
-                  also visit the Help Center after signing in.
-                </p>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
-                  <a
-                    href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? CONTACT_EMAIL_FALLBACK}?subject=Moneta%20inquiry`}
-                    className="text-body font-semibold text-[#AC66DA] hover:opacity-90 transition-opacity break-all"
-                  >
-                    {process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? CONTACT_EMAIL_FALLBACK}
-                  </a>
-                  <Link
-                    href="/help"
-                    className="text-body font-semibold text-[#E7E4E4] opacity-80 hover:text-[#AC66DA] transition-colors"
-                  >
-                    Help Center
-                  </Link>
-                </div>
-              </div>
+        <div className="max-w-xl mx-auto space-y-8">
+          <div className="text-center space-y-4">
+            <div className="inline-flex items-center justify-center p-3 rounded-full bg-[#AC66DA]/10 mb-1 border border-[#AC66DA]/20">
+              <HeadsetHelp width={28} height={28} strokeWidth={1.5} className="text-[#AC66DA]" />
             </div>
+            <h2 className="text-[32px] md:text-[40px] text-[#E7E4E4] font-bold tracking-tight leading-tight">
+              Get in Touch
+            </h2>
+            <p className="text-base text-[#E7E4E4] opacity-70">
+              Questions, feedback, or partnership ideas? Send a message below to get a response as soon as possible.
+            </p>
+          </div>
+          
+          <div className="w-full">
+            <SendFeedbackCard />
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 md:py-16 px-6 md:px-8 border-t border-[#3a3a3a]">
+      <footer className="pt-20 pb-12 px-6 md:px-8 bg-[#1f1f1f] border-t border-[#2a2a2a]">
         <div className="max-w-6xl mx-auto">
-          {/* Main Footer Content */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-8">
-            {/* Brand + Description */}
-            <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+            {/* Brand */}
+            <div className="md:col-span-2 space-y-4">
               <div className="flex items-center gap-3">
                 <Image src="/monetalogo.png" alt="Moneta" width={32} height={32} />
-                <span className="text-sidebar-title text-[#E7E4E4]">MONETA</span>
+                <span className="text-sidebar-title text-[#E7E4E4] tracking-wider text-xl font-bold">MONETA</span>
               </div>
-              <p className="text-body text-[#E7E4E4] opacity-70">
-                MONETA is an AI-powered financial dashboard that helps you track your income,
-                expenses, investments, and achieve your financial goals.
+              <p className="text-body text-[#E7E4E4] opacity-60 leading-relaxed max-w-sm pt-2">
+                The financial dashboard built for modern life. Manage your money, track every expense, and reach your goals.
               </p>
             </div>
 
-            {/* Navigation Links */}
+            {/* Navigation */}
             <div className="space-y-4">
-              <h3 className="text-card-header text-[#E7E4E4]">Navigation</h3>
+              <h3 className="text-body font-semibold text-[#E7E4E4]">Navigation</h3>
               <nav className="flex flex-col gap-3">
-                <a
-                  href="#about"
-                  onClick={(e) => handleNavClick(e, "about")}
-                  className="text-body text-[#E7E4E4] opacity-70 hover:text-[#AC66DA] transition-colors"
-                >
-                  About
-                </a>
-                <a
-                  href="#features"
-                  onClick={(e) => handleNavClick(e, "features")}
-                  className="text-body text-[#E7E4E4] opacity-70 hover:text-[#AC66DA] transition-colors"
-                >
-                  Features
-                </a>
-                <a
-                  href="#contact"
-                  onClick={(e) => handleNavClick(e, "contact")}
-                  className="text-body text-[#E7E4E4] opacity-70 hover:text-[#AC66DA] transition-colors"
-                >
-                  Contact
-                </a>
+                <a href="#features" onClick={(e) => handleNavClick(e, "features")} className="text-body text-[#E7E4E4] opacity-60 hover:opacity-100 transition-opacity">Features</a>
+                <a href="#about" onClick={(e) => handleNavClick(e, "about")} className="text-body text-[#E7E4E4] opacity-60 hover:opacity-100 transition-opacity">About</a>
+              </nav>
+            </div>
+
+            {/* Legal */}
+            <div className="space-y-4">
+              <h3 className="text-body font-semibold text-[#E7E4E4]">Legal</h3>
+              <nav className="flex flex-col gap-3">
+                <Link href="/terms" className="text-body text-[#E7E4E4] opacity-60 hover:opacity-100 transition-opacity">Terms & Conditions</Link>
+                <Link href="/privacy" className="text-body text-[#E7E4E4] opacity-60 hover:opacity-100 transition-opacity">Privacy Policy</Link>
               </nav>
             </div>
           </div>
 
-          {/* Legal Links */}
-          <div className="pt-8 border-t border-[#3a3a3a] flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-helper text-[#E7E4E4] opacity-70">
-              © 2024 Moneta. All rights reserved.
+          {/* Bottom */}
+          <div className="pt-8 border-t border-[#2a2a2a] flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-helper text-[#E7E4E4] opacity-50">
+              © {new Date().getFullYear()} Moneta. All rights reserved.
             </p>
-            <div className="flex items-center gap-6">
-              <Link href="/terms" className="text-helper text-[#E7E4E4] opacity-70 hover:text-[#AC66DA] transition-colors">
-                Terms and Conditions
-              </Link>
-              <Link href="/privacy" className="text-helper text-[#E7E4E4] opacity-70 hover:text-[#AC66DA] transition-colors">
-                Privacy Policy
-              </Link>
-            </div>
+            <p className="text-helper text-[#E7E4E4] opacity-50 flex items-center gap-1.5">
+              Made with <span className="text-[#D93F3F]">❤️</span> by{' '}
+              <a 
+                href="https://egorkabantsov.vercel.app" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[#AC66DA] font-semibold hover:opacity-80 transition-opacity"
+              >
+                Egor Kabantsov
+              </a>
+            </p>
           </div>
         </div>
       </footer>

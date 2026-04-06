@@ -115,7 +115,7 @@ export default function PortfolioCard({ investments, onEdit }: PortfolioCardProp
                 </div>
                 <div className="text-right shrink-0 ml-auto pointer-events-none">
                   <div className="text-body font-semibold whitespace-nowrap">
-                    {currency.symbol}{formatNumber(investment.currentValue)}
+                    <span className="opacity-50">{currency.symbol}</span> {formatNumber(investment.currentValue)}
                   </div>
                   <div className="flex items-center gap-1 text-sm whitespace-nowrap" style={{ color: trendColor }}>
                     <TrendIcon width={14} height={14} strokeWidth={2} />

@@ -65,9 +65,15 @@ export default async function RootLayout({
   const headersList = await headers();
   const isUnauthorizedPage = headersList.get("x-is-unauthorized") === "true";
   const isLandingPage = headersList.get("x-is-landing-page") === "true";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      afterSignOutUrl="/"
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/dashboard"
+      allowedRedirectOrigins={[siteUrl, "http://localhost:3000", "http://127.0.0.1:3000"]}
+    >
       <html lang="en" suppressHydrationWarning>
         <body
           className={`${sen.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}

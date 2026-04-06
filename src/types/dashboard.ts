@@ -175,12 +175,6 @@ export interface InvestmentActivity {
   icon: string;
 }
 
-export interface FinancialMilestone {
-  date: string;
-  message: string;
-  completedGoals: number;
-}
-
 export interface DemographicComparison {
   id: string;
   label: string;
@@ -236,19 +230,14 @@ export interface TransactionUploadResponse {
 
 export interface UserSettings {
   name: string;
-  firstName: string;
-  lastName: string;
   username: string;
   email: string;
   jobPosition: string;
   age: number;
   country: string;
-  language: string;
   currency: string;
   dateOfBirth: string;
   profession: string;
-  defaultPage: string;
-  plan: string;
   /** null = disabled, number = enabled (percentage 0-100) */
   incomeTaxRate: number | null;
 }
@@ -258,13 +247,6 @@ export interface LoginHistoryEntry {
   time: string;
   device: string;
   location: string;
-}
-
-export interface Achievement {
-  id: string;
-  name: string;
-  unlocked: boolean;
-  icon: string;
 }
 
 export interface NotificationEntry {

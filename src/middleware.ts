@@ -2,7 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 // Public routes that don't require authentication
-const isPublicRoute = createRouteMatcher(["/", "/unauthorized"]);
+const isPublicRoute = createRouteMatcher(["/", "/unauthorized", "/terms(.*)", "/privacy(.*)"]);
 
 // Internal API routes that should be accessible via shared secret
 // Cron routes bypass Clerk auth (they have their own security checks)
@@ -38,11 +38,14 @@ export default clerkMiddleware(async (auth, request) => {
     const { userId } = await auth();
     console.log(`[middleware] Path: ${pathname}, UserId: ${userId}`);
     
-    // If not authenticated, redirect to unauthorized page
+    // If not authenticated, redirect browsers to /unauthorized but return JSON for API
+    // (otherwise fetch() follows the redirect, gets HTML 200, and response.json() throws)
     if (!userId) {
+      if (pathname.startsWith("/api") || pathname.startsWith("/trpc")) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
       console.log(`[middleware] No userId, redirecting to /unauthorized from ${pathname}`);
       const unauthorizedUrl = new URL("/unauthorized", request.url);
-      // Preserve the original URL they tried to access for redirect after sign-in
       unauthorizedUrl.searchParams.set("redirect", request.url);
       return NextResponse.redirect(unauthorizedUrl);
     }

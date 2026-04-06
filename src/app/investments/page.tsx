@@ -25,6 +25,7 @@ import { CompactListDesign } from '@/components/investments/PortfolioDesignOptio
 import { getAssetColor } from '@/lib/asset-utils';
 import { formatSmartNumber } from '@/lib/utils';
 import { useToast } from '@/contexts/ToastContext';
+import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 
 interface InvestmentsApiResponse {
   update: {
@@ -52,6 +53,7 @@ interface InvestmentsApiResponse {
 }
 
 export default function InvestmentsPage() {
+  const authReady = useAuthReadyForApi();
   const { currency } = useCurrency();
   const { currencyOptions } = useCurrencyOptions();
   const { addToast } = useToast();
@@ -120,8 +122,9 @@ export default function InvestmentsPage() {
   }, []);
 
   useEffect(() => {
+    if (!authReady) return;
     fetchInvestments();
-  }, [fetchInvestments]);
+  }, [authReady, fetchInvestments]);
 
   useEffect(() => {
     if (!isAddModalOpen) return;
@@ -267,10 +270,16 @@ export default function InvestmentsPage() {
               <CardSkeleton title="Total Value" variant="value" />
               <CardSkeleton title="Total Invested" variant="value" />
             </div>
-            <CardSkeleton title="Allocation" variant="value" />
-            <CardSkeleton title="Performance" variant="list" />
-            <CardSkeleton title="Assets" variant="list" />
-            <CardSkeleton title="Recent Activities" variant="list" />
+            <CardSkeleton title="Allocation" variant="donut" />
+            <div className="h-[400px] flex flex-col [&>.card-surface]:h-full">
+              <CardSkeleton title="Performance" variant="chart" />
+            </div>
+            <div className="h-[400px] flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+              <CardSkeleton title="Assets" variant="list" />
+            </div>
+            <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+              <CardSkeleton title="Recent Activities" variant="table" />
+            </div>
           </>
         ) : error ? (
           <div className="w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">
@@ -389,10 +398,16 @@ export default function InvestmentsPage() {
             <CardSkeleton title="Update" variant="update" />
             <CardSkeleton title="Total Value" variant="value" />
             <CardSkeleton title="Total Invested" variant="value" />
-            <CardSkeleton title="Allocation" variant="value" />
-            <div className="col-span-2"><CardSkeleton title="Performance" variant="list" /></div>
-            <div className="col-span-2"><CardSkeleton title="Assets" variant="list" /></div>
-            <div className="col-span-2"><CardSkeleton title="Recent Activities" variant="list" /></div>
+            <CardSkeleton title="Allocation" variant="donut" />
+            <div className="col-span-2 h-[500px] flex flex-col [&>.card-surface]:h-full">
+              <CardSkeleton title="Performance" variant="chart" />
+            </div>
+            <div className="col-span-2 h-[500px] flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+              <CardSkeleton title="Assets" variant="list" />
+            </div>
+            <div className="col-span-2 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+              <CardSkeleton title="Recent Activities" variant="table" />
+            </div>
           </>
         ) : error ? (
           <div className="col-span-2 w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">
@@ -513,14 +528,28 @@ export default function InvestmentsPage() {
         {loading ? (
           <>
             <div className="col-span-4 grid grid-cols-3 gap-4">
-              <CardSkeleton title="Update" variant="update" />
-              <CardSkeleton title="Total Value" variant="value" />
-              <CardSkeleton title="Total Invested" variant="value" />
+              <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+                <CardSkeleton title="Update" variant="update" />
+              </div>
+              <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+                <CardSkeleton title="Total Value" variant="value" />
+              </div>
+              <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+                <CardSkeleton title="Total Invested" variant="value" />
+              </div>
             </div>
-            <div className="col-span-2"><CardSkeleton title="Performance" variant="list" /></div>
-            <div className="col-span-1"><CardSkeleton title="Allocation" variant="value" /></div>
-            <div className="col-span-1"><CardSkeleton title="Assets" variant="list" /></div>
-            <div className="col-span-4"><CardSkeleton title="Recent Activities" variant="list" /></div>
+            <div className="col-span-2 h-[500px] flex flex-col [&>.card-surface]:h-full">
+              <CardSkeleton title="Performance" variant="chart" />
+            </div>
+            <div className="col-span-1 h-[500px] flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+              <CardSkeleton title="Allocation" variant="donut" />
+            </div>
+            <div className="col-span-1 h-[500px] flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+              <CardSkeleton title="Assets" variant="list" />
+            </div>
+            <div className="col-span-4 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
+              <CardSkeleton title="Recent Activities" variant="table" />
+            </div>
           </>
         ) : error ? (
           <div className="col-span-4 w-full p-8 bg-[#282828] rounded-3xl border border-[#3a3a3a] text-center">

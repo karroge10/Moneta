@@ -20,8 +20,8 @@ export const faqData: FAQItem[] = [
   },
   {
     id: '3',
-    question: 'When will you offer plans?',
-    answer: "We're focused on the core product first. We'll announce plans when we're ready.",
+    question: 'Is Moneta free?',
+    answer: 'Yes. Moneta is free to use; there are no paid plans or in-app payments.',
     category: 'General'
   },
   {
@@ -32,8 +32,9 @@ export const faqData: FAQItem[] = [
   },
   {
     id: '5',
-    question: 'What are AI-powered insights?',
-    answer: 'AI-powered insights analyze your financial habits and provide personalized recommendations to improve your savings and investments.',
+    question: 'What is the Round-up card?',
+    answer:
+      'It estimates what you would set aside if you rounded up 1% of your spending in the selected period, then compares illustrative one-year returns at about 7% savings APY versus a tracked asset only when recent performance beats that baseline (never a “losing” market line).',
     category: 'Features'
   },
   {
