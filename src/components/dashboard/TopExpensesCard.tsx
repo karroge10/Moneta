@@ -10,9 +10,14 @@ import { useCurrency } from '@/hooks/useCurrency';
 interface TopExpensesCardProps {
   expenses: ExpenseCategory[];
   horizontal?: boolean;
+  limit?: number;
 }
 
-export default function TopExpensesCard({ expenses, horizontal = false }: TopExpensesCardProps) {
+export default function TopExpensesCard({ 
+  expenses, 
+  horizontal = false, 
+  limit = 3 
+}: TopExpensesCardProps) {
   const { currency } = useCurrency();
   if (expenses.length === 0) {
     return (
@@ -35,15 +40,15 @@ export default function TopExpensesCard({ expenses, horizontal = false }: TopExp
   if (horizontal) {
     return (
       <Card title="Top Expenses">
-        <div className="mt-2 flex flex-col flex-1">
-          <div className="flex gap-6 items-start min-h-0">
+        <div className="mt-2 flex flex-col flex-1 min-h-0">
+          <div className="flex gap-6 items-start min-h-0 flex-1">
             {/* Graph on left */}
-            <div className="flex-shrink-0 w-[200px] h-[200px] 2xl:w-[250px] 2xl:h-[250px]">
+            <div className="flex-shrink-0 flex-1 w-[200px] h-[200px] 2xl:w-[250px] 2xl:h-[250px] min-h-0">
               <DonutChart data={chartData} />
             </div>
             {/* Categories on right */}
             <div className="flex-1 space-y-3 min-w-0">
-              {expenses.map((expense, index) => {
+              {expenses.slice(0, limit).map((expense, index) => {
                 const Icon = getIcon(expense.icon);
                 return (
                   <div key={expense.id} className="flex items-center gap-3 min-w-0">
@@ -62,7 +67,7 @@ export default function TopExpensesCard({ expenses, horizontal = false }: TopExp
                       <div className="text-helper text-xs mt-0.5">{expense.percentage}%</div>
                     </div>
                     <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
-                      {currency.symbol}{formatNumber(expense.amount)}
+                      <span className="opacity-50">{currency.symbol}</span> {formatNumber(expense.amount)}
                     </div>
                   </div>
                 );
@@ -77,12 +82,12 @@ export default function TopExpensesCard({ expenses, horizontal = false }: TopExp
   // Vertical layout: graph on top, categories below
   return (
     <Card title="Top Expenses">
-      <div className="mt-2 flex flex-col flex-1">
-        <div className="w-full h-[200px] 2xl:h-[280px]">
+      <div className="mt-2 flex flex-col flex-1 min-h-0">
+        <div className="w-full flex-1 min-h-[160px] 2xl:min-h-[200px]">
           <DonutChart data={chartData} />
         </div>
-        <div className="space-y-3 mt-4 flex-1">
-          {expenses.map((expense, index) => {
+        <div className="space-y-3 mt-4 shrink-0">
+          {expenses.slice(0, limit).map((expense, index) => {
             const Icon = getIcon(expense.icon);
             return (
               <div key={expense.id} className="flex items-center gap-3 min-w-0">
@@ -101,7 +106,7 @@ export default function TopExpensesCard({ expenses, horizontal = false }: TopExp
                   <div className="text-helper text-xs mt-0.5">{expense.percentage}%</div>
                 </div>
                 <div className="text-body font-semibold flex-shrink-0 whitespace-nowrap">
-                  {currency.symbol}{formatNumber(expense.amount)}
+                  <span className="opacity-50">{currency.symbol}</span> {formatNumber(expense.amount)}
                 </div>
               </div>
             );

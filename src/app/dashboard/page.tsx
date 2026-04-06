@@ -24,7 +24,9 @@ import { formatDateForDisplay } from '@/lib/dateFormatting';
 import { Transaction, ExpenseCategory, TimePeriod, Goal, Investment, Bill, RecurringItem, FinancialHealthDetails } from '@/types/dashboard';
 import { useCategories } from '@/hooks/useCategories';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
-import { mockUpdate, mockInsight } from '@/lib/mockData';
+import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
+import { mockUpdate } from '@/lib/mockData';
+import { emptyRoundupInsight, type RoundupInsightDto } from '@/lib/roundup-insight';
 
 export default function DashboardPage() {
   const [income, setIncome] = useState({ amount: 0, trend: 0, comparisonLabel: '' });
@@ -36,6 +38,7 @@ export default function DashboardPage() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [financialHealth, setFinancialHealth] = useState<FinancialHealthDetails | null>(null);
   const [financialHealthModalOpen, setFinancialHealthModalOpen] = useState(false);
+  const [roundupInsight, setRoundupInsight] = useState<RoundupInsightDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Month');
@@ -49,6 +52,7 @@ export default function DashboardPage() {
 
   // Transaction modal state (for recurring from Upcoming Bills)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const authReady = useAuthReadyForApi();
   const { categories } = useCategories();
   const { currencyOptions, loading: currencyOptionsLoading } = useCurrencyOptions();
 
@@ -69,8 +73,7 @@ export default function DashboardPage() {
   }, [recurringItems, categories]);
   
   const update = mockUpdate;
-  const insight = mockInsight;
-  
+
   const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
@@ -110,6 +113,7 @@ export default function DashboardPage() {
             }
           : null
       );
+      setRoundupInsight(data.roundupInsight ?? emptyRoundupInsight());
 
       const recurringResponse = await fetch('/api/recurring?type=expense');
       if (recurringResponse.ok) {
@@ -129,6 +133,7 @@ export default function DashboardPage() {
       setInvestments([]);
       setRecurringItems([]);
       setFinancialHealth(null);
+      setRoundupInsight(null);
     } finally {
       setLoading(false);
     }
@@ -151,8 +156,9 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    if (!authReady) return;
     fetchGoals();
-  }, [fetchGoals]);
+  }, [authReady, fetchGoals]);
 
   const handleEditGoal = (goal: Goal) => {
     setModalMode('edit');
@@ -354,8 +360,9 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    if (!authReady) return;
     fetchDashboardData();
-  }, [fetchDashboardData]);
+  }, [authReady, fetchDashboardData]);
 
   // Helper to render skeleton layout
   const renderSkeletonLayout = () => (
@@ -371,7 +378,7 @@ export default function DashboardPage() {
         <CardSkeleton title="Upcoming Bills" variant="list" />
         <CardSkeleton title="Transactions" variant="list" />
         <CardSkeleton title="Update" variant="update" />
-        <CardSkeleton title="Insight" variant="value" />
+        <CardSkeleton title="Round-up" variant="value" />
         <CardSkeleton title="Investments" variant="list" />
         <CardSkeleton title="Top Expenses" variant="chart" />
       </div>
@@ -380,7 +387,7 @@ export default function DashboardPage() {
       <div className="hidden md:grid 2xl:hidden md:grid-cols-2 md:gap-4 md:px-6 md:pb-6">
         <CardSkeleton title="Income" variant="value" />
         <CardSkeleton title="Expenses" variant="value" />
-        <CardSkeleton title="Insight" variant="value" />
+        <CardSkeleton title="Round-up" variant="value" />
         <CardSkeleton title="Financial Health" variant="health" />
         <CardSkeleton title="Goals" variant="goal" />
         <CardSkeleton title="Upcoming Bills" variant="list" />
@@ -405,13 +412,13 @@ export default function DashboardPage() {
               <CardSkeleton title="Expenses" variant="value" />
             </div>
           </div>
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-5 gap-4 flex-1">
             <div className="col-span-2 flex flex-col gap-4">
               <div className="flex-[7] min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <CardSkeleton title="Transactions" variant="list" />
               </div>
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                <CardSkeleton title="Insight" variant="value" />
+                <CardSkeleton title="Round-up" variant="value" />
               </div>
             </div>
             <div className="col-span-3 flex flex-col gap-4">
@@ -552,14 +559,7 @@ export default function DashboardPage() {
         />
 
         {/* Insight short row */}
-        <InsightCard
-          title={insight.title}
-          amount={insight.amount}
-          message={insight.message}
-          investmentAmount={insight.investmentAmount}
-          trend={insight.trend}
-          shortRow
-        />
+        <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} shortRow />
 
         {/* Investments */}
         <InvestmentsCard investments={investments} />
@@ -572,14 +572,7 @@ export default function DashboardPage() {
       <div className="hidden md:grid 2xl:hidden md:grid-cols-2 md:gap-4 md:px-6 md:pb-6">
         <IncomeCard amount={income.amount} trend={income.trend} comparisonLabel={income.comparisonLabel} />
         <ExpenseCard amount={expenses.amount} trend={expenses.trend} comparisonLabel={expenses.comparisonLabel} />
-        <InsightCard
-          title={insight.title}
-          amount={insight.amount}
-          message={insight.message}
-          investmentAmount={insight.investmentAmount}
-          trend={insight.trend}
-          minimal
-        />
+        <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} minimal />
         <FinancialHealthCard
           score={financialHealth?.score ?? 0}
           trend={financialHealth?.trend}
@@ -618,20 +611,14 @@ export default function DashboardPage() {
           </div>
 
           {/* Row 2: Sub-bento grid */}
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-5 gap-4 flex-1">
             {/* Left column (2 cols): Transactions + Insight stacked */}
             <div className="col-span-2 flex flex-col gap-4">
               <div className="flex-[7] min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <TransactionsCard transactions={transactions} onRefresh={fetchDashboardData} />
               </div>
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                <InsightCard
-                  title={insight.title}
-                  amount={insight.amount}
-                  message={insight.message}
-                  investmentAmount={insight.investmentAmount}
-                  trend={insight.trend}
-                />
+                <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} />
               </div>
             </div>
 

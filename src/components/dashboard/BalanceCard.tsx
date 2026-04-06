@@ -17,8 +17,8 @@ export default function BalanceCard({ amount, trend }: BalanceCardProps) {
     <Card title="Balance">
       <div className="flex flex-col flex-1 min-h-0">
         <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-          <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
-          <span className="text-card-value break-all min-w-0">{formatCompactNumber(amount)}</span>
+          <span className="text-card-currency flex-shrink-0 opacity-50">{currency.symbol}</span>
+          <span className="text-card-value break-all min-w-0"> {formatCompactNumber(amount)}</span>
         </div>
         <TrendIndicator value={trend} label="from last year" />
       </div>

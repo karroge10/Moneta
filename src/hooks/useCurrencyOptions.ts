@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { idbGet, idbSet } from '@/lib/idb';
 
 export type CurrencyOption = {
@@ -47,6 +48,8 @@ async function loadCurrencies(force = false): Promise<{ currencies: CurrencyOpti
 }
 
 export function useCurrencyOptions() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const authReady = isLoaded && isSignedIn;
   const [currencyOptions, setCurrencyOptions] = useState<CurrencyOption[]>(cachedCurrencies ?? []);
   const [rates, setRates] = useState<Record<number, number>>(cachedRates ?? {});
   const [loading, setLoading] = useState(!cachedCurrencies);
@@ -54,6 +57,7 @@ export function useCurrencyOptions() {
 
   useEffect(() => {
     if (cachedCurrencies && cachedRates) return;
+    if (!authReady) return;
     let cancelled = false;
 
     const hydrate = async () => {
@@ -94,7 +98,7 @@ export function useCurrencyOptions() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authReady]);
 
   const refetch = useCallback(async () => {
     setLoading(true);

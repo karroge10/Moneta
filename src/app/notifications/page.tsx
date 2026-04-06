@@ -9,9 +9,11 @@ import Card from '@/components/ui/Card';
 import { DEFAULT_NOTIFICATION_SETTINGS } from '@/lib/notification-settings-constants';
 import type { NotificationSettings } from '@/types/dashboard';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 import { Settings } from 'iconoir-react';
 
 export default function NotificationsPage() {
+  const authReady = useAuthReadyForApi();
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
@@ -29,8 +31,9 @@ export default function NotificationsPage() {
   }, []);
 
   useEffect(() => {
+    if (!authReady) return;
     fetchNotificationSettings();
-  }, [fetchNotificationSettings]);
+  }, [authReady, fetchNotificationSettings]);
 
   const handleToggleSetting = useCallback(async (key: keyof NotificationSettings, enabled: boolean) => {
     const next = { ...notificationSettings, [key]: enabled };

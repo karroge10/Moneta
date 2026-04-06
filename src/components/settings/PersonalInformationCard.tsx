@@ -9,19 +9,13 @@ import {
   User,
   Suitcase,
   Pin,
-  Globe,
   Cash,
   Calendar,
-  HomeSimpleDoor,
-  Reports,
-  LotOfCash,
-  CalendarCheck,
-  BitcoinCircle,
 } from 'iconoir-react';
 import type { SelectOptionItem } from './SettingsField';
 import { COUNTRIES } from '@/lib/countries';
 import { buildCurrencyTypeaheadOptions } from '@/lib/currency-country-map';
-import { getCountryCodeForLanguage } from '@/lib/language-country-map';
+
 
 const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
 
@@ -50,6 +44,7 @@ interface PersonalInformationCardProps {
   loading?: boolean;
   /** When true, fields are disabled (e.g. while saving). */
   disabled?: boolean;
+  className?: string;
 }
 
 export default function PersonalInformationCard({
@@ -58,12 +53,13 @@ export default function PersonalInformationCard({
   onChange,
   incomeTaxRate = null,
   onTaxUpdate,
-  languageOptions: languageOptionsProp,
+  languageOptions: _languageOptionsProp,
   currencyOptions: currencyOptionsProp,
   userImageUrl = null,
   onOpenAccountProfile,
   loading = false,
   disabled = false,
+  className = '',
 }: PersonalInformationCardProps) {
   const ICON_STYLE = { width: 18, height: 18, strokeWidth: 1.5, style: { color: '#B9B9B9' } };
   const countryOptionItems: SelectOptionItem[] = COUNTRIES.map((c) => ({
@@ -72,35 +68,11 @@ export default function PersonalInformationCard({
     countryCode: c.code,
     searchTerms: [c.name, c.code],
   }));
-  const languageOptionItems: SelectOptionItem[] = languageOptionsProp?.length
-    ? languageOptionsProp
-        .filter((l) => l.name !== 'Georgian')
-        .map((l) => {
-          const countryCode = getCountryCodeForLanguage(l.alias ?? l.name);
-          return {
-            value: l.name,
-            label: l.name,
-            countryCode,
-            searchTerms: [l.name, l.alias ?? ''],
-            ...(countryCode ? {} : { icon: <Globe {...ICON_STYLE} /> }),
-          };
-        })
-    : settings.language
-      ? [{ value: settings.language, label: settings.language, icon: <Globe {...ICON_STYLE} /> }]
-      : [];
   const currencyOptionItems: SelectOptionItem[] = currencyOptionsProp?.length
     ? (buildCurrencyTypeaheadOptions(currencyOptionsProp, 'display') as SelectOptionItem[])
     : settings.currency
       ? [{ value: settings.currency, label: settings.currency, symbol: settings.currency.split(' ')[0] ?? '', alias: settings.currency.split(' ')[1] ?? settings.currency }]
       : [];
-  const defaultPageOptionItems: SelectOptionItem[] = [
-    { value: 'Dashboard', label: 'Dashboard', icon: <HomeSimpleDoor {...ICON_STYLE} /> },
-    { value: 'Statistics', label: 'Statistics', icon: <Reports {...ICON_STYLE} /> },
-    { value: 'Transactions', label: 'Transactions', icon: <LotOfCash {...ICON_STYLE} /> },
-    { value: 'Goals', label: 'Goals', icon: <CalendarCheck {...ICON_STYLE} /> },
-    { value: 'Investments', label: 'Investments', icon: <BitcoinCircle {...ICON_STYLE} /> },
-  ];
-
   const taxEnabled = incomeTaxRate !== null;
   const [taxRateInput, setTaxRateInput] = useState(
     incomeTaxRate !== null ? String(incomeTaxRate) : ''
@@ -143,7 +115,7 @@ export default function PersonalInformationCard({
 
   if (loading) {
     return (
-      <Card title="Personal Information" showActions={false}>
+      <Card title="Personal Information" showActions={false} className={className}>
         <div className="flex flex-col gap-6">
           <div className="flex items-start gap-4">
             <div className="w-20 h-20 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
@@ -187,7 +159,7 @@ export default function PersonalInformationCard({
   }
 
   return (
-    <Card title="Personal Information" showActions={false}>
+    <Card title="Personal Information" showActions={false} className={className}>
       <div className="flex flex-col gap-6">
         {/* Profile Section */}
         <div className="flex items-start gap-4">
@@ -238,13 +210,32 @@ export default function PersonalInformationCard({
             )}
           </div>
           <div className="flex-1 flex flex-col gap-2">
-            <span className="text-body font-semibold" style={{ color: '#E7E4E4' }}>
-              {settings.name}
-            </span>
-            <div className="flex items-center gap-2 text-body" style={{ color: '#B9B9B9' }}>
-              <User width={18} height={18} strokeWidth={1.5} />
-              <span>{settings.username}</span>
-            </div>
+            {onOpenAccountProfile ? (
+              <button
+                type="button"
+                onClick={onOpenAccountProfile}
+                className="text-left w-fit transition-opacity hover:opacity-80 focus:outline-none flex flex-col gap-2 rounded-lg"
+                aria-label="Edit profile in Clerk"
+              >
+                <span className="text-body font-semibold" style={{ color: '#E7E4E4' }}>
+                  {settings.name}
+                </span>
+                <div className="flex items-center gap-2 text-body" style={{ color: '#B9B9B9' }}>
+                  <User width={18} height={18} strokeWidth={1.5} />
+                  <span>{settings.username}</span>
+                </div>
+              </button>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <span className="text-body font-semibold" style={{ color: '#E7E4E4' }}>
+                  {settings.name}
+                </span>
+                <div className="flex items-center gap-2 text-body" style={{ color: '#B9B9B9' }}>
+                  <User width={18} height={18} strokeWidth={1.5} />
+                  <span>{settings.username}</span>
+                </div>
+              </div>
+            )}
             {(settings.jobPosition || settings.age) ? (
               <div className="flex items-center gap-2 text-body" style={{ color: '#B9B9B9' }}>
                 <Suitcase width={18} height={18} strokeWidth={1.5} />
@@ -265,24 +256,6 @@ export default function PersonalInformationCard({
         {/* Input/Select Fields */}
         <div className="flex flex-col gap-4">
           <SettingsField
-            label="First name"
-            value={settings.firstName}
-            icon={<User width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
-            type="input"
-            placeholder="First name"
-            disabled={disabled}
-            onChange={(value) => onChange?.('firstName', value)}
-          />
-          <SettingsField
-            label="Last name"
-            value={settings.lastName}
-            icon={<User width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
-            type="input"
-            placeholder="Last name"
-            disabled={disabled}
-            onChange={(value) => onChange?.('lastName', value)}
-          />
-          <SettingsField
             label="Country"
             value={settings.country}
             icon={<Pin width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
@@ -293,18 +266,6 @@ export default function PersonalInformationCard({
             dropdownInPortal
             disabled={disabled}
             onChange={(value) => onChange?.('country', value)}
-          />
-          <SettingsField
-            label="Language"
-            value={settings.language}
-            icon={<Globe width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
-            type="typeahead"
-            optionItems={languageOptionItems}
-            placeholder="Select language"
-            searchPlaceholder="Search languages..."
-            dropdownInPortal
-            disabled={disabled}
-            onChange={(value) => onChange?.('language', value)}
           />
           <SettingsField
             label="Currency"
@@ -336,19 +297,8 @@ export default function PersonalInformationCard({
             disabled={disabled}
             onChange={(value) => onChange?.('profession', value)}
           />
-          <SettingsField
-            label="Default Page"
-            value={settings.defaultPage}
-            icon={<HomeSimpleDoor width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
-            type="typeahead"
-            optionItems={defaultPageOptionItems}
-            placeholder="Select default page"
-            searchPlaceholder="Search default page..."
-            dropdownInPortal
-            disabled={disabled}
-            onChange={(value) => onChange?.('defaultPage', value)}
-          />
         </div>
+
 
         {/* Tax: label + switch on one row; when enabled, number input only */}
         {onTaxUpdate && (

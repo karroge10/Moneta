@@ -3,16 +3,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useClerk, useUser } from '@clerk/nextjs';
+import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import PersonalInformationCard from '@/components/settings/PersonalInformationCard';
 import LoginHistoryCard from '@/components/settings/LoginHistoryCard';
 import SecurityDetailsCard from '@/components/settings/SecurityDetailsCard';
-import FinancialMilestonesCard from '@/components/settings/FinancialMilestonesCard';
+
 import DataSharingCard from '@/components/settings/DataSharingCard';
+import ExportDataCard from '@/components/settings/ExportDataCard';
 import { ToastContainer, type ToastType } from '@/components/ui/Toast';
 import { useCurrency } from '@/hooks/useCurrency';
-import { mockAchievements } from '@/lib/mockData';
+
 import { UserSettings, LoginHistoryEntry } from '@/types/dashboard';
 import { TimePeriod } from '@/types/dashboard';
 import { Trash } from 'iconoir-react';
@@ -22,30 +24,23 @@ const USERNAME_VALIDATION = {
   message: 'Username must be 3–30 characters and only contain letters, numbers, and underscores',
 } as const;
 
-type LanguageOption = { id: number; name: string; alias: string };
 type CurrencyOption = { id: number; name: string; symbol: string; alias: string };
 
 const emptySettings: UserSettings = {
   name: '',
-  firstName: '',
-  lastName: '',
   username: '',
   email: '',
   jobPosition: '',
   age: 0,
   country: '',
-  language: '',
   currency: '',
   dateOfBirth: '',
   profession: '',
-  defaultPage: 'Dashboard',
-  plan: 'basic',
   incomeTaxRate: null,
 };
 
 function mapApiToUserSettings(data: {
-  firstName?: string | null;
-  lastName?: string | null;
+  name?: string | null;
   userName?: string | null;
   email?: string | null;
   dateOfBirth?: string | null;
@@ -53,30 +48,23 @@ function mapApiToUserSettings(data: {
   profession?: string | null;
   language?: { id: number; name: string; alias: string } | null;
   currency?: { id: number; name: string; symbol: string; alias: string } | null;
-  defaultPage?: string | null;
-  plan?: string | null;
   incomeTaxRate?: number | null;
 }): UserSettings {
-  const name = [data.firstName, data.lastName].filter(Boolean).join(' ') || '';
   return {
     ...emptySettings,
-    name,
-    firstName: data.firstName ?? '',
-    lastName: data.lastName ?? '',
+    name: data.name ?? '',
     username: data.userName ?? '',
     email: data.email ?? '',
     country: data.country ?? '',
     profession: data.profession ?? '',
-    language: data.language?.name ?? '',
     currency: data.currency ? `${data.currency.symbol} ${data.currency.alias}` : '',
     dateOfBirth: data.dateOfBirth ?? '',
-    defaultPage: data.defaultPage ?? 'Dashboard',
-    plan: data.plan ?? 'basic',
     incomeTaxRate: data.incomeTaxRate ?? null,
   };
 }
 
 export default function SettingsPage() {
+  const authReady = useAuthReadyForApi();
   const router = useRouter();
   const { signOut, openUserProfile } = useClerk();
   const { user } = useUser();
@@ -86,7 +74,6 @@ export default function SettingsPage() {
   const [userSettings, setUserSettings] = useState<UserSettings>(emptySettings);
   const [incomeTaxRate, setIncomeTaxRate] = useState<number | null>(null);
   const [dataSharingEnabled, setDataSharingEnabled] = useState(true);
-  const [languages, setLanguages] = useState<LanguageOption[]>([]);
   const [currencies, setCurrencies] = useState<CurrencyOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [loginHistory, setLoginHistory] = useState<LoginHistoryEntry[]>([]);
@@ -113,13 +100,11 @@ export default function SettingsPage() {
       setUserSettings(mapApiToUserSettings(data));
       setIncomeTaxRate(data.incomeTaxRate ?? null);
       setDataSharingEnabled(data.dataSharingEnabled ?? true);
-      setLanguages(data.languages ?? []);
       setCurrencies(data.currencies ?? []);
     } catch {
       setUserSettings(emptySettings);
       setIncomeTaxRate(null);
       setDataSharingEnabled(true);
-      setLanguages([]);
       setCurrencies([]);
     } finally {
       setLoading(false);
@@ -144,12 +129,14 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
+    if (!authReady) return;
     fetchSettings();
-  }, [fetchSettings]);
+  }, [authReady, fetchSettings]);
 
   useEffect(() => {
+    if (!authReady) return;
     fetchLoginHistory();
-  }, [fetchLoginHistory]);
+  }, [authReady, fetchLoginHistory]);
 
   const handleSettingsPatch = useCallback(async (
     body: Record<string, unknown>,
@@ -210,28 +197,13 @@ export default function SettingsPage() {
       }
     }
     if (field !== 'username') {
-      setUserSettings((prev) => {
-        const next = { ...prev, [field]: value };
-        if (field === 'firstName' || field === 'lastName') {
-          const first = field === 'firstName' ? value : prev.firstName;
-          const last = field === 'lastName' ? value : prev.lastName;
-          next.name = [first, last].filter(Boolean).join(' ') || '';
-        }
-        return next;
-      });
+      setUserSettings((prev) => ({ ...prev, [field]: value }));
     }
     const body: Record<string, unknown> = {};
-    if (field === 'firstName') body.firstName = value || null;
-    if (field === 'lastName') body.lastName = value || null;
     if (field === 'country') body.country = value;
     if (field === 'profession') body.profession = value || null;
     if (field === 'dateOfBirth') body.dateOfBirth = value || null;
-    if (field === 'defaultPage') body.defaultPage = value;
     if (field === 'username') body.userName = value.trim() || null;
-    if (field === 'language') {
-      const lang = languages.find((l) => l.name === value);
-      if (lang) body.languageId = lang.id;
-    }
     if (field === 'currency') {
       const curr = currencies.find((c) => `${c.symbol} ${c.alias}` === value);
       if (curr) body.currencyId = curr.id;
@@ -247,7 +219,7 @@ export default function SettingsPage() {
         handleSettingsPatch(body).catch(() => {});
       }
     }
-  }, [languages, currencies, handleSettingsPatch]);
+  }, [currencies, handleSettingsPatch]);
 
   const handleOpenAccountProfile = () => {
     openUserProfile?.();
@@ -300,142 +272,70 @@ export default function SettingsPage() {
   }, [incomeTaxRate, handleSettingsPatch]);
 
   return (
-    <main className="min-h-screen bg-background">
-      {/* Desktop Header */}
+    <main className="min-h-screen bg-background pb-8">
       <div className="hidden md:block">
-        <DashboardHeader 
-          pageName="Settings"
-        />
+        <DashboardHeader pageName="Settings" />
       </div>
 
-      {/* Mobile Navbar */}
       <div className="md:hidden">
-        <MobileNavbar 
-          pageName="Settings" 
-          timePeriod={timePeriod} 
+        <MobileNavbar
+          pageName="Settings"
+          timePeriod={timePeriod}
           onTimePeriodChange={setTimePeriod}
           activeSection="settings"
         />
       </div>
 
-    {/* Content — same layout when loading; cards show skeleton internally */}
-    {/* Mobile: stacked */}
-    <div className="md:hidden flex flex-col gap-4 px-4 pb-4">
-      <PersonalInformationCard
-        settings={userSettings}
-        onEdit={handleEdit}
-        onChange={handleChange}
-        incomeTaxRate={incomeTaxRate}
-        onTaxUpdate={handleTaxUpdate}
-        languageOptions={languages}
-        currencyOptions={currencies}
-        userImageUrl={userImageUrl}
-        onOpenAccountProfile={handleOpenAccountProfile}
-        loading={loading}
-        disabled={saving}
-      />
-      <SecurityDetailsCard
-        settings={userSettings}
-        onEdit={handleEdit}
-        onChange={handleChange}
-        onOpenAccountProfile={handleOpenAccountProfile}
-        onDeleteAccount={handleDeleteAccountClick}
-        loading={loading}
-        disabled={saving}
-        usernameError={usernameError}
-      />
-      <DataSharingCard
-        isEnabled={dataSharingEnabled}
-        onToggle={handleDataSharingToggle}
-        loading={loading}
-        disabled={saving}
-      />
-      <FinancialMilestonesCard achievements={mockAchievements} loading={loading} />
-      <LoginHistoryCard history={loginHistory} loading={loginHistoryLoading} />
-    </div>
+      <div className="flex flex-col gap-4 px-4 md:px-6">
+        {/* Main Grid Area */}
+        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-[1.1fr_0.9fr] gap-4 items-stretch">
+          <div className="flex flex-col h-full">
+            <PersonalInformationCard
+              settings={userSettings}
+              onEdit={handleEdit}
+              onChange={handleChange}
+              incomeTaxRate={incomeTaxRate}
+              onTaxUpdate={handleTaxUpdate}
+              currencyOptions={currencies}
+              userImageUrl={userImageUrl}
+              onOpenAccountProfile={handleOpenAccountProfile}
+              loading={loading}
+              disabled={saving}
+              className="h-full"
+            />
+          </div>
 
-    {/* Tablet: two-column — left: Personal Information only; right: Security, Data Sharing, Financial Milestones, Login History; columns align vertically */}
-    <div className="hidden md:grid 2xl:hidden md:grid-cols-[1fr_1fr] md:gap-4 md:px-6 md:pb-6 md:items-stretch">
-      <div className="flex flex-col gap-4 min-h-0">
-        <PersonalInformationCard
-          settings={userSettings}
-          onEdit={handleEdit}
-          onChange={handleChange}
-          incomeTaxRate={incomeTaxRate}
-          onTaxUpdate={handleTaxUpdate}
-          languageOptions={languages}
-          currencyOptions={currencies}
-          userImageUrl={userImageUrl}
-          onOpenAccountProfile={handleOpenAccountProfile}
-          loading={loading}
-          disabled={saving}
-        />
-      </div>
-      <div className="flex flex-col gap-4 min-h-0">
-        <SecurityDetailsCard
-          settings={userSettings}
-          onEdit={handleEdit}
-          onChange={handleChange}
-          onOpenAccountProfile={handleOpenAccountProfile}
-          onDeleteAccount={handleDeleteAccountClick}
-          loading={loading}
-          disabled={saving}
-          usernameError={usernameError}
-        />
-        <DataSharingCard
-          isEnabled={dataSharingEnabled}
-          onToggle={handleDataSharingToggle}
-          loading={loading}
-          disabled={saving}
-        />
-        <FinancialMilestonesCard achievements={mockAchievements} loading={loading} />
-        <LoginHistoryCard history={loginHistory} loading={loginHistoryLoading} />
-      </div>
-    </div>
+          <div className="flex flex-col gap-4 h-full">
+            <SecurityDetailsCard
+              settings={userSettings}
+              onEdit={handleEdit}
+              onChange={handleChange}
+              onOpenAccountProfile={handleOpenAccountProfile}
+              onDeleteAccount={handleDeleteAccountClick}
+              loading={loading}
+              disabled={saving}
+              usernameError={usernameError}
+            />
+            <DataSharingCard
+              isEnabled={dataSharingEnabled}
+              onToggle={handleDataSharingToggle}
+              loading={loading}
+              disabled={saving}
+            />
+            <ExportDataCard loading={loading} />
+          </div>
+        </div>
 
-    {/* Desktop: widened ratio — same column alignment */}
-    <div className="hidden 2xl:grid 2xl:grid-cols-[1.1fr_0.9fr] 2xl:gap-4 2xl:px-6 2xl:pb-6 2xl:items-stretch">
-      <div className="flex flex-col gap-4 min-h-0">
-        <PersonalInformationCard
-          settings={userSettings}
-          onEdit={handleEdit}
-          onChange={handleChange}
-          incomeTaxRate={incomeTaxRate}
-          onTaxUpdate={handleTaxUpdate}
-          languageOptions={languages}
-          currencyOptions={currencies}
-          userImageUrl={userImageUrl}
-          onOpenAccountProfile={handleOpenAccountProfile}
-          loading={loading}
-          disabled={saving}
-        />
+        {/* Full-width bottom section */}
+        <div className="w-full">
+          <LoginHistoryCard history={loginHistory} loading={loginHistoryLoading} />
+        </div>
       </div>
-      <div className="flex flex-col gap-4 min-h-0">
-        <SecurityDetailsCard
-          settings={userSettings}
-          onEdit={handleEdit}
-          onChange={handleChange}
-          onOpenAccountProfile={handleOpenAccountProfile}
-          onDeleteAccount={handleDeleteAccountClick}
-          loading={loading}
-          disabled={saving}
-          usernameError={usernameError}
-        />
-        <DataSharingCard
-          isEnabled={dataSharingEnabled}
-          onToggle={handleDataSharingToggle}
-          loading={loading}
-          disabled={saving}
-        />
-        <FinancialMilestonesCard achievements={mockAchievements} loading={loading} />
-        <LoginHistoryCard history={loginHistory} loading={loginHistoryLoading} />
-      </div>
-    </div>
 
-    <ToastContainer
-      toasts={toasts}
-      onRemove={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
-    />
+      <ToastContainer
+        toasts={toasts}
+        onRemove={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
+      />
 
     {/* Delete account confirmation modal */}
     {showDeleteModal && (

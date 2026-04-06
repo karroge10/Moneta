@@ -67,7 +67,7 @@ export default function DemographicComparisonsSection({
         showActions={false}
         className="flex flex-col min-h-0 flex-1"
       >
-        <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden" style={{ minHeight: contentMinHeight }}>
+        <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-visible" style={{ minHeight: contentMinHeight }}>
           <div className="w-full flex items-center gap-2 px-4 py-2 rounded-full" style={{ backgroundColor: 'var(--bg-primary)' }}>
             <div className="w-5 h-5 rounded animate-pulse shrink-0" style={SKELETON_STYLE} />
             <div className="h-5 flex-1 max-w-[140px] rounded animate-pulse" style={SKELETON_STYLE} />
@@ -159,7 +159,7 @@ export default function DemographicComparisonsSection({
       showActions={false}
       className="flex flex-col min-h-0 flex-1"
     >
-      <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden" style={{ minHeight: contentMinHeight }}>
+      <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-visible" style={{ minHeight: contentMinHeight }}>
         <div className="mb-2 w-full shrink-0">
           <div className="relative w-full" ref={dimensionRef}>
             <button

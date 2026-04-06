@@ -19,6 +19,7 @@ import { formatNumber } from '@/lib/utils';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
 import { buildTransactionFromRecurring } from '@/lib/recurring-utils';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_NAME_LENGTH = 60;
@@ -31,6 +32,7 @@ function truncateName(name: string, maxLength: number): string {
 type ViewMode = 'past' | 'future';
 
 export default function TransactionsPage() {
+  const authReady = useAuthReadyForApi();
   const { currency } = useCurrency();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -180,6 +182,7 @@ export default function TransactionsPage() {
 
   // Fetch categories
   useEffect(() => {
+    if (!authReady) return;
     const fetchCategories = async () => {
       try {
         const response = await fetch('/api/categories');
@@ -192,10 +195,11 @@ export default function TransactionsPage() {
       }
     };
     fetchCategories();
-  }, []);
+  }, [authReady]);
 
   // Fetch currencies
   useEffect(() => {
+    if (!authReady) return;
     const fetchCurrencies = async () => {
       try {
         setCurrencyOptionsLoading(true);
@@ -211,7 +215,7 @@ export default function TransactionsPage() {
       }
     };
     fetchCurrencies();
-  }, []);
+  }, [authReady]);
 
   // Fetch recurring items for future view
   const fetchRecurring = useCallback(async () => {
@@ -232,22 +236,25 @@ export default function TransactionsPage() {
 
   // Fetch transactions when filters, page size, or page change (past view only)
   useEffect(() => {
+    if (!authReady) return;
     if (viewMode === 'past') {
       fetchTransactions(1);
     }
-  }, [viewMode, fetchTransactions]);
+  }, [authReady, viewMode, fetchTransactions]);
 
   // Fetch recurring when switching to future view
   useEffect(() => {
+    if (!authReady) return;
     if (viewMode === 'future') {
       fetchRecurring();
     }
-  }, [viewMode, fetchRecurring]);
+  }, [authReady, viewMode, fetchRecurring]);
 
   // Get available months - fetch from API
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
 
   useEffect(() => {
+    if (!authReady) return;
     const fetchAvailableMonths = async () => {
       try {
         // Fetch a sample to get months (first page should have recent transactions)
@@ -278,7 +285,7 @@ export default function TransactionsPage() {
       }
     };
     fetchAvailableMonths();
-  }, []);
+  }, [authReady]);
 
   const createDraftTransaction = () => ({
     id: crypto.randomUUID(),

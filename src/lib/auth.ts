@@ -35,10 +35,8 @@ export async function getCurrentUser() {
           data: {
             clerkUserId,
             userName,
-            plan: 'basic',
             languageId: englishLanguage?.id ?? null,
             currencyId: usdCurrency?.id ?? null,
-            defaultPage: 'Dashboard',
             dataSharingEnabled: false,
             notificationSettings: {
               create: {
@@ -114,10 +112,8 @@ export async function requireCurrentUserWithLanguage() {
           data: {
             clerkUserId,
             userName,
-            plan: 'basic',
             languageId: englishLanguage?.id ?? null,
             currencyId: usdCurrency?.id ?? null,
-            defaultPage: 'Dashboard',
             dataSharingEnabled: false,
             notificationSettings: {
               create: {

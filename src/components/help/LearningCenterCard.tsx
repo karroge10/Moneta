@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Book, Spark, Wallet, Heart, Reports, Crown, HelpCircle, InfoCircle } from 'iconoir-react';
+import { Book, Spark, Wallet, Heart, Reports, Settings, HelpCircle, InfoCircle } from 'iconoir-react';
 import Card from '@/components/ui/Card';
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 
@@ -44,9 +44,9 @@ const lessons: Lesson[] = [
   },
   {
     id: '5',
-    title: 'Advanced Tools',
-    description: 'Learn to use premium features effectively.',
-    icon: Crown,
+    title: 'Settings & imports',
+    description: 'Tune currency, notifications, and transaction imports to fit your workflow.',
+    icon: Settings,
     completed: false
   },
   {
