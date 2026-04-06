@@ -145,11 +145,11 @@ export default function TransactionsCard({ transactions, onRefresh }: Transactio
                   </div>
                   <div className="flex flex-col items-end shrink-0 text-right">
                     <div className="text-body font-semibold whitespace-nowrap">
-                      {displaySymbol}{formatNumber(absoluteOriginalAmount)}
+                      <span className="opacity-50">{displaySymbol}</span> {formatNumber(absoluteOriginalAmount)}
                     </div>
                     {shouldShowConvertedHelper && (
                       <div className="text-helper text-xs whitespace-nowrap">
-                        ≈ {currency.symbol}{formatNumber(convertedAbsoluteAmount)}
+                        ≈ {currency.symbol} {formatNumber(convertedAbsoluteAmount)}
                       </div>
                     )}
                   </div>

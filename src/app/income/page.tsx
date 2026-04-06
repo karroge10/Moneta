@@ -24,8 +24,10 @@ import { formatNumber } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useCategories } from '@/hooks/useCategories';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
+import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 
 export default function IncomePage() {
+  const authReady = useAuthReadyForApi();
   const { currency } = useCurrency();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Year');
   const [loading, setLoading] = useState(true);
@@ -38,10 +40,11 @@ export default function IncomePage() {
     trendText: '',
     data: [],
   });
-  const [average, setAverage] = useState({ amount: 0, trend: 0, subtitle: 'Monthly average based on selected time period' });
-  const [averageDaily, setAverageDaily] = useState<{ amount: number; trend: number } | null>(null);
+  const [average, setAverage] = useState<{ amount: number; trend: number; trendSkipped?: boolean; subtitle: string }>({ amount: 0, trend: 0, subtitle: 'Monthly average based on selected time period' });
+  const [averageDaily, setAverageDaily] = useState<{ amount: number; trend: number; trendSkipped?: boolean } | null>(null);
   const [nextMonthPrediction, setNextMonthPrediction] = useState<number | null>(null);
   const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
+  const [demographicComparison, setDemographicComparison] = useState<{ message: string; percentage: number; percentageLabel: string; link: string } | null>(null);
   const { categories } = useCategories();
   const { currencyOptions, loading: currencyOptionsLoading } = useCurrencyOptions();
 
@@ -69,11 +72,11 @@ export default function IncomePage() {
   
   // Keep mock data for components not requested to be changed
   const update = mockIncomePage.update;
-  const demographicComparison = mockIncomePage.demographicComparison;
 
   const [incomeTaxRate, setIncomeTaxRate] = useState<number | null>(null);
 
   useEffect(() => {
+    if (!authReady) return;
     fetch('/api/user/settings')
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => {
@@ -84,7 +87,7 @@ export default function IncomePage() {
         }
       })
       .catch(() => setIncomeTaxRate(null));
-  }, []);
+  }, [authReady]);
   
   const fetchIncomeData = useCallback(async () => {
     try {
@@ -110,11 +113,18 @@ export default function IncomePage() {
         trendText: data.performance?.trendText || '',
         data: data.performance?.data || [],
       });
+      setDemographicComparison(data.demographicComparison || null);
       setAverage({
         amount: data.average?.amount || 0,
         trend: data.average?.trend || 0,
+        trendSkipped: data.average?.trendSkipped,
         subtitle: data.average?.subtitle || 'Monthly average based on selected time period',
       });
+      setAverageDaily(data.averageDaily ? {
+        amount: data.averageDaily.amount,
+        trend: data.averageDaily.trend,
+        trendSkipped: data.averageDaily.trendSkipped,
+      } : null);
 
       const recurringResponse = await fetch('/api/recurring?type=income');
       if (recurringResponse.ok) {
@@ -132,14 +142,16 @@ export default function IncomePage() {
       setPerformance({ trend: 0, trendText: '', data: [] });
       setAverage({ amount: 0, trend: 0, subtitle: 'Monthly average based on selected time period' });
       setRecurringItems([]);
+      setDemographicComparison(null);
     } finally {
       setLoading(false);
     }
   }, [timePeriod]);
 
   useEffect(() => {
+    if (!authReady) return;
     fetchIncomeData();
-  }, [fetchIncomeData]);
+  }, [authReady, fetchIncomeData]);
 
   // Create draft income transaction (positive amount for income)
   const createDraftIncome = (): Transaction => ({
@@ -406,7 +418,7 @@ export default function IncomePage() {
               <CardSkeleton title="Estimated Tax" variant="value" />
             </div>
           </div>
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-5 gap-4 flex-1">
             <div className="col-span-3 flex flex-col gap-4">
               <div className="flex-[7] min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <CardSkeleton title="Latest Incomes" variant="list" />
@@ -585,7 +597,7 @@ actionButton={{
           <TrendIndicator value={total.trend} label={getComparisonLabel(timePeriod)} />
         )}
         >
-          <span className="text-card-currency shrink-0">{currency.symbol}</span>
+          <span className="text-card-currency shrink-0 opacity-50">{currency.symbol}</span>
           <span className="text-card-value break-all min-w-0">{formatNumber(total.amount)}</span>
         </ValueCard>
         <EstimatedTaxCard taxRate={incomeTaxRate} totalIncome={total.amount} />
@@ -598,20 +610,21 @@ actionButton={{
         />
         <TopSourcesCard sources={topSources} />
         <DemographicComparisonCard
-          message={demographicComparison.message}
-          percentage={demographicComparison.percentage}
-          percentageLabel={demographicComparison.percentageLabel}
-          link={demographicComparison.link}
-          linkHref="/statistics"
+          message={demographicComparison?.message || ''}
+          percentage={demographicComparison?.percentage || 0}
+          percentageLabel={demographicComparison?.percentageLabel || ''}
+          link={demographicComparison?.link || 'Statistics'}
+          linkHref={demographicComparison?.link === 'Settings' ? '/settings' : '/statistics'}
         />
         {(timePeriod === 'This Month' || timePeriod === 'Last Month') && averageDaily !== null ? (
-          <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} />
+          <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} trendSkipped={averageDaily.trendSkipped} />
         ) : (
           <AverageCard
             amount={average.amount}
             trend={average.trend}
+            trendSkipped={average.trendSkipped}
             subtitle={average.subtitle}
-            trendLabel="compared to last year"
+            trendLabel={getComparisonLabel(timePeriod)}
           />
         )}
       </div>
@@ -646,23 +659,23 @@ actionButton={{
         />
         <TopSourcesCard sources={topSources} />
         <DemographicComparisonCard
-          message={demographicComparison.message}
-          percentage={demographicComparison.percentage}
-          percentageLabel={demographicComparison.percentageLabel}
-          link={demographicComparison.link}
-          linkHref="/statistics"
+          message={demographicComparison?.message || ''}
+          percentage={demographicComparison?.percentage || 0}
+          percentageLabel={demographicComparison?.percentageLabel || ''}
+          link={demographicComparison?.link || 'Statistics'}
+          linkHref={demographicComparison?.link === 'Settings' ? '/settings' : '/statistics'}
         />
         {(timePeriod === 'This Month' || timePeriod === 'Last Month') && averageDaily !== null ? (
-          <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} />
+          <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} trendSkipped={averageDaily.trendSkipped} />
         ) : (
           <AverageCard
             amount={average.amount}
             trend={average.trend}
+            trendSkipped={average.trendSkipped}
             subtitle={average.subtitle}
-            trendLabel="compared to last year"
+            trendLabel={getComparisonLabel(timePeriod)}
           />
-        )}
-      </div>
+        )} </div>
 
       {/* Desktop: Pure Tailwind Bento Grid (>= 1536px) */}
       <div className="hidden 2xl:grid 2xl:grid-cols-4 2xl:gap-4 2xl:px-6 2xl:pb-6">
@@ -698,7 +711,7 @@ actionButton={{
           </div>
 
           {/* Row 2: Sub-bento grid */}
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-5 gap-4 flex-1">
             {/* Left column (3 cols): Latest Incomes + Demographic Comparison stacked */}
             <div className="col-span-3 flex flex-col gap-4">
               <div className="flex-[7] min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
@@ -706,11 +719,11 @@ actionButton={{
               </div>
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <DemographicComparisonCard
-                  message={demographicComparison.message}
-                  percentage={demographicComparison.percentage}
-                  percentageLabel={demographicComparison.percentageLabel}
-                  link={demographicComparison.link}
-                  linkHref="/statistics"
+                  message={demographicComparison?.message || ''}
+                  percentage={demographicComparison?.percentage || 0}
+                  percentageLabel={demographicComparison?.percentageLabel || ''}
+                  link={demographicComparison?.link || 'Statistics'}
+                  linkHref={demographicComparison?.link === 'Settings' ? '/settings' : '/statistics'}
                 />
               </div>
             </div>
@@ -728,12 +741,17 @@ actionButton={{
               
               {/* Bottom row: Average */}
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                <AverageCard
-                  amount={average.amount}
-                  trend={average.trend}
-                  subtitle={average.subtitle}
-                  trendLabel="compared to last year"
-                />
+                {(timePeriod === 'This Month' || timePeriod === 'Last Month') && averageDaily !== null ? (
+                  <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} trendSkipped={averageDaily.trendSkipped} />
+                ) : (
+                  <AverageCard
+                    amount={average.amount}
+                    trend={average.trend}
+                    trendSkipped={average.trendSkipped}
+                    subtitle={average.subtitle}
+                    trendLabel={getComparisonLabel(timePeriod)}
+                  />
+                )}
               </div>
             </div>
           </div>

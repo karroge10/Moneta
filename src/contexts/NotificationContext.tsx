@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { NotificationEntry } from '@/types/dashboard';
 
 interface NotificationContextType {
@@ -14,11 +15,15 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
+    const { isLoaded, isSignedIn } = useAuth();
     const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const fetchNotifications = useCallback(async () => {
+        if (!isLoaded || !isSignedIn) {
+            return;
+        }
         // Only fetch if tab is visible to save resources
         if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
             return;
@@ -49,7 +54,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [isLoaded, isSignedIn]);
 
     const markAsReadLocally = useCallback((id?: string) => {
         setNotifications(prev =>
@@ -63,6 +68,15 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }, []);
 
     useEffect(() => {
+        if (!isLoaded) {
+            return;
+        }
+        if (!isSignedIn) {
+            setNotifications([]);
+            setIsLoading(false);
+            return;
+        }
+
         fetchNotifications();
 
         // Refresh notifications every 60 seconds (increased from 30s)
@@ -83,7 +97,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                 window.removeEventListener('refreshNotifications', handleRefreshEvent);
             }
         };
-    }, [fetchNotifications]);
+    }, [isLoaded, isSignedIn, fetchNotifications]);
 
     return (
         <NotificationContext.Provider value={{ notifications, isLoading, error, refresh: fetchNotifications, markAsReadLocally }}>

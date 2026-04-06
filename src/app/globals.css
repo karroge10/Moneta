@@ -4,8 +4,8 @@
   /* MONETA Design Tokens */
   --bg-primary: #1a1a1a;
   --bg-surface: #282828;
-  /* Very soft elevation for cards (used by .card-surface) */
-  --shadow-card: 0 2px 14px rgba(0, 0, 0, 0.22);
+  /* Card elevation: refined soft shadow for depth without corner artifacts */
+  --shadow-card: 0 10px 20px rgba(0, 0, 0, 0.3);
   --text-primary: #E7E4E4;
   --text-secondary: rgba(231, 228, 228, 0.7);
   --accent-green: #74C648;
@@ -70,11 +70,12 @@ body.sidebar-collapsed {
 
 /* Surfaces */
 .card-surface {
-  background: var(--bg-surface);
+  background: linear-gradient(180deg, var(--bg-surface) 0%, rgba(36, 36, 36, 1) 100%);
   border-radius: var(--radius-card);
   padding: var(--space-l);
   overflow: hidden; /* Prevent content from overflowing card boundaries */
   box-shadow: var(--shadow-card);
+  border: 1px solid rgba(231, 228, 228, 0.06);
 }
 
 /* Same soft elevation when a panel uses surface fill without .card-surface padding/layout */
@@ -116,10 +117,13 @@ body.sidebar-collapsed {
 }
 
 /* Buttons */
-.btn { border-radius: 9999px; font-family: inherit; }
-.btn-primary { background: var(--accent-purple); color: var(--text-primary); }
-.btn-success { background: var(--accent-green); color: var(--text-primary); }
-.btn-danger { background: var(--error); color: var(--text-primary); }
+.btn { border-radius: 9999px; font-family: inherit; transition: all 0.2s ease; }
+.btn-primary { background: linear-gradient(180deg, var(--accent-purple) 0%, #904eb8 100%); color: var(--text-primary); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(172,102,218,0.25); border: 1px solid rgba(172,102,218,0.5); }
+.btn-primary:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 12px rgba(172,102,218,0.4); transform: translateY(-1px); }
+.btn-success { background: linear-gradient(180deg, var(--accent-green) 0%, #5ca137 100%); color: var(--text-primary); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(116,198,72,0.25); border: 1px solid rgba(116,198,72,0.5); }
+.btn-success:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 12px rgba(116,198,72,0.4); transform: translateY(-1px); }
+.btn-danger { background: linear-gradient(180deg, var(--error) 0%, #b83333 100%); color: var(--text-primary); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(217,63,63,0.25); border: 1px solid rgba(217,63,63,0.5); }
+.btn-danger:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 12px rgba(217,63,63,0.4); transform: translateY(-1px); }
 
 /* Badges */
 .badge-glow { background: var(--accent-purple-glow); border-radius: 9999px; }
@@ -230,6 +234,7 @@ body.sidebar-collapsed {
   width: var(--sidebar-width);
   background: var(--bg-surface);
   height: 100dvh;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   position: fixed;

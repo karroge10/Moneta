@@ -16,11 +16,17 @@ export default function IncomeCard({ amount, trend, comparisonLabel }: IncomeCar
   return (
     <Card title="Income" href="/income">
       <div className="flex flex-col flex-1 min-h-0">
-        <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-          <span className="text-card-currency flex-shrink-0">{currency.symbol}</span>
-          <span className="text-card-value break-all min-w-0">{formatCompactNumber(amount)}</span>
+        <div className="flex flex-col justify-center items-start flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-card-currency shrink-0 opacity-50">{currency.symbol}</span>
+            <span className="text-card-value break-all min-w-0">{formatCompactNumber(amount)}</span>
+          </div>
         </div>
-        {comparisonLabel && comparisonLabel.trim() !== '' && <TrendIndicator value={trend} label={comparisonLabel} />}
+        {comparisonLabel && comparisonLabel.trim() !== '' && (
+          <div className="mt-3">
+            <TrendIndicator value={trend} label={comparisonLabel} />
+          </div>
+        )}
       </div>
     </Card>
   );

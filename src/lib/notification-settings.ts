@@ -13,7 +13,7 @@ const NOTIFICATION_TYPE_TO_SETTING: Record<string, keyof NotificationSettings> =
   'Investments': 'investments',
   'Goals': 'goals',
   'Goal Update': 'goals',
-  'AI Insights': 'aiInsights',
+  'Round-up summaries': 'aiInsights',
 };
 
 export async function getNotificationSettings(

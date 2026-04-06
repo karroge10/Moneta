@@ -55,9 +55,8 @@ export async function generatePerformanceAlerts(userId: number, currentTotalValu
       const perfPercent = oldValue > 0 ? (diff / oldValue) * 100 : 0;
 
       if (Math.abs(perfPercent) >= 0.1) { // Only notify if there's a >0.1% change
-        const icon = perfPercent >= 0 ? '📈' : '📉';
         const sign = perfPercent >= 0 ? '+' : '';
-        const message = `${icon} Your portfolio ${perfPercent >= 0 ? 'grew' : 'dropped'} by ${sign}${perfPercent.toFixed(1)}% this week (${sign}${userCurrencySymbol}${Math.abs(diff).toFixed(2)}).`;
+        const message = `Your portfolio ${perfPercent >= 0 ? 'grew' : 'dropped'} by ${sign}${perfPercent.toFixed(1)}% this week (${sign}${userCurrencySymbol}${Math.abs(diff).toFixed(2)}).`;
         
         await createNotification(userId, {
             type: 'Investments',
@@ -87,8 +86,7 @@ export async function generatePerformanceAlerts(userId: number, currentTotalValu
     const perfPercent = oldValue > 0 ? (diff / oldValue) * 100 : 0;
 
     if (Math.abs(perfPercent) >= 5) {
-      const icon = perfPercent >= 0 ? '🚀' : '⚠️';
-      const message = `${icon} Large move! Your portfolio is ${perfPercent >= 0 ? 'up' : 'down'} ${perfPercent.toFixed(1)}% since yesterday.`;
+      const message = `Large move! Your portfolio is ${perfPercent >= 0 ? 'up' : 'down'} ${perfPercent.toFixed(1)}% since yesterday.`;
       
       await createNotification(userId, {
           type: 'Investments',

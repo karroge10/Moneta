@@ -56,7 +56,7 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
       className="flex flex-col min-h-0 flex-1 h-full"
     >
       <div
-        className="mt-2 flex flex-col flex-1 min-h-0 overflow-hidden"
+        className="mt-2 flex flex-col flex-1 min-h-0 overflow-visible"
         style={{
           minHeight: loading || (!showError && !showComingSoon) ? CARD_MIN_HEIGHT : undefined,
         }}

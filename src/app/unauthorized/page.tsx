@@ -4,13 +4,25 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useClerk, SignedIn, SignedOut } from "@clerk/nextjs";
+import { useClerk, SignedIn, SignedOut, ClerkLoading, ClerkLoaded } from "@clerk/nextjs";
 import { NavArrowLeft } from "iconoir-react";
 
 function UnauthorizedContent() {
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get("redirect") || "/dashboard";
-  const { openSignIn, openSignUp } = useClerk();
+  const { openSignIn, openSignUp, signOut } = useClerk();
+
+  const goHomeHard = () => {
+    window.location.assign("/");
+  };
+
+  const handleSignOutAndHome = async () => {
+    try {
+      await signOut({ redirectUrl: "/" });
+    } catch {
+      goHomeHard();
+    }
+  };
   
   const handleSignIn = () => {
     openSignIn({
@@ -25,19 +37,25 @@ function UnauthorizedContent() {
   };
   
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 md:px-8 py-12">
-      <div className="max-w-2xl mx-auto text-center space-y-8">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 md:px-8 py-12 relative overflow-hidden">
+      {/* Soft ambient background */}
+      <div className="pointer-events-none absolute inset-0 opacity-30" aria-hidden>
+        <div className="absolute top-1/2 left-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#AC66DA]/30 blur-[100px]" />
+      </div>
+
+      <div className="max-w-lg w-full mx-auto text-center space-y-8 rounded-[30px] p-8 md:p-12 surface-elevated bg-[#282828] border border-[#3a3a3a] shadow-xl relative z-10">
         {/* Logo in Circle */}
-        <div className="flex justify-center">
-          <div className="p-4 rounded-full bg-[#282828] border border-[#3a3a3a]">
-            <Image
-              src="/monetalogo.png"
-              alt="Moneta"
-              width={64}
-              height={64}
-              priority
-              className="rounded-full"
-            />
+        <div className="flex justify-center -mt-16">
+          <div className="p-2 rounded-full bg-[#202020] border border-[#3a3a3a] shadow-lg">
+            <div className="p-3 bg-[#282828] rounded-full">
+              <Image
+                src="/monetalogo.png"
+                alt="Moneta"
+                width={48}
+                height={48}
+                priority
+              />
+            </div>
           </div>
         </div>
 
@@ -46,65 +64,84 @@ function UnauthorizedContent() {
           Access Restricted
         </h1>
 
-        {/* Description */}
-        <div className="space-y-4">
-          <SignedOut>
-            <p className="text-body text-[#E7E4E4] opacity-90 leading-relaxed">
-              You need to be signed in to access this page. Please authenticate
-              to continue.
+        {/* Description & Loading Wrapper */}
+        <ClerkLoading>
+          <div className="space-y-4">
+            <p className="text-body text-[#E7E4E4] opacity-80 leading-relaxed max-w-md mx-auto">
+              You need an account to view this dashboard. Please authenticate to continue securely.
             </p>
-            <p className="text-helper text-[#E7E4E4]">
-              If you already have an account, sign in below. Otherwise, create a
-              new account to get started.
-            </p>
-          </SignedOut>
-          <SignedIn>
-            <p className="text-body text-[#E7E4E4] opacity-90 leading-relaxed">
-              You're already signed in, but you don't have access to this page or were redirected here.
-            </p>
-            <p className="text-helper text-[#E7E4E4]">
-              Return to your dashboard or contact support if you believe this is an error.
-            </p>
-          </SignedIn>
-        </div>
+          </div>
+          <div className="flex flex-col items-center justify-center pt-2 w-full mt-4">
+            <button
+              type="button"
+              className="w-full sm:max-w-xs rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] px-8 py-3.5 text-lg font-semibold text-[#E7E4E4] shadow-lg shadow-[#AC66DA]/30 border border-[#AC66DA]/50 mb-6"
+            >
+              Get Started
+            </button>
+            <div className="h-5"></div>
+          </div>
+        </ClerkLoading>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-          <SignedOut>
-            <button 
-              type="button" 
-              onClick={handleSignIn}
-              className="px-8 py-3.5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity w-full sm:w-auto flex items-center justify-center gap-2"
-            >
-              Sign In
-            </button>
-            <button 
-              type="button" 
-              onClick={handleSignUp}
-              className="px-8 py-3.5 rounded-full border border-[#3a3a3a] text-[#E7E4E4] font-semibold text-body hover:bg-[#282828] transition-colors w-full sm:w-auto"
-            >
-              Create Account
-            </button>
-          </SignedOut>
-          <SignedIn>
-            <Link
-              href="/dashboard"
-              className="px-8 py-3.5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity w-full sm:w-auto flex items-center justify-center"
-            >
-              Go to Dashboard
-            </Link>
-          </SignedIn>
-        </div>
+        <ClerkLoaded>
+          <div className="space-y-4">
+            <SignedOut>
+              <p className="text-body text-[#E7E4E4] opacity-80 leading-relaxed max-w-md mx-auto">
+                You need an account to view this dashboard. Please authenticate to continue securely.
+              </p>
+            </SignedOut>
+            <SignedIn>
+              <p className="text-body text-[#E7E4E4] opacity-80 leading-relaxed max-w-md mx-auto">
+                You're already signed in, but you don't have access to this feature. Return to your dashboard.
+              </p>
+            </SignedIn>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col items-center justify-center pt-2 w-full mt-4">
+            <SignedOut>
+              <button 
+                type="button" 
+                onClick={handleSignUp}
+                className="w-full sm:max-w-xs rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] px-8 py-3.5 text-lg font-semibold text-[#E7E4E4] shadow-lg shadow-[#AC66DA]/30 transition-all hover:opacity-90 hover:scale-[1.02] border border-[#AC66DA]/50"
+              >
+                Get Started
+              </button>
+              <button 
+                type="button" 
+                onClick={handleSignIn}
+                className="mt-6 text-sm text-[#E7E4E4] opacity-70 hover:opacity-100 transition-opacity bg-transparent border-0 cursor-pointer hover:underline"
+              >
+                Already have an account? Sign in
+              </button>
+            </SignedOut>
+            <SignedIn>
+              <Link
+                href="/dashboard"
+                className="w-full sm:max-w-xs flex justify-center rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] px-8 py-3.5 text-lg font-semibold text-[#E7E4E4] shadow-lg shadow-[#AC66DA]/30 transition-all hover:opacity-90 hover:scale-[1.02] border border-[#AC66DA]/50 mb-6"
+              >
+                Go to Dashboard
+              </Link>
+              <button
+                type="button"
+                onClick={handleSignOutAndHome}
+                className="text-sm text-[#E7E4E4] opacity-70 hover:opacity-100 transition-opacity bg-transparent border-0 cursor-pointer hover:underline"
+              >
+                Sign out and return Home
+              </button>
+            </SignedIn>
+          </div>
+        </ClerkLoaded>
 
         {/* Back to Home Link */}
-        <div className="pt-8">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-body text-[#E7E4E4] opacity-70 hover:opacity-100 transition-opacity"
+        <div className="pt-6 border-t border-[#3a3a3a] w-full mt-8">
+          <button
+            type="button"
+            onClick={goHomeHard}
+            className="inline-flex items-center gap-2 text-body font-semibold text-[#E7E4E4] opacity-60 hover:opacity-100 hover:text-[#AC66DA] transition-colors bg-transparent border-0 cursor-pointer m-auto"
           >
             <NavArrowLeft width={20} height={20} strokeWidth={1.5} />
             <span>Return to Home</span>
-          </Link>
+          </button>
         </div>
       </div>
     </div>

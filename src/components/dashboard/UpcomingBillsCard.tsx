@@ -70,7 +70,7 @@ export default function UpcomingBillsCard({ bills, onItemClick }: UpcomingBillsC
                     </span>
                   )}
                   <span className="text-body font-semibold whitespace-nowrap">
-                    {currency.symbol}{formatNumber(bill.amount)}
+                    <span className="opacity-50">{currency.symbol}</span> {formatNumber(bill.amount)}
                   </span>
                 </div>
               </div>

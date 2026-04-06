@@ -4,6 +4,8 @@ import { db } from '@/lib/db';
 import { LatestExpense, ExpenseCategory, PerformanceDataPoint, TimePeriod } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
 import { convertTransactionsToTargetSimple } from '@/lib/currency-conversion';
+import { getInvestmentsPortfolio } from '@/lib/investments';
+import { computeRoundupInsight } from '@/lib/roundup-insight';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -297,9 +299,9 @@ export async function GET(request: NextRequest) {
           ? 0
           : comparisonRange && comparisonExpenses > 0
             ? Math.round(((selectedPeriodExpenses - comparisonExpenses) / comparisonExpenses) * 100)
-            : comparisonRange && selectedPeriodExpenses > 0
-              ? 100
-              : 0;
+            : 0;
+
+    const trendSkipped = skipComparison || (timePeriod !== 'All Time' && (!comparisonRange || comparisonExpenses === 0));
 
     // Calculate top expense categories
     const categoryTotals = new Map<string, { amount: number; categoryId: number; categoryName: string }>();
@@ -428,9 +430,9 @@ export async function GET(request: NextRequest) {
     const averageTrend =
       avgMonthlyLastYear > 0
         ? Math.round(((avgMonthlyCurrentYear - avgMonthlyLastYear) / avgMonthlyLastYear) * 100)
-        : avgMonthlyCurrentYear > 0
-          ? 100
-          : 0;
+        : 0;
+
+    const averageTrendSkipped = avgMonthlyLastYear === 0;
 
 
     // Calculate average monthly expenses (or average daily for single month periods)
@@ -448,18 +450,48 @@ export async function GET(request: NextRequest) {
 
     const comparisonLabel = getComparisonLabel(timePeriod);
 
-    // Generate trend text for performance
-    // For expenses: negative trend is good (spending less), positive is bad (spending more)
-    // No comparison when skipped; All Time uses growth since beginning
-    const noComparison = skipComparison || (timePeriod !== 'All Time' && !comparisonRange);
-    const periodSuffix = timePeriod === 'All Time' ? 'since beginning' : 'over selected time period';
-    const trendText = noComparison
-      ? 'Not enough data to compare yet'
-      : expenseTrend > 0
-        ? `Your expenses grew +${expenseTrend}% ${periodSuffix}`
-        : expenseTrend < 0
-          ? `Your expenses decreased ${Math.abs(expenseTrend)}% ${periodSuffix}`
-          : `Your expenses remained stable ${periodSuffix}`;
+    const investmentsPortfolio = await getInvestmentsPortfolio(user.id, userCurrencyRecord);
+    const roundupInsight = await computeRoundupInsight(selectedPeriodExpenses, investmentsPortfolio.assets);
+
+    // Calculate internal trend for performance graph
+    const firstPerfValue = performanceData.length > 0 ? performanceData[0].value : 0;
+    const lastPerfValue = performanceData.length > 0 ? performanceData[performanceData.length - 1].value : 0;
+    const internalTrend = firstPerfValue > 0 
+      ? Math.round(((lastPerfValue - firstPerfValue) / firstPerfValue) * 100) 
+      : (lastPerfValue > 0 ? 100 : 0);
+
+    // Use internal trend for performance text to match graph visual
+    const performanceTrendText = performanceData.length < 2
+      ? 'Not enough data to show trends'
+      : internalTrend > 0
+        ? `Your expenses grew +${internalTrend}% ${timePeriod.toLowerCase()}`
+        : internalTrend < 0
+          ? `Your expenses decreased ${Math.abs(internalTrend)}% ${timePeriod.toLowerCase()}`
+          : `Your expenses remained stable ${timePeriod.toLowerCase()}`;
+
+    // Demographic Comparison calculation
+    let demographicPercentage = 0;
+    let demographicMessage = '';
+    const demographicComparisonsDisabled = user.dataSharingEnabled !== true;
+
+    if (demographicComparisonsDisabled) {
+      demographicMessage = 'Enable data sharing in Settings to see how you compare to others.';
+      demographicPercentage = 0;
+    } else {
+      const REGIONAL_AVERAGE_EXPENSES = 3500;
+      if (averageMonthlyExpenses > 0) {
+        if (averageMonthlyExpenses < REGIONAL_AVERAGE_EXPENSES) {
+          demographicPercentage = Math.round(((REGIONAL_AVERAGE_EXPENSES - averageMonthlyExpenses) / REGIONAL_AVERAGE_EXPENSES) * 100);
+          demographicMessage = `Your average expenses are ${demographicPercentage}% lower than of users in your region. Great job!`;
+        } else {
+          demographicPercentage = Math.round(((averageMonthlyExpenses - REGIONAL_AVERAGE_EXPENSES) / REGIONAL_AVERAGE_EXPENSES) * 100);
+          demographicMessage = `Your average expenses are ${demographicPercentage}% higher than of users in your region.`;
+        }
+      } else {
+        demographicMessage = `Add more transactions to see how you compare to others.`;
+        demographicPercentage = 0;
+      }
+    }
 
     // Calculate next month prediction (only for "This Month")
     let nextMonthPrediction = 0;
@@ -489,23 +521,33 @@ export async function GET(request: NextRequest) {
       total: {
         amount: Math.round(selectedPeriodExpenses),
         trend: expenseTrend,
+        trendSkipped: trendSkipped,
       },
       topCategories,
       latestExpenses,
       performance: {
-        trend: expenseTrend,
-        trendText,
+        trend: internalTrend,
+        trendText: performanceTrendText,
         data: performanceData,
       },
       averageMonthly: {
         amount: Math.round(averageMonthlyExpenses),
         trend: averageTrend,
+        trendSkipped: averageTrendSkipped,
       },
       averageDaily: isMonthlyPeriod ? {
         amount: Math.round(averageDailyExpenses),
         trend: averageTrend,
       } : null,
       nextMonthPrediction: timePeriod === 'This Month' ? Math.round(nextMonthPrediction) : null,
+      roundupInsight,
+      demographicComparison: {
+        message: demographicMessage,
+        percentage: demographicPercentage,
+        percentageLabel: demographicPercentage > 0 ? `${demographicPercentage}%` : '',
+        link: demographicComparisonsDisabled ? 'Settings' : 'Statistics',
+      },
+      demographicComparisonsDisabled,
     });
   } catch (error) {
     console.error('Error fetching expenses data:', error);

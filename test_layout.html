@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body, html { margin: 0; padding: 0; }
+  .wrapper { display: flex; min-height: 100vh; }
+  .sidebar-container { 
+    /* shrink-0 */
+    flex-shrink: 0; 
+  }
+  .sidebar {
+    width: 280px;
+    height: 100vh;
+    background: red;
+    position: sticky;
+    top: 0;
+  }
+  .main { flex: 1; background: blue; min-width: 0; }
+</style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="sidebar-container">
+      <div class="sidebar">Sidebar</div>
+    </div>
+    <div class="main">Main Content</div>
+  </div>
+</body>
+</html>

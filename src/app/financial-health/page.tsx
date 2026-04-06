@@ -5,6 +5,7 @@ import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import { getHealthColor } from '@/lib/utils';
 import type { FinancialHealthDetails, TimePeriod } from '@/types/dashboard';
+import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 
 const PILLARS: { key: keyof FinancialHealthDetails['details']; label: string; description: string }[] = [
   { key: 'saving', label: 'Saving', description: 'Based on your savings rate: (income − expenses) / income.' },
@@ -14,6 +15,7 @@ const PILLARS: { key: keyof FinancialHealthDetails['details']; label: string; de
 ];
 
 export default function FinancialHealthPage() {
+  const authReady = useAuthReadyForApi();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Month');
   const [data, setData] = useState<FinancialHealthDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,8 +43,9 @@ export default function FinancialHealthPage() {
   }, [timePeriod]);
 
   useEffect(() => {
+    if (!authReady) return;
     fetchData();
-  }, [fetchData]);
+  }, [authReady, fetchData]);
 
   const score = data?.score ?? 0;
   const trend = data?.trend ?? 0;

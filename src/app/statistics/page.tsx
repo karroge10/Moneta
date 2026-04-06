@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
-import FinancialMilestonesCard from '@/components/statistics/FinancialMilestonesCard';
+
 import DemographicComparisonsSection from '@/components/statistics/DemographicComparisonsSection';
 import AverageExpensesCard from '@/components/statistics/AverageExpensesCard';
 import MonthlySummaryTable from '@/components/statistics/MonthlySummaryTable';
 import StatisticsSummary from '@/components/statistics/StatisticsSummary';
 import FinancialHealthModal from '@/components/dashboard/FinancialHealthModal';
 import { mockStatisticsPage } from '@/lib/mockData';
+import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 import { MonthlySummaryRow, StatisticsSummaryItem, DemographicComparison, FinancialHealthDetails } from '@/types/dashboard';
 
 /** Statistics always use All Time; no period selector. */
@@ -27,6 +28,7 @@ interface AverageExpense {
 export type DemographicDimension = 'age' | 'country' | 'profession';
 
 export default function StatisticsPage() {
+  const authReady = useAuthReadyForApi();
   const [demographicDimension, setDemographicDimension] = useState<DemographicDimension>('age');
   const [loadingPersonal, setLoadingPersonal] = useState(true);
   const [loadingDemographic, setLoadingDemographic] = useState(false);
@@ -106,6 +108,7 @@ export default function StatisticsPage() {
   }, [demographicDimension]);
 
   useEffect(() => {
+    if (!authReady) return;
     const isInitial = prevDimensionRef.current === null;
     const dimensionChanged = prevDimensionRef.current !== demographicDimension;
     prevDimensionRef.current = demographicDimension;
@@ -114,7 +117,7 @@ export default function StatisticsPage() {
     } else if (dimensionChanged) {
       fetchDemographicOnly();
     }
-  }, [demographicDimension, fetchFull, fetchDemographicOnly]);
+  }, [authReady, demographicDimension, fetchFull, fetchDemographicOnly]);
 
   const summaryItemsToShow = summaryItems.length > 0 ? summaryItems : (error ? mockStatisticsPage.summary.items : []);
 
@@ -133,10 +136,7 @@ export default function StatisticsPage() {
       {/* Content — same layout when loading; cards show skeleton internally */}
       {/* Mobile: stacked */}
       <div className="md:hidden flex flex-col gap-4 px-4 pb-4">
-        <FinancialMilestonesCard
-          milestone={mockStatisticsPage.milestone}
-          loading={loadingPersonal || !!error}
-        />
+
         <DemographicComparisonsSection
           comparisons={demographicComparisons}
           loading={loadingDemographic || (loadingPersonal || !!error)}
@@ -169,12 +169,9 @@ export default function StatisticsPage() {
       {/* Tablet/Desktop: top row (2 cols below 2xl, 3 cols at 2xl) + bottom row (full-width table) */}
       <div className="hidden md:flex flex-col gap-4 md:px-6 md:pb-6 min-h-[calc(100vh-120px)]">
         {/* Top row: fixed height so Expenses list cuts off at container; left column and Demographic list scroll if needed */}
-        <div className="grid md:grid-cols-2 2xl:grid-cols-[1fr_1.3fr_1fr] md:grid-rows-1 gap-4 h-[900px] min-h-[900px] max-h-[900px] shrink-0 items-stretch overflow-hidden">
-          <div className="flex flex-col gap-4 min-h-0 h-full overflow-y-auto custom-scrollbar pr-1">
-            <FinancialMilestonesCard
-              milestone={mockStatisticsPage.milestone}
-              loading={loadingPersonal || !!error}
-            />
+        <div className="grid md:grid-cols-2 2xl:grid-cols-[1fr_1.3fr_1fr] md:grid-rows-1 gap-4 h-[900px] min-h-[900px] max-h-[900px] shrink-0 items-stretch">
+          <div className="flex flex-col gap-4 min-h-0 h-full pr-1">
+
             <DemographicComparisonsSection
               comparisons={demographicComparisons}
               loading={loadingDemographic || (loadingPersonal || !!error)}
@@ -186,7 +183,7 @@ export default function StatisticsPage() {
               onRetry={fetchDemographicOnly}
             />
           </div>
-          <div className="flex flex-col min-h-0 min-w-0 h-full overflow-hidden">
+          <div className="flex flex-col min-h-0 min-w-0 h-full">
             <AverageExpensesCard
               expenses={averageExpenses}
               loading={loadingPersonal}

@@ -94,6 +94,7 @@ export default function SendFeedbackCard() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="hello@moneta.app"
               className="w-full pl-10 pr-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
               style={{ color: 'var(--text-primary)' }}
             />
