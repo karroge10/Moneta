@@ -251,17 +251,13 @@ async function main() {
   await prisma.user.update({
     where: { id: userId },
     data: {
-      firstName: user.firstName ?? 'Alex',
-      lastName: user.lastName ?? 'Morgan',
       userName: user.userName ?? `demo_user_${userId}`,
       profession: user.profession ?? 'Product Designer',
       country: user.country ?? 'United States',
       dateOfBirth: user.dateOfBirth ?? new Date('1992-06-15'),
       languageId: english?.id ?? user.languageId,
       currencyId: usd.id,
-      defaultPage: '/dashboard',
       incomeTaxRate: 22,
-      plan: 'premium',
       dataSharingEnabled: false,
     },
   });
