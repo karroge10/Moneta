@@ -113,7 +113,6 @@ import {
   Settings,
   Bell,
   HeadsetHelp,
-  Crown,
   LogOut,
   LogIn,
   HalfMoon,
@@ -171,7 +170,6 @@ Mappings (use these exact components):
 - Settings: Settings
 - Notifications: Bell
 - Help Center: HeadsetHelp
-- Pricing: Crown
 - Log out: LogOut
 - Log in: LogIn
 - Dark: HalfMoon

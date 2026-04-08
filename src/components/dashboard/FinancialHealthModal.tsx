@@ -3,19 +3,18 @@
 import { useEffect, useRef } from 'react';
 import { Xmark } from 'iconoir-react';
 import { getHealthColor, getTrendColor } from '@/lib/utils';
-import type { FinancialHealthDetails, TimePeriod } from '@/types/dashboard';
+import type { FinancialHealthDetails } from '@/types/dashboard';
 
 const PILLARS: { key: keyof FinancialHealthDetails['details']; label: string; description: string }[] = [
-  { key: 'saving', label: 'Saving', description: 'Based on your savings rate: (income − expenses) / income.' },
-  { key: 'spendingControl', label: 'Spending control', description: 'Whether your expenses stay within your income for the period.' },
+  { key: 'saving', label: 'Saving', description: 'Based on your all-time savings rate: (income − expenses) / income.' },
+  { key: 'spendingControl', label: 'Spending control', description: 'Whether your all-time expenses stay within your all-time income.' },
   { key: 'goals', label: 'Goals', description: 'Share of your goals that are on track or completed.' },
-  { key: 'engagement', label: 'Engagement', description: 'Recent activity, profile completeness, and categorized transactions.' },
+  { key: 'engagement', label: 'Engagement', description: 'Recent activity (last 30 days), profile, goals, and share of categorized transactions across all time.' },
 ];
 
 interface FinancialHealthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  timePeriod?: TimePeriod;
   /** Data loaded on page load by parent; modal never fetches */
   initialData?: FinancialHealthDetails | null;
 }
@@ -75,7 +74,7 @@ export default function FinancialHealthModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full p-2 hover:opacity-80 transition-opacity"
+              className="rounded-full p-2 cursor-pointer transition-colors hover:text-[#AC66DA]"
               style={{ color: 'var(--text-primary)' }}
               aria-label="Close"
             >
@@ -105,6 +104,7 @@ export default function FinancialHealthModal({
                 <h3 className="text-card-header mb-2">How we calculate your score</h3>
                 <p className="text-body opacity-70 mb-4">
                   Your Financial Health Score is based on four areas: Saving, Spending control, Goals, and Engagement.
+                  It always reflects your full transaction history (all time), not the dashboard period filter.
                 </p>
                 {isEmpty ? (
                   <p className="text-helper">Add transactions to see your score and breakdown.</p>

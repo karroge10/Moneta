@@ -9,7 +9,6 @@ import AverageExpensesCard from '@/components/statistics/AverageExpensesCard';
 import MonthlySummaryTable from '@/components/statistics/MonthlySummaryTable';
 import StatisticsSummary from '@/components/statistics/StatisticsSummary';
 import FinancialHealthModal from '@/components/dashboard/FinancialHealthModal';
-import { mockStatisticsPage } from '@/lib/mockData';
 import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 import { MonthlySummaryRow, StatisticsSummaryItem, DemographicComparison, FinancialHealthDetails } from '@/types/dashboard';
 
@@ -38,8 +37,10 @@ export default function StatisticsPage() {
   const [averageExpenses, setAverageExpenses] = useState<AverageExpense[]>([]);
   const [summaryItems, setSummaryItems] = useState<StatisticsSummaryItem[]>([]);
   const [demographicComparisons, setDemographicComparisons] = useState<DemographicComparison[]>([]);
+  const [demographicCohortSize, setDemographicCohortSize] = useState(0);
   const [demographicComparisonsDisabled, setDemographicComparisonsDisabled] = useState(false);
   const [demographicCohortValueMissing, setDemographicCohortValueMissing] = useState(false);
+  const [syntheticDemographicCohort, setSyntheticDemographicCohort] = useState(false);
   const [financialHealthDetails, setFinancialHealthDetails] = useState<FinancialHealthDetails | null>(null);
   const [financialHealthModalOpen, setFinancialHealthModalOpen] = useState(false);
   const prevDimensionRef = useRef<DemographicDimension | null>(null);
@@ -57,8 +58,10 @@ export default function StatisticsPage() {
       setAverageExpenses(data.averageExpenses || []);
       setSummaryItems(data.summary?.items || []);
       setDemographicComparisons(data.demographicComparisons ?? []);
+      setDemographicCohortSize(typeof data.demographicCohortSize === 'number' ? data.demographicCohortSize : 0);
       setDemographicComparisonsDisabled(data.demographicComparisonsDisabled === true);
       setDemographicCohortValueMissing(data.demographicCohortValueMissing === true);
+      setSyntheticDemographicCohort(data.syntheticDemographicCohort === true);
       setFinancialHealthDetails(
         data.financialHealth != null
           ? {
@@ -75,8 +78,10 @@ export default function StatisticsPage() {
       setAverageExpenses([]);
       setSummaryItems([]);
       setDemographicComparisons([]);
+      setDemographicCohortSize(0);
       setDemographicComparisonsDisabled(false);
       setFinancialHealthDetails(null);
+      setSyntheticDemographicCohort(false);
     } finally {
       setLoadingPersonal(false);
     }
@@ -95,13 +100,17 @@ export default function StatisticsPage() {
       if (!response.ok) throw new Error('Failed to fetch demographic data');
       const data = await response.json();
       setDemographicComparisons(data.demographicComparisons ?? []);
+      setDemographicCohortSize(typeof data.demographicCohortSize === 'number' ? data.demographicCohortSize : 0);
       setDemographicComparisonsDisabled(data.demographicComparisonsDisabled === true);
       setDemographicCohortValueMissing(data.demographicCohortValueMissing === true);
+      setSyntheticDemographicCohort(data.syntheticDemographicCohort === true);
     } catch (err) {
       console.error('Error fetching demographic data:', err);
       setDemographicError(err instanceof Error ? err.message : 'Failed to load demographic data');
       setDemographicComparisons([]);
+      setDemographicCohortSize(0);
       setDemographicComparisonsDisabled(false);
+      setSyntheticDemographicCohort(false);
     } finally {
       setLoadingDemographic(false);
     }
@@ -118,8 +127,6 @@ export default function StatisticsPage() {
       fetchDemographicOnly();
     }
   }, [authReady, demographicDimension, fetchFull, fetchDemographicOnly]);
-
-  const summaryItemsToShow = summaryItems.length > 0 ? summaryItems : (error ? mockStatisticsPage.summary.items : []);
 
   return (
     <main className="min-h-screen bg-background">
@@ -139,9 +146,11 @@ export default function StatisticsPage() {
 
         <DemographicComparisonsSection
           comparisons={demographicComparisons}
-          loading={loadingDemographic || (loadingPersonal || !!error)}
+          cohortSize={demographicCohortSize}
+          loading={loadingDemographic || loadingPersonal}
           demographicComparisonsDisabled={demographicComparisonsDisabled}
           demographicCohortValueMissing={demographicCohortValueMissing}
+          syntheticDemographicCohort={syntheticDemographicCohort}
           demographicDimension={demographicDimension}
           onDemographicChange={setDemographicDimension}
           error={demographicError}
@@ -160,8 +169,10 @@ export default function StatisticsPage() {
           onRetry={fetchFull}
         />
         <StatisticsSummary
-          items={summaryItemsToShow}
-          loading={loadingPersonal || !!error}
+          items={summaryItems}
+          loading={loadingPersonal}
+          error={error}
+          onRetry={fetchFull}
           onFinancialHealthLearnClick={() => setFinancialHealthModalOpen(true)}
         />
       </div>
@@ -174,9 +185,11 @@ export default function StatisticsPage() {
 
             <DemographicComparisonsSection
               comparisons={demographicComparisons}
-              loading={loadingDemographic || (loadingPersonal || !!error)}
+              cohortSize={demographicCohortSize}
+              loading={loadingDemographic || loadingPersonal}
               demographicComparisonsDisabled={demographicComparisonsDisabled}
               demographicCohortValueMissing={demographicCohortValueMissing}
+              syntheticDemographicCohort={syntheticDemographicCohort}
               demographicDimension={demographicDimension}
               onDemographicChange={setDemographicDimension}
               error={demographicError}
@@ -193,8 +206,10 @@ export default function StatisticsPage() {
           </div>
           <div className="flex flex-col min-h-0 min-w-0 h-full md:col-span-2 2xl:col-span-1">
             <StatisticsSummary
-              items={summaryItemsToShow}
-              loading={loadingPersonal || !!error}
+              items={summaryItems}
+              loading={loadingPersonal}
+              error={error}
+              onRetry={fetchFull}
               onFinancialHealthLearnClick={() => setFinancialHealthModalOpen(true)}
             />
           </div>
@@ -214,7 +229,6 @@ export default function StatisticsPage() {
       <FinancialHealthModal
         isOpen={financialHealthModalOpen}
         onClose={() => setFinancialHealthModalOpen(false)}
-        timePeriod={STATISTICS_TIME_PERIOD}
         initialData={financialHealthDetails}
       />
     </main>

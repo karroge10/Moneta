@@ -1,13 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { getFinancialHealthScore } from '@/lib/financial-health';
-import type { TimePeriod } from '@/types/dashboard';
+import { getFinancialHealthScore, FINANCIAL_HEALTH_TIME_PERIOD } from '@/lib/financial-health';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const user = await requireCurrentUserWithLanguage();
 
@@ -23,16 +22,14 @@ export async function GET(request: NextRequest) {
     }
 
     const targetCurrencyId = userCurrencyRecord.id;
-    const { searchParams } = new URL(request.url);
-    const timePeriod = (searchParams.get('timePeriod') || 'This Month') as TimePeriod;
 
-    const result = await getFinancialHealthScore(user.id, timePeriod, targetCurrencyId);
+    const result = await getFinancialHealthScore(user.id, FINANCIAL_HEALTH_TIME_PERIOD, targetCurrencyId);
 
     return NextResponse.json({
       score: result.score,
       trend: result.trend,
       details: result.details,
-      timePeriod,
+      timePeriod: FINANCIAL_HEALTH_TIME_PERIOD,
     });
   } catch (error) {
     console.error('Error fetching financial health:', error);

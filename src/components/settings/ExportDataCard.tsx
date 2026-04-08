@@ -28,8 +28,10 @@ export default function ExportDataCard({ loading = false }: ExportDataCardProps)
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-4">
             <div className="w-6 h-6 rounded shrink-0 animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
-            <div className="h-4 flex-1 max-w-[200px] rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
-            <div className="w-24 h-9 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
+            <div className="flex-1 min-w-0">
+              <div className="h-4 w-full max-w-md rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
+            </div>
+            <div className="h-10 px-6 min-w-[7.5rem] rounded-full shrink-0 animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
           </div>
         </div>
       </Card>

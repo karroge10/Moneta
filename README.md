@@ -1,122 +1,90 @@
 # Moneta
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Personal finance web app: **Next.js** (App Router) on Vercel, **PostgreSQL** (Prisma), **Clerk** auth, and a **Python PDF processor** deployed separately (e.g. Render) for bank-statement import.
 
-## Getting Started
-
-First, run the development server:
+## Quick start
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-The dev runner automatically picks the first available port, preferring 3000. Check the terminal output if `3000` is busy to see which port it settled on and open that URL in your browser.
+The dev server prefers port **3000**; if it is taken, use the URL shown in the terminal.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## PDF bank statement import
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Local (full stack on your machine)
 
-## PDF Import Prototype
+1. Install Python deps: `pip install -r python/requirements.txt` (and `python-service/requirements.txt` if you run the Flask service locally).
+2. `npm run dev` and open `/transactions/import`.
+3. Upload a PDF; the app queues processing and polls job status.
 
-### Prerequisites
+### Production: Vercel + external PDF service
 
-- Python 3.10+
-- `pip install -r python/requirements.txt` (installs `pdfplumber` and the scikit-learn stack)
-- Optional: `mineru` package if you want to experiment with the full extraction pipeline
+Next.js on **Vercel** does not run the Python extractor. Production upload uses **`PYTHON_SERVICE_URL`**: the Next.js API forwards the PDF to your deployed processor (HTTP `POST …/process-pdf`).
 
-### Local Workflow
+Set on **Vercel** (all environments that should import PDFs):
 
-1.  **Install Python Dependencies**:
-    Ensure you have Python 3.8+ installed. Then, install the required libraries:
-    ```bash
-    pip install -r python/requirements.txt
-    ```
-    This installs `pdfplumber` for PDF extraction, `scikit-learn` for transaction categorization fallbacks, and `deep-translator` so the worker automatically translates non-English descriptions to English.
+| Variable | Purpose |
+|----------|---------|
+| `PYTHON_SERVICE_URL` | Base URL of the PDF service, **no trailing slash** (e.g. `https://moneta-pdf-processor.onrender.com`) |
 
-1. Start the Next.js dev server: `npm run dev`
-2. Visit `http://localhost:3000/transactions/import`
-3. Drag a PDF bank statement (for example `src/lib/credo_statement.pdf`) into the drop zone or click **Select PDF**
-4. The UI shows the upload pipeline *(queued → uploading → processing → categorizing → ready)*
-5. Review the editable table, tweak any fields, and press **Confirm Import** to POST to `/api/transactions/import`
-6. Confirmed imports appear in the history table with search, filters, and pagination
+If this is set correctly, PDF import works from production; local dev can use the same URL or a local Flask instance.
 
-### Python Worker
+### Deploying the PDF service (Render / similar)
 
-- Entry point: `python/process_pdf.py`
-- Accepts `PDF_PATH` and optional `MODEL_PATH` (`python/models/categories.ftz` by default)
-- Uses `pdfplumber` heuristics for GEL statements; falls back to MinerU/sample data if parsing fails
-- Outputs JSON payload: `{ transactions: [...], metadata: { currency, source, periodStart, periodEnd } }`
-- Run locally: `python python/process_pdf.py src/lib/credo_statement.pdf`
+See `python-service/README.md` and `render.yaml`. Typical start command: `python python-service/app.py` (or Gunicorn as in `render.yaml`).
 
-### Classifier Model
+**Render / PDF service environment (optional):**
 
-- A placeholder model lives at `python/models/transactions_model.joblib`; replace with a trained model when available
-- Override its location with the `CATEGORIES_MODEL_PATH` environment variable if needed
--   A placeholder `python/models/README.md` explains how to train and save a `scikit-learn` model as `transactions_model.joblib`.
--   If `transactions_model.joblib` is not present, the Python worker will use keyword-based heuristics for categorization. It matches translated descriptions against weighted keywords (e.g. "conversion", "withdrawal", "fee") and derives a confidence score from the total weight it finds.
+| Variable | Purpose |
+|----------|---------|
+| `INTERNAL_API_SECRET` | If set, sent to the Next.js progress callback for internal routes. |
 
-### Cleanup
+PDF categorization uses **keyword heuristics** (and translation in the Python pipeline where needed). The optional `CATEGORIES_MODEL_PATH` joblib hook exists only in `python-service` / `python` docs if you ever add a custom model; the app does not require it.
 
-- Temporary PDFs are saved under `tmp/uploads` and removed once processing finishes
-- Override the temp directory with `TMPDIR`
+## Other environment variables
 
-## Deployment Prep
+- `NEXT_PUBLIC_CONTACT_EMAIL` — optional; landing page support mailto (defaults to `hello@moneta.app` if unset).
+- Database, Clerk, and other secrets are standard for this stack (see your Vercel / `.env.local` setup).
 
-### ⚠️ Important: Python Dependencies
+## Statistics — demographic “peers”
 
-Python dependencies (`pdfplumber`, `scikit-learn`, `deep-translator`) are required for PDF processing. They are automatically installed when you run `npm install` (via the `postinstall` script), but you can also install them manually:
+Comparisons use **other users** who have **data sharing** on (excluding you), filtered to the same **age group**, **country**, or **profession** as your profile. Fill those fields in Settings for the dimension you pick.
 
-```bash
-pip install -r python/requirements.txt
-```
+**Local / demo cohort (pick one or both)**
 
-### Vercel Deployment
+1. **Database seed (realistic, same code path as production)**  
+   After `npm run seed`, run:
 
-**⚠️ Vercel Limitation**: Vercel's serverless functions don't support Python by default. You have two options:
+   ```bash
+   npm run seed:demographic
+   ```
 
-#### Option 1: Use Vercel with External Python Service (Recommended)
-- Deploy your Next.js app to Vercel (frontend + API routes that don't need Python)
-- Deploy a separate Python service (e.g., on Render, Railway, or Fly.io) for PDF processing
-- Update `/api/transactions/upload-bank-statement` to call the external Python service via HTTP
-- Set `PYTHON_SERVICE_URL` environment variable in Vercel
+   Creates ~33 `demo_*` users (no Clerk id) with sharing on and sample transactions. Replace them anytime:
 
-#### Option 2: Use Vercel with Docker (Advanced)
-- Use Vercel's Docker support to run a container with both Node.js and Python
-- Requires custom Dockerfile and more complex setup
+   ```bash
+   npm run seed:demographic -- --reset
+   ```
 
-#### Option 3: Deploy Everything to Render/Railway
-- Deploy the full Next.js app to Render or Railway (both support Python)
-- Install Python dependencies in the build step: `pip install -r python/requirements.txt`
-- Set environment variables: `PYTHON_PATH`, `CATEGORIES_MODEL_PATH`, `TMPDIR`
+   Then for **your** Clerk user: turn on **data sharing** in Settings and set **date of birth / country / profession** so they match at least one seeded bucket (e.g. country **Georgia**, profession **Developer**, age in **18–24** is heavily seeded).
 
-### Environment Variables
+2. **Synthetic peers (no extra DB users)** — **development only** (`NODE_ENV !== 'production'`). In `.env.local`:
 
-For any deployment, set these environment variables:
-- `PYTHON_PATH` - Path to Python executable (default: `python3` on Linux/Mac, `python` on Windows)
-- `CATEGORIES_MODEL_PATH` - Path to the ML model file (optional, defaults to `python/models/categories.ftz`)
-- `TMPDIR` - Temporary directory for uploaded PDFs (optional)
-- `NEXT_PUBLIC_CONTACT_EMAIL` - (optional) Public support address used for the landing page mailto link; defaults to `hello@moneta.app` if unset
+   ```bash
+   FAKE_DEMOGRAPHIC_COHORT=true
+   # optional: FAKE_DEMOGRAPHIC_COHORT_SIZE=24
+   ```
 
-### Static Assets
-- Replace `python/models/categories.ftz` with the trained model or download from object storage at runtime
+   If no real peers match your profile, the API fills comparisons with a **deterministic fake sample** and the Statistics UI notes “illustrative demo cohort”.  
+   On production builds this stays **off** unless you also set `ALLOW_FAKE_DEMOGRAPHIC_COHORT_IN_PRODUCTION=true` (not recommended for a real product).
 
-## Learn More
+Transaction display uses a **fixed Georgian→English phrase map** in `src/lib/transaction-utils.ts` (no external translation API).
 
-To learn more about Next.js, take a look at the following resources:
+## Repo layout (high level)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/app` — Next.js routes and API routes  
+- `src/components` — UI  
+- `prisma` — schema and migrations  
+- `python/` — PDF extraction + categorization CLI (`process_pdf.py`)  
+- `python-service/` — Flask app exposed to Vercel via `PYTHON_SERVICE_URL`

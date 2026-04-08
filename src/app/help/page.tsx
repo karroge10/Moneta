@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import FAQSection from '@/components/help/FAQSection';
@@ -11,6 +11,20 @@ import { TimePeriod } from '@/types/dashboard';
 
 export default function HelpPage() {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('All Time');
+
+  useEffect(() => {
+    const scrollToFaqHash = () => {
+      const hash = window.location.hash;
+      if (!hash.startsWith('#faq-')) return;
+      const id = hash.slice(1);
+      window.requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    };
+    scrollToFaqHash();
+    window.addEventListener('hashchange', scrollToFaqHash);
+    return () => window.removeEventListener('hashchange', scrollToFaqHash);
+  }, []);
 
   return (
     <main className="min-h-screen bg-background">

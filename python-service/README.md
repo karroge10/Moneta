@@ -25,7 +25,7 @@ When creating the service on Render, use these settings:
 Set these in Render dashboard:
 
 - `PORT`: `5000` (Render sets this automatically)
-- `CATEGORIES_MODEL_PATH`: `python/models/categories.ftz` (optional)
+- `CATEGORIES_MODEL_PATH`: `python/models/transactions_model.joblib` (optional; joblib sklearn pipeline — omit or leave missing to use keyword heuristics)
 - `PYTHONUNBUFFERED`: `1` (for better logging)
 
 ### Using render.yaml (Recommended for Production)
@@ -127,7 +127,7 @@ The worker is configured in `render.yaml` as a separate service:
 
 **Required Environment Variables:**
 - `DATABASE_URL` - PostgreSQL connection string (same as main app)
-- `CATEGORIES_MODEL_PATH` - Path to category model (optional)
+- `CATEGORIES_MODEL_PATH` - Path to joblib sklearn categorization pipeline (optional)
 
 ## API Endpoints
 

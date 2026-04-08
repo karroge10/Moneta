@@ -8,7 +8,7 @@ services:
       - key: PORT
         value: 5000
       - key: CATEGORIES_MODEL_PATH
-        value: python/models/categories.ftz
+        value: python/models/transactions_model.joblib
       - key: PYTHONUNBUFFERED
         value: 1
   
@@ -21,7 +21,7 @@ services:
       - key: DATABASE_URL
         value: ${DATABASE_URL}
       - key: CATEGORIES_MODEL_PATH
-        value: python/models/categories.ftz
+        value: python/models/transactions_model.joblib
       - key: PYTHONUNBUFFERED
         value: 1
 
