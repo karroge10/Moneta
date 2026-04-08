@@ -3,6 +3,12 @@ import { convertTransactionsToTargetSimple } from '@/lib/currency-conversion';
 import { calculateGoalProgress } from '@/lib/goalUtils';
 import type { FinancialHealthDetails, TimePeriod } from '@/types/dashboard';
 
+/**
+ * Financial Health always uses this period everywhere (dashboard, statistics, dedicated page),
+ * independent of the UI time-range selector for other metrics.
+ */
+export const FINANCIAL_HEALTH_TIME_PERIOD: TimePeriod = 'All Time';
+
 const WEIGHTS = {
   saving: 0.35,
   spendingControl: 0.25,

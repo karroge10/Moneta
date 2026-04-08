@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { Transaction as TransactionType, ExpenseCategory, TimePeriod } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
 import { convertTransactionsToTargetSimple } from '@/lib/currency-conversion';
-import { getFinancialHealthScore } from '@/lib/financial-health';
+import { getFinancialHealthScore, FINANCIAL_HEALTH_TIME_PERIOD } from '@/lib/financial-health';
 import { getInvestmentsPortfolio } from '@/lib/investments';
 import { computeRoundupInsight } from '@/lib/roundup-insight';
 
@@ -373,7 +373,7 @@ export async function GET(request: NextRequest) {
     const investmentsPortfolio = await getInvestmentsPortfolio(user.id, userCurrencyRecord);
 
     const [financialHealth, roundupInsight] = await Promise.all([
-      getFinancialHealthScore(user.id, timePeriod, targetCurrencyId),
+      getFinancialHealthScore(user.id, FINANCIAL_HEALTH_TIME_PERIOD, targetCurrencyId),
       computeRoundupInsight(selectedPeriodExpenses, investmentsPortfolio.assets),
     ]);
 

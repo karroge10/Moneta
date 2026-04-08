@@ -39,7 +39,7 @@ except ImportError:
     )
 
 # Load classifier model once at startup
-default_model_path = project_root / 'python' / 'models' / 'categories.ftz'
+default_model_path = project_root / 'python' / 'models' / 'transactions_model.joblib'
 model_path = Path(os.getenv('CATEGORIES_MODEL_PATH', str(default_model_path)))
 classifier_model = load_classifier(model_path)
 

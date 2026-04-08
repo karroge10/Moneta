@@ -23,7 +23,10 @@ function FieldRowSkeleton({ labelWidth = 'w-24' }: { labelWidth?: string }) {
   return (
     <div className="flex flex-col gap-2">
       <div className={`h-4 rounded animate-pulse ${labelWidth}`} style={SKELETON_STYLE} />
-      <div className="flex items-center gap-3 px-4 py-2 rounded-xl" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      <div
+        className="flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a]"
+        style={{ backgroundColor: 'var(--bg-primary)' }}
+      >
         <div className="w-5 h-5 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
         <div className="h-4 flex-1 min-w-0 rounded animate-pulse max-w-[180px]" style={SKELETON_STYLE} />
       </div>
@@ -129,28 +132,22 @@ export default function PersonalInformationCard({
           <div className="flex flex-col gap-4">
             <FieldRowSkeleton labelWidth="w-16" />
             <FieldRowSkeleton labelWidth="w-20" />
-            <FieldRowSkeleton labelWidth="w-20" />
             <FieldRowSkeleton labelWidth="w-24" />
-            <FieldRowSkeleton labelWidth="w-20" />
             <FieldRowSkeleton labelWidth="w-24" />
           </div>
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
               <div className="h-4 w-40 rounded animate-pulse" style={SKELETON_STYLE} />
               <div className="relative w-12 h-6 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
             </div>
             <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-3 px-4 py-2 rounded-xl w-full" style={{ backgroundColor: 'var(--bg-primary)' }}>
+              <div
+                className="flex items-center gap-3 px-4 py-2 rounded-xl w-full border border-[#3a3a3a]"
+                style={{ backgroundColor: 'var(--bg-primary)' }}
+              >
                 <div className="h-4 flex-1 rounded animate-pulse" style={SKELETON_STYLE} />
               </div>
               <div className="h-3 w-full max-w-[280px] rounded animate-pulse" style={SKELETON_STYLE} />
-            </div>
-          </div>
-          <div className="flex flex-col gap-3 mt-4">
-            <div className="h-4 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-28 rounded-full animate-pulse" style={SKELETON_STYLE} />
-              <div className="h-9 w-36 rounded-full animate-pulse" style={SKELETON_STYLE} />
             </div>
           </div>
         </div>

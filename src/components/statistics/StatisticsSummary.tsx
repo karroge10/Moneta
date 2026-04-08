@@ -14,11 +14,19 @@ const SKELETON_ITEMS = 5;
 interface StatisticsSummaryProps {
   items: StatisticsSummaryItem[];
   loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   /** When provided, the Financial Health "Learn" link opens this callback (e.g. modal) instead of linking */
   onFinancialHealthLearnClick?: () => void;
 }
 
-export default function StatisticsSummary({ items, loading = false, onFinancialHealthLearnClick }: StatisticsSummaryProps) {
+export default function StatisticsSummary({
+  items,
+  loading = false,
+  error = null,
+  onRetry,
+  onFinancialHealthLearnClick,
+}: StatisticsSummaryProps) {
   const { currency } = useCurrency();
   const regularItems = items.filter(item => !item.isLarge);
   const largeItem = items.find(item => item.isLarge);
@@ -30,6 +38,59 @@ export default function StatisticsSummary({ items, loading = false, onFinancialH
   const itemsAfterPortfolio = portfolioIndex >= 0 ? regularItems.slice(portfolioIndex + 1) : [];
 
   const contentMinHeight = 420;
+
+  const showError = !loading && !!error;
+
+  if (showError) {
+    return (
+      <Card title="Summary" className="h-full flex flex-col min-h-0 flex-1" showActions={false}>
+        <div
+          className="flex flex-col flex-1 justify-center items-center gap-4 py-10 px-4 text-center mt-4"
+          style={{ minHeight: contentMinHeight }}
+        >
+          <p className="text-body" style={{ color: 'var(--text-secondary)' }}>
+            {error}
+          </p>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="px-4 py-2 rounded-full text-body font-semibold cursor-pointer transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
+            >
+              Try again
+            </button>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  if (!loading && items.length === 0) {
+    return (
+      <Card title="Summary" className="h-full flex flex-col min-h-0 flex-1" showActions={false}>
+        <div
+          className="flex flex-col flex-1 justify-center items-center gap-4 py-10 px-4 text-center mt-4"
+          style={{ minHeight: contentMinHeight }}
+        >
+          <p className="text-body font-medium" style={{ color: 'var(--text-primary)' }}>
+            No summary yet
+          </p>
+          <p className="text-helper max-w-sm mx-auto" style={{ color: 'var(--text-secondary)' }}>
+            Log income and expenses to unlock income and expense totals, trends, goals, portfolio balance, and your financial health score.
+          </p>
+          <Link
+            href="/transactions"
+            className="inline-flex items-center gap-1 px-4 py-2 rounded-full text-body font-semibold transition-opacity hover:opacity-90"
+            style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+          >
+            Go to Transactions
+            <NavArrowRight width={16} height={16} strokeWidth={1.5} />
+          </Link>
+        </div>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (

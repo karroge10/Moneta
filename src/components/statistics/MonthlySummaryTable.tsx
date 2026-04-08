@@ -1,10 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import { formatNumber } from '@/lib/utils';
 import { MonthlySummaryRow } from '@/types/dashboard';
-import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import { useCurrency } from '@/hooks/useCurrency';
+import { NavArrowRight, Reports } from 'iconoir-react';
 import { useCategories } from '@/hooks/useCategories';
 import { getIcon } from '@/lib/iconMapping';
 
@@ -23,21 +24,11 @@ export default function MonthlySummaryTable({ data, loading = false, error = nul
   const { currency } = useCurrency();
   const { categories } = useCategories();
   const isEmpty = !loading && !error && data.length === 0;
-  const showComingSoon = !loading && !error && isEmpty;
+  const showEmpty = !loading && !error && isEmpty;
   const showError = !loading && !!error;
 
   return (
-    <Card
-      title="Monthly Summary"
-      customHeader={
-        showComingSoon ? (
-          <div className="mb-4 flex items-center gap-3">
-            <h2 className="text-card-header">Monthly Summary</h2>
-            <ComingSoonBadge />
-          </div>
-        ) : undefined
-      }
-      showActions={false}
+    <Card title="Monthly Summary" showActions={false}
       className="flex flex-col min-h-0 flex-1"
     >
       <div className="mt-2 flex-1 flex flex-col min-h-[288px] rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
@@ -93,14 +84,38 @@ export default function MonthlySummaryTable({ data, loading = false, error = nul
                     )}
                   </td>
                 </tr>
-              ) : showComingSoon ? (
+              ) : showEmpty ? (
                 <tr>
-                  <td
-                    colSpan={COL_COUNT}
-                    className="px-5 py-12 text-center text-sm"
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
-                    Add transactions to see monthly summaries.
+                  <td colSpan={COL_COUNT} className="px-5 py-12 align-top">
+                    <div className="flex flex-col items-center gap-4 text-center max-w-md mx-auto">
+                      <Reports width={40} height={40} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+                      <div>
+                        <p className="text-body font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+                          No months to show yet
+                        </p>
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          Once you have income or expenses, this table lists the latest twelve months with savings and top spending category.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <Link
+                          href="/transactions"
+                          className="inline-flex items-center gap-1 px-4 py-2 rounded-full text-body font-semibold transition-opacity hover:opacity-90"
+                          style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+                        >
+                          Add transactions
+                          <NavArrowRight width={16} height={16} strokeWidth={1.5} />
+                        </Link>
+                        <Link
+                          href="/transactions/import"
+                          className="inline-flex items-center gap-1 px-4 py-2 rounded-full text-body font-semibold border border-[#3a3a3a] transition-opacity hover:opacity-90"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          Import
+                          <NavArrowRight width={16} height={16} strokeWidth={1.5} />
+                        </Link>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ) : (

@@ -2,10 +2,23 @@ import { NextResponse, NextRequest } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { calculateGoalProgress } from '@/lib/goalUtils';
-import { getFinancialHealthScore } from '@/lib/financial-health';
+import { getFinancialHealthScore, FINANCIAL_HEALTH_TIME_PERIOD } from '@/lib/financial-health';
 import { getInvestmentsPortfolio } from '@/lib/investments';
 import { TimePeriod, MonthlySummaryRow, StatisticsSummaryItem, DemographicComparison } from '@/types/dashboard';
 import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
+import {
+  demographicChangeIncome,
+  demographicChangeExpense,
+  demographicChangeGoalRate,
+  demographicChangePortfolio,
+  demographicChangeHealth,
+} from '@/lib/demographic-peer-copy';
+import {
+  isFakeDemographicCohortEnabled,
+  getFakeDemographicCohortSize,
+  buildSyntheticPeerMetrics,
+  demographicComparisonSeed,
+} from '@/lib/fake-demographic-cohort';
 
 const VALID_AGE_GROUPS = ['18-24', '25-34', '35-44', '45-54', '55+'] as const;
 const DEMOGRAPHIC_DIMENSIONS = ['age', 'country', 'profession'] as const;
@@ -121,6 +134,58 @@ function formatMonthLabel(date: Date): string {
   return `${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+function buildDemographicComparisonsFromPeerArrays(
+  totalIncome: number,
+  totalExpenses: number,
+  goalsSuccessRate: number,
+  portfolioBalance: number,
+  userHealthScore: number,
+  peerIncomes: number[],
+  peerExpenses: number[],
+  peerGoalsRates: number[],
+  peerPortfolios: number[],
+  peerHealth: number[],
+): DemographicComparison[] {
+  return [
+    {
+      id: '1',
+      label: 'Average Income',
+      change: demographicChangeIncome(totalIncome, peerIncomes),
+      icon: 'Wallet',
+      iconColor: '#74C648',
+    },
+    {
+      id: '2',
+      label: 'Average Expenses',
+      change: demographicChangeExpense(totalExpenses, peerExpenses),
+      invertChangeColor: true,
+      icon: 'ShoppingBag',
+      iconColor: '#D93F3F',
+    },
+    {
+      id: '3',
+      label: 'Goal Success Rate',
+      change: demographicChangeGoalRate(goalsSuccessRate, peerGoalsRates),
+      icon: 'Trophy',
+      iconColor: '#FFA500',
+    },
+    {
+      id: '4',
+      label: 'Portfolio Balance',
+      change: demographicChangePortfolio(portfolioBalance, peerPortfolios),
+      icon: 'BitcoinCircle',
+      iconColor: '#FF8C00',
+    },
+    {
+      id: '5',
+      label: 'Financial Health',
+      change: demographicChangeHealth(userHealthScore, peerHealth),
+      icon: 'Heart',
+      iconColor: '#AC66DA',
+    },
+  ];
+}
+
 // GET - Fetch statistics data
 export async function GET(request: NextRequest) {
   try {
@@ -209,6 +274,8 @@ export async function GET(request: NextRequest) {
       const goalsSuccessRate = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100 * 10) / 10 : 0;
       const portfolioBalance = portfolioSummary.totalValue;
       let demographicComparisons: DemographicComparison[] = [];
+      let demographicCohortSize = 0;
+      let syntheticDemographicCohort = false;
       const demographicComparisonsDisabled = user.dataSharingEnabled !== true;
       const cohortFilters = user.dataSharingEnabled === true
         ? {
@@ -217,6 +284,11 @@ export async function GET(request: NextRequest) {
           }
         : { countries: [] as string[], professions: [] as string[] };
       if (user.dataSharingEnabled === true) {
+        const userHealthForDemographic = await getFinancialHealthScore(
+          user.id,
+          FINANCIAL_HEALTH_TIME_PERIOD,
+          targetCurrencyId,
+        );
         const filteredCohort = cohortValueFromUser
           ? cohortUsers.filter((u) => {
               if (demographicDimension === 'age') return getAgeGroup(u.dateOfBirth) === cohortValueFromUser;
@@ -226,6 +298,7 @@ export async function GET(request: NextRequest) {
             })
           : [];
         if (filteredCohort.length >= MIN_COHORT_SIZE) {
+          demographicCohortSize = filteredCohort.length;
           const cohortMetrics = await Promise.all(
             filteredCohort.map(async (cohortUser) => {
               const cohortTx = cohortTxByUserId.get(cohortUser.id) ?? [];
@@ -244,28 +317,57 @@ export async function GET(request: NextRequest) {
               const cgDone = cohortGoals.filter((g) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
               const goalsSuccessRateC = cg > 0 ? (cgDone / cg) * 100 : 0;
               const portfolioBal = cohortPortfolio.totalValue;
-              return { income: cohortIncome, expenses: cohortExpenses, goalsSuccessRate: goalsSuccessRateC, portfolioBalance: portfolioBal };
+              const health = await getFinancialHealthScore(cohortUser.id, FINANCIAL_HEALTH_TIME_PERIOD, targetCurrencyId);
+              return {
+                income: cohortIncome,
+                expenses: cohortExpenses,
+                goalsSuccessRate: goalsSuccessRateC,
+                portfolioBalance: portfolioBal,
+                healthScore: health.score,
+              };
             }),
           );
-          const n = cohortMetrics.length;
-          const avgIncome = cohortMetrics.reduce((s, m) => s + m.income, 0) / n;
-          const avgExpenses = cohortMetrics.reduce((s, m) => s + m.expenses, 0) / n;
-          const avgGoalsRate = cohortMetrics.reduce((s, m) => s + m.goalsSuccessRate, 0) / n;
-          const avgPortfolio = cohortMetrics.reduce((s, m) => s + m.portfolioBalance, 0) / n;
-          const formatPct = (userVal: number, cohortAvg: number): string => {
-            if (cohortAvg === 0) return 'Same as others';
-            const pct = Math.round(((userVal - cohortAvg) / cohortAvg) * 100);
-            if (pct > 0) return `${pct}% higher than others`;
-            if (pct < 0) return `${Math.abs(pct)}% lower than others`;
-            return 'Same as others';
-          };
-          demographicComparisons = [
-            { id: '1', label: 'Average Income', comparison: formatPct(totalIncome, avgIncome), icon: 'Wallet', iconColor: '#74C648' },
-            { id: '2', label: 'Average Expenses', comparison: formatPct(totalExpenses, avgExpenses), icon: 'ShoppingBag', iconColor: '#D93F3F' },
-            { id: '3', label: 'Goal Success Rate', comparison: formatPct(goalsSuccessRate, avgGoalsRate), icon: 'Trophy', iconColor: '#FFA500' },
-            { id: '4', label: 'Portfolio Balance', comparison: formatPct(portfolioBalance, avgPortfolio), icon: 'BitcoinCircle', iconColor: '#FF8C00' },
-            { id: '5', label: 'Financial Health', comparison: '4 points higher than others', icon: 'Heart', iconColor: '#AC66DA' },
-          ];
+          const peerIncomes = cohortMetrics.map((m) => m.income);
+          const peerExpenses = cohortMetrics.map((m) => m.expenses);
+          const peerGoalsRates = cohortMetrics.map((m) => m.goalsSuccessRate);
+          const peerPortfolios = cohortMetrics.map((m) => m.portfolioBalance);
+          const peerHealth = cohortMetrics.map((m) => m.healthScore);
+          demographicComparisons = buildDemographicComparisonsFromPeerArrays(
+            totalIncome,
+            totalExpenses,
+            goalsSuccessRate,
+            portfolioBalance,
+            userHealthForDemographic.score,
+            peerIncomes,
+            peerExpenses,
+            peerGoalsRates,
+            peerPortfolios,
+            peerHealth,
+          );
+        } else if (isFakeDemographicCohortEnabled() && cohortValueFromUser) {
+          const seed = demographicComparisonSeed(user.id, selectedRange.start.getTime(), demographicDimension);
+          const n = getFakeDemographicCohortSize();
+          const syn = buildSyntheticPeerMetrics(seed, n, {
+            income: totalIncome,
+            expenses: totalExpenses,
+            goalsSuccessRate,
+            portfolio: portfolioBalance,
+            healthScore: userHealthForDemographic.score,
+          });
+          demographicCohortSize = n;
+          syntheticDemographicCohort = true;
+          demographicComparisons = buildDemographicComparisonsFromPeerArrays(
+            totalIncome,
+            totalExpenses,
+            goalsSuccessRate,
+            portfolioBalance,
+            userHealthForDemographic.score,
+            syn.peerIncomes,
+            syn.peerExpenses,
+            syn.peerGoalsRates,
+            syn.peerPortfolios,
+            syn.peerHealth,
+          );
         }
       }
       return NextResponse.json({
@@ -273,6 +375,8 @@ export async function GET(request: NextRequest) {
         demographicComparisonsDisabled,
         cohortFilters,
         demographicCohortValueMissing: cohortValueFromUser == null,
+        demographicCohortSize,
+        syntheticDemographicCohort,
       });
     }
     
@@ -499,6 +603,8 @@ export async function GET(request: NextRequest) {
 
     // Demographic comparisons: only when current user has data sharing enabled
     let demographicComparisons: DemographicComparison[] = [];
+    let demographicCohortSize = 0;
+    let syntheticDemographicCohort = false;
     let demographicComparisonsDisabled = false;
     let cohortFilters: { countries: string[]; professions: string[] } = { countries: [], professions: [] };
 
@@ -519,7 +625,10 @@ export async function GET(request: NextRequest) {
           })
         : [];
 
+      const userHealthForCohort = await getFinancialHealthScore(user.id, FINANCIAL_HEALTH_TIME_PERIOD, targetCurrencyId);
+
       if (filteredCohort.length >= MIN_COHORT_SIZE) {
+        demographicCohortSize = filteredCohort.length;
         const cohortMetrics = await Promise.all(
           filteredCohort.map(async (cohortUser) => {
             const cohortTx = cohortTxByUserId.get(cohortUser.id) ?? [];
@@ -538,70 +647,63 @@ export async function GET(request: NextRequest) {
               db.goal.findMany({ where: { userId: cohortUser.id } }),
               getInvestmentsPortfolio(cohortUser.id, userCurrencyRecord),
             ]);
-            const totalGoals = cohortGoals.length;
-            const completedGoals = cohortGoals.filter((g) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
-            const goalsSuccessRate = totalGoals > 0 ? (completedGoals / totalGoals) * 100 : 0;
+            const cohortGoalCount = cohortGoals.length;
+            const cohortCompletedGoals = cohortGoals.filter((g) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
+            const cohortGoalsRate = cohortGoalCount > 0 ? (cohortCompletedGoals / cohortGoalCount) * 100 : 0;
             const portfolioBal = cohortPortfolio.totalValue;
+            const health = await getFinancialHealthScore(cohortUser.id, FINANCIAL_HEALTH_TIME_PERIOD, targetCurrencyId);
             return {
               income: cohortIncome,
               expenses: cohortExpenses,
-              goalsSuccessRate,
+              goalsSuccessRate: cohortGoalsRate,
               portfolioBalance: portfolioBal,
+              healthScore: health.score,
             };
           }),
         );
 
-        const n = cohortMetrics.length;
-        const avgIncome = cohortMetrics.reduce((s, m) => s + m.income, 0) / n;
-        const avgExpenses = cohortMetrics.reduce((s, m) => s + m.expenses, 0) / n;
-        const avgGoalsRate = cohortMetrics.reduce((s, m) => s + m.goalsSuccessRate, 0) / n;
-        const avgPortfolio = cohortMetrics.reduce((s, m) => s + m.portfolioBalance, 0) / n;
+        const peerIncomes = cohortMetrics.map((m) => m.income);
+        const peerExpenses = cohortMetrics.map((m) => m.expenses);
+        const peerGoalsRates = cohortMetrics.map((m) => m.goalsSuccessRate);
+        const peerPortfolios = cohortMetrics.map((m) => m.portfolioBalance);
+        const peerHealth = cohortMetrics.map((m) => m.healthScore);
 
-        const formatPct = (userVal: number, cohortAvg: number): string => {
-          if (cohortAvg === 0) return 'Same as others';
-          const pct = Math.round(((userVal - cohortAvg) / cohortAvg) * 100);
-          if (pct > 0) return `${pct}% higher than others`;
-          if (pct < 0) return `${Math.abs(pct)}% lower than others`;
-          return 'Same as others';
-        };
-
-        demographicComparisons = [
-          {
-            id: '1',
-            label: 'Average Income',
-            comparison: formatPct(totalIncome, avgIncome),
-            icon: 'Wallet',
-            iconColor: '#74C648',
-          },
-          {
-            id: '2',
-            label: 'Average Expenses',
-            comparison: formatPct(totalExpenses, avgExpenses),
-            icon: 'ShoppingBag',
-            iconColor: '#D93F3F',
-          },
-          {
-            id: '3',
-            label: 'Goal Success Rate',
-            comparison: formatPct(goalsSuccessRate, avgGoalsRate),
-            icon: 'Trophy',
-            iconColor: '#FFA500',
-          },
-          {
-            id: '4',
-            label: 'Portfolio Balance',
-            comparison: formatPct(portfolioBalance, avgPortfolio),
-            icon: 'BitcoinCircle',
-            iconColor: '#FF8C00',
-          },
-          {
-            id: '5',
-            label: 'Financial Health',
-            comparison: '4 points higher than others',
-            icon: 'Heart',
-            iconColor: '#AC66DA',
-          },
-        ];
+        demographicComparisons = buildDemographicComparisonsFromPeerArrays(
+          totalIncome,
+          totalExpenses,
+          goalsSuccessRate,
+          portfolioBalance,
+          userHealthForCohort.score,
+          peerIncomes,
+          peerExpenses,
+          peerGoalsRates,
+          peerPortfolios,
+          peerHealth,
+        );
+      } else if (isFakeDemographicCohortEnabled() && cohortValueFromUser) {
+        const seed = demographicComparisonSeed(user.id, selectedRange.start.getTime(), demographicDimension);
+        const n = getFakeDemographicCohortSize();
+        const syn = buildSyntheticPeerMetrics(seed, n, {
+          income: totalIncome,
+          expenses: totalExpenses,
+          goalsSuccessRate,
+          portfolio: portfolioBalance,
+          healthScore: userHealthForCohort.score,
+        });
+        demographicCohortSize = n;
+        syntheticDemographicCohort = true;
+        demographicComparisons = buildDemographicComparisonsFromPeerArrays(
+          totalIncome,
+          totalExpenses,
+          goalsSuccessRate,
+          portfolioBalance,
+          userHealthForCohort.score,
+          syn.peerIncomes,
+          syn.peerExpenses,
+          syn.peerGoalsRates,
+          syn.peerPortfolios,
+          syn.peerHealth,
+        );
       }
     }
 
@@ -622,7 +724,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const financialHealth = await getFinancialHealthScore(user.id, timePeriod, targetCurrencyId);
+    const financialHealth = await getFinancialHealthScore(user.id, FINANCIAL_HEALTH_TIME_PERIOD, targetCurrencyId);
 
     // Build summary items
     const summaryItems: StatisticsSummaryItem[] = [
@@ -693,6 +795,8 @@ export async function GET(request: NextRequest) {
       demographicComparisonsDisabled,
       cohortFilters,
       demographicCohortValueMissing: cohortValueFromUser == null,
+      demographicCohortSize,
+      syntheticDemographicCohort,
       financialHealth: {
         score: financialHealth.score,
         trend: financialHealth.trend,

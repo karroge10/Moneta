@@ -31,7 +31,10 @@ export default function DataSharingCard({ isEnabled = true, onToggle, loading = 
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-4">
             <div className="w-6 h-6 rounded shrink-0 animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
-            <div className="h-4 flex-1 max-w-full rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
+            <div className="flex-1 flex flex-col gap-2 min-w-0">
+              <div className="h-4 w-full rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
+              <div className="h-4 w-[90%] rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
+            </div>
             <div className="relative w-12 h-6 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
           </div>
         </div>

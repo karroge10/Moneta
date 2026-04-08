@@ -691,7 +691,6 @@ export default function DashboardPage() {
       <FinancialHealthModal
         isOpen={financialHealthModalOpen}
         onClose={() => setFinancialHealthModalOpen(false)}
-        timePeriod={timePeriod}
         initialData={financialHealth}
       />
 

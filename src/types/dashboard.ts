@@ -178,9 +178,12 @@ export interface InvestmentActivity {
 export interface DemographicComparison {
   id: string;
   label: string;
-  comparison: string; // e.g., "9% higher than others"
+  /** Summary-style line: first token colored (e.g. "+12%"); rest e.g. "higher than other users"; null = same */
+  change: string | null;
   icon: string;
   iconColor: string;
+  /** When true, negative delta is green and positive is red (e.g. expenses). */
+  invertChangeColor?: boolean;
 }
 
 export interface MonthlySummaryRow {

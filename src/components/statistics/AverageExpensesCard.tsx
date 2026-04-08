@@ -1,11 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import DonutChart from '@/components/ui/DonutChart';
 import { formatNumber } from '@/lib/utils';
 import { getIcon } from '@/lib/iconMapping';
-import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
 import { useCurrency } from '@/hooks/useCurrency';
+import { NavArrowRight, LotOfCash } from 'iconoir-react';
 
 interface AverageExpense {
   id: string;
@@ -31,7 +32,7 @@ interface AverageExpensesCardProps {
 export default function AverageExpensesCard({ expenses, loading = false, error = null, onRetry }: AverageExpensesCardProps) {
   const { currency } = useCurrency();
   const isEmpty = !loading && !error && expenses.length === 0;
-  const showComingSoon = !loading && !error && isEmpty;
+  const showEmpty = !loading && !error && isEmpty;
   const showError = !loading && !!error;
 
   const chartData = [...expenses]
@@ -43,22 +44,11 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
   }));
 
   return (
-    <Card
-      title="Expenses by Category"
-      customHeader={
-        showComingSoon ? (
-          <div className="mb-4 flex items-center gap-3">
-            <h2 className="text-card-header">Expenses by Category</h2>
-            <ComingSoonBadge />
-          </div>
-        ) : undefined
-      }
-      className="flex flex-col min-h-0 flex-1 h-full"
-    >
+    <Card title="Expenses by Category" className="flex flex-col min-h-0 flex-1 h-full">
       <div
         className="mt-2 flex flex-col flex-1 min-h-0 overflow-visible"
         style={{
-          minHeight: loading || (!showError && !showComingSoon) ? CARD_MIN_HEIGHT : undefined,
+          minHeight: loading || (!showError && !showEmpty) ? CARD_MIN_HEIGHT : undefined,
         }}
       >
         {loading ? (
@@ -98,10 +88,35 @@ export default function AverageExpensesCard({ expenses, loading = false, error =
               </button>
             )}
           </div>
-        ) : showComingSoon ? (
-          <div className="flex flex-col flex-1 justify-center items-center py-8 min-h-[320px]">
-            <div className="text-body text-center mb-2 opacity-70">Add transactions to see expenses by category</div>
-            <div className="text-helper text-center">Category breakdown will appear here</div>
+        ) : showEmpty ? (
+          <div className="flex flex-col flex-1 justify-center items-center gap-4 py-8 px-4 min-h-[320px] text-center">
+            <LotOfCash width={40} height={40} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+            <div>
+              <p className="text-body font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+                No expense data yet
+              </p>
+              <p className="text-helper max-w-sm mx-auto" style={{ color: 'var(--text-secondary)' }}>
+                Add categorized expenses to see a donut chart and share of spend by category (all-time).
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Link
+                href="/transactions"
+                className="inline-flex items-center gap-1 px-4 py-2 rounded-full text-body font-semibold transition-opacity hover:opacity-90"
+                style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
+              >
+                Add transactions
+                <NavArrowRight width={16} height={16} strokeWidth={1.5} />
+              </Link>
+              <Link
+                href="/transactions/import"
+                className="inline-flex items-center gap-1 px-4 py-2 rounded-full text-body font-semibold border border-[#3a3a3a] transition-opacity hover:opacity-90"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                Import
+                <NavArrowRight width={16} height={16} strokeWidth={1.5} />
+              </Link>
+            </div>
           </div>
         ) : (
           <>
