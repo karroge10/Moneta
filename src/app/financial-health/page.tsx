@@ -4,19 +4,18 @@ import { useState, useEffect, useCallback } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import { getHealthColor } from '@/lib/utils';
-import type { FinancialHealthDetails, TimePeriod } from '@/types/dashboard';
+import type { FinancialHealthDetails } from '@/types/dashboard';
 import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 
 const PILLARS: { key: keyof FinancialHealthDetails['details']; label: string; description: string }[] = [
-  { key: 'saving', label: 'Saving', description: 'Based on your savings rate: (income − expenses) / income.' },
-  { key: 'spendingControl', label: 'Spending control', description: 'Whether your expenses stay within your income for the period.' },
+  { key: 'saving', label: 'Saving', description: 'Based on your all-time savings rate: (income − expenses) / income.' },
+  { key: 'spendingControl', label: 'Spending control', description: 'Whether your all-time expenses stay within your all-time income.' },
   { key: 'goals', label: 'Goals', description: 'Share of your goals that are on track or completed.' },
-  { key: 'engagement', label: 'Engagement', description: 'Recent activity, profile completeness, and categorized transactions.' },
+  { key: 'engagement', label: 'Engagement', description: 'Recent activity (last 30 days), profile, goals, and share of categorized transactions across all time.' },
 ];
 
 export default function FinancialHealthPage() {
   const authReady = useAuthReadyForApi();
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Month');
   const [data, setData] = useState<FinancialHealthDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,8 +24,7 @@ export default function FinancialHealthPage() {
     try {
       setLoading(true);
       setError(null);
-      const params = new URLSearchParams({ timePeriod });
-      const res = await fetch(`/api/financial-health?${params.toString()}`);
+      const res = await fetch('/api/financial-health');
       if (!res.ok) throw new Error('Failed to fetch financial health');
       const json = await res.json();
       setData({
@@ -40,7 +38,7 @@ export default function FinancialHealthPage() {
     } finally {
       setLoading(false);
     }
-  }, [timePeriod]);
+  }, []);
 
   useEffect(() => {
     if (!authReady) return;
@@ -88,6 +86,9 @@ export default function FinancialHealthPage() {
           <>
             <div className="card-surface rounded-[30px] p-8 flex flex-col items-center">
               <h1 className="text-card-header mb-2">Financial Health Score</h1>
+              <p className="text-helper mb-4 text-center" style={{ color: 'var(--text-secondary)' }}>
+                Based on your full history (all time), not the period selector used elsewhere.
+              </p>
               <span
                 className="text-fin-health-key"
                 style={{ color: getHealthColor(score) }}

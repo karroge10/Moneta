@@ -1,155 +1,168 @@
 'use client';
 
-import { useState } from 'react';
-import { Book, Spark, Wallet, Heart, Reports, Settings, HelpCircle, InfoCircle } from 'iconoir-react';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Spark,
+  Wallet,
+  Heart,
+  Reports,
+  Settings,
+  HelpCircle,
+  InfoCircle,
+  NavArrowRight,
+  CheckCircle,
+} from 'iconoir-react';
 import Card from '@/components/ui/Card';
-import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
+import { learningCenterLessons, type LearningCenterLesson } from '@/lib/learningCenterLessons';
+import LearningLessonModal from '@/components/help/LearningLessonModal';
+import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 
-interface Lesson {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ComponentType<{ width?: number; height?: number; strokeWidth?: number; style?: React.CSSProperties }>;
-  completed?: boolean;
-}
-
-const lessons: Lesson[] = [
-  {
-    id: '1',
-    title: 'Getting Started',
-    description: 'Learn the basics to make the most of your experience.',
-    icon: Spark,
-    completed: false
-  },
-  {
-    id: '2',
-    title: 'Managing Finances',
-    description: 'Take control of your income, expenses, and financial goals.',
-    icon: Wallet,
-    completed: false
-  },
-  {
-    id: '3',
-    title: 'Financial Health & Insights',
-    description: 'Discover how to improve your financial well-being.',
-    icon: Heart,
-    completed: false
-  },
-  {
-    id: '4',
-    title: 'Statistics & Analysis',
-    description: 'Understand your progress with powerful statistics and insights.',
-    icon: Reports,
-    completed: false
-  },
-  {
-    id: '5',
-    title: 'Settings & imports',
-    description: 'Tune currency, notifications, and transaction imports to fit your workflow.',
-    icon: Settings,
-    completed: false
-  },
-  {
-    id: '6',
-    title: 'Support & Troubleshooting',
-    description: 'Resolve issues and find answers to common questions.',
-    icon: HelpCircle,
-    completed: false
-  }
-];
+const LESSON_ICONS = {
+  '1': Spark,
+  '2': Wallet,
+  '3': Heart,
+  '4': Reports,
+  '5': Settings,
+  '6': HelpCircle,
+} as const;
 
 export default function LearningCenterCard() {
-  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
+  const authReady = useAuthReadyForApi();
+  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
+  const [progressLoaded, setProgressLoaded] = useState(false);
+  const [activeLesson, setActiveLesson] = useState<LearningCenterLesson | null>(null);
 
-  const toggleLesson = (lessonId: string) => {
-    setCompletedLessons(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(lessonId)) {
-        newSet.delete(lessonId);
-      } else {
-        newSet.add(lessonId);
+  useEffect(() => {
+    if (!authReady) {
+      setProgressLoaded(true);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch('/api/learning-progress');
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { completedLessonIds?: unknown };
+        const ids = data.completedLessonIds;
+        if (Array.isArray(ids)) {
+          setCompletedIds(new Set(ids.filter((x): x is string => typeof x === 'string')));
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        if (!cancelled) setProgressLoaded(true);
       }
-      return newSet;
-    });
-  };
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady]);
+
+  const markLessonViewed = useCallback(
+    async (lessonId: string) => {
+      if (!authReady) return;
+      try {
+        const res = await fetch('/api/learning-progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lessonId }),
+        });
+        if (res.ok) {
+          setCompletedIds((prev) => new Set(prev).add(lessonId));
+        }
+      } catch {
+        /* ignore */
+      }
+    },
+    [authReady],
+  );
+
+  useEffect(() => {
+    if (!activeLesson || !authReady) return;
+    void markLessonViewed(activeLesson.id);
+  }, [activeLesson, authReady, markLessonViewed]);
+
+  const openLesson = useCallback((lesson: LearningCenterLesson) => {
+    setActiveLesson(lesson);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setActiveLesson(null);
+  }, []);
+
+  const completedCount = completedIds.size;
+  const total = learningCenterLessons.length;
 
   return (
-    <Card 
-      title="Learning Center"
-      showActions={false}
-      customHeader={
-        <div className="mb-4 flex items-center gap-3">
-          <h2 className="text-card-header">Learning Center</h2>
-          <ComingSoonBadge />
-        </div>
-      }
-    >
-      <div className="grid grid-cols-3 gap-4 auto-rows-fr">
-        {lessons.map((lesson) => {
-          const isCompleted = completedLessons.has(lesson.id);
-          const IconComponent = lesson.icon;
-          const iconColor = isCompleted ? 'var(--accent-purple)' : 'var(--text-primary)';
-          const textColor = isCompleted ? 'var(--accent-purple)' : 'var(--text-primary)';
-
-          return (
-            <div
-              key={lesson.id}
-              onClick={() => toggleLesson(lesson.id)}
-              className="flex flex-col items-center h-full p-4 rounded-[30px] cursor-pointer transition-colors hover:opacity-90"
-              style={{ backgroundColor: 'var(--bg-primary)' }}
-            >
-              {/* Title - Always at top with fixed height */}
-              <h3 
-                className="text-body font-semibold text-center shrink-0 mb-3 min-h-12 flex items-start justify-center"
-                style={{ color: textColor }}
-              >
-                <span className="line-clamp-2">{lesson.title}</span>
-              </h3>
-
-              {/* Book Icon with Subject Icon Overlay - Always in middle */}
-              <div className="relative flex items-center justify-center flex-1 w-full min-h-20">
-                <Book
-                  width={64}
-                  height={64}
-                  strokeWidth={1.5}
-                  style={{ color: iconColor }}
-                />
-                <div className="absolute">
-                  <IconComponent
-                    width={32}
-                    height={32}
-                    strokeWidth={1.5}
-                    style={{ color: iconColor }}
-                  />
-                </div>
-              </div>
-
-              {/* Description - Always at bottom with fixed height */}
-              <p 
-                className="text-helper text-center shrink-0 mt-3 min-h-10 flex items-end justify-center"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                <span className="line-clamp-2">{lesson.description}</span>
-              </p>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Info Text */}
-      <div className="flex items-start gap-2 mt-6">
-        <InfoCircle 
-          width={16} 
-          height={16} 
-          strokeWidth={1.5}
-          className="shrink-0 mt-0.5"
-          style={{ color: 'var(--text-secondary)' }}
-        />
-        <p className="text-helper" style={{ color: 'var(--text-secondary)' }}>
-          Use these learning guides to improve your financial knowledge!
+    <>
+      <Card title="Learning Center" showActions={false}>
+        <p className="text-helper mb-4" style={{ color: 'var(--text-secondary)' }}>
+          Open a lesson to read the steps and quick links. Opening a lesson saves it as complete on your account (
+          {!progressLoaded ? '…' : `${completedCount}/${total}`} done).
         </p>
-      </div>
-    </Card>
+
+        <div className="flex flex-col gap-3">
+          {learningCenterLessons.map((lesson) => {
+            const IconComponent = LESSON_ICONS[lesson.id as keyof typeof LESSON_ICONS] ?? HelpCircle;
+            const isComplete = completedIds.has(lesson.id);
+            const iconColor = isComplete ? 'var(--accent-purple)' : 'var(--text-primary)';
+
+            return (
+              <button
+                key={lesson.id}
+                type="button"
+                onClick={() => openLesson(lesson)}
+                className="w-full text-left rounded-[30px] border border-[#3a3a3a] px-4 py-4 flex items-center gap-3 cursor-pointer transition-opacity hover:opacity-90"
+                style={{ backgroundColor: 'var(--bg-primary)' }}
+              >
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+                  style={{
+                    backgroundColor: `${isComplete ? '#AC66DA' : '#E7E4E4'}1a`,
+                    border: '1px solid rgba(231, 228, 228, 0.1)',
+                  }}
+                >
+                  <IconComponent width={22} height={22} strokeWidth={1.5} style={{ color: iconColor }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-body font-semibold text-wrap-safe wrap-break-word flex items-center gap-2">
+                    {lesson.title}
+                    {isComplete && (
+                      <CheckCircle
+                        width={18}
+                        height={18}
+                        strokeWidth={1.5}
+                        style={{ color: 'var(--accent-green)', flexShrink: 0 }}
+                      />
+                    )}
+                  </div>
+                  <p className="text-helper mt-1 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
+                    {lesson.summary}
+                  </p>
+                </div>
+                <NavArrowRight width={20} height={20} strokeWidth={1.5} className="shrink-0" style={{ color: 'var(--text-secondary)' }} />
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-start gap-2 mt-6">
+          <InfoCircle
+            width={16}
+            height={16}
+            strokeWidth={1.5}
+            className="shrink-0 mt-0.5"
+            style={{ color: 'var(--text-secondary)' }}
+          />
+          <p className="text-helper" style={{ color: 'var(--text-secondary)' }}>
+            {authReady
+              ? 'Progress is saved to your account when you open a lesson.'
+              : 'Sign in to save lesson progress across devices.'}
+          </p>
+        </div>
+      </Card>
+
+      <LearningLessonModal lesson={activeLesson} isOpen={activeLesson !== null} onClose={closeModal} />
+    </>
   );
 }
-

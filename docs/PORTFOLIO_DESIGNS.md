@@ -112,14 +112,3 @@ All three designs follow the Moneta style guide:
 **For Visual Impact**: Use **Carousel** if you have 3-12 assets and want to impress.
 
 **For Analysis**: Use **Table** if you frequently sort or compare assets.
-
----
-
-## 🚀 Future Enhancements
-
-Potential improvements:
-- [ ] Save user's preferred design in localStorage
-- [ ] Add swipe gestures for Carousel on mobile
-- [ ] Add filtering options (by type, performance, etc.)
-- [ ] Add grid view option (4th design)
-- [ ] Add export to CSV for Table view

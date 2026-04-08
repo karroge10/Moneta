@@ -1,6 +1,7 @@
 /**
  * Seed fake users and transaction data for demographic comparisons.
  * Run after main seed (prisma/seed.ts): npm run seed:demographic
+ * Re-run from scratch: npm run seed:demographic -- --reset
  *
  * Creates ~29 demo users (no clerkUserId) with dataSharingEnabled: true:
  * - ~25 spread across age groups 18-24, 25-34, 35-44, 45-54, 55+, countries (United States, Georgia, Germany), professions (Engineer, Teacher, Designer, Manager, Developer)
@@ -54,7 +55,15 @@ function dateOfBirthForAgeGroup(ageGroup: string, indexInGroup: number): Date {
 }
 
 async function main() {
+  const reset = process.argv.includes('--reset');
   console.log('Seeding demographic comparison data...\n');
+
+  if (reset) {
+    const removed = await prisma.user.deleteMany({
+      where: { userName: { startsWith: 'demo_' } },
+    });
+    console.log(`--reset: removed ${removed.count} user(s) with userName demo_* (related rows cascade).\n`);
+  }
 
   const usd = await prisma.currency.findFirst({ where: { alias: 'USD' } });
   if (!usd) {
@@ -76,13 +85,15 @@ async function main() {
   }
 
   // Check if demo users already exist (idempotent: skip if present)
-  const existingDemo = await prisma.user.findFirst({
-    where: { userName: { startsWith: 'demo_' } },
-  });
-  if (existingDemo) {
-    console.log('Demo users already exist (userName starts with "demo_"). Skipping seed.');
-    console.log('To re-seed, delete demo users first.\n');
-    return;
+  if (!reset) {
+    const existingDemo = await prisma.user.findFirst({
+      where: { userName: { startsWith: 'demo_' } },
+    });
+    if (existingDemo) {
+      console.log('Demo users already exist (userName starts with "demo_"). Skipping seed.');
+      console.log('Re-run with --reset to replace them: npm run seed:demographic -- --reset\n');
+      return;
+    }
   }
 
   const demoUserConfigs: Array<{

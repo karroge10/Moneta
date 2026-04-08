@@ -128,7 +128,11 @@ export default function FAQSection({ faqItems }: FAQSectionProps) {
         {/* FAQ List */}
         <div className="flex flex-col gap-6">
           {filteredFAQs.map((item) => (
-            <div key={item.id} className="flex gap-4">
+            <div
+              key={item.id}
+              id={`faq-${item.id}`}
+              className="flex gap-4 scroll-mt-28"
+            >
               <div className="shrink-0 mt-1">
                 <HelpCircle 
                   width={24} 

@@ -9,7 +9,7 @@ import { getIcon } from '@/lib/iconMapping';
 import type { DemographicDimension } from '@/app/statistics/page';
 
 const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
-const SKELETON_ITEMS = 3;
+const SKELETON_ITEMS = 5;
 const DIMENSION_LABELS: Record<DemographicDimension, string> = {
   age: 'By age group',
   country: 'By country',
@@ -19,11 +19,50 @@ const DIMENSION_LABELS: Record<DemographicDimension, string> = {
 const ICON_SIZE = 20;
 const OPTION_ROW = 'w-full text-left px-4 py-3 flex items-center gap-3 text-body cursor-pointer transition-colors hover:bg-[#2a2a2a]';
 
+function DemographicChangeLine({
+  change,
+  invertChangeColor,
+}: {
+  change: string | null;
+  invertChangeColor?: boolean;
+}) {
+  if (change == null) {
+    return (
+      <span className="text-helper mt-1 inline-block" style={{ color: 'var(--text-secondary)' }}>
+        Same as other users
+      </span>
+    );
+  }
+  const changeParts = change.split(/\s+(.+)/);
+  const changePct = changeParts[0] ?? '';
+  const changeLabel = changeParts[1] ?? '';
+  const isNegativeChange = changePct.startsWith('-');
+  const changeColor = invertChangeColor
+    ? isNegativeChange
+      ? '#74C648'
+      : '#D93F3F'
+    : isNegativeChange
+      ? '#D93F3F'
+      : '#74C648';
+
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <span>
+        <span style={{ color: changeColor, fontWeight: 600 }}>{changePct}</span>
+        {changeLabel ? <span className="text-helper"> {changeLabel}</span> : null}
+      </span>
+    </div>
+  );
+}
+
 interface DemographicComparisonsSectionProps {
   comparisons: DemographicComparison[];
+  cohortSize?: number;
   loading?: boolean;
   demographicComparisonsDisabled?: boolean;
   demographicCohortValueMissing?: boolean;
+  /** True when the API filled comparisons with a synthetic peer sample (local / non-prod). */
+  syntheticDemographicCohort?: boolean;
   demographicDimension: DemographicDimension;
   onDemographicChange: (dimension: DemographicDimension) => void;
   error?: string | null;
@@ -32,9 +71,11 @@ interface DemographicComparisonsSectionProps {
 
 export default function DemographicComparisonsSection({
   comparisons,
+  cohortSize = 0,
   loading = false,
   demographicComparisonsDisabled = false,
   demographicCohortValueMissing = false,
+  syntheticDemographicCohort = false,
   demographicDimension,
   onDemographicChange,
   error = null,
@@ -89,8 +130,14 @@ export default function DemographicComparisonsSection({
   }
 
   const header = (
-    <div className="mb-4 flex items-center gap-3">
+    <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-3">
       <h2 className="text-card-header">Demographic Comparisons</h2>
+      {cohortSize > 0 && comparisons.length > 0 ? (
+        <span className="text-helper" style={{ color: 'var(--text-secondary)' }}>
+          {cohortSize} {cohortSize === 1 ? 'user' : 'users'}
+          {syntheticDemographicCohort ? ' · illustrative demo cohort' : ''}
+        </span>
+      ) : null}
     </div>
   );
 
@@ -216,22 +263,9 @@ export default function DemographicComparisonsSection({
                 : `Not enough people in your ${demographicDimension === 'age' ? 'age group' : demographicDimension === 'country' ? 'country' : 'profession'} have shared data yet. Check back as more people join.`}
             </p>
           ) : (
-            comparisons.map((comparison) => {
+            <>
+            {comparisons.map((comparison) => {
               const Icon = getIcon(comparison.icon);
-              const comp = comparison.comparison;
-              const isHigher = comp.includes('higher');
-              const isLower = comp.includes('lower');
-              const numberPart = isHigher
-                ? comp.slice(0, comp.indexOf(' higher than others'))
-                : isLower
-                  ? comp.slice(0, comp.indexOf(' lower than others'))
-                  : '';
-              const labelPart = isHigher
-                ? ' higher than others'
-                : isLower
-                  ? ' lower than others'
-                  : comp;
-              const trendColor = isHigher ? '#74C648' : isLower ? '#D93F3F' : 'var(--text-secondary)';
 
               return (
                 <div
@@ -253,22 +287,12 @@ export default function DemographicComparisonsSection({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-body font-medium text-wrap-safe wrap-break-word">{comparison.label}</div>
-                    <div className="flex items-center gap-2 mt-1 text-wrap-safe wrap-break-word">
-                      <span>
-                        {numberPart ? (
-                          <>
-                            <span style={{ color: trendColor, fontWeight: 600 }}>{numberPart}</span>
-                            <span className="text-helper">{labelPart}</span>
-                          </>
-                        ) : (
-                          <span className="text-helper">{labelPart}</span>
-                        )}
-                      </span>
-                    </div>
+                    <DemographicChangeLine change={comparison.change} invertChangeColor={comparison.invertChangeColor} />
                   </div>
                 </div>
               );
-            })
+            })}
+            </>
           )}
         </div>
       </div>

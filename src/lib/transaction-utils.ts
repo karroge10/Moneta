@@ -45,8 +45,7 @@ export function cleanTransactionName(description: string): string {
 }
 
 /**
- * Simple translation map for common Georgian transaction terms
- * For more complex translations, consider using a translation API
+ * Phrase map for common Georgian bank transaction terms (intentionally static; extend the map as needed).
  */
 const GEORGIAN_TO_ENGLISH: Record<string, string> = {
   'საბარათე ოპერაცია გადახდა': 'Card operation payment',
@@ -63,8 +62,7 @@ const GEORGIAN_TO_ENGLISH: Record<string, string> = {
 };
 
 /**
- * Translates Georgian text to English using a simple mapping
- * For production, consider using Google Translate API or similar service
+ * Translates known Georgian phrases to English via the map above; unknown fragments stay as-is.
  */
 export function translateToEnglish(text: string): string {
   if (!text) return text;
@@ -99,10 +97,6 @@ export function translateToEnglish(text: string): string {
     }
     return word;
   }).join('');
-  
-  // If still contains Georgian characters and we have a translation API, use it
-  // For now, return as-is if no mapping found
-  // TODO: Integrate with translation API for better coverage
   
   return translated;
 }

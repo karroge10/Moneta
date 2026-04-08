@@ -33,9 +33,8 @@ except ImportError:
 app = Flask(__name__)
 CORS(app)  # Allow requests from Vercel frontend
 
-# Load classifier model once at startup
-# Default to python/models/categories.ftz relative to project root
-default_model_path = project_root / 'python' / 'models' / 'categories.ftz'
+# Load classifier model once at startup (joblib sklearn pipeline; optional)
+default_model_path = project_root / 'python' / 'models' / 'transactions_model.joblib'
 model_path = Path(os.getenv('CATEGORIES_MODEL_PATH', str(default_model_path)))
 classifier_model = load_classifier(model_path)
 
