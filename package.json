@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.3",
+    "@clerk/themes": "^2.4.57",
     "@prisma/client": "^6.19.0",
     "@tanstack/react-query": "^5.99.0",
     "detect-port": "^1.6.1",

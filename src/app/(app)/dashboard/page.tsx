@@ -25,7 +25,6 @@ import { Transaction, ExpenseCategory, TimePeriod, Goal, Investment, Bill, Recur
 import { useCategories } from '@/hooks/useCategories';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
-import { mockUpdate } from '@/lib/mockData';
 import { emptyRoundupInsight, type RoundupInsightDto } from '@/lib/roundup-insight';
 
 export default function DashboardPage() {
@@ -73,7 +72,12 @@ export default function DashboardPage() {
       }));
   }, [recurringItems, categories]);
   
-  const update = mockUpdate;
+  const update = {
+    date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+    message: 'Your finances are tracking correctly.',
+    highlight: 'tracking correctly',
+    link: 'View Statistics'
+  };
 
   const fetchDashboardData = useCallback(
     async (signal?: AbortSignal) => {
