@@ -35,7 +35,7 @@ async function main() {
 
   const allWithSharing = await prisma.user.findMany({
     where: { dataSharingEnabled: true },
-    select: { id: true, userName: true, dateOfBirth: true, country: true, profession: true, clerkUserId: true },
+    select: { id: true, dateOfBirth: true, country: true, profession: true, clerkUserId: true },
     orderBy: { id: 'asc' },
   });
 
@@ -57,7 +57,7 @@ async function main() {
     console.log(`  ${ag}: ${users.length} user(s)`);
     for (const u of users.slice(0, 5)) {
       console.log(
-        `    id=${u.id} userName=${u.userName ?? '-'} dob=${u.dateOfBirth?.toISOString?.() ?? 'null'} country=${u.country ?? '-'} profession=${u.profession ?? '-'} clerk=${u.clerkUserId ? 'yes' : 'no'}`
+        `    id=${u.id} dob=${u.dateOfBirth?.toISOString?.() ?? 'null'} country=${u.country ?? '-'} profession=${u.profession ?? '-'} clerk=${u.clerkUserId ? 'yes' : 'no'}`
       );
     }
     if (users.length > 5) console.log(`    ... and ${users.length - 5} more`);

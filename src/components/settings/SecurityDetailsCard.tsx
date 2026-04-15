@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Card from '@/components/ui/Card';
-import SettingsField from './SettingsField';
 import { UserSettings } from '@/types/dashboard';
-import { User, Mail, Lock } from 'iconoir-react';
+import { Mail, Lock } from 'iconoir-react';
 
 const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
 
@@ -30,10 +28,7 @@ interface SecurityDetailsCardProps {
   onOpenAccountProfile?: () => void;
   onDeleteAccount?: () => void;
   loading?: boolean;
-  /** When true, fields are disabled (e.g. while saving). */
   disabled?: boolean;
-  /** Error message from username update (e.g. "Username is already taken"). */
-  usernameError?: string | null;
 }
 
 export default function SecurityDetailsCard({
@@ -44,17 +39,8 @@ export default function SecurityDetailsCard({
   onDeleteAccount,
   loading = false,
   disabled = false,
-  usernameError = null,
 }: SecurityDetailsCardProps) {
   const openProfile = onOpenAccountProfile;
-  // Username: only reflect saved value from server; local state for typing, synced on success or error
-  const [usernameInput, setUsernameInput] = useState(settings.username);
-  useEffect(() => {
-    setUsernameInput(settings.username);
-  }, [settings.username]);
-  useEffect(() => {
-    if (usernameError) setUsernameInput(settings.username);
-  }, [usernameError, settings.username]);
 
   if (loading) {
     return (
@@ -96,23 +82,6 @@ export default function SecurityDetailsCard({
   return (
     <Card title="Security Details" showActions={false}>
       <div className="flex flex-col gap-4">
-        <SettingsField
-          label="Username"
-          value={usernameInput}
-          icon={<User width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />}
-          type="input"
-          placeholder="Username"
-          disabled={disabled}
-          onChange={(value) => {
-            setUsernameInput(value);
-            onChange?.('username', value);
-          }}
-        />
-        {usernameError ? (
-          <p className="text-helper" style={{ color: 'var(--error)' }}>
-            {usernameError}
-          </p>
-        ) : null}
         <div className="flex flex-col gap-2">
           <label className="text-body" style={{ color: '#E7E4E4' }}>
             Email

@@ -251,7 +251,6 @@ async function main() {
   await prisma.user.update({
     where: { id: userId },
     data: {
-      userName: user.userName ?? `demo_user_${userId}`,
       profession: user.profession ?? 'Product Designer',
       country: user.country ?? 'United States',
       dateOfBirth: user.dateOfBirth ?? new Date('1992-06-15'),

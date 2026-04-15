@@ -211,26 +211,22 @@ export default function PersonalInformationCard({
               <button
                 type="button"
                 onClick={onOpenAccountProfile}
-                className="text-left w-fit transition-opacity hover:opacity-80 focus:outline-none flex flex-col gap-2 rounded-lg"
+                className="text-left w-fit transition-opacity hover:opacity-80 focus:outline-none rounded-lg"
                 aria-label="Edit profile in Clerk"
               >
-                <span className="text-body font-semibold" style={{ color: '#E7E4E4' }}>
-                  {settings.name}
-                </span>
-                <div className="flex items-center gap-2 text-body" style={{ color: '#B9B9B9' }}>
-                  <User width={18} height={18} strokeWidth={1.5} />
-                  <span>{settings.username}</span>
+                <div className="flex items-center gap-2">
+                  <User width={18} height={18} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />
+                  <span className="text-body font-semibold" style={{ color: '#E7E4E4' }}>
+                    {settings.name || <span style={{ color: 'rgba(231,228,228,0.4)' }}>Add your name in profile</span>}
+                  </span>
                 </div>
               </button>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <User width={18} height={18} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />
                 <span className="text-body font-semibold" style={{ color: '#E7E4E4' }}>
-                  {settings.name}
+                  {settings.name || <span style={{ color: 'rgba(231,228,228,0.4)' }}>No name set</span>}
                 </span>
-                <div className="flex items-center gap-2 text-body" style={{ color: '#B9B9B9' }}>
-                  <User width={18} height={18} strokeWidth={1.5} />
-                  <span>{settings.username}</span>
-                </div>
               </div>
             )}
             {(settings.jobPosition || settings.age) ? (

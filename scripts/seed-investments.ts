@@ -38,7 +38,7 @@ async function main() {
   }
 
   const userId = user.id;
-  console.log(`Using user: ${user.userName || user.clerkUserId} (ID: ${userId})`);
+  console.log(`Using user: ${user.clerkUserId ?? `ID ${user.id}`} (ID: ${userId})`);
 
   const usd =
     (user.currencyId &&

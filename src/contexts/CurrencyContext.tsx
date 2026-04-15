@@ -16,7 +16,6 @@ interface Currency {
 /** Subset of GET /api/user/settings shared app-wide (one fetch via CurrencyProvider). */
 export interface UserSettingsSnapshot {
   name: string | null;
-  userName: string | null;
   email: string | null;
   dateOfBirth: string | null;
   country: string | null;
@@ -59,7 +58,6 @@ type IdbUserCache = {
   dataSharingEnabled: boolean;
   notificationSettings: NotificationSettings;
   name: string | null;
-  userName: string | null;
   email: string | null;
   dateOfBirth: string | null;
   country: string | null;
@@ -82,7 +80,6 @@ function isLegacyIdbShape(cached: unknown): cached is LegacyIdbUserCache {
 
 function snapshotFromApi(data: {
   name?: string | null;
-  userName?: string | null;
   email?: string | null;
   dateOfBirth?: string | null;
   country?: string | null;
@@ -104,7 +101,6 @@ function snapshotFromApi(data: {
     : null;
   return {
     name: data.name ?? null,
-    userName: data.userName ?? null,
     email: data.email ?? null,
     dateOfBirth: data.dateOfBirth ?? null,
     country: data.country ?? null,
@@ -126,7 +122,6 @@ function idbPayloadFromSnapshot(snapshot: UserSettingsSnapshot, timestamp: numbe
     dataSharingEnabled: snapshot.dataSharingEnabled,
     notificationSettings: snapshot.notificationSettings,
     name: snapshot.name,
-    userName: snapshot.userName,
     email: snapshot.email,
     dateOfBirth: snapshot.dateOfBirth,
     country: snapshot.country,
@@ -140,7 +135,6 @@ function idbPayloadFromSnapshot(snapshot: UserSettingsSnapshot, timestamp: numbe
 function snapshotFromIdb(cached: IdbUserCache): UserSettingsSnapshot {
   return {
     name: cached.name,
-    userName: cached.userName,
     email: cached.email,
     dateOfBirth: cached.dateOfBirth,
     country: cached.country,
