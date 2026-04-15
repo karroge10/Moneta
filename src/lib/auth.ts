@@ -1,10 +1,5 @@
-import { randomUUID } from 'crypto';
 import { auth } from '@clerk/nextjs/server';
 import { db } from './db';
-
-function generateRandomUsername(): string {
-  return `user_${randomUUID().slice(0, 8)}`;
-}
 
 /**
  * Get or create a user in the database based on Clerk authentication
@@ -27,41 +22,25 @@ export async function getCurrentUser() {
       db.language.findFirst({ where: { alias: 'en' }, select: { id: true } }),
       db.currency.findFirst({ where: { alias: 'USD' }, select: { id: true } }),
     ]);
-    let userName = generateRandomUsername();
-    const maxAttempts = 5;
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        user = await db.user.create({
-          data: {
-            clerkUserId,
-            userName,
-            languageId: englishLanguage?.id ?? null,
-            currencyId: usdCurrency?.id ?? null,
-            dataSharingEnabled: false,
-            notificationSettings: {
-              create: {
-                pushNotifications: true,
-                upcomingBills: true,
-                upcomingIncome: true,
-                investments: true,
-                goals: true,
-                promotionalEmail: true,
-                aiInsights: true,
-              },
-            },
+    user = await db.user.create({
+      data: {
+        clerkUserId,
+        languageId: englishLanguage?.id ?? null,
+        currencyId: usdCurrency?.id ?? null,
+        dataSharingEnabled: false,
+        notificationSettings: {
+          create: {
+            pushNotifications: true,
+            upcomingBills: true,
+            upcomingIncome: true,
+            investments: true,
+            goals: true,
+            promotionalEmail: true,
+            aiInsights: true,
           },
-        });
-        break;
-      } catch (err) {
-        const isUniqueViolation =
-          err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2002';
-        if (isUniqueViolation && attempt < maxAttempts - 1) {
-          userName = generateRandomUsername();
-        } else {
-          throw err;
-        }
-      }
-    }
+        },
+      },
+    });
   }
 
   return user;
@@ -104,42 +83,26 @@ export async function requireCurrentUserWithLanguage() {
       db.language.findFirst({ where: { alias: 'en' }, select: { id: true } }),
       db.currency.findFirst({ where: { alias: 'USD' }, select: { id: true } }),
     ]);
-    let userName = generateRandomUsername();
-    const maxAttempts = 5;
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        user = await db.user.create({
-          data: {
-            clerkUserId,
-            userName,
-            languageId: englishLanguage?.id ?? null,
-            currencyId: usdCurrency?.id ?? null,
-            dataSharingEnabled: false,
-            notificationSettings: {
-              create: {
-                pushNotifications: true,
-                upcomingBills: true,
-                upcomingIncome: true,
-                investments: true,
-                goals: true,
-                promotionalEmail: true,
-                aiInsights: true,
-              },
-            },
+    user = await db.user.create({
+      data: {
+        clerkUserId,
+        languageId: englishLanguage?.id ?? null,
+        currencyId: usdCurrency?.id ?? null,
+        dataSharingEnabled: false,
+        notificationSettings: {
+          create: {
+            pushNotifications: true,
+            upcomingBills: true,
+            upcomingIncome: true,
+            investments: true,
+            goals: true,
+            promotionalEmail: true,
+            aiInsights: true,
           },
-          include: { language: true },
-        });
-        break;
-      } catch (err) {
-        const isUniqueViolation =
-          err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2002';
-        if (isUniqueViolation && attempt < maxAttempts - 1) {
-          userName = generateRandomUsername();
-        } else {
-          throw err;
-        }
-      }
-    }
+        },
+      },
+      include: { language: true },
+    });
     if (!user) {
       throw new Error('Unauthorized: Failed to create user');
     }

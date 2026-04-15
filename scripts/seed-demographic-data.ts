@@ -60,9 +60,9 @@ async function main() {
 
   if (reset) {
     const removed = await prisma.user.deleteMany({
-      where: { userName: { startsWith: 'demo_' } },
+      where: { clerkUserId: { startsWith: 'DEMO:' } },
     });
-    console.log(`--reset: removed ${removed.count} user(s) with userName demo_* (related rows cascade).\n`);
+    console.log(`--reset: removed ${removed.count} user(s) with demo clerkUserId (related rows cascade).\n`);
   }
 
   const usd = await prisma.currency.findFirst({ where: { alias: 'USD' } });
@@ -87,10 +87,10 @@ async function main() {
   // Check if demo users already exist (idempotent: skip if present)
   if (!reset) {
     const existingDemo = await prisma.user.findFirst({
-      where: { userName: { startsWith: 'demo_' } },
+      where: { clerkUserId: { startsWith: 'DEMO:' } },
     });
     if (existingDemo) {
-      console.log('Demo users already exist (userName starts with "demo_"). Skipping seed.');
+      console.log('Demo users already exist (clerkUserId starts with "DEMO:"). Skipping seed.');
       console.log('Re-run with --reset to replace them: npm run seed:demographic -- --reset\n');
       return;
     }
@@ -118,47 +118,45 @@ async function main() {
     }
   }
 
-  const createdUsers: Array<{ id: number; userName: string; config: (typeof demoUserConfigs)[0] }> = [];
+  const createdUsers: Array<{ id: number; demoId: string; config: (typeof demoUserConfigs)[0] }> = [];
 
   for (let u = 0; u < demoUserConfigs.length; u++) {
     const cfg = demoUserConfigs[u];
-    const userName = `demo_${cfg.ageGroup.replace('+', 'plus').replace('-', '_')}_${u + 1}`;
+    const demoId = `demo_${cfg.ageGroup.replace('+', 'plus').replace('-', '_')}_${u + 1}`;
     const dateOfBirth = dateOfBirthForAgeGroup(cfg.ageGroup, u);
 
     const user = await prisma.user.create({
       data: {
-        userName,
+        clerkUserId: `DEMO:${demoId}`,
         dateOfBirth,
         country: cfg.country,
         profession: cfg.profession,
         dataSharingEnabled: true,
         currencyId: usd.id,
-        clerkUserId: null,
       },
     });
-    createdUsers.push({ id: user.id, userName: user.userName!, config: cfg });
+    createdUsers.push({ id: user.id, demoId, config: cfg });
   }
 
   // Extra users for cohort (24yo, Georgia, Developer): ensure 18-24 + Georgia + Developer has enough for comparisons
   const EXTRA_FOR_COHORT = 4;
   const currentYear = new Date().getFullYear();
   for (let i = 0; i < EXTRA_FOR_COHORT; i++) {
-    const userName = `demo_18_24_georgia_dev_${i + 1}`;
-    const dateOfBirth = new Date(currentYear - 24 + (i % 5), 5, 15); // ages 20–24
+    const demoId = `demo_18_24_georgia_dev_${i + 1}`;
+    const dateOfBirth = new Date(currentYear - 24 + (i % 5), 5, 15);
     const user = await prisma.user.create({
       data: {
-        userName,
+        clerkUserId: `DEMO:${demoId}`,
         dateOfBirth,
         country: 'Georgia',
         profession: 'Developer',
         dataSharingEnabled: true,
         currencyId: usd.id,
-        clerkUserId: null,
       },
     });
     createdUsers.push({
       id: user.id,
-      userName: user.userName!,
+      demoId,
       config: {
         ageGroup: '18-24',
         country: 'Georgia',

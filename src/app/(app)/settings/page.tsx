@@ -19,16 +19,10 @@ import { UserSettings, LoginHistoryEntry } from '@/types/dashboard';
 import { TimePeriod } from '@/types/dashboard';
 import { Trash } from 'iconoir-react';
 
-const USERNAME_VALIDATION = {
-  regex: /^[a-zA-Z0-9_]{3,30}$/,
-  message: 'Username must be 3–30 characters and only contain letters, numbers, and underscores',
-} as const;
-
 type CurrencyOption = { id: number; name: string; symbol: string; alias: string };
 
 const emptySettings: UserSettings = {
   name: '',
-  username: '',
   email: '',
   jobPosition: '',
   age: 0,
@@ -41,7 +35,6 @@ const emptySettings: UserSettings = {
 
 function mapApiToUserSettings(data: {
   name?: string | null;
-  userName?: string | null;
   email?: string | null;
   dateOfBirth?: string | null;
   country?: string | null;
@@ -53,7 +46,6 @@ function mapApiToUserSettings(data: {
   return {
     ...emptySettings,
     name: data.name ?? '',
-    username: data.userName ?? '',
     email: data.email ?? '',
     country: data.country ?? '',
     profession: data.profession ?? '',
@@ -81,7 +73,6 @@ export default function SettingsPage() {
   const [deleteInProgress, setDeleteInProgress] = useState(false);
   const deleteModalOverlayRef = useRef<HTMLDivElement>(null);
   const deleteModalPointerDownOnOverlay = useRef(false);
-  const [usernameError, setUsernameError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type?: ToastType }>>([]);
   const taxUpdateIdRef = useRef(0);
@@ -169,45 +160,18 @@ export default function SettingsPage() {
     }
   }, [addToast, refetchCurrency]);
 
-  const handleEdit = (field: string) => {
-    // Inline edit or modal can be wired here; for now no-op for fields that need custom UI
-    if (field === 'name' || field === 'username' || field === 'email' || field === 'password' || field === 'profession') {
-      // Will be wired in Security/Personal cards with actual inputs
-    }
-  };
-
   const handleChange = useCallback((field: string, value: string) => {
-    if (field === 'username') setUsernameError(null);
-    // Username: client-side validation before calling API; only update in state when PATCH succeeds
-    if (field === 'username') {
-      const trimmed = value.trim();
-      if (trimmed.length > 0 && !USERNAME_VALIDATION.regex.test(trimmed)) {
-        setUsernameError(USERNAME_VALIDATION.message);
-        return;
-      }
-    }
-    if (field !== 'username') {
-      setUserSettings((prev) => ({ ...prev, [field]: value }));
-    }
+    setUserSettings((prev) => ({ ...prev, [field]: value }));
     const body: Record<string, unknown> = {};
     if (field === 'country') body.country = value;
     if (field === 'profession') body.profession = value || null;
     if (field === 'dateOfBirth') body.dateOfBirth = value || null;
-    if (field === 'username') body.userName = value.trim() || null;
     if (field === 'currency') {
       const curr = currencies.find((c) => `${c.symbol} ${c.alias}` === value);
       if (curr) body.currencyId = curr.id;
     }
     if (Object.keys(body).length > 0) {
-      if (field === 'username') {
-        handleSettingsPatch(body).catch((err: unknown) => {
-          setUsernameError(
-            err instanceof Error ? err.message : 'Failed to update username'
-          );
-        });
-      } else {
-        handleSettingsPatch(body).catch(() => {});
-      }
+      handleSettingsPatch(body).catch(() => {});
     }
   }, [currencies, handleSettingsPatch]);
 
@@ -280,9 +244,8 @@ export default function SettingsPage() {
         {/* Main Grid Area */}
         <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-[1.1fr_0.9fr] gap-4 items-stretch">
           <div className="flex flex-col h-full">
-            <PersonalInformationCard
+          <PersonalInformationCard
               settings={userSettings}
-              onEdit={handleEdit}
               onChange={handleChange}
               incomeTaxRate={incomeTaxRate}
               onTaxUpdate={handleTaxUpdate}
@@ -298,13 +261,11 @@ export default function SettingsPage() {
           <div className="flex flex-col gap-4 h-full">
             <SecurityDetailsCard
               settings={userSettings}
-              onEdit={handleEdit}
               onChange={handleChange}
               onOpenAccountProfile={handleOpenAccountProfile}
               onDeleteAccount={handleDeleteAccountClick}
               loading={preferencesLoading}
               disabled={saving}
-              usernameError={usernameError}
             />
             <DataSharingCard
               isEnabled={dataSharingEnabled}
@@ -312,7 +273,9 @@ export default function SettingsPage() {
               loading={preferencesLoading}
               disabled={saving}
             />
-            <ExportDataCard loading={preferencesLoading} />
+            <div className="flex-1 flex flex-col">
+              <ExportDataCard loading={preferencesLoading} />
+            </div>
           </div>
         </div>
 

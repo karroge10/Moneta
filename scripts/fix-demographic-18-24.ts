@@ -35,12 +35,12 @@ function getAgeGroup(dateOfBirth: Date | null): string | null {
 async function main() {
   const currentYear = new Date().getFullYear();
   const demo18_24 = await prisma.user.findMany({
-    where: { userName: { startsWith: 'demo_18_24_' } },
-    select: { id: true, userName: true, dateOfBirth: true },
+    where: { clerkUserId: { startsWith: 'DEMO:demo_18_24_' } },
+    select: { id: true, clerkUserId: true, dateOfBirth: true },
     orderBy: { id: 'asc' },
   });
 
-  console.log(`Found ${demo18_24.length} users with userName demo_18_24_*`);
+  console.log(`Found ${demo18_24.length} users with clerkUserId DEMO:demo_18_24_*`);
   if (demo18_24.length === 0) {
     console.log('Nothing to fix. Run seed:demographic to create demo users.');
     return;
@@ -48,17 +48,17 @@ async function main() {
 
   for (let i = 0; i < demo18_24.length; i++) {
     const u = demo18_24[i];
-    const newYear = currentYear - 24 + (i % 7); // 2001–2007 so ages 24–18
-    const newDob = new Date(newYear, 5, 15); // June 15
+    const newYear = currentYear - 24 + (i % 7);
+    const newDob = new Date(newYear, 5, 15);
     const ag = getAgeGroup(newDob);
     if (ag !== '18-24') {
-      console.warn(`  ${u.userName} new DOB ${newDob.toISOString()} -> ageGroup ${ag} (expected 18-24)`);
+      console.warn(`  id=${u.id} (${u.clerkUserId}) new DOB ${newDob.toISOString()} -> ageGroup ${ag} (expected 18-24)`);
     }
     await prisma.user.update({
       where: { id: u.id },
       data: { dateOfBirth: newDob },
     });
-    console.log(`  Updated id=${u.id} ${u.userName} -> dob=${newDob.toISOString().slice(0, 10)} ageGroup=${ag}`);
+    console.log(`  Updated id=${u.id} (${u.clerkUserId}) -> dob=${newDob.toISOString().slice(0, 10)} ageGroup=${ag}`);
   }
 
   console.log('\nDone. Re-run check-demographic-cohort to verify.');
