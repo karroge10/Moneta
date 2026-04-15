@@ -388,7 +388,13 @@ export default function InvestmentForm({
                 autoFocus
                 disabled={isSaving}
               />
+              {formState.assetType === 'stock' && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-helper pointer-events-none opacity-60">
+                  US stocks only (e.g. AAPL.US)
+                </div>
+              )}
             </div>
+
 
             <div className="space-y-2">
               <h4 className="text-helper text-xs uppercase tracking-wider ml-1">Results</h4>
