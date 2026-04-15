@@ -117,7 +117,9 @@ body.sidebar-collapsed {
 }
 
 /* Buttons */
-.btn { border-radius: 9999px; font-family: inherit; transition: all 0.2s ease; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+.btn { border-radius: 9999px; font-family: inherit; transition: all 0.2s ease; cursor: pointer; }
 .btn-primary { background: linear-gradient(180deg, var(--accent-purple) 0%, #904eb8 100%); color: var(--text-primary); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(172,102,218,0.25); border: 1px solid rgba(172,102,218,0.5); }
 .btn-primary:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 12px rgba(172,102,218,0.4); transform: translateY(-1px); }
 .btn-success { background: linear-gradient(180deg, var(--accent-green) 0%, #5ca137 100%); color: var(--text-primary); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(116,198,72,0.25); border: 1px solid rgba(116,198,72,0.5); }

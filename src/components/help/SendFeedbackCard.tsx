@@ -168,19 +168,6 @@ export default function SendFeedbackCard() {
           {isSubmitting ? 'Sending…' : 'Send Message'}
         </button>
 
-        {/* Info Text */}
-        <div className="flex items-start gap-2 mt-2">
-          <InfoCircle 
-            width={16} 
-            height={16} 
-            strokeWidth={1.5}
-            className="shrink-0 mt-0.5"
-            style={{ color: 'var(--text-secondary)' }}
-          />
-          <p className="text-helper" style={{ color: 'var(--text-secondary)' }}>
-            Our support team is available Monday to Friday, 9 AM - 5 PM. Priority Support is available to Ultimate users.
-          </p>
-        </div>
       </form>
     </Card>
   );
