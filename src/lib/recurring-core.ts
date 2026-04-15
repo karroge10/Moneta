@@ -59,8 +59,10 @@ export async function getExpenseRecurringItemsSerialized(userId: number, targetC
   const items = await db.recurringTransaction.findMany({
     where: {
       userId,
-      isActive: true,
       type: 'expense',
+    },
+    include: {
+      category: true,
     },
   });
 
@@ -84,9 +86,20 @@ export async function getExpenseRecurringItemsSerialized(userId: number, targetC
     targetCurrencyId,
     ratesMap
   ).map(item => ({
+    id: item.id,
     name: item.name,
-    amount: item.convertedAmount,
+    type: item.type,
+    amount: item.amount,
+    convertedAmount: item.convertedAmount,
+    currencyId: item.currencyId,
+    category: item.category?.name ?? null,
+    startDate: item.startDate.toISOString(),
     nextDueDate: item.nextDueDate.toISOString(),
-    frequency: `${item.frequencyInterval} ${item.frequencyUnit}${item.frequencyInterval > 1 ? 's' : ''}`,
+    endDate: item.endDate?.toISOString() ?? null,
+    isActive: item.isActive,
+    frequencyUnit: item.frequencyUnit,
+    frequencyInterval: item.frequencyInterval,
+    lastGeneratedAt: item.lastGeneratedAt?.toISOString() ?? null,
   }));
 }
+
