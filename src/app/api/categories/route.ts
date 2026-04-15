@@ -10,41 +10,38 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
-    
-    // Fetch all standard categories (no filtering by type - client will filter)
-    const standardCategories = await db.category.findMany({
-      orderBy: {
-        name: 'asc',
-      },
-    });
-    
-    // Fetch user's custom categories
-    const customCategories = await db.categoriesCustom.findMany({
-      where: {
-        userId: user.id,
-      },
-      include: {
-        category: true, // Include linked standard category if exists
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
-    
-    // Count transaction usage per category for this user
-    const categoryUsageCounts = await db.transaction.groupBy({
-      by: ['categoryId'],
-      where: {
-        userId: user.id,
-        investmentAssetId: null,
-        categoryId: {
-          not: null,
+
+    const [standardCategories, customCategories, categoryUsageCounts] = await Promise.all([
+      db.category.findMany({
+        orderBy: {
+          name: 'asc',
         },
-      },
-      _count: {
-        categoryId: true,
-      },
-    });
+      }),
+      db.categoriesCustom.findMany({
+        where: {
+          userId: user.id,
+        },
+        include: {
+          category: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      }),
+      db.transaction.groupBy({
+        by: ['categoryId'],
+        where: {
+          userId: user.id,
+          investmentAssetId: null,
+          categoryId: {
+            not: null,
+          },
+        },
+        _count: {
+          categoryId: true,
+        },
+      }),
+    ]);
     
     // Create a map of categoryId -> usage count
     const usageMap = new Map<number, number>();

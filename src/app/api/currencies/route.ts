@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { getConversionRate } from '@/lib/currency-conversion';
+import { preloadRatesMap, buildCacheKey } from '@/lib/currency-conversion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,20 +19,18 @@ export async function GET(request: NextRequest) {
     let rates: Record<number, number> = {};
 
     if (includeRates && user.currencyId) {
-      // Fetch rates for today for all currencies relative to user's currency
-      const ratesPromises = currencies.map(async (c) => {
-        if (c.id === user.currencyId) return { id: c.id, rate: 1 };
-        try {
-          const rate = await getConversionRate(c.id, user.currencyId!);
-          return { id: c.id, rate };
-        } catch (e) {
-          return { id: c.id, rate: 1 };
-        }
-      });
+      const now = new Date();
+      const ratesMap = await preloadRatesMap(
+        currencies.map(c => ({ currencyId: c.id, date: now })),
+        user.currencyId
+      );
 
-      const resolvedRates = await Promise.all(ratesPromises);
-      rates = resolvedRates.reduce((acc, r) => {
-        acc[r.id] = r.rate;
+      rates = currencies.reduce((acc, c) => {
+        if (c.id === user.currencyId) {
+          acc[c.id] = 1;
+        } else {
+          acc[c.id] = ratesMap.get(buildCacheKey(c.id, user.currencyId!, now)) ?? 1;
+        }
         return acc;
       }, {} as Record<number, number>);
     }

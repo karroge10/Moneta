@@ -3,7 +3,7 @@ import { requireCurrentUser, requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Transaction as TransactionType } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
-import { convertAmount } from '@/lib/currency-conversion';
+import { convertAmount, convertTransactionsWithRatesMap, preloadRatesMap } from '@/lib/currency-conversion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -149,10 +149,6 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // Get total count - all transactions are included (no filtering)
-    const total = await db.transaction.count({ where });
-    const totalPages = Math.ceil(total / pageSize);
-
     // Build orderBy clause based on sort parameters
     type OrderDirection = 'asc' | 'desc';
     const direction: OrderDirection = sortOrder === 'asc' ? 'asc' : 'desc';
@@ -177,33 +173,31 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    // Fetch paginated transactions - all transactions are included (no filtering)
-    const filteredTransactions = await db.transaction.findMany({
-      where,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      include: {
-        category: true,
-        currency: true,
-      },
-      orderBy,
-    });
-
-    const transactionsWithConverted = await Promise.all(
-      filteredTransactions.map(async (transaction) => {
-        const convertedAmount = await convertAmount(
-          transaction.amount,
-          transaction.currencyId,
-          targetCurrencyId,
-          transaction.date,
-        );
-
-        return {
-          ...transaction,
-          convertedAmount,
-        };
+    // Fetch paginated transactions and total count in parallel
+    const [total, filteredTransactions] = await Promise.all([
+      db.transaction.count({ where }),
+      db.transaction.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          category: true,
+          currency: true,
+        },
+        orderBy,
       }),
+    ]);
+
+    const totalPages = Math.ceil(total / pageSize);
+
+    // BATCH CONVERSION: Preload all rates for the page in 1–2 queries
+    const ratesMap = await preloadRatesMap(
+      filteredTransactions.map(t => ({ currencyId: t.currencyId, date: t.date })),
+      targetCurrencyId
     );
+    
+    const transactionsWithConverted = convertTransactionsWithRatesMap(filteredTransactions, targetCurrencyId, ratesMap);
+
 
     // Transform to frontend format
     const transactions: TransactionType[] = transactionsWithConverted.map((t) => {

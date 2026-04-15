@@ -7,9 +7,33 @@ import { useSearchParams } from "next/navigation";
 import { useClerk, SignedIn, SignedOut, ClerkLoading, ClerkLoaded } from "@clerk/nextjs";
 import { NavArrowLeft } from "iconoir-react";
 
+function clerkReturnUrl(redirectParam: string | null): string {
+  if (typeof window === "undefined") {
+    return "/dashboard";
+  }
+  let path = redirectParam?.trim() || "/dashboard";
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    try {
+      const u = new URL(path);
+      if (u.origin === window.location.origin) {
+        path = `${u.pathname}${u.search}`;
+      } else {
+        path = "/dashboard";
+      }
+    } catch {
+      path = "/dashboard";
+    }
+  }
+  if (!path.startsWith("/")) {
+    path = "/dashboard";
+  }
+  return `${window.location.origin}${path}`;
+}
+
 function UnauthorizedContent() {
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect") || "/dashboard";
+  const redirectParam = searchParams.get("redirect");
+  const redirectUrl = clerkReturnUrl(redirectParam);
   const { openSignIn, openSignUp, signOut } = useClerk();
 
   const goHomeHard = () => {

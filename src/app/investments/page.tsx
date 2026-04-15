@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { mutate } from 'swr';
 import { Investment, PerformanceDataPoint } from '@/types/dashboard';
@@ -73,6 +73,8 @@ export default function InvestmentsPage() {
   const [performanceData, setPerformanceData] = useState<PerformanceDataPoint[]>([]);
   const [isPerformanceLoading, setIsPerformanceLoading] = useState(false);
 
+  const investmentsFetchSeq = useRef(0);
+
   useEffect(() => {
     if (data?.performance?.data) {
       setPerformanceData(data.performance.data);
@@ -94,7 +96,8 @@ export default function InvestmentsPage() {
     }
   };
 
-  const fetchInvestments = useCallback(async (isRefresh = false) => {
+  const fetchInvestments = useCallback(async (isRefresh = false, signal?: AbortSignal) => {
+    const seq = ++investmentsFetchSeq.current;
     try {
       if (isRefresh) {
         setIsRefreshing(true);
@@ -102,17 +105,24 @@ export default function InvestmentsPage() {
         setLoading(true);
       }
       setError(null);
-      const res = await fetch('/api/investments');
+      const res = await fetch('/api/investments', { signal });
       if (!res.ok) {
         throw new Error('Failed to load investments');
       }
       const payload: InvestmentsApiResponse = await res.json();
+      if (seq !== investmentsFetchSeq.current) return;
       setData(payload);
     } catch (err) {
+      const aborted =
+        (err instanceof DOMException && err.name === 'AbortError') ||
+        (err instanceof Error && err.name === 'AbortError');
+      if (aborted) return;
+      if (seq !== investmentsFetchSeq.current) return;
       console.error('Error loading investments', err);
       setError(err instanceof Error ? err.message : 'Failed to load investments');
       setData(null);
     } finally {
+      if (seq !== investmentsFetchSeq.current) return;
       if (isRefresh) {
         setIsRefreshing(false);
       } else {
@@ -123,7 +133,12 @@ export default function InvestmentsPage() {
 
   useEffect(() => {
     if (!authReady) return;
-    fetchInvestments();
+    const ac = new AbortController();
+    void fetchInvestments(false, ac.signal);
+    return () => {
+      ac.abort();
+      investmentsFetchSeq.current += 1;
+    };
   }, [authReady, fetchInvestments]);
 
   useEffect(() => {

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { convertAmount } from '@/lib/currency-conversion';
+import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
+import { processDueRecurringItems } from '@/lib/recurring-core';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -109,61 +110,6 @@ async function getUserCurrencyId(userCurrencyId?: number): Promise<number> {
   return currency.id;
 }
 
-export async function processDueRecurringItems(userId: number, now: Date) {
-  const dueItems = await db.recurringTransaction.findMany({
-    where: {
-      userId,
-      isActive: true,
-      nextDueDate: { lte: now },
-    },
-    include: {
-      category: true,
-    },
-  });
-
-  for (const item of dueItems) {
-    let iterations = 0;
-    let nextDate = new Date(item.nextDueDate);
-
-    while (nextDate <= now && iterations < 24) {
-      // Respect endDate
-      if (item.endDate && nextDate > item.endDate) {
-        await db.recurringTransaction.update({
-          where: { id: item.id },
-          data: { isActive: false },
-        });
-        break;
-      }
-
-      // Create the real transaction
-      await db.transaction.create({
-        data: {
-          userId: item.userId,
-          type: item.type,
-          amount: item.amount,
-          description: item.name,
-          date: nextDate,
-          categoryId: item.categoryId ?? undefined,
-          currencyId: item.currencyId,
-        },
-      });
-
-      const following = addInterval(nextDate, item.frequencyUnit, item.frequencyInterval);
-
-      await db.recurringTransaction.update({
-        where: { id: item.id },
-        data: {
-          lastGeneratedAt: nextDate,
-          nextDueDate: following,
-          updatedAt: new Date(),
-        },
-      });
-
-      nextDate = following;
-      iterations += 1;
-    }
-  }
-}
 
 function serializeUpcoming(
   items: Array<{
@@ -198,6 +144,7 @@ function serializeUpcoming(
     }));
 }
 
+
 export async function GET(request: NextRequest) {
   try {
     const user = await requireCurrentUserWithLanguage();
@@ -228,17 +175,18 @@ export async function GET(request: NextRequest) {
       orderBy: { nextDueDate: 'asc' },
     });
 
-    const itemsWithConversion = await Promise.all(
-      items.map(async (item) => {
-        const convertedAmount = await convertAmount(
-          item.amount,
-          item.currencyId,
-          userCurrencyId,
-          item.nextDueDate,
-        );
+    const ratesMap = await preloadRatesMap(
+      items.filter(t => t.nextDueDate).map(t => ({ currencyId: t.currencyId, date: t.nextDueDate! })),
+      userCurrencyId
+    );
 
-        return { ...item, convertedAmount };
-      }),
+    const itemsWithConversion = convertTransactionsWithRatesMap(
+      items.map(item => ({
+        ...item,
+        date: item.nextDueDate || item.startDate,
+      })),
+      userCurrencyId,
+      ratesMap
     );
 
     const upcoming = serializeUpcoming(

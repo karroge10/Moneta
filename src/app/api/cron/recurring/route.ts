@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { processDueRecurringItems } from '@/app/api/recurring/route';
+import { processDueRecurringItems } from '@/lib/recurring-core';
 import { updateDailyExchangeRates } from '@/lib/currency-update';
 
 export const runtime = 'nodejs';

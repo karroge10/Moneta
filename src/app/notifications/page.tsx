@@ -10,30 +10,23 @@ import { DEFAULT_NOTIFICATION_SETTINGS } from '@/lib/notification-settings-const
 import type { NotificationSettings } from '@/types/dashboard';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
+import { useCurrency } from '@/hooks/useCurrency';
 import { Settings } from 'iconoir-react';
 
 export default function NotificationsPage() {
   const authReady = useAuthReadyForApi();
+  const { userSettingsSnapshot, loading: preferencesLoading, refetch: refetchCurrency } = useCurrency();
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const { notifications, isLoading: notificationsLoading } = useNotifications(50, false);
 
-  const fetchNotificationSettings = useCallback(() => {
-    fetch('/api/user/settings')
-      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-      .then((data) => {
-        if (data.notificationSettings) {
-          setNotificationSettings(data.notificationSettings);
-        }
-      })
-      .catch(() => setNotificationSettings(DEFAULT_NOTIFICATION_SETTINGS));
-  }, []);
-
   useEffect(() => {
-    if (!authReady) return;
-    fetchNotificationSettings();
-  }, [authReady, fetchNotificationSettings]);
+    if (!authReady || preferencesLoading) return;
+    if (userSettingsSnapshot) {
+      setNotificationSettings(userSettingsSnapshot.notificationSettings);
+    }
+  }, [authReady, preferencesLoading, userSettingsSnapshot]);
 
   const handleToggleSetting = useCallback(async (key: keyof NotificationSettings, enabled: boolean) => {
     const next = { ...notificationSettings, [key]: enabled };
@@ -44,11 +37,11 @@ export default function NotificationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notificationSettings: next }),
       });
-      if (!res.ok) fetchNotificationSettings();
+      if (!res.ok) void refetchCurrency();
     } catch {
-      fetchNotificationSettings();
+      void refetchCurrency();
     }
-  }, [notificationSettings, fetchNotificationSettings]);
+  }, [notificationSettings, refetchCurrency]);
 
   return (
     <main className="min-h-screen bg-background">
