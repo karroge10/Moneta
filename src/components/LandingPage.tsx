@@ -130,7 +130,7 @@ export default function LandingPage() {
             <ClerkLoading>
               <button
                 type="button"
-                className="flex items-center justify-center h-9 sm:h-10 min-w-[120px] sm:min-w-[140px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] text-[#E7E4E4] font-semibold text-sm sm:text-base border border-[#AC66DA]/50 shadow-[0_4px_12px_rgba(172,102,218,0.2)]"
+                className="flex items-center justify-center h-9 sm:h-10 min-w-[120px] sm:min-w-[140px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] text-[#E7E4E4] font-semibold text-sm sm:text-base border border-[#AC66DA]/50 shadow-[0_4px_12px_rgba(172,102,218,0.2)] cursor-pointer"
               >
                 Get Started
               </button>
@@ -161,7 +161,7 @@ export default function LandingPage() {
                 <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard">
                   <button
                     type="button"
-                    className="flex items-center justify-center h-9 sm:h-10 min-w-[120px] sm:min-w-[140px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] text-[#E7E4E4] font-semibold hover:opacity-90 transition-all text-sm sm:text-base border border-[#AC66DA]/50 shadow-[0_4px_12px_rgba(172,102,218,0.2)] hover:scale-[1.02]"
+                    className="flex items-center justify-center h-9 sm:h-10 min-w-[120px] sm:min-w-[140px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] text-[#E7E4E4] font-semibold hover:opacity-90 transition-all text-sm sm:text-base border border-[#AC66DA]/50 shadow-[0_4px_12px_rgba(172,102,218,0.2)] hover:scale-[1.02] cursor-pointer"
                   >
                     Get Started
                   </button>
@@ -200,7 +200,7 @@ export default function LandingPage() {
                 <ClerkLoading>
                   <button
                     type="button"
-                    className="w-full min-w-[200px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] px-8 py-4 text-lg font-semibold text-[#E7E4E4] shadow-[0_8px_16px_-4px_rgba(172,102,218,0.3)] sm:w-auto border border-[#AC66DA]/50"
+                    className="w-full min-w-[200px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] px-8 py-4 text-lg font-semibold text-[#E7E4E4] shadow-[0_8px_16px_-4px_rgba(172,102,218,0.3)] sm:w-auto border border-[#AC66DA]/50 cursor-pointer"
                   >
                     Get Started
                   </button>
@@ -210,7 +210,7 @@ export default function LandingPage() {
                     <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard">
                       <button
                         type="button"
-                        className="w-full min-w-[200px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] px-8 py-4 text-lg font-semibold text-[#E7E4E4] shadow-[0_8px_16px_-4px_rgba(172,102,218,0.3)] transition-all hover:opacity-90 hover:scale-[1.02] hover:shadow-[0_10px_20px_-2px_rgba(172,102,218,0.4)] sm:w-auto border border-[#AC66DA]/50"
+                        className="w-full min-w-[200px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] px-8 py-4 text-lg font-semibold text-[#E7E4E4] shadow-[0_8px_16px_-4px_rgba(172,102,218,0.3)] transition-all hover:opacity-90 hover:scale-[1.02] hover:shadow-[0_10px_20px_-2px_rgba(172,102,218,0.4)] sm:w-auto border border-[#AC66DA]/50 cursor-pointer"
                       >
                         Get Started
                       </button>
@@ -219,7 +219,7 @@ export default function LandingPage() {
                   <SignedIn>
                     <Link
                       href="/dashboard"
-                      className="inline-flex w-full min-w-[200px] items-center justify-center rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] px-8 py-4 text-lg font-semibold text-[#E7E4E4] shadow-[0_8px_16px_-4px_rgba(172,102,218,0.3)] transition-all hover:opacity-90 hover:scale-[1.02] hover:shadow-[0_10px_20px_-2px_rgba(172,102,218,0.4)] sm:w-auto border border-[#AC66DA]/50"
+                      className="inline-flex w-full min-w-[200px] items-center justify-center rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] px-8 py-4 text-lg font-semibold text-[#E7E4E4] shadow-[0_8px_16px_-4px_rgba(172,102,218,0.3)] transition-all hover:opacity-90 hover:scale-[1.02] hover:shadow-[0_10px_20px_-2px_rgba(172,102,218,0.4)] sm:w-auto border border-[#AC66DA]/50 cursor-pointer"
                     >
                       Open dashboard
                     </Link>
