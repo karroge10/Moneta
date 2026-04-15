@@ -12,8 +12,8 @@ import {
   CheckCircle,
   HeadsetHelp,
   LotOfCash,
+  Mail,
 } from "iconoir-react";
-import SendFeedbackCard from '@/components/help/SendFeedbackCard';
 
 const CONTACT_EMAIL_FALLBACK = "hello@moneta.app";
 
@@ -478,7 +478,68 @@ export default function LandingPage() {
           </div>
           
           <div className="w-full">
-            <SendFeedbackCard />
+            <form 
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const form = e.target as HTMLFormElement;
+                const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+                const message = (form.elements.namedItem('message') as HTMLTextAreaElement).value;
+                const submitBtn = form.elements.namedItem('submitBtn') as HTMLButtonElement;
+                
+                try {
+                  submitBtn.disabled = true;
+                  submitBtn.textContent = 'Sending...';
+                  const res = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, category: 'Other', message }),
+                  });
+                  if (res.ok) {
+                    form.innerHTML = '<div class="text-center p-8 text-[#74C648] font-bold text-lg bg-[#74C648]/10 rounded-2xl border border-[#74C648]/20">Thank you! Your message has been sent.</div>';
+                  } else {
+                    submitBtn.textContent = 'Failed to send. Try again.';
+                    submitBtn.disabled = false;
+                  }
+                } catch {
+                  submitBtn.textContent = 'Error occurred. Try again.';
+                  submitBtn.disabled = false;
+                }
+              }}
+              className="flex flex-col gap-4 bg-[#1a1a1a] p-6 md:p-8 rounded-3xl border border-[#3a3a3a] shadow-xl"
+            >
+              <div>
+                <label className="block text-body font-medium mb-2 text-[#E7E4E4]">Your Email</label>
+                <div className="relative">
+                  <Mail width={20} height={20} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#E7E4E4]/50" />
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    placeholder="hello@moneta.app"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-background text-body border border-[#3a3a3a] text-[#E7E4E4] focus:border-[#AC66DA] focus:outline-none transition-colors"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-body font-medium mb-2 text-[#E7E4E4]">Message</label>
+                <textarea
+                  name="message"
+                  required
+                  placeholder="How can we help you?"
+                  rows={5}
+                  className="w-full px-4 py-3 rounded-xl bg-background text-body border border-[#3a3a3a] text-[#E7E4E4] focus:border-[#AC66DA] focus:outline-none transition-colors resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                name="submitBtn"
+                className="w-full px-6 py-4 mt-2 rounded-[14px] font-semibold text-white bg-gradient-to-r from-[#AC66DA] to-[#904eb8] hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(172,102,218,0.3)]"
+              >
+                Send Message
+              </button>
+            </form>
           </div>
         </div>
       </section>

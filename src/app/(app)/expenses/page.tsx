@@ -16,7 +16,6 @@ import ValueCard from '@/components/dashboard/ValueCard';
 import CardSkeleton from '@/components/dashboard/CardSkeleton';
 import TrendIndicator from '@/components/ui/TrendIndicator';
 import TransactionModal from '@/components/transactions/TransactionModal';
-import { mockExpensesPage } from '@/lib/mockData';
 import { emptyRoundupInsight, type RoundupInsightDto } from '@/lib/roundup-insight';
 import { TimePeriod, LatestExpense, ExpenseCategory, PerformanceDataPoint, Transaction, Bill, RecurringItem } from '@/types/dashboard';
 import { buildTransactionFromRecurring } from '@/lib/recurring-utils';
@@ -72,7 +71,12 @@ export default function ExpensesPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   
   // Keep mock data for components not requested to be changed
-  const update = mockExpensesPage.update;
+  const update = {
+    date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+    message: 'Your expenses are well within limits.',
+    highlight: 'within limits',
+    link: 'View Statistics'
+  };
 
   const expensesFetchSeq = useRef(0);
 

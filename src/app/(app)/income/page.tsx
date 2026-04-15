@@ -16,7 +16,6 @@ import ValueCard from '@/components/dashboard/ValueCard';
 import CardSkeleton from '@/components/dashboard/CardSkeleton';
 import TrendIndicator from '@/components/ui/TrendIndicator';
 import TransactionModal from '@/components/transactions/TransactionModal';
-import { mockIncomePage } from '@/lib/mockData';
 import { TimePeriod, LatestIncome, IncomeSource, PerformanceDataPoint, Transaction, RecurringItem } from '@/types/dashboard';
 import { buildTransactionFromRecurring } from '@/lib/recurring-utils';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
@@ -71,7 +70,12 @@ export default function IncomePage() {
   const [isDeleting, setIsDeleting] = useState(false);
   
   // Keep mock data for components not requested to be changed
-  const update = mockIncomePage.update;
+  const update = {
+    date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+    message: 'Your income pipeline looks healthy.',
+    highlight: 'looks healthy',
+    link: 'View Statistics'
+  };
 
   const incomeFetchSeq = useRef(0);
 
