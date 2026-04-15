@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { convertTransactionsToTargetSimple } from '@/lib/currency-conversion';
+import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
 import { calculateGoalProgress } from '@/lib/goalUtils';
 import type { FinancialHealthDetails, TimePeriod } from '@/types/dashboard';
 
@@ -210,9 +210,17 @@ export async function getFinancialHealthScore(
     }),
   ]);
 
-  const selectedConverted = await convertTransactionsToTargetSimple(selectedTx, targetCurrencyId);
+  const ratesMap = await preloadRatesMap(
+    [
+      ...selectedTx.map(t => ({ currencyId: t.currencyId, date: t.date })),
+      ...(comparisonTx || []).map(t => ({ currencyId: t.currencyId, date: t.date })),
+    ],
+    targetCurrencyId
+  );
+
+  const selectedConverted = convertTransactionsWithRatesMap(selectedTx, targetCurrencyId, ratesMap);
   const comparisonConverted = comparisonRange
-    ? await convertTransactionsToTargetSimple(comparisonTx, targetCurrencyId)
+    ? convertTransactionsWithRatesMap(comparisonTx, targetCurrencyId, ratesMap)
     : [];
 
   const selectedIncome = selectedConverted

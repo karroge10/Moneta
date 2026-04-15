@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { getInvestmentsPortfolio } from '@/lib/investments';
 import { ensureAsset, getAssetById } from '@/lib/assets';
 import { AssetType, PricingMode, InvestmentType } from '@prisma/client';
-import { convertAmount } from '@/lib/currency-conversion';
+import { convertAmount, convertTransactionsWithRatesMap, preloadRatesMap } from '@/lib/currency-conversion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,23 +20,46 @@ export async function GET() {
       return NextResponse.json({ error: 'No currency configured.' }, { status: 500 });
     }
 
-    const summary = await getInvestmentsPortfolio(user.id, userCurrency);
+    // 3. Define time range for snapshots
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // 2. Fetch Recent Activities (Transactions)
-    const recentTransactions = await db.transaction.findMany({
-      where: {
-        userId: user.id,
-        investmentAssetId: { not: null },
-      },
-      include: {
-        asset: true,
-        currency: true,
-      },
-      orderBy: { date: 'desc' },
-      take: 10,
-    });
+    // PARALLELIZE ALL DATA FETCHING
+    const [summary, recentTransactions, latestNotification, snapshots] = await Promise.all([
+      getInvestmentsPortfolio(user.id, userCurrency),
+      db.transaction.findMany({
+        where: { userId: user.id, investmentAssetId: { not: null } },
+        include: { asset: true, currency: true },
+        orderBy: { date: 'desc' },
+        take: 10,
+      }),
+      db.notification.findFirst({
+        where: { userId: user.id },
+        orderBy: [{ read: 'asc' }, { createdAt: 'desc' }],
+      }),
+      db.portfolioSnapshot.findMany({
+        where: { userId: user.id, timestamp: { gte: thirtyDaysAgo } },
+        orderBy: { timestamp: 'asc' },
+        select: { timestamp: true, totalValue: true, totalCost: true, totalPnl: true }
+      }),
+    ]);
 
-    const recentActivities = await Promise.all(recentTransactions.map(async (t) => {
+    // BATCH CONVERSION for activities
+    const ratesMap = await preloadRatesMap(
+      recentTransactions.map(t => ({ currencyId: t.currencyId, date: t.date })),
+      userCurrency.id
+    );
+    
+    // We need to calculate amount as price * quantity for investment txs before conversion
+    const activitiesWithPrice = recentTransactions.map(t => ({
+      ...t,
+      amount: Number(t.pricePerUnit) * Number(t.quantity),
+      date: t.date
+    }));
+    
+    const convertedActivities = convertTransactionsWithRatesMap(activitiesWithPrice, userCurrency.id, ratesMap);
+
+    const recentActivities = convertedActivities.map((t: any) => {
       const assetIcon = t.asset?.icon || (
         t.asset?.assetType === 'crypto' ? (
           t.asset?.pricingMode === 'live' && t.asset?.ticker ? 
@@ -47,10 +70,6 @@ export async function GET() {
         t.asset?.assetType === 'property' ? 'Neighbourhood' : 'Reports'
       );
 
-      const txAmountInTxCurrency = Number(t.pricePerUnit) * Number(t.quantity);
-      // Convert to user currency
-      const amountInUserCurrency = await convertAmount(txAmountInTxCurrency, t.currencyId, userCurrency.id, t.date);
-
       return {
         id: t.id.toString(),
         assetId: t.investmentAssetId?.toString(),
@@ -60,12 +79,12 @@ export async function GET() {
         investmentType: t.investmentType,
         quantity: Number(t.quantity),
         pricePerUnit: Number(t.pricePerUnit),
-        amount: amountInUserCurrency,
+        amount: t.convertedAmount,
         date: t.date.toISOString(),
         icon: assetIcon,
         assetType: t.asset?.assetType,
       };
-    }));
+    });
 
     // Map to Frontend expected structure
     const portfolio = summary.assets.map(a => ({
@@ -87,15 +106,6 @@ export async function GET() {
       priceHistory: [], // Not supported in MVP refactor
     }));
 
-    // Fetch latest notification (prefer unread)
-    const latestNotification = await db.notification.findFirst({
-      where: { userId: user.id },
-      orderBy: [
-        { read: 'asc' },      // unread first
-        { createdAt: 'desc' } // then most recent
-      ],
-    });
-
     // Format notification for UpdateCard
     const update = latestNotification ? {
       date: latestNotification.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -110,24 +120,6 @@ export async function GET() {
       link: 'View notifications',
       isUnread: false,
     };
-
-    // 3. Fetch Portfolio Snapshots (Last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const snapshots = await db.portfolioSnapshot.findMany({
-        where: {
-            userId: user.id,
-            timestamp: { gte: thirtyDaysAgo }
-        },
-        orderBy: { timestamp: 'asc' },
-        select: {
-            timestamp: true,
-            totalValue: true,
-            totalCost: true,
-            totalPnl: true
-        }
-    });
 
     const graphData = snapshots.map(s => ({
         date: s.timestamp.toISOString().split('T')[0], // YYYY-MM-DD

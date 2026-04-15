@@ -3,10 +3,15 @@ import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Transaction as TransactionType, ExpenseCategory, TimePeriod } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
-import { convertTransactionsToTargetSimple } from '@/lib/currency-conversion';
+import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
 import { getFinancialHealthScore, FINANCIAL_HEALTH_TIME_PERIOD } from '@/lib/financial-health';
 import { getInvestmentsPortfolio } from '@/lib/investments';
 import { computeRoundupInsight } from '@/lib/roundup-insight';
+import { calculateGoalProgress } from '@/lib/goalUtils';
+import {
+  processDueRecurringItems,
+  getExpenseRecurringItemsSerialized,
+} from '@/lib/recurring-core';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -179,9 +184,26 @@ function getComparisonLabel(period: TimePeriod): string {
 // 3. Filters transactions by date based on timePeriod parameter
 // 4. Calculates income (type='income') and expenses (type='expense') totals
 // 5. Calculates percentage trends comparing selected period to comparison period
+function buildServerTimingHeader(durationsMs: Record<string, number>): string {
+  return Object.entries(durationsMs)
+    .map(([name, dur]) => `${encodeURIComponent(name.replace(/\s+/g, '-'))};dur=${Math.max(0, Math.round(dur))}`)
+    .join(', ');
+}
+
 export async function GET(request: NextRequest) {
+  const tReq = performance.now();
+  const dur: Record<string, number> = {};
+  const mark = (label: string, start: number) => {
+    dur[label] = performance.now() - start;
+    return performance.now();
+  };
+
+  const { searchParams } = new URL(request.url);
+  const emitTiming =
+    searchParams.get('timing') === '1' || process.env.DASHBOARD_TIMING === '1';
+
   try {
-    // Get user with language included to avoid extra query
+    let t = performance.now();
     const user = await requireCurrentUserWithLanguage();
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
 
@@ -200,63 +222,102 @@ export async function GET(request: NextRequest) {
 
     const targetCurrencyId = userCurrencyRecord.id;
 
-    // Get time period from query params, default to 'This Month'
-    const { searchParams } = new URL(request.url);
     const timePeriod = (searchParams.get('timePeriod') || 'This Month') as TimePeriod;
 
-    // Calculate date ranges for selected period and comparison period
     const selectedRange = getDateRangeForPeriod(timePeriod, now);
     const comparisonRange = getComparisonDateRange(timePeriod, now);
 
-    // Fetch only the needed slices to reduce payload and conversion work
-    const [selectedTransactions, comparisonTransactions, latestTransactionsRaw] = await Promise.all([
-      db.transaction.findMany({
-        where: {
-          userId: user.id,
-          date: {
-            gte: selectedRange.start,
-            lte: selectedRange.end,
-          },
-          investmentAssetId: null,
-        },
-        include: {
-          category: true,
-          currency: true,
-        },
-        orderBy: { date: 'desc' },
-      }),
-      comparisonRange
-        ? db.transaction.findMany({
-          where: {
-            userId: user.id,
-            date: {
-              gte: comparisonRange.start,
-              lte: comparisonRange.end,
-            },
-            investmentAssetId: null,
-          },
-          include: {
-            currency: true,
-          },
-          orderBy: { date: 'desc' },
-        })
-        : Promise.resolve([]),
-      db.transaction.findMany({
-        where: { userId: user.id, investmentAssetId: null },
-        include: {
-          category: true,
-          currency: true,
-        },
-        orderBy: { date: 'desc' },
-        take: 6,
-      }),
+    t = mark('auth-and-currency', t);
+
+    t = mark('auth-and-currency', t);
+
+    // Portfolio + financial health + recurring processing + main batch items. Run in parallel.
+    const [_, batch, financialHealth, investmentsPortfolio] = await Promise.all([
+      processDueRecurringItems(user.id, now),
+
+      (async () => {
+        const [selectedTransactions, comparisonTransactions, latestTransactionsRaw, goalsRaw, recurringItems] =
+          await Promise.all([
+            db.transaction.findMany({
+              where: {
+                userId: user.id,
+                date: {
+                  gte: selectedRange.start,
+                  lte: selectedRange.end,
+                },
+                investmentAssetId: null,
+              },
+              include: {
+                category: true,
+                currency: true,
+              },
+              orderBy: { date: 'desc' },
+            }),
+            comparisonRange
+              ? db.transaction.findMany({
+                  where: {
+                    userId: user.id,
+                    date: {
+                      gte: comparisonRange.start,
+                      lte: comparisonRange.end,
+                    },
+                    investmentAssetId: null,
+                  },
+                  include: {
+                    currency: true,
+                  },
+                  orderBy: { date: 'desc' },
+                })
+              : Promise.resolve([]),
+            db.transaction.findMany({
+              where: { userId: user.id, investmentAssetId: null },
+              include: {
+                category: true,
+                currency: true,
+              },
+              orderBy: { date: 'desc' },
+              take: 6,
+            }),
+            db.goal.findMany({
+              where: { userId: user.id },
+              orderBy: { createdAt: 'desc' },
+            }),
+            getExpenseRecurringItemsSerialized(user.id, targetCurrencyId),
+          ]);
+
+        const allTxsForPreload = [...selectedTransactions, ...(comparisonTransactions || []), ...latestTransactionsRaw];
+        const ratesMap = await preloadRatesMap(
+          allTxsForPreload.map(t => ({ currencyId: t.currencyId, date: t.date })),
+          targetCurrencyId
+        );
+
+        const selectedWithConverted = convertTransactionsWithRatesMap(selectedTransactions, targetCurrencyId, ratesMap);
+        const comparisonWithConverted = convertTransactionsWithRatesMap(comparisonTransactions || [], targetCurrencyId, ratesMap);
+        const latestWithConverted = convertTransactionsWithRatesMap(latestTransactionsRaw, targetCurrencyId, ratesMap);
+
+        return {
+          goalsRaw,
+          recurringItems,
+          selectedWithConverted,
+          comparisonWithConverted,
+          latestWithConverted,
+        };
+      })(),
+      getFinancialHealthScore(user.id, FINANCIAL_HEALTH_TIME_PERIOD, targetCurrencyId),
+      getInvestmentsPortfolio(user.id, userCurrencyRecord),
     ]);
 
-    const [selectedWithConverted, comparisonWithConverted, latestWithConverted] = await Promise.all([
-      convertTransactionsToTargetSimple(selectedTransactions, targetCurrencyId),
-      convertTransactionsToTargetSimple(comparisonTransactions, targetCurrencyId),
-      convertTransactionsToTargetSimple(latestTransactionsRaw, targetCurrencyId),
-    ]);
+    const tAfterParallel = performance.now();
+    dur['parallel-batch-health-investments'] = tAfterParallel - t;
+    t = tAfterParallel;
+
+    const {
+      goalsRaw,
+      recurringItems,
+      selectedWithConverted,
+      comparisonWithConverted,
+      latestWithConverted,
+    } = batch;
 
     // Calculate selected period income and expenses
     const selectedPeriodIncome = selectedWithConverted
@@ -366,18 +427,27 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Get comparison label for trend display
     const comparisonLabel = getComparisonLabel(timePeriod);
 
-    // Investments (live)
-    const investmentsPortfolio = await getInvestmentsPortfolio(user.id, userCurrencyRecord);
+    dur['map-trends-top-latest'] = performance.now() - t;
 
-    const [financialHealth, roundupInsight] = await Promise.all([
-      getFinancialHealthScore(user.id, FINANCIAL_HEALTH_TIME_PERIOD, targetCurrencyId),
-      computeRoundupInsight(selectedPeriodExpenses, investmentsPortfolio.assets),
-    ]);
+    const tRoundup = performance.now();
+    const roundupInsight = await computeRoundupInsight(selectedPeriodExpenses, investmentsPortfolio.assets);
+    dur['roundup-insight'] = performance.now() - tRoundup;
 
-    return NextResponse.json({
+    const goalsPayload = goalsRaw.map((goal) => ({
+      id: goal.id.toString(),
+      name: goal.name,
+      targetDate: formatDate(goal.targetDate),
+      targetAmount: goal.targetAmount,
+      currentAmount: goal.currentAmount,
+      progress: calculateGoalProgress(goal.currentAmount, goal.targetAmount),
+      currencyId: goal.currencyId ?? undefined,
+      createdAt: goal.createdAt.toISOString(),
+      updatedAt: goal.updatedAt.toISOString(),
+    }));
+
+    const body = {
       income: {
         amount: Math.round(selectedPeriodIncome),
         trend: incomeTrend,
@@ -412,7 +482,21 @@ export async function GET(request: NextRequest) {
         details: financialHealth.details,
       },
       roundupInsight,
-    });
+      goals: goalsPayload,
+      recurringItems,
+    };
+
+    dur['total'] = performance.now() - tReq;
+
+    if (emitTiming) {
+      console.info('[api/dashboard] timing (ms)', dur);
+    }
+
+    const res = NextResponse.json(body);
+    if (emitTiming) {
+      res.headers.set('Server-Timing', buildServerTimingHeader(dur));
+    }
+    return res;
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
     return NextResponse.json(

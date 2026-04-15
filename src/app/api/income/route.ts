@@ -3,7 +3,7 @@ import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { LatestIncome, IncomeSource, PerformanceDataPoint, TimePeriod } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
-import { convertTransactionsToTargetSimple } from '@/lib/currency-conversion';
+import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
 import { normalizeMerchantName } from '@/lib/merchant';
 
 export const runtime = 'nodejs';
@@ -215,25 +215,39 @@ export async function GET(request: NextRequest) {
     const selectedRange = getDateRangeForPeriod(timePeriod, now);
     const comparisonRange = getComparisonDateRange(timePeriod, now);
 
-    // Fetch all income transactions for the user
-    const allIncomeTransactions = await db.transaction.findMany({
-      where: {
-        userId: user.id,
-        type: 'income',
-        investmentAssetId: null,
-      },
-      include: {
-        category: true,
-        currency: true,
-      },
-      orderBy: {
-        date: 'desc',
-      },
-    });
+    // Fetch core data in parallel
+    const minRequiredDate = new Date(now.getFullYear() - 1, 0, 1); // For average calculation we need since start of last year
+    
+    const [allIncomeTransactions, userCurrency] = await Promise.all([
+      db.transaction.findMany({
+        where: {
+          userId: user.id,
+          type: 'income',
+          investmentAssetId: null,
+          date: { gte: minRequiredDate }
+        },
+        include: { category: true, currency: true },
+        orderBy: { date: 'desc' },
+      }),
+      user.currencyId
+        ? db.currency.findUnique({ where: { id: user.currencyId } })
+        : db.currency.findFirst(),
+    ]);
 
-    const transactionsWithConverted = await convertTransactionsToTargetSimple(
+    if (!userCurrency) {
+      return NextResponse.json({ error: 'No currency configured.' }, { status: 500 });
+    }
+
+    const ratesMap = await preloadRatesMap(
+      allIncomeTransactions.map(t => ({ currencyId: t.currencyId, date: t.date })),
+      targetCurrencyId
+    );
+
+
+    const transactionsWithConverted = convertTransactionsWithRatesMap(
       allIncomeTransactions,
       targetCurrencyId,
+      ratesMap
     );
 
     // Helper: normalize to calendar date (strip time) for consistent period bucketing across timezones

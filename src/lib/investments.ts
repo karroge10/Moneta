@@ -1,6 +1,6 @@
 import { db } from './db';
 import { Currency, InvestmentType, AssetType, PricingMode } from '@prisma/client';
-import { convertAmount } from './currency-conversion';
+import { preloadRatesMap, convertTransactionsWithRatesMap, buildCacheKey } from './currency-conversion';
 
 export interface PortfolioAsset {
   assetId: number;
@@ -137,9 +137,17 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
     }
   }
 
-  const [cryptoPrices, stockPrices] = await Promise.all([
+  const [cryptoPrices, stockPrices, ratesMap] = await Promise.all([
     fetchCryptoPrices(cryptoIds),
-    fetchStockPrices(stockTickers)
+    fetchStockPrices(stockTickers),
+    preloadRatesMap(
+      [
+        ...transactions.map(t => ({ currencyId: t.currencyId, date: t.date })),
+        // Include today's rate for live price conversion
+        ...(usd ? [{ currencyId: usd.id, date: new Date() }] : [])
+      ],
+      targetCurrency.id
+    )
   ]);
 
   const portfolioAssets: PortfolioAsset[] = [];
@@ -160,7 +168,8 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
       const qty = Number(t.quantity);
       let pricePerUnit = Number(t.pricePerUnit);
       if (t.currencyId !== targetCurrency.id) {
-        pricePerUnit = await convertAmount(pricePerUnit, t.currencyId, targetCurrency.id, t.date);
+        const rate = ratesMap.get(buildCacheKey(t.currencyId, targetCurrency.id, t.date)) ?? 1;
+        pricePerUnit = pricePerUnit * rate;
       }
       lastPrice = pricePerUnit;
 
@@ -212,7 +221,8 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
 
     // Convert Live USD price to Target Currency immediately if needed
     if (isLivePriceInUSD && usd && targetCurrency.id !== usd.id) {
-      currentPrice = await convertAmount(currentPrice, usd.id, targetCurrency.id, new Date());
+      const rate = ratesMap.get(buildCacheKey(usd.id, targetCurrency.id, new Date())) ?? 1;
+      currentPrice = currentPrice * rate;
     }
 
     const currentValue = remainingQty * currentPrice;

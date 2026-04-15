@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import GoalsList from '@/components/goals/GoalsList';
@@ -35,31 +35,47 @@ export default function GoalsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const fetchGoals = useCallback(async () => {
+  const goalsFetchSeq = useRef(0);
+
+  const fetchGoals = useCallback(async (signal?: AbortSignal) => {
+    const seq = ++goalsFetchSeq.current;
     try {
       setLoading(true);
       setFetchError(false);
-      const res = await fetch('/api/goals');
-      
+      const res = await fetch('/api/goals', { signal });
+
       if (!res.ok) {
         throw new Error('Failed to fetch goals');
       }
-      
+
       const data = await res.json();
+      if (seq !== goalsFetchSeq.current) return;
       setGoals(data.goals || []);
     } catch (err) {
+      const aborted =
+        (err instanceof DOMException && err.name === 'AbortError') ||
+        (err instanceof Error && err.name === 'AbortError');
+      if (aborted) return;
+      if (seq !== goalsFetchSeq.current) return;
       console.error('Error fetching goals:', err);
       setFetchError(true);
       setGoals([]);
       addToast(err instanceof Error ? err.message : 'Failed to load goals', 'error');
     } finally {
-      setLoading(false);
+      if (seq === goalsFetchSeq.current) {
+        setLoading(false);
+      }
     }
   }, [addToast]);
 
   useEffect(() => {
     if (!authReady) return;
-    fetchGoals();
+    const ac = new AbortController();
+    void fetchGoals(ac.signal);
+    return () => {
+      ac.abort();
+      goalsFetchSeq.current += 1;
+    };
   }, [authReady, fetchGoals]);
 
   // Create draft goal for adding
