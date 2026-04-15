@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Bell, Settings, LogOut, Plus, HeadsetHelp, Upload, CalendarCheck } from 'iconoir-react';
 import Link from 'next/link';
 import { useClerk } from '@clerk/nextjs';
-import NotificationsDropdown from '@/components/updates/NotificationsDropdown';
+import NotificationsDropdown from '@/components/notifications/NotificationsDropdown';
 import { useNotifications } from '@/hooks/useNotifications';
 import Dropdown from '@/components/ui/Dropdown';
 import { TimePeriod } from '@/types/dashboard';

@@ -32,7 +32,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         try {
             setIsLoading(true);
             setError(null);
-            const response = await fetch('/api/notifications?limit=50');
+            const response = await fetch('/api/notifications?pageSize=50');
 
             if (response.status === 401) {
                 setNotifications([]);

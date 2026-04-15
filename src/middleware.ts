@@ -2,7 +2,15 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 // Public routes that don't require authentication
-const isPublicRoute = createRouteMatcher(["/", "/unauthorized", "/terms(.*)", "/privacy(.*)", "/api/feedback(.*)"]);
+const isPublicRoute = createRouteMatcher([
+  "/", 
+  "/unauthorized", 
+  "/sign-in(.*)", 
+  "/sign-up(.*)", 
+  "/terms(.*)", 
+  "/privacy(.*)", 
+  "/api/feedback(.*)"
+]);
 
 // Internal API routes that should be accessible via shared secret
 // Cron routes bypass Clerk auth (they have their own security checks)
