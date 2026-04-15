@@ -1,14 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Sen } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
-import DynamicLayout from "@/components/layout/DynamicLayout";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ToastProvider } from "@/contexts/ToastContext";
-import { headers } from "next/headers";
 
 const sen = Sen({
   variable: "--font-sen",
@@ -48,13 +46,29 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const headersList = await headers();
-  const isUnauthorizedPage = headersList.get("x-is-unauthorized") === "true";
-  const isLandingPage = headersList.get("x-is-landing-page") === "true";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   return (
     <ClerkProvider
+      appearance={{
+        baseTheme: dark,
+        variables: {
+          colorPrimary: "#AC66DA",
+          colorBackground: "#1a1a1a",
+          colorInputBackground: "#282828",
+          colorInputText: "#E7E4E4",
+          colorText: "#E7E4E4",
+          colorTextSecondary: "rgba(231, 228, 228, 0.7)",
+          colorDanger: "#D93F3F",
+          colorSuccess: "#74C648",
+          fontFamily: "var(--font-sen), Arial, Helvetica, sans-serif",
+          borderRadius: "15px",
+        },
+        elements: {
+          card: "border border-[rgba(231,228,228,0.06)] shadow-[0_10px_20px_rgba(0,0,0,0.3)]",
+          cardBox: "rounded-[30px]",
+        }
+      }}
       afterSignOutUrl="/"
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/dashboard"
@@ -69,12 +83,7 @@ export default async function RootLayout({
             <CurrencyProvider>
               <NotificationProvider>
               <ToastProvider>
-                <DynamicLayout
-                  initialIsUnauthorized={isUnauthorizedPage}
-                  initialIsLanding={isLandingPage}
-                >
-                  {children}
-                </DynamicLayout>
+                {children}
               </ToastProvider>
             </NotificationProvider>
           </CurrencyProvider>

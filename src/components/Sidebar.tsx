@@ -17,7 +17,7 @@ import {
   NavArrowLeft,
 } from "iconoir-react";
 import { ClerkLoaded, ClerkLoading, SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
-import ComingSoonBadge from '@/components/ui/ComingSoonBadge';
+ 
 
 interface SidebarProps {
   activeSection?: string;
@@ -106,12 +106,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
               >
                 <Icon width={20} height={20} strokeWidth={1.5} />
                 {!isCollapsed && (
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="text-sidebar-button truncate">{item.label}</span>
-                    {item.comingSoon && (
-                      <ComingSoonBadge size="sm" />
-                    )}
-                  </div>
+                  <span className="text-sidebar-button truncate">{item.label}</span>
                 )}
               </Link>
             );
