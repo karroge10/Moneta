@@ -81,7 +81,6 @@ async function wipeUserScopedData(userId: number) {
     prisma.transaction.deleteMany({ where: { userId } }),
     prisma.recurringTransaction.deleteMany({ where: { userId } }),
     prisma.goal.deleteMany({ where: { userId } }),
-    prisma.categoriesCustom.deleteMany({ where: { userId } }),
     prisma.merchant.deleteMany({ where: { userId } }),
     prisma.notification.deleteMany({ where: { userId } }),
     prisma.portfolioSnapshot.deleteMany({ where: { userId } }),
@@ -276,28 +275,6 @@ async function main() {
     update: {},
   });
 
-  await prisma.categoriesCustom.createMany({
-    data: [
-      {
-        userId,
-        name: 'Consulting retainers',
-        icon: 'LotOfCash',
-        color: '#74C648',
-        categoryId: requireCat('Freelance'),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        userId,
-        name: 'Dog & pet care',
-        icon: 'Gift',
-        color: '#AC66DA',
-        categoryId: requireCat('Other'),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ],
-  });
 
   await prisma.merchant.createMany({
     data: [
