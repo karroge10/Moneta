@@ -298,21 +298,29 @@ export async function preloadRatesMap(
   targetCurrencyId: number,
 ): Promise<Map<string, number>> {
   const uniqueKeys = new Map<string, { currencyId: number; date: Date }>();
+  const map = new Map<string, number>();
+  
   for (const t of transactions) {
-    if (t.currencyId === targetCurrencyId) continue;
     const key = buildCacheKey(t.currencyId, targetCurrencyId, t.date);
+    if (t.currencyId === targetCurrencyId) {
+      map.set(key, 1);
+      continue;
+    }
+    
+    if (rateCache.has(key)) {
+      map.set(key, rateCache.get(key)!);
+      continue;
+    }
+
     if (!uniqueKeys.has(key)) uniqueKeys.set(key, { currencyId: t.currencyId, date: t.date });
   }
-  const currencyIds = [...new Set([...uniqueKeys.values()].map((x) => x.currencyId))];
-  if (currencyIds.length === 0) {
-    const empty = new Map<string, number>();
-    for (const t of transactions) {
-      if (t.currencyId === targetCurrencyId) {
-        empty.set(buildCacheKey(t.currencyId, targetCurrencyId, t.date), 1);
-      }
-    }
-    return empty;
+
+  if (uniqueKeys.size === 0) {
+    return map;
   }
+
+  const currencyIds = [...new Set([...uniqueKeys.values()].map((x) => x.currencyId))];
+
 
   const orConditions: { baseCurrencyId: number; quoteCurrencyId: number }[] = [];
   for (const cid of currencyIds) {
@@ -335,7 +343,6 @@ export async function preloadRatesMap(
     byPair.get(pair)!.push({ rateDate: r.rateDate, rate: r.rate });
   }
 
-  const map = new Map<string, number>();
   for (const [key, { currencyId, date }] of uniqueKeys) {
     const directPair = `${currencyId},${targetCurrencyId}`;
     const reversePair = `${targetCurrencyId},${currencyId}`;
@@ -349,11 +356,7 @@ export async function preloadRatesMap(
     map.set(key, rate);
     rateCache.set(key, rate);
   }
-  for (const t of transactions) {
-    if (t.currencyId === targetCurrencyId) {
-      map.set(buildCacheKey(t.currencyId, targetCurrencyId, t.date), 1);
-    }
-  }
+
   return map;
 }
 

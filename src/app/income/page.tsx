@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import UpdateCard from '@/components/dashboard/UpdateCard';
@@ -28,7 +28,7 @@ import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 
 export default function IncomePage() {
   const authReady = useAuthReadyForApi();
-  const { currency } = useCurrency();
+  const { currency, incomeTaxRate } = useCurrency();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Year');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,34 +73,23 @@ export default function IncomePage() {
   // Keep mock data for components not requested to be changed
   const update = mockIncomePage.update;
 
-  const [incomeTaxRate, setIncomeTaxRate] = useState<number | null>(null);
+  const incomeFetchSeq = useRef(0);
 
-  useEffect(() => {
-    if (!authReady) return;
-    fetch('/api/user/settings')
-      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-      .then((data) => {
-        if (data.incomeTaxRate != null) {
-          setIncomeTaxRate(Number(data.incomeTaxRate));
-        } else {
-          setIncomeTaxRate(null);
-        }
-      })
-      .catch(() => setIncomeTaxRate(null));
-  }, [authReady]);
-  
-  const fetchIncomeData = useCallback(async () => {
+  const fetchIncomeData = useCallback(async (signal?: AbortSignal) => {
+    const seq = ++incomeFetchSeq.current;
     try {
       setLoading(true);
       setError(null);
       const params = new URLSearchParams({ timePeriod });
-      const response = await fetch(`/api/income?${params.toString()}`);
-      
+      const response = await fetch(`/api/income?${params.toString()}`, { signal });
+
       if (!response.ok) {
         throw new Error('Failed to fetch income data');
       }
-      
+
       const data = await response.json();
+      if (seq !== incomeFetchSeq.current) return;
+
       setTotal({
         amount: data.total?.amount || 0,
         trend: data.total?.trend || 0,
@@ -126,7 +115,9 @@ export default function IncomePage() {
         trendSkipped: data.averageDaily.trendSkipped,
       } : null);
 
-      const recurringResponse = await fetch('/api/recurring?type=income');
+      const recurringResponse = await fetch('/api/recurring?type=income', { signal });
+      if (seq !== incomeFetchSeq.current) return;
+
       if (recurringResponse.ok) {
         const recurringData = await recurringResponse.json();
         setRecurringItems(recurringData.items ?? []);
@@ -134,6 +125,11 @@ export default function IncomePage() {
         setRecurringItems([]);
       }
     } catch (err) {
+      const aborted =
+        (err instanceof DOMException && err.name === 'AbortError') ||
+        (err instanceof Error && err.name === 'AbortError');
+      if (aborted) return;
+      if (seq !== incomeFetchSeq.current) return;
       console.error('Error fetching income data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load income data');
       setTotal({ amount: 0, trend: 0, trendSkipped: false });
@@ -144,13 +140,20 @@ export default function IncomePage() {
       setRecurringItems([]);
       setDemographicComparison(null);
     } finally {
-      setLoading(false);
+      if (seq === incomeFetchSeq.current) {
+        setLoading(false);
+      }
     }
   }, [timePeriod]);
 
   useEffect(() => {
     if (!authReady) return;
-    fetchIncomeData();
+    const ac = new AbortController();
+    void fetchIncomeData(ac.signal);
+    return () => {
+      ac.abort();
+      incomeFetchSeq.current += 1;
+    };
   }, [authReady, fetchIncomeData]);
 
   // Create draft income transaction (positive amount for income)

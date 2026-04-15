@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import UpdateCard from '@/components/dashboard/UpdateCard';
@@ -55,6 +55,7 @@ export default function DashboardPage() {
   const authReady = useAuthReadyForApi();
   const { categories } = useCategories();
   const { currencyOptions, loading: currencyOptionsLoading } = useCurrencyOptions();
+  const dashboardFetchSeq = useRef(0);
 
   // Derive upcoming bills for the card from full recurring items (include paused, show Paused badge)
   const upcomingBills = useMemo((): Bill[] => {
@@ -74,70 +75,80 @@ export default function DashboardPage() {
   
   const update = mockUpdate;
 
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params = new URLSearchParams({ timePeriod });
-      const response = await fetch(`/api/dashboard?${params.toString()}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch dashboard data');
-      }
-      
-      const data = await response.json();
-      console.log('[dashboard] Received data:', data);
-      console.log('[dashboard] Income:', data.income);
-      console.log('[dashboard] Expenses:', data.expenses);
-      console.log('[dashboard] Income comparisonLabel:', data.income?.comparisonLabel);
-      console.log('[dashboard] Expenses comparisonLabel:', data.expenses?.comparisonLabel);
-      setIncome({
-        amount: data.income?.amount || 0,
-        trend: data.income?.trend || 0,
-        comparisonLabel: data.income?.comparisonLabel || '',
-      });
-      setExpenses({
-        amount: data.expenses?.amount || 0,
-        trend: data.expenses?.trend || 0,
-        comparisonLabel: data.expenses?.comparisonLabel || '',
-      });
-      setTransactions(data.transactions || []);
-      setTopExpenses(data.topExpenses || []);
-      setInvestments(data.investments || []);
-      setFinancialHealth(
-        data.financialHealth != null
-          ? {
-              score: data.financialHealth.score ?? 0,
-              trend: data.financialHealth.trend ?? 0,
-              details: data.financialHealth.details ?? { saving: 0, spendingControl: 0, goals: 0, engagement: 0 },
-            }
-          : null
-      );
-      setRoundupInsight(data.roundupInsight ?? emptyRoundupInsight());
+  const fetchDashboardData = useCallback(
+    async (signal?: AbortSignal) => {
+      const seq = ++dashboardFetchSeq.current;
+      try {
+        setLoading(true);
+        setError(null);
+        const params = new URLSearchParams({ timePeriod });
+        const response = await fetch(`/api/dashboard?${params.toString()}`, { signal });
 
-      const recurringResponse = await fetch('/api/recurring?type=expense');
-      if (recurringResponse.ok) {
-        const recurringData = await recurringResponse.json();
-        setRecurringItems(recurringData.items ?? []);
-      } else {
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard data');
+        }
+
+        const data = await response.json();
+        if (seq !== dashboardFetchSeq.current) {
+          return;
+        }
+
+        setIncome({
+          amount: data.income?.amount || 0,
+          trend: data.income?.trend || 0,
+          comparisonLabel: data.income?.comparisonLabel || '',
+        });
+        setExpenses({
+          amount: data.expenses?.amount || 0,
+          trend: data.expenses?.trend || 0,
+          comparisonLabel: data.expenses?.comparisonLabel || '',
+        });
+        setTransactions(data.transactions || []);
+        setTopExpenses(data.topExpenses || []);
+        setInvestments(data.investments || []);
+        setFinancialHealth(
+          data.financialHealth != null
+            ? {
+                score: data.financialHealth.score ?? 0,
+                trend: data.financialHealth.trend ?? 0,
+                details: data.financialHealth.details ?? { saving: 0, spendingControl: 0, goals: 0, engagement: 0 },
+              }
+            : null
+        );
+        setRoundupInsight(data.roundupInsight ?? emptyRoundupInsight());
+        setRecurringItems(data.recurringItems ?? []);
+
+        const rawGoals: Goal[] = data.goals || [];
+        setGoals(rawGoals.filter((goal) => getGoalStatus(goal) !== 'completed'));
+      } catch (err) {
+        const aborted =
+          (err instanceof DOMException && err.name === 'AbortError') ||
+          (err instanceof Error && err.name === 'AbortError');
+        if (aborted) {
+          return;
+        }
+        if (seq !== dashboardFetchSeq.current) {
+          return;
+        }
+        console.error('Error fetching dashboard data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+        setIncome({ amount: 0, trend: 0, comparisonLabel: '' });
+        setExpenses({ amount: 0, trend: 0, comparisonLabel: '' });
+        setTransactions([]);
+        setTopExpenses([]);
+        setInvestments([]);
         setRecurringItems([]);
+        setGoals([]);
+        setFinancialHealth(null);
+        setRoundupInsight(null);
+      } finally {
+        if (seq === dashboardFetchSeq.current) {
+          setLoading(false);
+        }
       }
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
-      // Set empty defaults on error
-      setIncome({ amount: 0, trend: 0, comparisonLabel: '' });
-      setExpenses({ amount: 0, trend: 0, comparisonLabel: '' });
-      setTransactions([]);
-      setTopExpenses([]);
-      setInvestments([]);
-      setRecurringItems([]);
-      setFinancialHealth(null);
-      setRoundupInsight(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [timePeriod]);
+    },
+    [timePeriod]
+  );
 
   // Fetch goals separately - filter out completed goals
   const fetchGoals = useCallback(async () => {
@@ -154,11 +165,6 @@ export default function DashboardPage() {
       setGoals([]);
     }
   }, []);
-
-  useEffect(() => {
-    if (!authReady) return;
-    fetchGoals();
-  }, [authReady, fetchGoals]);
 
   const handleEditGoal = (goal: Goal) => {
     setModalMode('edit');
@@ -361,7 +367,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!authReady) return;
-    fetchDashboardData();
+    const ac = new AbortController();
+    void fetchDashboardData(ac.signal);
+    return () => {
+      ac.abort();
+      dashboardFetchSeq.current += 1;
+    };
   }, [authReady, fetchDashboardData]);
 
   // Helper to render skeleton layout

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import UpdateCard from '@/components/dashboard/UpdateCard';
@@ -73,20 +73,25 @@ export default function ExpensesPage() {
   
   // Keep mock data for components not requested to be changed
   const update = mockExpensesPage.update;
-  
-  const fetchExpensesData = useCallback(async () => {
+
+  const expensesFetchSeq = useRef(0);
+
+  const fetchExpensesData = useCallback(async (signal?: AbortSignal) => {
+    const seq = ++expensesFetchSeq.current;
     try {
       setLoading(true);
       setError(null);
       const params = new URLSearchParams({ timePeriod });
-      const response = await fetch(`/api/expenses?${params.toString()}`);
-      
+      const response = await fetch(`/api/expenses?${params.toString()}`, { signal });
+
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error ?? 'Failed to fetch expenses data');
       }
-      
+
       const data = await response.json();
+      if (seq !== expensesFetchSeq.current) return;
+
       if (data && !data.error) {
         setTotal({
           amount: data.total?.amount || 0,
@@ -114,7 +119,9 @@ export default function ExpensesPage() {
         setDemographicComparison(data.demographicComparison || null);
       }
 
-      const recurringResponse = await fetch('/api/recurring?type=expense');
+      const recurringResponse = await fetch('/api/recurring?type=expense', { signal });
+      if (seq !== expensesFetchSeq.current) return;
+
       if (recurringResponse.ok) {
         const recurringData = await recurringResponse.json();
         setRecurringItems(recurringData.items ?? []);
@@ -122,6 +129,11 @@ export default function ExpensesPage() {
         setRecurringItems([]);
       }
     } catch (err) {
+      const aborted =
+        (err instanceof DOMException && err.name === 'AbortError') ||
+        (err instanceof Error && err.name === 'AbortError');
+      if (aborted) return;
+      if (seq !== expensesFetchSeq.current) return;
       console.error('Error fetching expenses data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load expenses data');
       setTotal({ amount: 0, trend: 0 });
@@ -134,13 +146,20 @@ export default function ExpensesPage() {
       setRecurringItems([]);
       setDemographicComparison(null);
     } finally {
-      setLoading(false);
+      if (seq === expensesFetchSeq.current) {
+        setLoading(false);
+      }
     }
   }, [timePeriod]);
 
   useEffect(() => {
     if (!authReady) return;
-    fetchExpensesData();
+    const ac = new AbortController();
+    void fetchExpensesData(ac.signal);
+    return () => {
+      ac.abort();
+      expensesFetchSeq.current += 1;
+    };
   }, [authReady, fetchExpensesData]);
 
   // Create draft expense transaction (negative amount for expense)

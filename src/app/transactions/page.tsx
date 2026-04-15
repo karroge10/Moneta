@@ -12,13 +12,15 @@ import TypeFilter from '@/components/transactions/shared/TypeFilter';
 import MonthFilter from '@/components/transactions/shared/MonthFilter';
 import Card from '@/components/ui/Card';
 import { ToastContainer, type ToastType } from '@/components/ui/Toast';
-import { Transaction, Category, RecurringItem, RecurringRow } from '@/types/dashboard';
+import { Transaction, RecurringItem, RecurringRow } from '@/types/dashboard';
 import { Upload, Reports, NavArrowUp, NavArrowDown } from 'iconoir-react';
 import { getIcon } from '@/lib/iconMapping';
 import { formatNumber } from '@/lib/utils';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
 import { buildTransactionFromRecurring } from '@/lib/recurring-utils';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useCategories } from '@/hooks/useCategories';
+import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
 import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -34,6 +36,8 @@ type ViewMode = 'past' | 'future';
 export default function TransactionsPage() {
   const authReady = useAuthReadyForApi();
   const { currency } = useCurrency();
+  const { categories } = useCategories();
+  const { currencyOptions, loading: currencyOptionsLoading } = useCurrencyOptions();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -42,9 +46,6 @@ export default function TransactionsPage() {
     return 'past';
   });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [currencyOptions, setCurrencyOptions] = useState<Array<{ id: number; name: string; symbol: string; alias: string }>>([]);
-  const [currencyOptionsLoading, setCurrencyOptionsLoading] = useState(true);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
   const [loading, setLoading] = useState(true);
@@ -172,6 +173,24 @@ export default function TransactionsPage() {
       setTotal(data.total || 0);
       setTotalPages(data.totalPages || 0);
       setCurrentPage(data.page || 1);
+
+      // Consolidate months from the first page of results
+      if (data.transactions) {
+        setAvailableMonths(prev => {
+          const months = new Set(prev);
+          data.transactions.forEach((t: Transaction) => {
+            const dateStr = t.dateRaw || t.date;
+            if (dateStr) {
+              const date = new Date(dateStr);
+              if (!isNaN(date.getTime())) {
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                months.add(monthKey);
+              }
+            }
+          });
+          return Array.from(months).sort().reverse();
+        });
+      }
     } catch (err) {
       console.error('Error fetching transactions:', err);
       addToast(err instanceof Error ? err.message : 'Failed to load transactions', 'error');
@@ -179,43 +198,6 @@ export default function TransactionsPage() {
       setLoading(false);
     }
   }, [debouncedSearchQuery, categoryFilter, typeFilter, monthFilter, pageSize, sortColumn, sortOrder, addToast]);
-
-  // Fetch categories
-  useEffect(() => {
-    if (!authReady) return;
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch('/api/categories');
-        if (response.ok) {
-          const data = await response.json();
-          setCategories(data.categories || []);
-        }
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-      }
-    };
-    fetchCategories();
-  }, [authReady]);
-
-  // Fetch currencies
-  useEffect(() => {
-    if (!authReady) return;
-    const fetchCurrencies = async () => {
-      try {
-        setCurrencyOptionsLoading(true);
-        const response = await fetch('/api/currencies');
-        if (response.ok) {
-          const data = await response.json();
-          setCurrencyOptions(data.currencies || []);
-        }
-      } catch (err) {
-        console.error('Error fetching currencies:', err);
-      } finally {
-        setCurrencyOptionsLoading(false);
-      }
-    };
-    fetchCurrencies();
-  }, [authReady]);
 
   // Fetch recurring items for future view
   const fetchRecurring = useCallback(async () => {
@@ -253,39 +235,6 @@ export default function TransactionsPage() {
   // Get available months - fetch from API
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (!authReady) return;
-    const fetchAvailableMonths = async () => {
-      try {
-        // Fetch a sample to get months (first page should have recent transactions)
-        const params = new URLSearchParams({
-          page: '1',
-          pageSize: '100',
-          timePeriod: 'All Time',
-        });
-        const response = await fetch(`/api/transactions?${params.toString()}`);
-        if (response.ok) {
-          const data = await response.json();
-          const months = new Set<string>();
-          data.transactions.forEach((t: Transaction) => {
-            // Use dateRaw if available, otherwise parse the formatted date
-            const dateStr = t.dateRaw || t.date;
-            if (dateStr) {
-              const date = new Date(dateStr);
-              if (!isNaN(date.getTime())) {
-                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                months.add(monthKey);
-              }
-            }
-          });
-          setAvailableMonths(Array.from(months).sort().reverse());
-        }
-      } catch (err) {
-        console.error('Error fetching available months:', err);
-      }
-    };
-    fetchAvailableMonths();
-  }, [authReady]);
 
   const createDraftTransaction = () => ({
     id: crypto.randomUUID(),

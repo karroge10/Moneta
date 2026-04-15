@@ -46,7 +46,9 @@ export default clerkMiddleware(async (auth, request) => {
       }
       console.log(`[middleware] No userId, redirecting to /unauthorized from ${pathname}`);
       const unauthorizedUrl = new URL("/unauthorized", request.url);
-      unauthorizedUrl.searchParams.set("redirect", request.url);
+      // Path-only avoids localhost vs 127.0.0.1 redirect loops with Clerk return URLs
+      const returnPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+      unauthorizedUrl.searchParams.set("redirect", returnPath);
       return NextResponse.redirect(unauthorizedUrl);
     }
   }

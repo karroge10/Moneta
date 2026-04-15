@@ -68,14 +68,13 @@ export default function SettingsPage() {
   const router = useRouter();
   const { signOut, openUserProfile } = useClerk();
   const { user } = useUser();
-  const { refetch: refetchCurrency } = useCurrency();
+  const { refetch: refetchCurrency, userSettingsSnapshot, loading: preferencesLoading } = useCurrency();
   const userImageUrl = user?.imageUrl ?? null;
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('All Time');
   const [userSettings, setUserSettings] = useState<UserSettings>(emptySettings);
   const [incomeTaxRate, setIncomeTaxRate] = useState<number | null>(null);
   const [dataSharingEnabled, setDataSharingEnabled] = useState(true);
   const [currencies, setCurrencies] = useState<CurrencyOption[]>([]);
-  const [loading, setLoading] = useState(true);
   const [loginHistory, setLoginHistory] = useState<LoginHistoryEntry[]>([]);
   const [loginHistoryLoading, setLoginHistoryLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -90,25 +89,6 @@ export default function SettingsPage() {
   const addToast = useCallback((message: string, type: ToastType = 'success') => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     setToasts((prev) => [...prev, { id, message, type }]);
-  }, []);
-
-  const fetchSettings = useCallback(async () => {
-    try {
-      const res = await fetch('/api/user/settings');
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data = await res.json();
-      setUserSettings(mapApiToUserSettings(data));
-      setIncomeTaxRate(data.incomeTaxRate ?? null);
-      setDataSharingEnabled(data.dataSharingEnabled ?? true);
-      setCurrencies(data.currencies ?? []);
-    } catch {
-      setUserSettings(emptySettings);
-      setIncomeTaxRate(null);
-      setDataSharingEnabled(true);
-      setCurrencies([]);
-    } finally {
-      setLoading(false);
-    }
   }, []);
 
   const fetchLoginHistory = useCallback(async () => {
@@ -130,8 +110,18 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!authReady) return;
-    fetchSettings();
-  }, [authReady, fetchSettings]);
+    if (userSettingsSnapshot) {
+      setUserSettings(mapApiToUserSettings(userSettingsSnapshot));
+      setIncomeTaxRate(userSettingsSnapshot.incomeTaxRate ?? null);
+      setDataSharingEnabled(userSettingsSnapshot.dataSharingEnabled ?? true);
+      setCurrencies(userSettingsSnapshot.currencies ?? []);
+    } else if (!preferencesLoading) {
+      setUserSettings(emptySettings);
+      setIncomeTaxRate(null);
+      setDataSharingEnabled(true);
+      setCurrencies([]);
+    }
+  }, [authReady, userSettingsSnapshot, preferencesLoading]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -299,7 +289,7 @@ export default function SettingsPage() {
               currencyOptions={currencies}
               userImageUrl={userImageUrl}
               onOpenAccountProfile={handleOpenAccountProfile}
-              loading={loading}
+              loading={preferencesLoading}
               disabled={saving}
               className="h-full"
             />
@@ -312,17 +302,17 @@ export default function SettingsPage() {
               onChange={handleChange}
               onOpenAccountProfile={handleOpenAccountProfile}
               onDeleteAccount={handleDeleteAccountClick}
-              loading={loading}
+              loading={preferencesLoading}
               disabled={saving}
               usernameError={usernameError}
             />
             <DataSharingCard
               isEnabled={dataSharingEnabled}
               onToggle={handleDataSharingToggle}
-              loading={loading}
+              loading={preferencesLoading}
               disabled={saving}
             />
-            <ExportDataCard loading={loading} />
+            <ExportDataCard loading={preferencesLoading} />
           </div>
         </div>
 

@@ -3,7 +3,7 @@ import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { LatestExpense, ExpenseCategory, PerformanceDataPoint, TimePeriod } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
-import { convertTransactionsToTargetSimple } from '@/lib/currency-conversion';
+import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
 import { getInvestmentsPortfolio } from '@/lib/investments';
 import { computeRoundupInsight } from '@/lib/roundup-insight';
 
@@ -212,25 +212,40 @@ export async function GET(request: NextRequest) {
     const selectedRange = getDateRangeForPeriod(timePeriod, now);
     const comparisonRange = getComparisonDateRange(timePeriod, now);
 
-    // Fetch all expense transactions for the user
-    const allExpenseTransactions = await db.transaction.findMany({
-      where: {
-        userId: user.id,
-        type: 'expense',
-        investmentAssetId: null,
-      },
-      include: {
-        category: true,
-        currency: true,
-      },
-      orderBy: {
-        date: 'desc',
-      },
-    });
+    // Fetch core data in parallel
+    const minRequiredDate = new Date(now.getFullYear() - 1, 0, 1); // For average calculation we need since start of last year
+    
+    const [allExpenseTransactions, userCurrency, portfolioSummary] = await Promise.all([
+      db.transaction.findMany({
+        where: {
+          userId: user.id,
+          type: 'expense',
+          investmentAssetId: null,
+          date: { gte: minRequiredDate }
+        },
+        include: { category: true, currency: true },
+        orderBy: { date: 'desc' },
+      }),
+      user.currencyId
+        ? db.currency.findUnique({ where: { id: user.currencyId } })
+        : db.currency.findFirst(),
+      getInvestmentsPortfolio(user.id, userCurrencyRecord),
+    ]);
 
-    const transactionsWithConverted = await convertTransactionsToTargetSimple(
+    if (!userCurrency) {
+      return NextResponse.json({ error: 'No currency configured.' }, { status: 500 });
+    }
+
+    const ratesMap = await preloadRatesMap(
+      allExpenseTransactions.map(t => ({ currencyId: t.currencyId, date: t.date })),
+      targetCurrencyId
+    );
+
+
+    const transactionsWithConverted = convertTransactionsWithRatesMap(
       allExpenseTransactions,
       targetCurrencyId,
+      ratesMap
     );
 
     // Helper: normalize to calendar date (strip time) for consistent period bucketing across timezones
@@ -450,8 +465,7 @@ export async function GET(request: NextRequest) {
 
     const comparisonLabel = getComparisonLabel(timePeriod);
 
-    const investmentsPortfolio = await getInvestmentsPortfolio(user.id, userCurrencyRecord);
-    const roundupInsight = await computeRoundupInsight(selectedPeriodExpenses, investmentsPortfolio.assets);
+    const roundupInsight = await computeRoundupInsight(selectedPeriodExpenses, portfolioSummary.assets);
 
     // Calculate internal trend for performance graph
     const firstPerfValue = performanceData.length > 0 ? performanceData[0].value : 0;
