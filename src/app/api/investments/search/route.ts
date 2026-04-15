@@ -35,8 +35,9 @@ async function searchCoingecko(query: string): Promise<SearchResult[]> {
 
 async function tryStooqQuote(ticker: string): Promise<SearchResult[]> {
   if (!ticker) return [];
-  const normalized = ticker.toLowerCase();
+  const normalized = ticker.toLowerCase().replace(/\.us$/i, '');
   const res = await fetch(`https://stooq.pl/q/l/?s=${normalized}.us&f=sd2t2ohlcv&h&e=json`, { cache: 'no-store' });
+
   if (!res.ok) return [];
   const data = await res.json();
   const symbolData = data?.symbols?.[0];

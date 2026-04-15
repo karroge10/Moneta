@@ -114,6 +114,8 @@ export default function Sidebar({ activeSection }: SidebarProps) {
         </nav>
       </div>
 
+
+
       {/* Footer with Auth */}
       <div className="sidebar-footer">
         <ClerkLoading>

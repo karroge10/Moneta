@@ -66,7 +66,11 @@ async function fetchCryptoPrices(ids: string[]): Promise<Record<string, number>>
 async function fetchStockPrices(tickers: string[]): Promise<Record<string, number>> {
   if (tickers.length === 0) return {};
   const unique = Array.from(new Set(tickers));
-  const symbols = unique.map(t => `${t.toLowerCase()}.us`).join('+');
+  const symbols = unique.map(t => {
+    const lower = t.toLowerCase();
+    return lower.endsWith('.us') ? lower : `${lower}.us`;
+  }).join('+');
+
   const url = `https://stooq.pl/q/l/?s=${symbols}&f=sd2t2ohlcv&h&e=json`;
 
   try {
