@@ -6,7 +6,7 @@ import Dropdown from '@/components/ui/Dropdown';
 import { CalendarCheck } from 'iconoir-react';
 import { TimePeriod } from '@/types/dashboard';
 import MobileDrawer from './MobileDrawer';
-import NotificationsDropdown from '@/components/updates/NotificationsDropdown';
+import NotificationsDropdown from '@/components/notifications/NotificationsDropdown';
 import { useNotifications } from '@/hooks/useNotifications';
 
 interface MobileNavbarProps {

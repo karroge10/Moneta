@@ -15,25 +15,65 @@ const sen = Sen({
 });
 
 export const metadata: Metadata = {
-  title: "Moneta",
-  description: "Smart Financial Dashboard",
-  applicationName: "Moneta",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  title: {
+    default: "Moneta — Smart Financial Dashboard",
+    template: "%s | Moneta"
+  },
+  description: "Take control of your finances with Moneta. Smart tracking, investment portfolio management, and automated insights.",
+  keywords: ["financial dashboard", "expense tracker", "investment portfolio", "money management", "personal finance"],
+  authors: [{ name: "Moneta Team" }],
+  creator: "Moneta",
+  publisher: "Moneta",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://moneta.app"),
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico" },
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-    shortcut: ["/favicon.ico"],
+    shortcut: ["/monetalogo.png"],
   },
-  manifest: "/site.webmanifest",
   openGraph: {
-    title: "Moneta",
-    description: "Smart Financial Dashboard",
+    type: "website",
+    locale: "en_US",
+    url: "https://moneta.app",
+    siteName: "Moneta",
+    title: "Moneta — Smart Financial Dashboard",
+    description: "Elegant and powerful financial tracking for modern investors.",
     images: [
-      { url: "/monetalogo.png", width: 512, height: 512, alt: "Moneta Logo" },
+      {
+        url: "/dashboard.png",
+        width: 1200,
+        height: 630,
+        alt: "Moneta Dashboard Overview",
+      },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Moneta — Smart Financial Dashboard",
+    description: "Elegant and powerful financial tracking for modern investors.",
+    images: ["/dashboard.png"],
+    creator: "@moneta_app",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 
