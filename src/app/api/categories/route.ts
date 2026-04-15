@@ -11,19 +11,8 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
 
-    const [standardCategories, customCategories, categoryUsageCounts] = await Promise.all([
+    const [standardCategories, categoryUsageCounts] = await Promise.all([
       db.category.findMany({
-        orderBy: {
-          name: 'asc',
-        },
-      }),
-      db.categoriesCustom.findMany({
-        where: {
-          userId: user.id,
-        },
-        include: {
-          category: true,
-        },
         orderBy: {
           name: 'asc',
         },
@@ -51,7 +40,7 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    // Transform standard categories with usage counts and type
+    // Transform categories with usage counts and type
     const categories: (Category & { usageCount: number; type?: string | null })[] = standardCategories.map((cat: { id: number; name: string; icon: string; color: string; type: string | null }) => ({
       id: cat.id.toString(),
       name: cat.name,
@@ -60,30 +49,7 @@ export async function GET(request: NextRequest) {
       type: cat.type || null,
       usageCount: usageMap.get(cat.id) || 0,
     }));
-    
-    // Add custom categories (use standard category icon/color if linked, otherwise use custom)
-    customCategories.forEach((customCat: { id: number; name: string; icon: string | null; color: string | null; category: { icon: string; color: string } | null; categoryId: number | null }) => {
-      const existingIndex = categories.findIndex((c: Category) => c.name === customCat.name);
-      if (existingIndex >= 0) {
-        // Update existing category with custom icon/color if provided
-        if (customCat.icon) categories[existingIndex].icon = customCat.icon;
-        if (customCat.color) categories[existingIndex].color = customCat.color;
-        // If custom category is linked to a standard category, use that usage count
-        if (customCat.categoryId) {
-          categories[existingIndex].usageCount = usageMap.get(customCat.categoryId) || 0;
-        }
-      } else {
-        // Add new custom category
-        const usageCount = customCat.categoryId ? (usageMap.get(customCat.categoryId) || 0) : 0;
-        categories.push({
-          id: customCat.id.toString(),
-          name: customCat.name,
-          icon: customCat.icon || customCat.category?.icon || 'HelpCircle',
-          color: customCat.color || customCat.category?.color || '#AC66DA',
-          usageCount,
-        });
-      }
-    });
+
     
     // Sort by usage count (descending), then alphabetically by name
     categories.sort((a, b) => {

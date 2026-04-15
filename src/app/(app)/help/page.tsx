@@ -6,6 +6,7 @@ import MobileNavbar from '@/components/MobileNavbar';
 import FAQSection from '@/components/help/FAQSection';
 import SendFeedbackCard from '@/components/help/SendFeedbackCard';
 import LearningCenterCard from '@/components/help/LearningCenterCard';
+import LegalSection from '@/components/help/LegalSection';
 import { faqData } from '@/lib/faqData';
 import { TimePeriod } from '@/types/dashboard';
 
@@ -51,6 +52,7 @@ export default function HelpPage() {
       <FAQSection faqItems={faqData} />
       <SendFeedbackCard />
       <LearningCenterCard />
+      <LegalSection />
     </div>
 
     {/* Tablet: even split */}
@@ -61,6 +63,7 @@ export default function HelpPage() {
       <div className="flex flex-col gap-4 min-h-0">
         <SendFeedbackCard />
         <LearningCenterCard />
+        <LegalSection />
       </div>
     </div>
 
@@ -72,9 +75,11 @@ export default function HelpPage() {
       <div className="flex flex-col gap-4 min-h-0">
         <SendFeedbackCard />
         <LearningCenterCard />
+        <LegalSection />
       </div>
     </div>
     </main>
   );
 }
+
 

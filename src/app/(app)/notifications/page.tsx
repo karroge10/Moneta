@@ -4,24 +4,23 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import NotificationsTable from '@/components/notifications/NotificationsTable';
-import NotificationSettingsModal from '@/components/notifications/NotificationSettingsModal';
 import Card from '@/components/ui/Card';
-import { DEFAULT_NOTIFICATION_SETTINGS } from '@/lib/notification-settings-constants';
-import type { NotificationSettings, NotificationEntry } from '@/types/dashboard';
+import type { NotificationEntry } from '@/types/dashboard';
 import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
-import { useCurrency } from '@/hooks/useCurrency';
-import { Settings, NavArrowLeft, NavArrowRight } from 'iconoir-react';
+import { NavArrowLeft, NavArrowRight } from 'iconoir-react';
+
+
 
 const DEFAULT_PAGE_SIZE = 10;
 
+
 export default function NotificationsPage() {
   const authReady = useAuthReadyForApi();
-  const { userSettingsSnapshot, loading: preferencesLoading, refetch: refetchCurrency } = useCurrency();
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   // Pagination & Data
+
   const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -56,33 +55,14 @@ export default function NotificationsPage() {
     fetchNotifications(currentPage);
   }, [authReady, currentPage, fetchNotifications]);
 
-  useEffect(() => {
-    if (!authReady || preferencesLoading) return;
-    if (userSettingsSnapshot) {
-      setNotificationSettings(userSettingsSnapshot.notificationSettings);
-    }
-  }, [authReady, preferencesLoading, userSettingsSnapshot]);
 
-  const handleToggleSetting = useCallback(async (key: keyof NotificationSettings, enabled: boolean) => {
-    const next = { ...notificationSettings, [key]: enabled };
-    setNotificationSettings(next);
-    try {
-      const res = await fetch('/api/user/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notificationSettings: next }),
-      });
-      if (!res.ok) void refetchCurrency();
-    } catch {
-      void refetchCurrency();
-    }
-  }, [notificationSettings, refetchCurrency]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && (totalPages === 0 || newPage <= totalPages)) {
       setCurrentPage(newPage);
     }
   };
+
 
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
@@ -114,19 +94,12 @@ export default function NotificationsPage() {
                   <div className="flex items-center gap-2 text-sm text-[#9CA3AF]">
                     <span>{total} items total</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsSettingsModalOpen(true)}
-                    className="flex items-center gap-2 p-2 rounded-full hover-text-purple transition-colors cursor-pointer"
-                    aria-label="Notification Settings"
-                  >
-                    <Settings width={20} height={20} strokeWidth={1.5} />
-                  </button>
                 </div>
               </div>
             }
             className="flex-1 flex flex-col min-h-0 w-full"
           >
+
             <div className="flex flex-col flex-1 min-h-0">
               <div className="flex-1 min-h-0">
                 <NotificationsTable
@@ -214,13 +187,7 @@ export default function NotificationsPage() {
           </Card>
         </div>
       </div>
-
-      <NotificationSettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        settings={notificationSettings}
-        onToggle={handleToggleSetting}
-      />
     </main>
   );
 }
+
