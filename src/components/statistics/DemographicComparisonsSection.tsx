@@ -6,7 +6,7 @@ import Card from '@/components/ui/Card';
 import { NavArrowDown, User, Settings, City, Suitcase } from 'iconoir-react';
 import { DemographicComparison } from '@/types/dashboard';
 import { getIcon } from '@/lib/iconMapping';
-import type { DemographicDimension } from '@/app/statistics/page';
+import type { DemographicDimension } from '@/app/(app)/statistics/page';
 
 const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
 const SKELETON_ITEMS = 5;
