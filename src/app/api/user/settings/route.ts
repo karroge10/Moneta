@@ -52,7 +52,6 @@ export async function GET() {
     return NextResponse.json({
       userId: userWithRelations.id,
       name: [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(' ') || null,
-      userName: userWithRelations.userName,
       email,
       dateOfBirth: u.dateOfBirth ? u.dateOfBirth.toISOString().slice(0, 10) : null,
       country: u.country ?? null,
@@ -93,7 +92,7 @@ export async function GET() {
 /**
  * PATCH /api/user/settings
  * Update current user's settings
- * Body: { userName?, dateOfBirth?, country?, languageId?, currencyId?, incomeTaxRate?, dataSharingEnabled? }
+ * Body: { dateOfBirth?, country?, languageId?, currencyId?, incomeTaxRate?, dataSharingEnabled? }
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -102,7 +101,6 @@ export async function PATCH(request: NextRequest) {
     const clerkUser = await currentUser();
 
     const updateData: {
-      userName?: string | null;
       dateOfBirth?: Date | null;
       country?: string | null;
       profession?: string | null;
@@ -113,31 +111,6 @@ export async function PATCH(request: NextRequest) {
       notificationSettings?: object;
     } = {};
 
-    if (body.userName !== undefined) {
-      const userName = body.userName === '' ? null : String(body.userName).trim();
-      if (userName !== null && userName.length > 0) {
-        const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
-        if (!usernameRegex.test(userName)) {
-          return NextResponse.json(
-            {
-              error:
-                'Username must be 3–30 characters and only contain letters, numbers, and underscores',
-            },
-            { status: 400 }
-          );
-        }
-        const existing = await db.user.findFirst({
-          where: { userName, id: { not: user.id } },
-        });
-        if (existing) {
-          return NextResponse.json(
-            { error: 'Username is already taken' },
-            { status: 400 }
-          );
-        }
-      }
-      updateData.userName = userName;
-    }
     if (body.dateOfBirth !== undefined) {
       if (body.dateOfBirth === null || body.dateOfBirth === '') {
         updateData.dateOfBirth = null;
@@ -263,7 +236,6 @@ export async function PATCH(request: NextRequest) {
       message: 'Settings updated successfully',
       settings: {
         name: [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(' ') || null,
-        userName: updatedUser.userName,
         dateOfBirth: u.dateOfBirth ? u.dateOfBirth.toISOString().slice(0, 10) : null,
         country: (updatedUser as { country?: string | null }).country ?? null,
         profession: (updatedUser as { profession?: string | null }).profession ?? null,

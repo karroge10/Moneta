@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Card from '@/components/ui/Card';
 import { Download } from 'iconoir-react';
-import { ToastContainer, type ToastType } from '@/components/ui/Toast';
 
 interface ExportDataCardProps {
   loading?: boolean;
@@ -111,7 +110,7 @@ export default function ExportDataCard({ loading = false }: ExportDataCardProps)
 
   if (loading) {
     return (
-      <Card title="Export Data" showActions={false}>
+      <Card title="Export Data" showActions={false} className="h-full">
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-4">
             <div className="w-6 h-6 rounded shrink-0 animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
@@ -126,7 +125,7 @@ export default function ExportDataCard({ loading = false }: ExportDataCardProps)
   }
 
   return (
-    <Card title="Export Data" showActions={false}>
+    <Card title="Export Data" showActions={false} className="h-full">
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-4">
           <div className="shrink-0">

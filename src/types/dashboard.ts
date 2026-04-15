@@ -233,7 +233,6 @@ export interface TransactionUploadResponse {
 
 export interface UserSettings {
   name: string;
-  username: string;
   email: string;
   jobPosition: string;
   age: number;
@@ -241,7 +240,6 @@ export interface UserSettings {
   currency: string;
   dateOfBirth: string;
   profession: string;
-  /** null = disabled, number = enabled (percentage 0-100) */
   incomeTaxRate: number | null;
 }
 
