@@ -7,12 +7,15 @@ import { QueryProvider } from "@/providers/QueryProvider";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ToastProvider } from "@/contexts/ToastContext";
+import { Analytics } from "@vercel/analytics/react";
 
 const sen = Sen({
   variable: "--font-sen",
   subsets: ["latin"],
   weight: ["400", "600", "700"],
 });
+
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://monetafin.vercel.app";
 
 export const metadata: Metadata = {
   title: {
@@ -29,7 +32,7 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://moneta.app"),
+  metadataBase: new URL(siteUrl),
   alternates: {
     canonical: "/",
   },
@@ -44,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://moneta.app",
+    url: siteUrl,
     siteName: "Moneta",
     title: "Moneta — Smart Financial Dashboard",
     description: "Elegant and powerful financial tracking for modern investors.",
@@ -86,7 +89,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const currentSiteUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   return (
     <ClerkProvider
@@ -112,7 +115,7 @@ export default async function RootLayout({
       afterSignOutUrl="/"
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/dashboard"
-      allowedRedirectOrigins={[siteUrl, "http://localhost:3000", "http://127.0.0.1:3000"]}
+      allowedRedirectOrigins={[currentSiteUrl, "http://localhost:3000", "http://127.0.0.1:3000"]}
     >
       <html lang="en" suppressHydrationWarning>
         <body
@@ -124,6 +127,7 @@ export default async function RootLayout({
               <NotificationProvider>
               <ToastProvider>
                 {children}
+                <Analytics />
               </ToastProvider>
             </NotificationProvider>
           </CurrencyProvider>
@@ -133,3 +137,4 @@ export default async function RootLayout({
     </ClerkProvider>
   );
 }
+
