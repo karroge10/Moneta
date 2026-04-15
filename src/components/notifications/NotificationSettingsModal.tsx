@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { Xmark } from 'iconoir-react';
-import NotificationSettingsForm from '@/components/updates/NotificationSettingsForm';
+import NotificationSettingsForm from '@/components/notifications/NotificationSettingsForm';
 import { NotificationSettings } from '@/types/dashboard';
 
 interface NotificationSettingsModalProps {

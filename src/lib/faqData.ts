@@ -82,20 +82,26 @@ export const faqData: FAQItem[] = [
   {
     id: '13',
     question: 'Can I link my bank account?',
-    answer: 'Currently, we do not support direct bank account linking. However, you can upload transaction files or add transactions manually.',
+    answer: 'Currently, we do not support direct bank account linking via API. However, you can upload bank statements (PDF or CSV) in the Transactions section, and Moneta will automatically categorize and import them for you.',
     category: 'Features'
   },
   {
     id: '14',
+    question: 'How does Investment tracking work?',
+    answer: 'In the Investments section, you can add your crypto assets (via CoinGecko) or US stocks (via Stooq). Moneta fetches live prices whenever you view your portfolio to give you an up-to-date view of your net worth.',
+    category: 'Features'
+  },
+  {
+    id: '15',
     question: 'What should I do if I experience a bug?',
     answer: 'Please report the issue using the contact form on the Help Center page, and our team will address it promptly.',
     category: 'Technical'
   },
   {
-    id: '15',
+    id: '16',
     question: 'Why am I not receiving notifications?',
-    answer: 'Check your notification settings on the Notifications page to ensure alerts are enabled for your account.',
+    answer: 'Check your notification settings on the Notifications page to ensure alerts are enabled for your account. Remember that cron-based notifications (like bill reminders) are sent once per day.',
     category: 'Technical'
   },
-  ];
+];
 

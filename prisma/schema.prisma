@@ -11,7 +11,6 @@ datasource db {
 model User {
   id          Int      @id @default(autoincrement())
   clerkUserId String?  @unique // Primary identifier for Clerk authentication
-  userName    String?  @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -32,7 +31,6 @@ model User {
   notificationSettings UserNotificationSettings?
   transactions Transaction[]
   goals       Goal[]
-  categories  CategoriesCustom[]
   notifications Notification[]
   merchants   Merchant[]
   recurringTransactions RecurringTransaction[]
@@ -210,25 +208,8 @@ model Category {
   // Relations
   transactions Transaction[]
   recurringTransactions RecurringTransaction[]
-  customCategories CategoriesCustom[]
   merchants     Merchant[]
   merchantsGlobal MerchantGlobal[]
-}
-
-// CategoriesCustom table - User-specific custom categories (extended with icon/color)
-model CategoriesCustom {
-  id          Int           @id @default(autoincrement())
-  name        String
-  userId      Int
-  icon        String?       // New field to be added
-  color       String?       // New field to be added
-  categoryId  Int?          // New field - Link to standard category if applicable
-  createdAt   DateTime?     // New field to be added
-  updatedAt   DateTime?    // New field to be added
-  User        User          @relation(fields: [userId], references: [id])
-  category    Category?     @relation(fields: [categoryId], references: [id])
-
-  @@index([userId])
 }
 
 // Notification table
@@ -249,6 +230,7 @@ model Notification {
   @@index([userId])
   @@index([read])
 }
+
 
 // PDF Processing Job table - Tracks async PDF processing jobs
 model PdfProcessingJob {

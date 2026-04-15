@@ -10,7 +10,12 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
     const { searchParams } = request.nextUrl;
-    const limit = Math.min(50, Math.max(1, Number.parseInt(searchParams.get('limit') ?? '10', 10)));
+    
+    // Pagination params
+    const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10));
+    const pageSize = Math.min(100, Math.max(1, Number.parseInt(searchParams.get('pageSize') ?? '10', 10)));
+    const skip = (page - 1) * pageSize;
+    
     const unreadOnly = searchParams.get('unreadOnly') === 'true';
 
     const where: { userId: number; read?: boolean } = {
@@ -21,10 +26,14 @@ export async function GET(request: NextRequest) {
       where.read = false;
     }
 
+    // Get total count for pagination
+    const totalCount = await db.notification.count({ where });
+
     const notifications = await db.notification.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take: limit,
+      skip,
+      take: pageSize,
     });
 
     // Transform to match NotificationEntry format
@@ -45,7 +54,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       notifications: formattedNotifications,
-      total: formattedNotifications.length,
+      total: totalCount,
+      page,
+      pageSize,
+      totalPages: Math.ceil(totalCount / pageSize),
     });
   } catch (error) {
     console.error('[api/notifications] GET error', error);

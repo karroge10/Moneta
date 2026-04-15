@@ -12,14 +12,101 @@ interface ExportDataCardProps {
 export default function ExportDataCard({ loading = false }: ExportDataCardProps) {
   const [exporting, setExporting] = useState(false);
 
-  const handleExport = () => {
-    setExporting(true);
-    // Simulate export for demonstration
-    setTimeout(() => {
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const response = await fetch('/api/user/export');
+      
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      const { data } = await response.json();
+      
+      if (!data || data.length === 0) {
+          alert('No transactions found to export.');
+          return;
+      }
+
+      // Generate "Beautiful" Excel-compatible HTML/XML
+      const timestamp = new Date().toISOString().split('T')[0];
+      const fileName = `moneta_export_${timestamp}.xls`;
+
+      // Calculate the range for AutoFilter (e.g., A1:F100)
+      const lastRow = data.length + 1;
+      const filterRange = `A1:F${lastRow}`;
+
+      let xml = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">
+          <!--[if gte mso 9]>
+          <xml>
+            <x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+              <x:Name>Transactions</x:Name>
+              <x:WorksheetOptions>
+                <x:DisplayGridlines/>
+                <x:AutoFilter x:Range="${filterRange}"/>
+              </x:WorksheetOptions>
+            </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook>
+          </xml>
+          <![endif]-->
+          <style>
+            table { border-collapse: collapse; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+            th { background-color: #AC66DA; color: #FFFFFF; font-weight: bold; border: 1px solid #3a3a3a; padding: 10px 8px; text-align: left; }
+            td { border: 1px solid #e0e0e0; padding: 6px 8px; color: #282828; }
+            .income { color: #2E7D32; font-weight: 500; }
+            .expense { color: #C62828; }
+            .date-cell { color: #666666; width: 100px; }
+          </style>
+        </head>
+        <body>
+          <table x:str border=0 cellpadding=0 cellspacing=0 style='border-collapse: collapse;'>
+            <thead>
+              <tr x:autofilter="all">
+                <th style="width: 100px;">Date</th>
+                <th style="width: 350px;">Transaction</th>
+                <th style="width: 100px;">Amount</th>
+                <th style="width: 80px;">Currency</th>
+                <th style="width: 80px;">Type</th>
+                <th style="width: 180px;">Category</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map((row: any) => `
+                <tr>
+                  <td class="date-cell">${row.Date}</td>
+                  <td>${row.Name}</td>
+                  <td class="${row.Type === 'income' ? 'income' : 'expense'}">
+                    ${row.Type === 'income' ? '+' : '-'}${row.Amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td>${row.Currency}</td>
+                  <td>${row.Type}</td>
+                  <td>${row.Category}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Failed to export data. Please try again.');
+    } finally {
       setExporting(false);
-      // Let individual toast or handled internally if wanted, 
-      // but standard is toast on page. We will just use a simple state change.
-    }, 2000);
+    }
   };
 
   if (loading) {
