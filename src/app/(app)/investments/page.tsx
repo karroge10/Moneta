@@ -335,67 +335,61 @@ export default function InvestmentsPage() {
               )}
             </Card>
             <Card title="Recent Activities">
-              <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
+              <div className="flex-1 flex flex-col min-h-0 w-full min-w-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
                 {data?.recentActivities && data.recentActivities.length > 0 ? (
-                  <div className="flex-1 overflow-y-auto max-h-[400px]">
-                    <table className="min-w-full">
-                      <thead className="sticky top-0 bg-background z-10">
-                        <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                          <th className="px-5 py-3 align-top">Asset</th>
-                          <th className="px-5 py-3 align-top">Date</th>
-                          <th className="px-5 py-3 align-top">Type</th>
-                          <th className="px-5 py-3 align-top">Quantity</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.recentActivities.map((activity: any) => (
-                          <tr
-                            key={activity.id}
-                            className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => handleTransactionClick(activity)}
-                          >
-                            <td className="px-5 py-4 align-top">
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className="w-10 h-10 icon-circle shrink-0"
-                                  style={{ backgroundColor: `${getAssetColor(activity.assetType)}1a` }}
-                                >
-                                  <AssetLogo
-                                    src={activity.icon}
-                                    size={20}
-                                    className="text-current"
-                                    style={{ color: getAssetColor(activity.assetType) }}
-                                    fallback={
-                                      activity.assetType === 'crypto' ? 'BitcoinCircle' :
-                                        activity.assetType === 'stock' ? 'Cash' :
-                                          activity.assetType === 'property' ? 'Neighbourhood' :
-                                            'Reports'
-                                    }
-                                  />
-                                </div>
-                                <div>
-                                  <div className="text-body font-semibold">{activity.name}</div>
-                                  <div className="text-helper uppercase tracking-wider">{activity.ticker}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-5 py-4 align-top">
-                              <span className="text-body">{formatDateForDisplay(activity.date)}</span>
-                            </td>
-                            <td className="px-5 py-4 align-top">
-                              <span className={`text-body font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
-                                {activity.type}
-                              </span>
-                            </td>
-                            <td className="px-5 py-4 align-top">
-                              <span className="text-body font-semibold tabular-nums">
-                                {formatSmartNumber(activity.quantity)} {activity.ticker}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="flex-1 overflow-auto max-h-[400px] p-4 flex flex-col gap-4">
+                    {data.recentActivities.map((activity: any) => (
+                      <div
+                        key={activity.id}
+                        className="p-4 rounded-2xl border border-[#3a3a3a] bg-background-secondary cursor-pointer active:scale-[0.98] transition-transform"
+                        onClick={() => handleTransactionClick(activity)}
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-10 h-10 icon-circle shrink-0"
+                              style={{ backgroundColor: `${getAssetColor(activity.assetType)}1a` }}
+                            >
+                              <AssetLogo
+                                src={activity.icon}
+                                size={20}
+                                className="text-current"
+                                style={{ color: getAssetColor(activity.assetType) }}
+                                fallback={
+                                  activity.assetType === 'crypto' ? 'BitcoinCircle' :
+                                    activity.assetType === 'stock' ? 'Cash' :
+                                      activity.assetType === 'property' ? 'Neighbourhood' :
+                                        'Reports'
+                                }
+                              />
+                            </div>
+                            <div>
+                              <div className="text-body font-bold">{activity.name}</div>
+                              <div className="text-helper uppercase tracking-wider text-secondary">{activity.ticker}</div>
+                            </div>
+                          </div>
+                          <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-tight ${activity.type === 'Buy' ? 'bg-[#74C648]/10 text-[#74C648]' : 'bg-[#D93F3F]/10 text-[#D93F3F]'}`}>
+                            {activity.type}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center py-2 border-b border-[#2A2A2A]">
+                            <span className="text-sm text-secondary">Date</span>
+                            <span className="text-sm font-medium">{formatDateForDisplay(activity.date)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-2">
+                            <span className="text-sm text-secondary">Quantity</span>
+                            <span className="text-sm font-bold tabular-nums">
+                              {formatSmartNumber(activity.quantity)} {activity.ticker}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-4 w-full py-2.5 rounded-xl bg-white/5 text-center text-sm font-semibold text-purple-accent border border-white/5 active:bg-white/10 transition-colors">
+                          View Details
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="p-16 text-center text-secondary">No recent investment activity.</div>
@@ -465,27 +459,80 @@ export default function InvestmentsPage() {
               </Card>
             </div>
             <div className="col-span-2">
-                <Card title="Recent Activities">
-              <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                {data?.recentActivities && data.recentActivities.length > 0 ? (
-                  <div className="flex-1 overflow-y-auto max-h-[500px]">
-                    <table className="min-w-full">
-                      <thead className="sticky top-0 bg-background z-10">
-                        <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
-                          <th className="px-5 py-3 align-top">Asset</th>
-                          <th className="px-5 py-3 align-top">Date</th>
-                          <th className="px-5 py-3 align-top">Type</th>
-                          <th className="px-5 py-3 align-top">Quantity</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+              <Card title="Recent Activities">
+                <div className="flex-1 flex flex-col min-h-0 w-full min-w-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                  {data?.recentActivities && data.recentActivities.length > 0 ? (
+                    <div className="flex-1 overflow-auto max-h-[500px]">
+                      {/* Desktop/Tablet Table View */}
+                      <div className="hidden lg:block overflow-auto">
+                        <table className="min-w-full">
+                          <thead className="sticky top-0 bg-background z-10">
+                            <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+                              <th className="px-5 py-3 align-top">Asset</th>
+                              <th className="px-5 py-3 align-top">Date</th>
+                              <th className="px-5 py-3 align-top">Type</th>
+                              <th className="px-5 py-3 align-top">Quantity</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {data.recentActivities.map((activity: any) => (
+                              <tr
+                                key={activity.id}
+                                className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => handleTransactionClick(activity)}
+                              >
+                                <td className="px-5 py-4 align-top">
+                                  <div className="flex items-center gap-3">
+                                    <div
+                                      className="w-10 h-10 icon-circle shrink-0"
+                                      style={{ backgroundColor: `${getAssetColor(activity.assetType)}1a` }}
+                                    >
+                                      <AssetLogo
+                                        src={activity.icon}
+                                        size={20}
+                                        className="text-current"
+                                        style={{ color: getAssetColor(activity.assetType) }}
+                                        fallback={
+                                          activity.assetType === 'crypto' ? 'BitcoinCircle' :
+                                            activity.assetType === 'stock' ? 'Cash' :
+                                              activity.assetType === 'property' ? 'Neighbourhood' :
+                                                'Reports'
+                                        }
+                                      />
+                                    </div>
+                                    <div>
+                                      <div className="text-body font-semibold">{activity.name}</div>
+                                      <div className="text-helper uppercase tracking-wider">{activity.ticker}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-5 py-4 align-top">
+                                  <span className="text-body">{formatDateForDisplay(activity.date)}</span>
+                                </td>
+                                <td className="px-5 py-4 align-top">
+                                  <span className={`text-body font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
+                                    {activity.type}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-4 align-top">
+                                  <span className="text-body font-semibold tabular-nums">
+                                    {formatSmartNumber(activity.quantity)} {activity.ticker}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {/* Mobile/Small Tablet Card View */}
+                      <div className="lg:hidden p-4 flex flex-col gap-4 overflow-auto">
                         {data.recentActivities.map((activity: any) => (
-                          <tr
+                          <div
                             key={activity.id}
-                            className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
+                            className="p-4 rounded-2xl border border-[#3a3a3a] bg-background-secondary cursor-pointer active:scale-[0.98] transition-transform"
                             onClick={() => handleTransactionClick(activity)}
                           >
-                            <td className="px-5 py-4 align-top">
+                            <div className="flex justify-between items-start mb-4">
                               <div className="flex items-center gap-3">
                                 <div
                                   className="w-10 h-10 icon-circle shrink-0"
@@ -505,34 +552,38 @@ export default function InvestmentsPage() {
                                   />
                                 </div>
                                 <div>
-                                  <div className="text-body font-semibold">{activity.name}</div>
-                                  <div className="text-helper uppercase tracking-wider">{activity.ticker}</div>
+                                  <div className="text-body font-bold">{activity.name}</div>
+                                  <div className="text-helper uppercase tracking-wider text-secondary">{activity.ticker}</div>
                                 </div>
                               </div>
-                            </td>
-                            <td className="px-5 py-4 align-top">
-                              <span className="text-body">{formatDateForDisplay(activity.date)}</span>
-                            </td>
-                            <td className="px-5 py-4 align-top">
-                              <span className={`text-body font-semibold ${activity.type === 'Buy' ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
+                              <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-tight ${activity.type === 'Buy' ? 'bg-[#74C648]/10 text-[#74C648]' : 'bg-[#D93F3F]/10 text-[#D93F3F]'}`}>
                                 {activity.type}
-                              </span>
-                            </td>
-                            <td className="px-5 py-4 align-top">
-                              <span className="text-body font-semibold tabular-nums">
-                                {formatSmartNumber(activity.quantity)} {activity.ticker}
-                              </span>
-                            </td>
-                          </tr>
+                              </div>
+                            </div>
+                            <div className="space-y-3">
+                              <div className="flex justify-between items-center py-2 border-b border-[#2A2A2A]">
+                                <span className="text-sm text-secondary">Date</span>
+                                <span className="text-sm font-medium">{formatDateForDisplay(activity.date)}</span>
+                              </div>
+                              <div className="flex justify-between items-center py-2">
+                                <span className="text-sm text-secondary">Quantity</span>
+                                <span className="text-sm font-bold tabular-nums">
+                                  {formatSmartNumber(activity.quantity)} {activity.ticker}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mt-4 w-full py-2.5 rounded-xl bg-white/5 text-center text-sm font-semibold text-purple-accent border border-white/5 active:bg-white/10 transition-colors">
+                              View Details
+                            </div>
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="p-16 text-center text-secondary">No recent investment activity.</div>
-                )}
-              </div>
-            </Card>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-16 text-center text-secondary">No recent investment activity.</div>
+                  )}
+                </div>
+              </Card>
             </div>
           </>
         )}
@@ -626,10 +677,10 @@ export default function InvestmentsPage() {
             {/* Row 3: Recent Activities (Full Width) */}
             <div className="col-span-4">
               <Card title="Recent Activities">
-                <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                <div className="flex-1 flex flex-col min-h-0 w-full min-w-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
                   {data?.recentActivities && data.recentActivities.length > 0 ? (
-                    <div className="flex-1 overflow-y-auto max-h-[400px]">
-                      <table className="min-w-full">
+                    <div className="flex-1 overflow-auto max-h-[400px]">
+                      <table className="min-w-[600px]">
                         <thead className="sticky top-0 bg-background z-10">
                           <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
                             <th className="px-5 py-3 align-top">Asset</th>

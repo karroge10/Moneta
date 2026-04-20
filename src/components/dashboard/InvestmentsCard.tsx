@@ -63,17 +63,17 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
             const trendColor = getTrendColor(changePercent);
             
             return (
-              <div key={investment.id} className="relative flex items-center gap-3 min-w-0">
+              <div key={investment.id} className="relative flex items-start gap-3 min-w-0">
                 <div className="shrink-0">
                   <div
                     className="w-12 h-12 icon-circle"
                     style={{ backgroundColor: `${getAssetColor(investment.assetType)}1a` }}
                   >
-                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: getAssetColor(investment.assetType) }} />
+                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: getAssetColor(investment.assetType) }} className="mt-0" />
                   </div>
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden">
-                  <div className="text-body font-medium text-wrap-safe">{investment.name}</div>
+                  <div className="text-body font-medium text-wrap-safe leading-tight">{investment.name}</div>
                   <div className="text-helper text-wrap-safe">{investment.subtitle}</div>
                 </div>
                 <div className="text-right shrink-0 ml-auto">
@@ -91,10 +91,10 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
         </div>
         <Link 
           href="/investments" 
-          className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors"
+          className="text-helper flex items-start gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors"
           onClick={(e) => e.stopPropagation()}
         >
-          View All <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
+          <span className="leading-tight">View All</span> <NavArrowRight width={14} height={14} className="stroke-current transition-colors mt-[2px]" />
         </Link>
       </div>
     </Card>

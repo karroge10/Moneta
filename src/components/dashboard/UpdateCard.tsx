@@ -42,12 +42,12 @@ export default function UpdateCard({ date, message, highlight, link, linkHref, i
           </div>
         </div>
         {linkHref ? (
-          <Link href={linkHref} className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap">
-            <span className="text-wrap-safe break-words">{link}</span> <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0" />
+          <Link href={linkHref} className="text-helper flex items-start gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap">
+            <span className="text-wrap-safe break-words leading-tight">{link}</span> <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0 mt-0.5" />
           </Link>
         ) : (
-          <div className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap">
-            <span className="text-wrap-safe break-words">{link}</span> <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0" />
+          <div className="text-helper flex items-start gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap">
+            <span className="text-wrap-safe break-words leading-tight">{link}</span> <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0 mt-0.5" />
           </div>
         )}
       </div>

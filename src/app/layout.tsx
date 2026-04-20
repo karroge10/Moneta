@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     default: "Moneta — Smart Financial Dashboard",
     template: "%s | Moneta"
   },
-  description: "Take control of your finances with Moneta. Smart tracking, investment portfolio management, and automated insights.",
+  description: "Experience the next generation of personal finance management. Beautiful charts, deep insights, and secure tracking.",
   keywords: ["financial dashboard", "expense tracker", "investment portfolio", "money management", "personal finance"],
   authors: [{ name: "Moneta Team" }],
   creator: "Moneta",
@@ -33,9 +33,6 @@ export const metadata: Metadata = {
     telephone: false,
   },
   metadataBase: new URL(siteUrl),
-  alternates: {
-    canonical: "/",
-  },
   icons: {
     icon: [
       { url: "/favicon.ico" },
@@ -82,6 +79,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#1a1a1a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default async function RootLayout({

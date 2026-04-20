@@ -4,6 +4,9 @@ import { Metadata } from 'next';
 export const metadata: Metadata = {
   title: "Moneta — Elegant Financial Tracking",
   description: "Experience the next generation of personal finance management. Beautiful charts, deep insights, and secure tracking.",
+  alternates: {
+    canonical: '/',
+  },
 };
 
 export default function Home() {

@@ -670,9 +670,10 @@ export default function TransactionsPage() {
               </div>
             </div>
 
-            {/* Table */}
-            <div className="flex-1 flex flex-col min-h-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)', minHeight: (viewMode === 'past' ? transactions.length === 0 : recurringRowsData.rows.length === 0) && !displayLoading ? 'calc(100vh - 400px)' : 'auto' }}>
-              <div className="flex-1 overflow-x-auto">
+            {/* Table / Card View */}
+            <div className="flex-1 flex flex-col min-h-0 w-full min-w-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)', minHeight: (viewMode === 'past' ? transactions.length === 0 : recurringRowsData.rows.length === 0) && !displayLoading ? 'calc(100vh - 400px)' : 'auto' }}>
+              {/* Desktop Table View */}
+              <div className="hidden lg:block flex-1 overflow-auto">
                 <table className="min-w-full" style={{ height: (viewMode === 'past' ? transactions.length === 0 : recurringRowsData.rows.length === 0) && !displayLoading ? '100%' : 'auto' }}>
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
@@ -730,33 +731,30 @@ export default function TransactionsPage() {
                   </thead>
                   <tbody>
                     {displayLoading ? (
-                      <>
-                        {/* Loading skeleton rows */}
-                        {Array.from({ length: pageSize }).map((_, index) => (
-                          <tr key={`skeleton-${index}`} className="border-t border-[#2A2A2A]">
+                      Array.from({ length: pageSize }).map((_, index) => (
+                        <tr key={`skeleton-${index}`} className="border-t border-[#2A2A2A]">
+                          <td className="px-5 py-4">
+                            <div className="h-4 w-20 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="h-4 w-48 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="h-4 w-24 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="h-4 w-20 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="h-4 w-32 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                          </td>
+                          {viewMode === 'future' && (
                             <td className="px-5 py-4">
-                              <div className="h-4 w-20 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
+                              <div className="h-4 w-16 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
                             </td>
-                            <td className="px-5 py-4">
-                              <div className="h-4 w-48 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
-                            </td>
-                            <td className="px-5 py-4">
-                              <div className="h-4 w-24 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
-                            </td>
-                            <td className="px-5 py-4">
-                              <div className="h-4 w-20 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
-                            </td>
-                            <td className="px-5 py-4">
-                              <div className="h-4 w-32 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
-                            </td>
-                            {viewMode === 'future' && (
-                              <td className="px-5 py-4">
-                                <div className="h-4 w-16 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
-                              </td>
-                            )}
-                          </tr>
-                        ))}
-                      </>
+                          )}
+                        </tr>
+                      ))
                     ) : viewMode === 'past' && transactions.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-5 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)', height: '100%' }}>
@@ -808,15 +806,15 @@ export default function TransactionsPage() {
                             <td className="px-5 py-4 align-top">
                               <div className="flex items-center gap-3">
                                 {CategoryIcon && (
-                                  <div 
-                                    className="w-10 h-10 icon-circle" 
+                                  <div
+                                    className="w-10 h-10 icon-circle"
                                     style={{ backgroundColor: `${categoryObj?.color || '#AC66DA'}1a` }}
                                   >
-                                    <CategoryIcon 
-                                      width={20} 
-                                      height={20} 
-                                      strokeWidth={1.5} 
-                                      style={{ color: categoryObj?.color || '#AC66DA' }} 
+                                    <CategoryIcon
+                                      width={20}
+                                      height={20}
+                                      strokeWidth={1.5}
+                                      style={{ color: categoryObj?.color || '#AC66DA' }}
                                     />
                                   </div>
                                 )}
@@ -860,15 +858,15 @@ export default function TransactionsPage() {
                             <td className="px-5 py-4 align-top">
                               <div className="flex items-center gap-3">
                                 {CategoryIcon && (
-                                  <div 
-                                    className="w-10 h-10 icon-circle" 
+                                  <div
+                                    className="w-10 h-10 icon-circle"
                                     style={{ backgroundColor: `${categoryObj?.color || '#AC66DA'}1a` }}
                                   >
-                                    <CategoryIcon 
-                                      width={20} 
-                                      height={20} 
-                                      strokeWidth={1.5} 
-                                      style={{ color: categoryObj?.color || '#AC66DA' }} 
+                                    <CategoryIcon
+                                      width={20}
+                                      height={20}
+                                      strokeWidth={1.5}
+                                      style={{ color: categoryObj?.color || '#AC66DA' }}
                                     />
                                   </div>
                                 )}
@@ -892,6 +890,93 @@ export default function TransactionsPage() {
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="lg:hidden flex-1 overflow-auto p-4 flex flex-col gap-4">
+                {displayLoading ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <div key={`skeleton-card-${index}`} className="p-4 rounded-2xl border border-[#3a3a3a] bg-background-secondary animate-pulse">
+                      <div className="flex justify-between mb-4">
+                        <div className="h-6 w-24 rounded bg-[#3a3a3a]"></div>
+                        <div className="h-6 w-16 rounded bg-[#3a3a3a]"></div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="h-4 w-full rounded bg-[#3a3a3a]"></div>
+                        <div className="h-4 w-2/3 rounded bg-[#3a3a3a]"></div>
+                      </div>
+                    </div>
+                  ))
+                ) : (viewMode === 'past' ? transactions : recurringRowsData.rows).length === 0 ? (
+                  <div className="py-12 text-center text-sm text-secondary">
+                    {viewMode === 'past' ? 'No transactions found.' : 'No upcoming recurring transactions.'}
+                  </div>
+                ) : (
+                  (viewMode === 'past' ? transactions : (recurringRowsData.rows as any[])).map((item, idx) => {
+                    const isExpense = item.amount < 0;
+                    const absoluteAmount = Math.abs(item.amount);
+                    const categoryObj = categories.find(c => c.name === item.category);
+                    const CategoryIcon = categoryObj ? getIcon(categoryObj.icon) : getIcon('HelpCircle');
+                    const iconColor = categoryObj?.color || '#AC66DA';
+
+                    return (
+                      <div
+                        key={item.id || idx}
+                        className="p-4 rounded-2xl border border-[#3a3a3a] bg-background-secondary cursor-pointer active:scale-[0.98] transition-transform"
+                        onClick={() => viewMode === 'past' ? handleTransactionClick(item as Transaction) : handleRecurringRowClick(item as RecurringRow)}
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <div className="text-helper uppercase tracking-wider text-secondary mb-0.5">Amount</div>
+                            <div className="text-2xl font-bold flex items-baseline gap-1">
+                              <span>{currency.symbol}{formatNumber(absoluteAmount)}</span>
+                            </div>
+                          </div>
+                          <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-tight ${isExpense ? 'bg-[#D93F3F]/10 text-[#D93F3F]' : 'bg-[#74C648]/10 text-[#74C648]'}`}>
+                            {isExpense ? 'Expense' : 'Income'}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center py-2 border-b border-[#2A2A2A]">
+                            <span className="text-sm text-secondary">Description</span>
+                            <span className="text-sm font-medium text-right max-w-[60%] truncate">{item.name}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-2 border-b border-[#2A2A2A]">
+                            <span className="text-sm text-secondary">Date</span>
+                            <span className="text-sm font-medium">{item.date}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-2">
+                            <span className="text-sm text-secondary">Category</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full flex items-center justify-center bg-white/5">
+                                <CategoryIcon width={14} height={14} style={{ color: iconColor }} />
+                              </div>
+                              <span className="text-sm font-medium">{item.category || 'Uncategorized'}</span>
+                            </div>
+                          </div>
+                          {viewMode === 'future' && (
+                            <div className="flex justify-between items-center pt-2 border-t border-[#2A2A2A]">
+                              <span className="text-sm text-secondary">Status</span>
+                              <span
+                                className="text-xs font-medium px-2 py-0.5 rounded-full"
+                                style={{
+                                  backgroundColor: item.isActive ? 'rgba(116, 198, 72, 0.2)' : 'rgba(60, 60, 60, 0.6)',
+                                  color: item.isActive ? '#74C648' : 'rgba(231, 228, 228, 0.7)',
+                                }}
+                              >
+                                {item.isActive ? 'Active' : 'Paused'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="mt-4 w-full py-2.5 rounded-xl bg-white/5 text-center text-sm font-semibold text-purple-accent border border-white/5 active:bg-white/10 transition-colors">
+                          View Details
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 
