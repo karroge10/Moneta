@@ -14,7 +14,10 @@ import {
   LogOut,
   NavArrowLeft,
   Xmark,
+  Settings,
+  HeadsetHelp,
 } from 'iconoir-react';
+import { useAuth } from '@clerk/nextjs';
 
 interface MobileDrawerProps {
   isOpen: boolean;
@@ -23,6 +26,7 @@ interface MobileDrawerProps {
 }
 
 export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboard' }: MobileDrawerProps) {
+  const { isSignedIn } = useAuth();
   const overlayRef = useRef<HTMLDivElement>(null);
   const pointerDownOnOverlay = useRef(false);
 
@@ -39,13 +43,15 @@ export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboa
   }, [isOpen]);
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: HomeSimpleDoor, href: '/' },
+    { id: 'dashboard', label: 'Dashboard', icon: HomeSimpleDoor, href: '/dashboard' },
     { id: 'income', label: 'Income', icon: Wallet, href: '/income' },
     { id: 'expenses', label: 'Expenses', icon: ShoppingBag, href: '/expenses' },
     { id: 'transactions', label: 'Transactions', icon: LotOfCash, href: '/transactions' },
     { id: 'investments', label: 'Investments', icon: BitcoinCircle, href: '/investments' },
     { id: 'goals', label: 'Goals', icon: CalendarCheck, href: '/goals' },
     { id: 'statistics', label: 'Statistics', icon: Reports, href: '/statistics' },
+    { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
+    { id: 'help', label: 'Help Center', icon: HeadsetHelp, href: '/help' },
   ];
 
   return (
@@ -83,7 +89,7 @@ export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboa
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-[rgba(231,228,228,0.1)]">
-            <Link href="/" className="flex items-center gap-3" onClick={onClose}>
+            <Link href={isSignedIn ? "/dashboard" : "/"} className="flex items-center gap-3" onClick={onClose}>
               <Image src="/monetalogo.png" alt="Moneta" width={40} height={40} priority />
               <span className="sidebar-title">MONETA</span>
             </Link>

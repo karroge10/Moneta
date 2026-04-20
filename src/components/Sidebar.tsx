@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import {
   HomeSimpleDoor,
   Wallet,
@@ -25,6 +26,7 @@ interface SidebarProps {
 
 export default function Sidebar({ activeSection }: SidebarProps) {
   const pathname = usePathname();
+  const { isSignedIn } = useAuth();
   
   // Determine active section from pathname if not provided
   const getActiveSection = () => {
@@ -80,7 +82,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
     <aside className="sidebar">
       {/* Logo and Collapse Button */}
       <div className="sidebar-logo">
-        <Link href="/" className="sidebar-brand" aria-label="Go to dashboard">
+        <Link href={isSignedIn ? "/dashboard" : "/"} className="sidebar-brand" aria-label="Go to dashboard">
           <Image src="/monetalogo.png" alt="Moneta" width={48} height={48} priority />
           {!isCollapsed && <span className="sidebar-title">MONETA</span>}
         </Link>

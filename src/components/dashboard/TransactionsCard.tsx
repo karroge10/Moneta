@@ -126,7 +126,7 @@ export default function TransactionsCard({ transactions, onRefresh }: Transactio
               return (
                 <div 
                   key={transaction.id} 
-                  className="flex items-center gap-3 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+                  className="flex items-start gap-3 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => handleTransactionClick(transaction)}
                 >
                   <div className="shrink-0">
@@ -138,10 +138,10 @@ export default function TransactionsCard({ transactions, onRefresh }: Transactio
                     </div>
                   </div>
                   <div className="flex-1 min-w-0 overflow-hidden">
-                    <div className="text-body font-medium truncate" title={transaction.name.length > MAX_NAME_LENGTH ? transaction.name : undefined}>
+                    <div className="text-body font-medium truncate leading-tight" title={transaction.name.length > MAX_NAME_LENGTH ? transaction.name : undefined}>
                       {truncatedName}
                     </div>
-                    <div className="text-helper">{transaction.date}</div>
+                    <div className="text-helper mt-0.5">{transaction.date}</div>
                   </div>
                   <div className="flex flex-col items-end shrink-0 text-right">
                     <div className="text-body font-semibold whitespace-nowrap">
@@ -159,10 +159,10 @@ export default function TransactionsCard({ transactions, onRefresh }: Transactio
           </div>
           <Link 
             href="/transactions" 
-            className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors"
+            className="text-helper flex items-start gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors"
             onClick={(e) => e.stopPropagation()}
           >
-            View All <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
+            <span className="leading-tight">View All</span> <NavArrowRight width={14} height={14} className="stroke-current transition-colors mt-[2px]" />
           </Link>
         </div>
       </Card>

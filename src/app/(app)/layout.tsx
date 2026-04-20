@@ -8,7 +8,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="hidden md:block">
           <Sidebar />
         </div>
-        <div className="flex-1 transition-all duration-200 ease-in-out md:ml-[var(--sidebar-width)]">
+        <div className="flex-1 min-w-0 transition-all duration-200 ease-in-out md:ml-[var(--sidebar-width)]">
           {children}
         </div>
       </div>
