@@ -71,7 +71,7 @@ export default function AssetAllocationCard({ portfolio }: AssetAllocationCardPr
     return (
         <Card title="Allocation" className="h-full flex flex-col min-h-0 overflow-hidden">
             <div className="flex flex-col flex-1 min-h-0 h-full mt-2 gap-3">
-                <div className="flex-1 min-h-0 w-full flex justify-center items-center">
+                <div className="w-full h-[200px] 2xl:h-[280px] shrink-0 flex justify-center items-center">
                     <DonutChart data={data} />
                 </div>
 

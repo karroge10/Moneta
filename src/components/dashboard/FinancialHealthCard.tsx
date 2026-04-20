@@ -13,8 +13,8 @@ interface FinancialHealthCardProps {
 }
 
 
-const learnLinkClass = 'text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors';
-const learnLinkClassDesktop = 'text-helper flex items-center gap-2 cursor-pointer group hover-text-purple transition-colors mt-2 min-w-0';
+const learnLinkClass = 'text-helper flex items-start gap-1 cursor-pointer group hover-text-purple transition-colors';
+const learnLinkClassDesktop = 'text-helper flex items-start gap-2 cursor-pointer group hover-text-purple transition-colors mt-2 min-w-0';
 
 function LearnTrigger({
   onClick,
@@ -24,7 +24,7 @@ function LearnTrigger({
   const content = (
     <>
       <span className={compact ? '' : 'text-wrap-safe break-words leading-tight'}>Learn how we calculate financial health score</span>
-      <NavArrowRight width={compact ? 12 : 14} height={compact ? 12 : 14} className="stroke-current transition-colors shrink-0" />
+      <NavArrowRight width={compact ? 12 : 14} height={compact ? 12 : 14} className="stroke-current transition-colors shrink-0 mt-0.5" />
     </>
   );
   if (onClick) {

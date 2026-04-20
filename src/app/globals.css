@@ -72,7 +72,10 @@ body.sidebar-collapsed {
 .card-surface {
   background: linear-gradient(180deg, var(--bg-surface) 0%, rgba(36, 36, 36, 1) 100%);
   border-radius: var(--radius-card);
-  padding: var(--space-l);
+  padding: var(--space-m);
+  @media (min-width: 768px) {
+    padding: var(--space-l);
+  }
   overflow: hidden; /* Prevent content from overflowing card boundaries */
   box-shadow: var(--shadow-card);
   border: 1px solid rgba(231, 228, 228, 0.06);

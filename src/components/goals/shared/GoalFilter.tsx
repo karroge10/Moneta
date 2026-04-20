@@ -48,7 +48,7 @@ export default function GoalFilter({ selectedStatus, onSelect }: GoalFilterProps
       >
         <div className="flex items-center gap-2">
           <Filter width={18} height={18} strokeWidth={1.5} style={{ color: textColor }} />
-          <span className="text-sm font-semibold">{displayValue}</span>
+          <span className="text-sm font-semibold whitespace-nowrap">{displayValue}</span>
         </div>
         <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: textColor }} />
       </button>

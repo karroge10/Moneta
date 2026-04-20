@@ -31,9 +31,10 @@ export default function MonthlySummaryTable({ data, loading = false, error = nul
     <Card title="Monthly Summary" showActions={false}
       className="flex flex-col min-h-0 flex-1"
     >
-      <div className="mt-2 flex-1 flex flex-col min-h-[288px] rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
-        <div className="flex-1 min-h-0 overflow-auto">
-          <table className="min-w-full">
+      <div className="mt-2 flex-1 flex flex-col min-h-[288px] w-full min-w-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        {/* Desktop Table View */}
+        <div className="hidden md:block flex-1 min-h-0 overflow-auto">
+          <table className="min-w-[700px]">
             <thead className="sticky top-0 z-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
               <tr className="text-left text-xs uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
                 <th className="px-5 py-3 align-top">Month</th>
@@ -158,6 +159,85 @@ export default function MonthlySummaryTable({ data, loading = false, error = nul
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden flex-1 flex flex-col p-4 gap-4 overflow-auto">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="p-4 rounded-2xl border border-[#3a3a3a] bg-background-secondary animate-pulse">
+                <div className="flex justify-between mb-4">
+                  <div className="h-6 w-24 rounded" style={SKELETON_STYLE} />
+                  <div className="h-6 w-16 rounded" style={SKELETON_STYLE} />
+                </div>
+                <div className="space-y-3">
+                  <div className="h-4 w-full rounded" style={SKELETON_STYLE} />
+                  <div className="h-4 w-full rounded" style={SKELETON_STYLE} />
+                </div>
+              </div>
+            ))
+          ) : showError ? (
+            <div className="py-8 text-center">
+              <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>{error}</p>
+              {onRetry && (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="px-4 py-2 rounded-full text-body font-semibold bg-[#E7E4E4] text-[#282828]"
+                >
+                  Try again
+                </button>
+              )}
+            </div>
+          ) : showEmpty ? (
+            <div className="py-8 text-center px-4">
+              <Reports width={40} height={40} className="mx-auto mb-4 opacity-50" />
+              <p className="text-body font-medium mb-1">No months to show yet</p>
+              <p className="text-sm text-secondary mb-4">Once you have data, this table lists the latest twelve months.</p>
+              <div className="flex flex-col gap-2">
+                <Link href="/transactions" className="px-4 py-2 rounded-full bg-[#AC66DA] text-white text-sm font-semibold">Add transactions</Link>
+                <Link href="/transactions/import" className="px-4 py-2 rounded-full border border-[#3a3a3a] text-sm font-semibold text-white">Import</Link>
+              </div>
+            </div>
+          ) : (
+            data.map((row, index) => {
+              const categoryObj = categories.find(c => c.name === row.topCategory.name);
+              const CategoryIcon = categoryObj ? getIcon(categoryObj.icon) : getIcon('HelpCircle');
+              const iconColor = categoryObj?.color ?? '#E7E4E4';
+
+              return (
+                <div key={index} className="p-4 rounded-2xl border border-[#3a3a3a] bg-background-secondary">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <div className="text-helper uppercase tracking-wider text-secondary mb-0.5">Month</div>
+                      <div className="text-lg font-bold">{row.month}</div>
+                    </div>
+                    <div className="px-3 py-1 rounded-full bg-[#74C648]/10 text-[#74C648] text-xs font-bold uppercase tracking-tight">
+                      {currency.symbol} {formatNumber(row.savings)} Saved
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b border-[#2A2A2A]">
+                      <span className="text-sm text-secondary">Income</span>
+                      <span className="text-sm font-semibold text-[#74C648]">{currency.symbol} {formatNumber(row.income)}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-[#2A2A2A]">
+                      <span className="text-sm text-secondary">Expenses</span>
+                      <span className="text-sm font-semibold text-[#D93F3F] text-opacity-90">{currency.symbol} {formatNumber(row.expenses)}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-sm text-secondary">Top Category</span>
+                      <div className="flex items-center gap-2">
+                        <CategoryIcon width={16} height={16} style={{ color: iconColor }} />
+                        <span className="text-sm font-semibold">{row.topCategory.name} ({row.topCategory.percentage}%)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </Card>

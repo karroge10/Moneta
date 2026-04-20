@@ -72,7 +72,7 @@ export default function TransactionList({
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 min-h-0">
+        <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar pr-4 min-h-0">
           <div>
             {months.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">

@@ -41,7 +41,7 @@ export default function UpcomingBillsCard({ bills, onItemClick }: UpcomingBillsC
             return (
               <div
                 key={bill.id}
-                className={`flex items-center gap-3 min-w-0 ${bill.isActive === false ? 'opacity-70' : ''} ${onItemClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                className={`flex items-start gap-3 min-w-0 ${bill.isActive === false ? 'opacity-70' : ''} ${onItemClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                 onClick={onItemClick ? () => onItemClick(bill) : undefined}
                 role={onItemClick ? 'button' : undefined}
               >
@@ -54,8 +54,8 @@ export default function UpcomingBillsCard({ bills, onItemClick }: UpcomingBillsC
                   </div>
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden">
-                  <div className="text-body font-medium text-wrap-safe">{bill.name}</div>
-                  <div className="text-helper">{bill.date}</div>
+                  <div className="text-body font-medium text-wrap-safe leading-tight">{bill.name}</div>
+                  <div className="text-helper mt-0.5">{bill.date}</div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {bill.isActive === false && (
@@ -77,8 +77,8 @@ export default function UpcomingBillsCard({ bills, onItemClick }: UpcomingBillsC
             );
           })}
         </div>
-        <Link href="/transactions?view=future" className="text-helper flex items-center gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors" onClick={(e) => e.stopPropagation()}>
-          View All <NavArrowRight width={14} height={14} className="stroke-current transition-colors" />
+        <Link href="/transactions?view=future" className="text-helper flex items-start gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors" onClick={(e) => e.stopPropagation()}>
+          <span className="leading-tight">View All</span> <NavArrowRight width={14} height={14} className="stroke-current transition-colors mt-[2px]" />
         </Link>
       </div>
     </Card>
