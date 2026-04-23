@@ -62,7 +62,7 @@ export default function InvestmentsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Modals state
+  
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [initialAssetForAdd, setInitialAssetForAdd] = useState<any | null>(null);
@@ -255,7 +255,7 @@ export default function InvestmentsPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      {/* Desktop Header */}
+      {}
       <div className="hidden md:block">
         <DashboardHeader
           pageName="Investments"
@@ -267,7 +267,7 @@ export default function InvestmentsPage() {
         />
       </div>
 
-      {/* Mobile Navbar */}
+      {}
       <div className="md:hidden">
         <MobileNavbar
           pageName="Investments"
@@ -275,8 +275,8 @@ export default function InvestmentsPage() {
         />
       </div>
 
-      {/* Layout: Desktop Bento Grid (Balanced) */}
-      {/* Mobile: Stack everything */}
+      {}
+      {}
       <div className="flex flex-col gap-4 px-4 pb-4 md:hidden">
         {loading ? (
           <>
@@ -400,7 +400,7 @@ export default function InvestmentsPage() {
         )}
       </div>
 
-      {/* Tablet: 2-column layout (768px - 1536px) */}
+      {}
       <div className="hidden md:grid 2xl:hidden md:grid-cols-2 md:gap-4 md:px-6 md:pb-6">
         {loading ? (
           <>
@@ -463,7 +463,7 @@ export default function InvestmentsPage() {
                 <div className="flex-1 flex flex-col min-h-0 w-full min-w-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
                   {data?.recentActivities && data.recentActivities.length > 0 ? (
                     <div className="flex-1 overflow-auto max-h-[500px]">
-                      {/* Desktop/Tablet Table View */}
+                      {}
                       <div className="hidden lg:block overflow-auto">
                         <table className="min-w-full">
                           <thead className="sticky top-0 bg-background z-10">
@@ -524,7 +524,7 @@ export default function InvestmentsPage() {
                           </tbody>
                         </table>
                       </div>
-                      {/* Mobile/Small Tablet Card View */}
+                      {}
                       <div className="lg:hidden p-4 flex flex-col gap-4 overflow-auto">
                         {data.recentActivities.map((activity: any) => (
                           <div
@@ -589,7 +589,7 @@ export default function InvestmentsPage() {
         )}
       </div>
 
-      {/* Desktop: Bento Grid Layout (Modified Layout 1) (≥1536px) */}
+      {}
       <div className="hidden 2xl:grid 2xl:grid-cols-4 2xl:gap-4 2xl:px-6 2xl:pb-6">
         {loading ? (
           <>
@@ -624,7 +624,7 @@ export default function InvestmentsPage() {
           </div>
         ) : (
           <>
-            {/* Row 1: Top 3 Cards Spanning Full Width (using 3-col subgrid) */}
+            {}
             <div className="col-span-4 grid grid-cols-3 gap-4">
               <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 {data?.update && <UpdateCard {...data.update} linkHref="/notifications" />}
@@ -644,8 +644,8 @@ export default function InvestmentsPage() {
               </div>
             </div>
 
-            {/* Row 2: Performance (2/4), Allocation (1/4), Assets (1/4) */}
-            {/* Performance Chart */}
+            {}
+            {}
             <div className="col-span-2 h-[500px] flex flex-col [&>.card-surface]:h-full">
               <PortfolioPerformanceChart
                 data={performanceData}
@@ -655,12 +655,12 @@ export default function InvestmentsPage() {
               />
             </div>
 
-            {/* Allocation */}
+            {}
             <div className="col-span-1 h-[500px] flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
               {data?.portfolio && <AssetAllocationCard portfolio={data.portfolio} />}
             </div>
 
-            {/* Assets */}
+            {}
             <div className="col-span-1 h-[500px] flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
               <Card title="Assets">
                 {data?.portfolio && data.portfolio.length > 0 ? (
@@ -674,7 +674,7 @@ export default function InvestmentsPage() {
               </Card>
             </div>
 
-            {/* Row 3: Recent Activities (Full Width) */}
+            {}
             <div className="col-span-4">
               <Card title="Recent Activities">
                 <div className="flex-1 flex flex-col min-h-0 w-full min-w-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
@@ -749,7 +749,7 @@ export default function InvestmentsPage() {
         )}
       </div>
 
-      {/* Edit Transaction Modal */}
+      {}
       {editingTransaction && (
         <InvestmentTransactionModal
           transaction={editingTransaction}
@@ -762,7 +762,7 @@ export default function InvestmentsPage() {
         />
       )}
 
-      {/* Add Investment Modal */}
+      {}
       {isAddModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div
@@ -801,7 +801,7 @@ export default function InvestmentsPage() {
         document.body
       )}
 
-      {/* Asset Details Modal */}
+      {}
       {selectedAssetId && (
         <AssetModal
           isOpen={!!selectedAssetId}

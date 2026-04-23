@@ -1,9 +1,6 @@
 'use client';
 
-/**
- * Lightweight IndexedDB helpers for simple key/value caching.
- * All operations are guarded to fail-softly if IndexedDB is unavailable.
- */
+
 
 const DB_NAME = 'moneta-cache';
 const STORE_NAME = 'kv';

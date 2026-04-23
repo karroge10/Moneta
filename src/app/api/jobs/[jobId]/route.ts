@@ -14,8 +14,8 @@ export async function DELETE(
     const user = await requireCurrentUser();
     const { jobId } = await params;
 
-    // Delete the job (only if it belongs to the user)
-    // Using deleteMany with userId check ensures user can only delete their own jobs
+    
+    
     const result = await (db as PrismaClient & {
       pdfProcessingJob: {
         deleteMany: (args: { where: { id: string; userId: number } }) => Promise<{ count: number }>;

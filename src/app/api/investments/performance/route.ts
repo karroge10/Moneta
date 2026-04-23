@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       break;
     default:
       startDate = new Date();
-      startDate.setDate(now.getDate() - 30); // Default 1M
+      startDate.setDate(now.getDate() - 30); 
   }
 
   try {
@@ -61,9 +61,9 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // Determine conversion to user's currency if needed
-    // Note: We assume snapshots are stored in USD for global consistency, 
-    // or we fetch the user's current currency and convert if they deviate.
+    
+    
+    
     const usd = await db.currency.findFirst({ 
         where: { alias: { equals: 'usd', mode: 'insensitive' } } 
     });

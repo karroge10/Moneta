@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { clerkClient } from '@clerk/nextjs/server';
 import type { LoginHistoryEntry } from '@/types/dashboard';
 
-/** Format timestamp (ms) to date and time strings for display. */
+
 function formatSessionTime(ts: number): { date: string; time: string } {
   const d = new Date(ts);
   const date = d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
@@ -11,10 +11,7 @@ function formatSessionTime(ts: number): { date: string; time: string } {
   return { date, time };
 }
 
-/**
- * GET /api/user/login-history
- * Returns the current user's login/session history from Clerk (sessions with createdAt, latestActivity for device/location).
- */
+
 export async function GET() {
   try {
     const { userId } = await auth();

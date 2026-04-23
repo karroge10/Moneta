@@ -15,7 +15,7 @@ const PILLARS: { key: keyof FinancialHealthDetails['details']; label: string; de
 interface FinancialHealthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Data loaded on page load by parent; modal never fetches */
+  
   initialData?: FinancialHealthDetails | null;
 }
 

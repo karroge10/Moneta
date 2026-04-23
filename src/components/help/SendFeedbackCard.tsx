@@ -79,7 +79,7 @@ export default function SendFeedbackCard() {
             {error}
           </p>
         )}
-        {/* Email Input */}
+        {}
         <div>
           <label className="block text-body font-medium mb-2">Your Email</label>
           <div className="relative">
@@ -101,7 +101,7 @@ export default function SendFeedbackCard() {
           </div>
         </div>
 
-        {/* Category Dropdown */}
+        {}
         <div>
           <label className="block text-body font-medium mb-2">Category</label>
           <div className="relative" ref={dropdownRef}>
@@ -145,7 +145,7 @@ export default function SendFeedbackCard() {
           </div>
         </div>
 
-        {/* Message Textarea */}
+        {}
         <div>
           <label className="block text-body font-medium mb-2">Message</label>
           <textarea
@@ -158,7 +158,7 @@ export default function SendFeedbackCard() {
           />
         </div>
 
-        {/* Submit Button */}
+        {}
         <button
           type="submit"
           disabled={isSubmitting}

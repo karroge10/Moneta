@@ -27,16 +27,16 @@ export default function ExportDataCard({ loading = false }: ExportDataCardProps)
           return;
       }
 
-      // Generate "Beautiful" Excel-compatible HTML/XML
+      
       const timestamp = new Date().toISOString().split('T')[0];
       const fileName = `moneta_export_${timestamp}.xls`;
 
-      // Calculate the range for AutoFilter (e.g., A1:F100)
+      
       const lastRow = data.length + 1;
       const filterRange = `A1:F${lastRow}`;
 
       let xml = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http:
         <head>
           <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">
           <!--[if gte mso 9]>

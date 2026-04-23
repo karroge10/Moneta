@@ -1,4 +1,4 @@
-// Import only the formatting function, not server-side utilities
+
 function formatCurrencyWithCode(
   amount: number,
   currencyCode: string = 'USD',
@@ -12,7 +12,7 @@ function formatCurrencyWithCode(
       maximumFractionDigits: 2,
     }).format(amount);
   } catch (error) {
-    // Fallback if currency code is invalid
+    
     const formatted = amount.toLocaleString('en-US', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
@@ -32,11 +32,7 @@ export function formatNumber(amount: number, withDecimals = true): string {
   });
 }
 
-/**
- * Formats a number smartly:
- * - If >= 10, shows 2 decimals.
- * - If < 10, shows up to 8 decimals (for precision assets like Dogecoin/BTC).
- */
+
 export function formatSmartNumber(value: number): string {
   const absValue = Math.abs(value);
   const maxDecimals = absValue < 10 ? 8 : 2;
@@ -47,12 +43,7 @@ export function formatSmartNumber(value: number): string {
   });
 }
 
-/**
- * Format amount with currency symbol (for use when you have the symbol directly)
- * @param amount - The amount to format
- * @param symbol - The currency symbol (e.g., '$', '₾', '€')
- * @param withDecimals - Whether to include decimal places
- */
+
 export function formatAmountWithSymbol(
   amount: number,
   symbol: string = '$',
@@ -73,10 +64,7 @@ export function getTrendColor(value: number): string {
   return value >= 0 ? 'var(--accent-green)' : 'var(--error)';
 }
 
-/**
- * Get trend color for expenses (inverted logic)
- * For expenses: negative trend (spending less) is good (green), positive (spending more) is bad (red)
- */
+
 export function getExpenseTrendColor(value: number): string {
   return value <= 0 ? 'var(--accent-green)' : 'var(--error)';
 }
@@ -86,14 +74,11 @@ export function formatPercentage(value: number, includeSign = false): string {
   return `${sign}${value.toFixed(2)}%`;
 }
 
-/**
- * Formats a number in a compact way (e.g., 1.2K, 10.4M) to avoid UI overflow.
- * Used for large totals in cards.
- */
+
 export function formatCompactNumber(value: number): string {
   const absValue = Math.abs(value);
   
-  // For numbers under 1,000,000, keep decimals if small, otherwise whole number
+  
   if (absValue < 1000000) {
     return value.toLocaleString('en-US', {
       minimumFractionDigits: 0,
@@ -101,7 +86,7 @@ export function formatCompactNumber(value: number): string {
     });
   }
   
-  // For anything over 1M, use compact notation (M, B, T)
+  
   return new Intl.NumberFormat('en-US', {
     notation: 'compact',
     compactDisplay: 'short',

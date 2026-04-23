@@ -58,44 +58,44 @@ export default function TransactionsPage() {
     setToasts((prev) => [...prev, { id, message, type }]);
   }, []);
 
-  // Pagination
+  
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [pageInput, setPageInput] = useState('1');
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  // Filters
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<string>(''); // 'expense' | 'income' | ''
-  const [monthFilter, setMonthFilter] = useState<string>(''); // 'this_month' | 'this_year' | month string | ''
+  const [typeFilter, setTypeFilter] = useState<string>(''); 
+  const [monthFilter, setMonthFilter] = useState<string>(''); 
 
-  // Sorting
+  
   type SortColumn = 'date' | 'description' | 'type' | 'amount' | 'category';
   type SortOrder = 'asc' | 'desc';
   const [sortColumn, setSortColumn] = useState<SortColumn>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
-  // Modals
+  
   const [isCategoryStatsOpen, setIsCategoryStatsOpen] = useState(false);
 
-  // Per-page dropdown
+  
   const [isPerPageOpen, setIsPerPageOpen] = useState(false);
   const perPageRef = useRef<HTMLDivElement>(null);
 
-  // Future (recurring) view
+  
   const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
   const [recurringLoading, setRecurringLoading] = useState(false);
 
-  // Sync viewMode from URL on mount / when searchParams change (e.g. back/forward or View All link)
+  
   useEffect(() => {
     const view = searchParams.get('view');
     setViewMode(view === 'future' ? 'future' : 'past');
   }, [searchParams]);
 
-  // Close per-page dropdown on outside click
+  
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (perPageRef.current && !perPageRef.current.contains(e.target as Node)) {
@@ -120,16 +120,16 @@ export default function TransactionsPage() {
     }
   }, [router]);
 
-  // Debounce search query
+  
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 300); // 300ms debounce delay
+    }, 300); 
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch transactions with filters
+  
   const fetchTransactions = useCallback(async (page: number = 1) => {
     try {
       setLoading(true);
@@ -137,7 +137,7 @@ export default function TransactionsPage() {
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),
-        timePeriod: 'All Time', // Always use All Time, filter by month/time period instead
+        timePeriod: 'All Time', 
         sortBy: sortColumn,
         sortOrder: sortOrder,
       });
@@ -146,17 +146,17 @@ export default function TransactionsPage() {
       if (categoryFilter) params.set('category', categoryFilter);
       if (typeFilter) params.set('type', typeFilter);
 
-      // Handle time period filters
+      
       if (monthFilter) {
         if (monthFilter === 'this_month' || monthFilter === 'this_year') {
-          // Convert to timePeriod format
+          
           const periodMap: Record<string, string> = {
             'this_month': 'This Month',
             'this_year': 'This Year',
           };
           params.set('timePeriod', periodMap[monthFilter]);
         } else {
-          // It's a specific month
+          
           params.set('month', monthFilter);
         }
       }
@@ -174,7 +174,7 @@ export default function TransactionsPage() {
       setTotalPages(data.totalPages || 0);
       setCurrentPage(data.page || 1);
 
-      // Consolidate months from the first page of results
+      
       if (data.transactions) {
         setAvailableMonths(prev => {
           const months = new Set(prev);
@@ -199,7 +199,7 @@ export default function TransactionsPage() {
     }
   }, [debouncedSearchQuery, categoryFilter, typeFilter, monthFilter, pageSize, sortColumn, sortOrder, addToast]);
 
-  // Fetch recurring items for future view
+  
   const fetchRecurring = useCallback(async () => {
     try {
       setRecurringLoading(true);
@@ -216,7 +216,7 @@ export default function TransactionsPage() {
     }
   }, [addToast]);
 
-  // Fetch transactions when filters, page size, or page change (past view only)
+  
   useEffect(() => {
     if (!authReady) return;
     if (viewMode === 'past') {
@@ -224,7 +224,7 @@ export default function TransactionsPage() {
     }
   }, [authReady, viewMode, fetchTransactions]);
 
-  // Fetch recurring when switching to future view
+  
   useEffect(() => {
     if (!authReady) return;
     if (viewMode === 'future') {
@@ -232,7 +232,7 @@ export default function TransactionsPage() {
     }
   }, [authReady, viewMode, fetchRecurring]);
 
-  // Get available months - fetch from API
+  
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
 
 
@@ -369,12 +369,12 @@ export default function TransactionsPage() {
       const data = await response.json();
       const savedTransaction = data.transaction;
 
-      // If transaction is null, it means it's a recurring transaction with future startDate
-      // The transaction will be created by cron when the date arrives
+      
+      
       if (!savedTransaction) {
         setSelectedTransaction(null);
         addToast('Recurring transaction created. Transaction will be created when start date arrives.');
-        // Refresh recurring items for future tab
+        
         if (viewMode === 'future') {
           fetchRecurring();
         }
@@ -475,10 +475,10 @@ export default function TransactionsPage() {
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
-      // Toggle order if same column
+      
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      // New column, default to desc for date/amount, asc for text columns
+      
       setSortColumn(column);
       setSortOrder(column === 'date' || column === 'amount' ? 'desc' : 'asc');
     }
@@ -496,7 +496,7 @@ export default function TransactionsPage() {
     );
   };
 
-  // Map and filter recurring items for future view; sort and paginate
+  
   const recurringRowsData = useMemo(() => {
     if (viewMode !== 'future') return { rows: [] as RecurringRow[], total: 0, totalPages: 0 };
     const q = debouncedSearchQuery.toLowerCase().trim();
@@ -572,7 +572,7 @@ export default function TransactionsPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      {/* Desktop Header */}
+      {}
       <div className="hidden md:block">
         <DashboardHeader
           pageName="Transactions"
@@ -595,7 +595,7 @@ export default function TransactionsPage() {
         />
       </div>
 
-      {/* Mobile Navbar */}
+      {}
       <div className="md:hidden">
         <MobileNavbar
           pageName="Transactions"
@@ -603,7 +603,7 @@ export default function TransactionsPage() {
         />
       </div>
 
-      {/* Content */}
+      {}
       <div className="px-4 md:px-6 pb-6 flex flex-col min-h-[calc(100vh-120px)]">
         <Card
           title={viewMode === 'past' ? 'History' : 'Upcoming'}
@@ -638,7 +638,7 @@ export default function TransactionsPage() {
           }
         >
           <div className="flex flex-col gap-4 flex-1 min-h-0">
-            {/* Filters */}
+            {}
             <div className={`flex flex-col md:flex-row md:items-center gap-3 shrink-0 ${displayLoading ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="flex-[0.6]">
                 <SearchBar
@@ -670,9 +670,9 @@ export default function TransactionsPage() {
               </div>
             </div>
 
-            {/* Table / Card View */}
+            {}
             <div className="flex-1 flex flex-col min-h-0 w-full min-w-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)', minHeight: (viewMode === 'past' ? transactions.length === 0 : recurringRowsData.rows.length === 0) && !displayLoading ? 'calc(100vh - 400px)' : 'auto' }}>
-              {/* Desktop Table View */}
+              {}
               <div className="hidden lg:block flex-1 overflow-auto">
                 <table className="min-w-full" style={{ height: (viewMode === 'past' ? transactions.length === 0 : recurringRowsData.rows.length === 0) && !displayLoading ? '100%' : 'auto' }}>
                   <thead>
@@ -892,7 +892,7 @@ export default function TransactionsPage() {
                 </table>
               </div>
 
-              {/* Mobile Card View */}
+              {}
               <div className="lg:hidden flex-1 overflow-auto p-4 flex flex-col gap-4">
                 {displayLoading ? (
                   Array.from({ length: 5 }).map((_, index) => (
@@ -980,7 +980,7 @@ export default function TransactionsPage() {
               </div>
             </div>
 
-            {/* Pagination */}
+            {}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2 shrink-0">
               <div className="flex items-center gap-3">
                 <span className="text-xs" style={{ color: 'rgba(231, 228, 228, 0.7)' }}>
@@ -1071,7 +1071,7 @@ export default function TransactionsPage() {
         </Card>
       </div>
 
-      {/* Transaction Modal (past transactions and future recurring - same form, Pause for recurring) */}
+      {}
       {selectedTransaction && (
         <TransactionModal
           transaction={selectedTransaction}
@@ -1088,7 +1088,7 @@ export default function TransactionsPage() {
         />
       )}
 
-      {/* Category Stats Modal */}
+      {}
       {isCategoryStatsOpen && (
         <CategoryStatsModal
           categories={categories}

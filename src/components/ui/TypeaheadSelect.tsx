@@ -9,15 +9,15 @@ const FLAGS_API_BASE = 'https://flagsapi.com';
 export interface TypeaheadOption {
   value: string;
   label: string;
-  /** ISO 3166-1 alpha-2 for flagsapi.com. Optional. */
+  
   countryCode?: string;
-  /** When no countryCode, e.g. symbol for currency. */
+  
   icon?: ReactNode;
-  /** Extra text for search, e.g. "United States" for USD. */
+  
   searchTerms?: string[];
-  /** Additional display text, e.g. currency symbol on the right. */
+  
   suffix?: string;
-  /** Currency symbol shown between flag/icon and label with font-semibold. */
+  
   symbol?: string;
 }
 
@@ -27,17 +27,17 @@ interface TypeaheadSelectProps {
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
-  /** Optional container ref for constraining dropdown (e.g. scroll parent). */
+  
   containerRef?: React.RefObject<HTMLElement | null>;
-  /** Search input placeholder. */
+  
   searchPlaceholder?: string;
-  /** Optional id for trigger (accessibility). */
+  
   id?: string;
-  /** Optional label for trigger (for screen readers). */
+  
   'aria-label'?: string;
-  /** Icon shown next to placeholder when nothing is selected. */
+  
   placeholderIcon?: ReactNode;
-  /** When true, render dropdown in a portal (document.body) with fixed position so it is not clipped. */
+  
   dropdownInPortal?: boolean;
 }
 
@@ -46,7 +46,7 @@ const DROPDOWN_MARGIN = 8;
 const PORTAL_Z_INDEX = 1000;
 const OPTION_ROW = 'w-full text-left px-4 py-3 flex items-center gap-3 text-body cursor-pointer transition-colors hover:bg-[#2a2a2a]';
 
-/** Country codes that have no flag on flagsapi.com (e.g. EU); show Globe instead. */
+
 const NO_FLAG_COUNTRY_CODES = new Set(['EU']);
 
 function getFlagUrl(countryCode: string, size = 24): string {
@@ -169,7 +169,7 @@ export default function TypeaheadSelect({
   const handleTriggerClick = () => {
     if (disabled) return;
     if (!isOpen) {
-      // When opening, scroll trigger into view if near bottom so dropdown has room
+      
       if (ref.current) {
         const rect = ref.current.getBoundingClientRect();
         const spaceBelow = window.innerHeight - rect.bottom;

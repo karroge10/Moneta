@@ -5,13 +5,13 @@ import { db } from '@/lib/db';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// GET - Fetch notifications for current user
+
 export async function GET(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
     const { searchParams } = request.nextUrl;
     
-    // Pagination params
+    
     const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10));
     const pageSize = Math.min(100, Math.max(1, Number.parseInt(searchParams.get('pageSize') ?? '10', 10)));
     const skip = (page - 1) * pageSize;
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       where.read = false;
     }
 
-    // Get total count for pagination
+    
     const totalCount = await db.notification.count({ where });
 
     const notifications = await db.notification.findMany({
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       take: pageSize,
     });
 
-    // Transform to match NotificationEntry format
+    
     const formattedNotifications = notifications.map(notif => {
       const dateObj = notif.date instanceof Date ? notif.date : new Date(notif.date);
       const day = String(dateObj.getDate()).padStart(2, '0');
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create a new notification
+
 export async function POST(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
@@ -134,12 +134,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH - Mark all unread notifications as read
+
 export async function PATCH(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
 
-    // Mark all unread notifications for this user as read
+    
     const result = await db.notification.updateMany({
       where: {
         userId: user.id,

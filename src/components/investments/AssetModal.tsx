@@ -42,13 +42,13 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
     const [isDeletingTransaction, setIsDeletingTransaction] = useState(false);
     const { addToast } = useToast();
 
-    // New State for Renaming and Manual Pricing
+    
     const [isRenaming, setIsRenaming] = useState(false);
     const [newName, setNewName] = useState('');
     const [isUpdatingValue, setIsUpdatingValue] = useState(false);
     const [newManualPrice, setNewManualPrice] = useState('');
 
-    // Historical Chart State
+    
     const [historyRange, setHistoryRange] = useState('1M');
     const [historyData, setHistoryData] = useState<any[]>([]);
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
@@ -59,13 +59,13 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
         {
             revalidateOnFocus: false,
             revalidateOnReconnect: false,
-            refreshInterval: 0, // Explicitly disable any polling
+            refreshInterval: 0, 
         }
     );
 
     const asset = data?.asset;
 
-    // Fetch Historical Data
+    
     useEffect(() => {
         if (assetId && isOpen && asset?.pricingMode === 'live') {
             const fetchHistory = async () => {
@@ -89,12 +89,12 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
             };
             fetchHistory();
         } else {
-            // Reset if not live or closed
+            
             if (!isHistoryLoading) setHistoryData([]);
         }
     }, [assetId, isOpen, historyRange, asset?.pricingMode]);
 
-    // Sync local state with asset data when loaded
+    
     useEffect(() => {
         if (asset) {
             setNewName(asset.name);
@@ -126,7 +126,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
         }
     };
 
-    // Use backend calculated stats if available, fallback to frontend only if needed
+    
     const assetStats = useMemo(() => {
         if (asset?.currentValue !== undefined) {
             return {
@@ -140,7 +140,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
             };
         }
 
-        // Fallback for cases where backend might not have calculated stats
+        
         if (!asset?.transactions || asset.transactions.length === 0) {
             return { totalInvested: 0, currentValue: 0, unrealizedPnL: 0, roi: 0, totalQuantity: 0 };
         }
@@ -321,7 +321,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                     style={{ backgroundColor: 'var(--bg-surface)' }}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {/* Header */}
+                    {}
                     <div
                         className="flex items-center justify-between p-6 border-b border-[#3a3a3a]"
                         style={{ backgroundColor: 'var(--bg-surface)' }}
@@ -329,12 +329,12 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                         <div className="flex items-center gap-4 flex-1 min-w-0">
                             {isLoading && !asset ? (
                                 <>
-                                    {/* Skeleton for icon */}
+                                    {}
                                     <div className="w-12 h-12 rounded-full animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
                                     <div className="flex-1 min-w-0">
-                                        {/* Skeleton for title */}
+                                        {}
                                         <div className="h-6 w-48 rounded animate-pulse mb-2" style={{ backgroundColor: '#3a3a3a' }}></div>
-                                        {/* Skeleton for ticker/type */}
+                                        {}
                                         <div className="h-4 w-32 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
                                     </div>
                                 </>
@@ -349,7 +349,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                         />
                                     </div>
                                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                        {/* Row 1: Name & Price */}
+                                        {}
                                         <div className="flex items-center justify-between gap-4">
                                             <div className="flex-1 min-w-0">
                                                 {isRenaming ? (
@@ -390,7 +390,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                                 className="opacity-0 group-hover:opacity-100 text-[#AC66DA] hover:text-[#9A4FB8] transition-opacity shrink-0 disabled:opacity-0"
                                                                 title="Rename Asset"
                                                             >
-                                                                <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor"><path d="M14.363 5.652l1.48-1.48a2 2 0 012.829 0l1.414 1.414a2 2 0 010 2.828l-1.48 1.48m-4.243-4.242l-9.616 9.615a2 2 0 00-.578 1.238l-.242 2.74a1 1 0 001.084 1.085l2.74-.242a2 2 0 001.24-.578l9.615-9.616m-4.243-4.242l4.242 4.242" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                                                                <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http:
                                                             </button>
                                                         )}
                                                     </div>
@@ -406,7 +406,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                             )}
                                         </div>
 
-                                        {/* Row 2: Details & Ticker Label */}
+                                        {}
                                         <div className="flex items-center justify-between gap-4">
                                             <div className="flex items-center gap-2">
                                                 <span 
@@ -438,7 +438,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                         </button>
                     </div>
 
-                    {/* Content */}
+                    {}
                     <div className="flex-1 overflow-y-auto">
                         {error || (!asset && !isLoading) ? (
                             <div className="text-center py-10 px-6">
@@ -447,7 +447,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                             </div>
                         ) : (
                             <div className="p-6 pb-8 space-y-6">
-                                {/* Asset Info Overview */}
+                                {}
                                 <div>
                                     <h3 className="text-body font-medium mb-3">Overview</h3>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -460,11 +460,11 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                             <div key={i} className="p-4 bg-background rounded-2xl border border-[#3a3a3a] relative group">
                                                 <div className="text-xs text-helper uppercase tracking-wider mb-1">{stat.label}</div>
                                                 
-                                                {/* ... (rest of card contents adjusted) */}
+                                                {}
                                                 {(isLoading || isValidating) ? (
                                                     <div className="h-6 w-24 rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }}></div>
                                                 ) : stat.isCurrentValue && isUpdatingValue && asset?.userId ? (
-                                                    /* ... form remains same ... */
+                                                    
                                                     <div className="space-y-2">
                                                         <input 
                                                             type="number"
@@ -505,7 +505,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                     </div>
                                                 )}
                                                 
-                                                {/* Edit Icon for Manual Assets on Current Value Card */}
+                                                {}
                                                 {stat.isCurrentValue && asset?.userId && asset?.pricingMode === 'manual' && !isUpdatingValue && (
                                                     <button 
                                                         onClick={(e) => {
@@ -516,7 +516,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                         className="absolute top-2 right-2 transition-opacity p-1.5 rounded-full hover:bg-[#282828] disabled:opacity-0"
                                                         title="Edit Value"
                                                     >
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http://www.w3.org/2000/svg" color="#AC66DA">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http:
                                                             <path d="M14.363 5.652l1.48-1.48a2 2 0 012.829 0l1.414 1.414a2 2 0 010 2.828l-1.48 1.48m-4.243-4.242l-9.616 9.615a2 2 0 00-.578 1.238l-.242 2.74a1 1 0 001.084 1.085l2.74-.242a2 2 0 001.24-.578l9.615-9.616m-4.243-4.242l4.242 4.242" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"></path>
                                                         </svg>
                                                     </button>
@@ -526,7 +526,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                     </div>
                                 </div>
 
-                                {/* Historical Performance Chart */}
+                                {}
                                 {asset?.pricingMode === 'live' && (
                                     <div className="bg-background rounded-3xl border border-[#3a3a3a] p-6 relative overflow-hidden">
                                         <div className="flex items-center justify-between mb-6">
@@ -571,7 +571,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                 )}
 
 
-                                {/* Transactions */}
+                                {}
                                 <div>
                                     <div className="flex items-center justify-between mb-4">
                                         <h3 className="text-body font-medium">Transactions</h3>
@@ -723,12 +723,12 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                         )}
                     </div>
 
-                    {/* Footer */}
+                    {}
 
                 </div>
             </div >
 
-            {/* Edit Transaction Modal */}
+            {}
             {editingTransaction && (
                 <InvestmentTransactionModal
                     transaction={editingTransaction}

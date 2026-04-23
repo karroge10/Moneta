@@ -17,7 +17,7 @@ const DEFAULT_PAGE_SIZE = 10;
 export default function NotificationsPage() {
   const authReady = useAuthReadyForApi();
 
-  // Pagination & Data
+  
 
   const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
 
@@ -28,7 +28,7 @@ export default function NotificationsPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [pageInput, setPageInput] = useState('1');
 
-  // Per-page dropdown
+  
   const [isPerPageOpen, setIsPerPageOpen] = useState(false);
   const perPageRef = useRef<HTMLDivElement>(null);
 
@@ -108,7 +108,7 @@ export default function NotificationsPage() {
                 />
               </div>
 
-              {/* Pagination Controls */}
+              {}
               <div className="mt-6 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="relative" ref={perPageRef}>

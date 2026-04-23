@@ -11,7 +11,7 @@ interface CategoryStatsModalProps {
   categories: Category[];
   timePeriod: string;
   onClose: () => void;
-  transactions?: Transaction[]; // Optional: if provided, use these instead of fetching
+  transactions?: Transaction[]; 
 }
 
 export default function CategoryStatsModal({
@@ -45,7 +45,7 @@ export default function CategoryStatsModal({
     };
   }, [onClose]);
 
-  // Fetch all transactions for stats (with large page size) - only if not provided
+  
   useEffect(() => {
     if (providedTransactions) {
       setAllTransactions(providedTransactions);
@@ -58,7 +58,7 @@ export default function CategoryStatsModal({
         setLoading(true);
         const params = new URLSearchParams({
           page: '1',
-          pageSize: '1000', // Large page size to get all transactions
+          pageSize: '1000', 
           timePeriod: timePeriod,
         });
         
@@ -77,7 +77,7 @@ export default function CategoryStatsModal({
     fetchAllTransactions();
   }, [timePeriod, providedTransactions]);
 
-  // Calculate category statistics separated by income and expense
+  
   const { incomeStats, expenseStats, incomeTotal, expenseTotal } = useMemo(() => {
     const incomeMap = new Map<string, { category: Category; total: number; count: number }>();
     const expenseMap = new Map<string, { category: Category; total: number; count: number }>();
@@ -162,7 +162,7 @@ export default function CategoryStatsModal({
               </div>
             ) : (
               <div className="space-y-8">
-                {/* Incomes Section */}
+                {}
                 {incomeStats.length > 0 && (
                   <div>
                     <h3 className="text-card-header mb-4" style={{ color: '#74C648' }}>Incomes</h3>
@@ -211,7 +211,7 @@ export default function CategoryStatsModal({
                   </div>
                 )}
 
-                {/* Expenses Section */}
+                {}
                 {expenseStats.length > 0 && (
                   <div>
                     <h3 className="text-card-header mb-4" style={{ color: '#D93F3F' }}>Expenses</h3>

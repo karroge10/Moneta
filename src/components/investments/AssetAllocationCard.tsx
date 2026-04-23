@@ -34,11 +34,11 @@ const TYPE_ICONS: Record<string, any> = {
 };
 
 export default function AssetAllocationCard({ portfolio }: AssetAllocationCardProps) {
-    const { currency } = useCurrency(); // Get currency for amount formatting if needed, though we show % primarily
+    const { currency } = useCurrency(); 
 
     if (!portfolio || portfolio.length === 0) return null;
 
-    // 1. Group by type and sum value
+    
     const totals: Record<string, number> = {};
     let grandTotal = 0;
 
@@ -51,7 +51,7 @@ export default function AssetAllocationCard({ portfolio }: AssetAllocationCardPr
 
     if (grandTotal === 0) return null;
 
-    // 2. Format for DonutChart
+    
     const data = Object.entries(totals)
         .map(([type, value]) => {
             const pct = (value / grandTotal) * 100;
@@ -60,7 +60,7 @@ export default function AssetAllocationCard({ portfolio }: AssetAllocationCardPr
                 value: Math.round(pct),
                 displayPct: pct > 0 && pct < 0.1 ? '< 0.1' : pct < 1 && pct >= 0.1 ? '< 1' : Math.round(pct).toString(),
                 color: TYPE_COLORS[type] || TYPE_COLORS.other,
-                type: type, // Store type for icon lookup
+                type: type, 
                 amount: value,
                 raw: value
             };

@@ -42,7 +42,7 @@ export default function ImportTransactionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<string>(''); // 'expense' | 'income' | ''
+  const [typeFilter, setTypeFilter] = useState<string>(''); 
   const { categories } = useCategories();
   const [isConfirming, setIsConfirming] = useState(false);
   const [isCategoryStatsOpen, setIsCategoryStatsOpen] = useState(false);
@@ -67,7 +67,7 @@ export default function ImportTransactionsPage() {
   const [sortColumn, setSortColumn] = useState<SortColumn>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
-  // Get selected currency object for display
+  
   const selectedCurrency = useMemo(() => {
     if (!selectedCurrencyId) return null;
     return currencyOptions.find(opt => opt.id === selectedCurrencyId) ?? null;
@@ -79,7 +79,7 @@ export default function ImportTransactionsPage() {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentProgressRef = useRef<number>(0);
-  /** Set to true when resuming an already-completed job so the first poll skips the "PDF processed!" toast. */
+  
   const skipCompletionToastRef = useRef(false);
 
   const filteredRows = useMemo(() => {
@@ -99,7 +99,7 @@ export default function ImportTransactionsPage() {
       return matchesQuery && matchesCategory && matchesType;
     });
 
-    // Apply sorting
+    
     const sorted = [...filtered].sort((a, b) => {
       let comparison = 0;
       
@@ -131,8 +131,8 @@ export default function ImportTransactionsPage() {
   }, [parsedRows, debouncedSearchQuery, categoryFilter, typeFilter, sortColumn, sortOrder]);
 
 
-  // Reset page to 1 only when filters/search/sort change, not when rows are deleted
-  // We track the previous filter/search/sort state to detect actual filter changes
+  
+  
   const prevFilterStateRef = useRef<{
     searchQuery: string;
     categoryFilter: string | null;
@@ -145,7 +145,7 @@ export default function ImportTransactionsPage() {
     const currentFilterState = { searchQuery: debouncedSearchQuery, categoryFilter, typeFilter, sortColumn, sortOrder };
     const prevFilterState = prevFilterStateRef.current;
     
-    // Only reset page if filters/search/sort actually changed (not just row count)
+    
     if (
       prevFilterState.searchQuery !== currentFilterState.searchQuery ||
       prevFilterState.categoryFilter !== currentFilterState.categoryFilter ||
@@ -203,7 +203,7 @@ export default function ImportTransactionsPage() {
     return map;
   }, [categories]);
 
-  // Debounce search query
+  
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
@@ -223,22 +223,22 @@ export default function ImportTransactionsPage() {
     }
   }, [statementMetadata, currencyOptions, currencySelectionTouched]);
 
-  // Set user's currency as default when page loads (only if not touched and no statement metadata)
+  
   useEffect(() => {
-    // Don't set if user has manually selected a currency
+    
     if (currencySelectionTouched) return;
-    // Don't set if already selected
+    
     if (selectedCurrencyId !== null) return;
-    // Don't set if currency options aren't loaded yet
+    
     if (!currencyOptions.length) return;
-    // Don't set if currency context is still loading
+    
     if (currencyLoading) return;
-    // Don't set if statement metadata has a currency (let the other useEffect handle it)
+    
     if (statementMetadata?.currency) return;
-    // Don't set if currency.id is 0 (default/not loaded yet)
+    
     if (currency.id === 0) return;
     
-    // Find user's currency in the options list
+    
     const userCurrency = currencyOptions.find(option => option.id === currency.id);
     if (userCurrency) {
       setSelectedCurrencyId(userCurrency.id);
@@ -280,21 +280,21 @@ export default function ImportTransactionsPage() {
   };
 
   const handleDeleteActiveJob = useCallback(() => {
-    // Clear review table
+    
     setParsedRows([]);
-    // Reset dropzone to default state
+    
     resetUploadState();
-    // Reset review page to first page
+    
     setReviewPage(1);
     setReviewPageInput('1');
-    // Clear filters
+    
     setSearchQuery('');
     setDebouncedSearchQuery('');
     setCategoryFilter(null);
     setTypeFilter('');
   }, []);
 
-  // Format time in seconds to human-readable string
+  
   const formatTime = (seconds: number): string => {
     if (seconds < 60) {
       return `${Math.floor(seconds)}s`;
@@ -304,7 +304,7 @@ export default function ImportTransactionsPage() {
     return `${mins}m ${secs}s`;
   };
 
-  // Start timer interval
+  
   useEffect(() => {
     if (uploadState !== 'idle' && startTime !== null) {
       timerIntervalRef.current = setInterval(() => {
@@ -323,7 +323,7 @@ export default function ImportTransactionsPage() {
     };
   }, [uploadState, startTime]);
 
-  // Cleanup intervals on unmount
+  
   useEffect(() => {
     return () => {
       if (progressIntervalRef.current) {
@@ -338,7 +338,7 @@ export default function ImportTransactionsPage() {
     };
   }, []);
 
-  // Helper to start polling for status
+  
   const startPolling = useCallback((jobId: string) => {
     if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
     
@@ -346,7 +346,7 @@ export default function ImportTransactionsPage() {
       try {
         const res = await fetch(`/api/transactions/upload-bank-statement/${jobId}/status`);
         if (!res.ok) {
-           // If 404 or 500, maybe stop? For now just retry next tick
+           
            return;
         }
         const data = await res.json();
@@ -362,7 +362,7 @@ export default function ImportTransactionsPage() {
         if (data.status === 'completed') {
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
           
-          // Process results similar to original flow
+          
           const result = data.result as TransactionUploadResponse;
           
           if (!result || !result.transactions || result.transactions.length === 0) {
@@ -372,7 +372,7 @@ export default function ImportTransactionsPage() {
             return;
           }
           
-          // Normalize transactions
+          
           const normalized: TableRow[] = result.transactions.map(item => ({
             id: crypto.randomUUID(),
             date: item.date,
@@ -384,13 +384,13 @@ export default function ImportTransactionsPage() {
             suggestedCategory: item.category && item.category.toLowerCase() !== 'currency exchange' ? item.category : null,
           }));
           
-          // Only set total time if we had a valid start time, otherwise use 0 or don't show it
-          // For resumed jobs, startTime might be the resumption time, not original start
+          
+          
           const totalTime = startTime 
             ? Math.floor((Date.now() - startTime) / 1000)
             : 0;
             
-          setElapsedSeconds(totalTime); // freeze elapsed
+          setElapsedSeconds(totalTime); 
           
           setParsedRows(normalized);
           setStatementMetadata(result.metadata ?? null);
@@ -404,7 +404,7 @@ export default function ImportTransactionsPage() {
           setStatusNote(null);
           setIsReviewLoading(false);
           
-          // Show toast only when a job has just finished processing, not when viewing an old completed job
+          
           if (skipCompletionToastRef.current) {
             skipCompletionToastRef.current = false;
           } else if (!hasShownCompletionToast) {
@@ -418,11 +418,11 @@ export default function ImportTransactionsPage() {
             setHasShownCompletionToast(true);
           }
           
-          // Trigger refresh of recent jobs list to update the UI
+          
           setJobsRefreshTrigger(prev => prev + 1);
           
-          // Trigger immediate notification refresh so new notification appears in dropdown
-          // Use a small delay to ensure notification is created in DB first
+          
+          
           setTimeout(() => {
             window.dispatchEvent(new CustomEvent('refreshNotifications'));
           }, 500);
@@ -430,12 +430,12 @@ export default function ImportTransactionsPage() {
           return;
         }
         
-        // Still processing/queued
+        
         if (typeof data.progress === 'number') {
           setProgressValue(Math.max(5, data.progress));
         }
         
-        // Update transaction counts if available
+        
         if (typeof data.processedCount === 'number') {
           setProcessedCount(data.processedCount);
         }
@@ -451,7 +451,7 @@ export default function ImportTransactionsPage() {
            }
            setUploadState('queued');
         } else if (data.status === 'processing') {
-          // Show transaction count if available
+          
           if (data.processedCount !== null && data.totalCount !== null) {
             setStatusNote(`Processing transaction ${data.processedCount} of ${data.totalCount}...`);
           } else {
@@ -466,14 +466,14 @@ export default function ImportTransactionsPage() {
       }
     };
     
-    // Poll every 1.5 seconds
+    
     pollingIntervalRef.current = setInterval(poll, 1500);
-    poll(); // initial call
+    poll(); 
   }, [startTime, hasShownCompletionToast]);
 
   const handleFileUpload = useCallback(
     async (file: File) => {
-      // Allow uploads when idle, ready, or error (to allow retry after error)
+      
       if (!['idle', 'ready', 'error'].includes(uploadState)) {
         return;
       }
@@ -484,18 +484,18 @@ export default function ImportTransactionsPage() {
         return;
       }
 
-      // Reset state completely when starting a new upload (especially after error)
+      
       if (uploadState === 'error') {
         resetUploadState();
       }
 
-      // Reset drag-over state when starting upload
+      
       setIsDragOver(false);
       
-      // Reset toast flag for new upload
+      
       setHasShownCompletionToast(false);
 
-      // Reset and start timer
+      
       const now = Date.now();
       setStartTime(now);
       setElapsedSeconds(0);
@@ -504,7 +504,7 @@ export default function ImportTransactionsPage() {
       setTotalCount(null);
       setIsReviewLoading(true);
 
-      // Clear any existing intervals
+      
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
         progressIntervalRef.current = null;
@@ -526,7 +526,7 @@ export default function ImportTransactionsPage() {
       formData.append('file', file);
 
       try {
-        // Upload phase - show immediately
+        
         setUploadState('uploading');
         setProgressValue(10);
         setStatusNote('Uploading PDF...');
@@ -547,7 +547,7 @@ export default function ImportTransactionsPage() {
           return;
         }
 
-        // New Async Flow: Get Job ID and start polling
+        
         const result = await response.json() as { 
           jobId: string;
           fileName?: string;
@@ -563,7 +563,7 @@ export default function ImportTransactionsPage() {
         
         setCurrentJobId(result.jobId);
 
-        // Create optimistic job entry for immediate display
+        
         if (result.fileName && result.createdAt) {
           setOptimisticJob({
             id: result.jobId,
@@ -573,10 +573,10 @@ export default function ImportTransactionsPage() {
           });
         }
 
-        // Trigger refresh of recent jobs list to show the new job immediately
+        
         setJobsRefreshTrigger(prev => prev + 1);
 
-        // Show toast when upload starts/processing begins
+        
         const uploadToastId = crypto.randomUUID();
         const fileName = result.fileName || file.name;
         const shortFileName = fileName.length > 30 ? fileName.substring(0, 27) + '...' : fileName;
@@ -594,11 +594,11 @@ export default function ImportTransactionsPage() {
           }]);
         }
 
-        // Start polling with the returned Job ID
+        
         startPolling(result.jobId);
         
-        // Show queue info if available (this is the initial queue position when request started)
-        // Note: This shows AFTER processing completes, but it's informational
+        
+        
         if (result.queuePosition !== undefined) {
           if (result.queuePosition > 0) {
             setStatusNote(`Queued: ${result.queuePosition} users ahead in queue`);
@@ -618,7 +618,7 @@ export default function ImportTransactionsPage() {
         setElapsedSeconds(0);
         setIsReviewLoading(false);
       } finally {
-        // Clean up
+        
       }
     },
     [startPolling, uploadState],
@@ -626,14 +626,14 @@ export default function ImportTransactionsPage() {
 
   const handleResumeJob = useCallback((jobId: string, jobStatus: JobStatus) => {
     setCurrentJobId(jobId);
-    // For completed jobs, skip the "PDF processed!" toast when the first poll returns (ref is read synchronously in poll)
+    
     if (jobStatus === 'completed') {
       skipCompletionToastRef.current = true;
       setHasShownCompletionToast(true);
     } else {
       setHasShownCompletionToast(false);
     }
-    setOptimisticJob(null); // Clear optimistic job when resuming
+    setOptimisticJob(null); 
     if (jobStatus === 'failed') {
       setUploadState('idle');
       setStatusNote(null);
@@ -680,7 +680,7 @@ export default function ImportTransactionsPage() {
     }
 
     if (!isCompletedJob) {
-      setUploadState('queued'); // Will be updated by first poll
+      setUploadState('queued'); 
       setStatusNote('Resuming job...');
     } else {
       setUploadState('idle');
@@ -716,7 +716,7 @@ export default function ImportTransactionsPage() {
 
     const handleDragEnter = (event: DragEvent) => {
       preventDefaults(event);
-      // Only highlight if not busy and dragging files
+      
       const isBusy = ['queued', 'uploading', 'processing', 'categorizing'].includes(uploadState);
       if (!isBusy && event.dataTransfer?.types.includes('Files')) {
         setIsDragOver(true);
@@ -725,7 +725,7 @@ export default function ImportTransactionsPage() {
 
     const handleDragOver = (event: DragEvent) => {
       preventDefaults(event);
-      // Set dropEffect to show it's a valid drop target
+      
       const isBusy = ['queued', 'uploading', 'processing', 'categorizing'].includes(uploadState);
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = isBusy ? 'none' : 'copy';
@@ -734,7 +734,7 @@ export default function ImportTransactionsPage() {
 
     const handleDragLeave = (event: DragEvent) => {
       preventDefaults(event);
-      // Only reset if we're actually leaving the dropzone (not just a child element)
+      
       const rect = dropZone.getBoundingClientRect();
       const x = event.clientX;
       const y = event.clientY;
@@ -782,7 +782,7 @@ export default function ImportTransactionsPage() {
         }
 
         if (key === 'category') {
-          // Don't learn here - learning happens on confirm import
+          
           return { ...row, category: value || null };
         }
 
@@ -795,8 +795,8 @@ export default function ImportTransactionsPage() {
     setParsedRows(prev => {
       const newRows = prev.filter(row => row.id !== id);
       
-      // After deletion, check if current page would be empty
-      // Calculate what filteredRows would be after deletion
+      
+      
       const newFilteredRows = newRows.filter(row => {
         const matchesSearch = !debouncedSearchQuery || 
           row.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
@@ -812,7 +812,7 @@ export default function ImportTransactionsPage() {
         ? Math.ceil(newFilteredRows.length / REVIEW_PAGE_SIZE)
         : 1;
       
-      // If current page would be empty and there are other pages, go to previous page
+      
       if (reviewPage > newTotalPages && newTotalPages > 0) {
         const newPage = newTotalPages;
         setReviewPage(newPage);
@@ -842,10 +842,10 @@ export default function ImportTransactionsPage() {
         confidence: row.confidence,
       }));
 
-      // Prepare merchants to learn: transactions where user selected a category
-      // Use translatedDescription (English) instead of description (original language)
+      
+      
       const merchantsToLearn = parsedRows
-        .filter(row => row.category) // Only learn if user selected a category
+        .filter(row => row.category) 
         .map(row => {
           const category = categories.find(cat => cat.name === row.category);
           if (!category) return null;
@@ -854,7 +854,7 @@ export default function ImportTransactionsPage() {
           if (Number.isNaN(categoryId)) return null;
           
           return {
-            description: row.translatedDescription || row.description, // Use translated description (English)
+            description: row.translatedDescription || row.description, 
             categoryId,
           };
         })
@@ -886,7 +886,7 @@ export default function ImportTransactionsPage() {
       const result = await response.json();
       const importedCount = result.transactions?.length || parsedRows.length;
 
-      // Show success toast (notification is created in the API)
+      
       const toastId = crypto.randomUUID();
       setToasts(prev => [...prev, {
         id: toastId,
@@ -898,14 +898,14 @@ export default function ImportTransactionsPage() {
       setStatementMetadata(null);
       setSelectedCurrencyId(null);
       setCurrencySelectionTouched(false);
-      setOptimisticJob(null); // Clear optimistic job after import
+      setOptimisticJob(null); 
       resetUploadState();
     } catch (error) {
       console.error('[import/confirm]', error);
       setUploadState('error');
       setStatusNote(null);
       
-      // Show error toast
+      
       const toastId = crypto.randomUUID();
       setToasts(prev => [...prev, {
         id: toastId,
@@ -1390,7 +1390,7 @@ export default function ImportTransactionsPage() {
             </div>
           </Card>
 
-        {/* Category Stats Modal */}
+        {}
         {isCategoryStatsOpen && parsedRows.length > 0 && (
           <CategoryStatsModal
             categories={categories}
@@ -1408,7 +1408,7 @@ export default function ImportTransactionsPage() {
         )}
       </div>
       
-      {/* Toast Container */}
+      {}
       <ToastContainer
         toasts={toasts}
         onRemove={(id) => setToasts(prev => prev.filter(t => t.id !== id))}

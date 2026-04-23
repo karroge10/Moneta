@@ -17,14 +17,14 @@ export default function Toast({ message, type = 'success', duration = 3000, onCl
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const onCloseRef = useRef(onClose);
 
-  // Keep onClose ref updated
+  
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  // Trigger entrance animation
+  
   useEffect(() => {
-    // Small delay to trigger CSS animation
+    
     const timeout = setTimeout(() => {
       setIsMounted(true);
     }, 10);
@@ -36,7 +36,7 @@ export default function Toast({ message, type = 'success', duration = 3000, onCl
       setIsAnimatingOut(true);
       setTimeout(() => {
         onCloseRef.current();
-      }, 300); // Match animation duration
+      }, 300); 
     }, duration);
 
     return () => clearTimeout(timer);
@@ -45,12 +45,12 @@ export default function Toast({ message, type = 'success', duration = 3000, onCl
   const typeStyles: Record<ToastType, { accentColor: string; borderColor: string; iconBg: string }> = {
     success: {
       accentColor: '#74C648',
-      borderColor: 'var(--accent-purple)', // Changed to purple border
+      borderColor: 'var(--accent-purple)', 
       iconBg: 'rgba(116, 198, 72, 0.1)',
     },
     error: {
       accentColor: 'var(--error)',
-      borderColor: 'var(--accent-purple)', // Changed to purple border
+      borderColor: 'var(--accent-purple)', 
       iconBg: 'rgba(217, 63, 63, 0.1)',
     },
     info: {

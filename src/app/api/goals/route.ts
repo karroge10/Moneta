@@ -7,14 +7,14 @@ import { Goal } from '@/types/dashboard';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Format date to match frontend format (e.g., "Dec 25th 2024")
+
 function formatDate(date: Date): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const day = date.getDate();
   const month = months[date.getMonth()];
   const year = date.getFullYear();
   
-  // Add ordinal suffix
+  
   const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
                  day === 2 || day === 22 ? 'nd' :
                  day === 3 || day === 23 ? 'rd' : 'th';
@@ -22,10 +22,10 @@ function formatDate(date: Date): string {
   return `${month} ${day}${suffix} ${year}`;
 }
 
-// Parse date from display format ("Dec 25th 2024") or ISO string
+
 function parseDate(dateStr: string): Date {
   if (dateStr.includes('st') || dateStr.includes('nd') || dateStr.includes('rd') || dateStr.includes('th')) {
-    // Parse custom format
+    
     const months: Record<string, number> = {
       'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
       'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11,
@@ -36,12 +36,12 @@ function parseDate(dateStr: string): Date {
     const year = parseInt(parts[2]);
     return new Date(year, month, day);
   } else {
-    // Parse ISO string (YYYY-MM-DD)
+    
     return new Date(dateStr);
   }
 }
 
-// GET - Fetch all goals for authenticated user
+
 export async function GET(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create a new goal
+
 export async function POST(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Parse date
+    
     let parsedDate: Date;
     try {
       parsedDate = parseDate(targetDate);
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT - Update an existing goal
+
 export async function PUT(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
@@ -181,7 +181,7 @@ export async function PUT(request: NextRequest) {
       );
     }
     
-    // Verify goal belongs to user
+    
     const existingGoal = await db.goal.findFirst({
       where: {
         id: parseInt(id),
@@ -196,7 +196,7 @@ export async function PUT(request: NextRequest) {
       );
     }
     
-    // Parse date
+    
     let parsedDate: Date;
     try {
       parsedDate = parseDate(targetDate);
@@ -243,7 +243,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE - Delete a goal
+
 export async function DELETE(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
@@ -257,7 +257,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    // Verify goal belongs to user
+    
     const existingGoal = await db.goal.findFirst({
       where: {
         id: parseInt(id),
@@ -272,7 +272,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    // Delete goal
+    
     await db.goal.delete({
       where: {
         id: parseInt(id),

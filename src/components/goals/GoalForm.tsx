@@ -49,7 +49,7 @@ export default function GoalForm({
     return initial ? new Date(initial) : new Date();
   });
   
-  // Portal positioning state for date dropdown
+  
   const [dateDropdownStyle, setDateDropdownStyle] = useState<CSSProperties | null>(null);
   const [dateOpenUpward, setDateOpenUpward] = useState(false);
   
@@ -58,7 +58,7 @@ export default function GoalForm({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
-    // Sync goal prop to form state
+    
     setFormData(goal);
     setTargetAmountInput(goal.targetAmount.toString());
     setCurrentAmountInput(goal.currentAmount.toString());
@@ -71,7 +71,7 @@ export default function GoalForm({
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
       
-      // Date dropdown (portal) - check both container and portal ref
+      
       if (isDateOpen && 
           dateDropdownRef.current && 
           !dateDropdownRef.current.contains(target) &&
@@ -91,7 +91,7 @@ export default function GoalForm({
     onFloatingPanelToggle?.(isDateOpen);
   }, [isDateOpen, onFloatingPanelToggle]);
 
-  // Position calculation for date dropdown portal
+  
   const updateDateDropdownPosition = useCallback(() => {
     if (!isDateOpen || !dateTriggerRef.current || !datePortalRef.current) return;
     const margin = 8;
@@ -138,7 +138,7 @@ export default function GoalForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate fields
+    
     if (!formData.name.trim()) {
       alert('Please enter a goal name');
       return;

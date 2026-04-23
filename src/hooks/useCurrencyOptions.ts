@@ -30,7 +30,7 @@ export function useCurrencyOptions() {
     queryKey: ['currencies'],
     queryFn: fetchCurrencies,
     enabled: authReady,
-    staleTime: 24 * 60 * 60 * 1000, // 24h caching
+    staleTime: 24 * 60 * 60 * 1000, 
   });
 
   return {

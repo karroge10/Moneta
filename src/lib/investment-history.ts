@@ -1,16 +1,16 @@
 import { AssetType } from '@prisma/client';
 
 export interface HistoryDataPoint {
-  date: string; // YYYY-MM-DD
+  date: string; 
   price: number;
 }
 
 const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3';
 const YAHOO_FINANCE_URL = 'https://query1.finance.yahoo.com/v8/finance/chart';
 
-// Map our ranges to API specific params
+
 const RANGE_MAP: Record<string, { cg: string; yf: string; yfInterval: string }> = {
-  '1W': { cg: '7', yf: '5d', yfInterval: '1d' }, // Yahoo doesn't support 7d exactly, 5d is close or we use 1mo
+  '1W': { cg: '7', yf: '5d', yfInterval: '1d' }, 
   '1M': { cg: '30', yf: '1mo', yfInterval: '1d' },
   '3M': { cg: '90', yf: '3mo', yfInterval: '1d' },
   '1Y': { cg: '365', yf: '1y', yfInterval: '1wk' },
@@ -29,7 +29,7 @@ export async function fetchAssetHistory(
     const cgHistory = await fetchCryptoHistory(coingeckoId || ticker, rangeConfig.cg);
     if (cgHistory.length > 0) return cgHistory;
     
-    // Fallback to Yahoo Finance for crypto if CoinGecko fails (e.g. range > 365 days on free tier)
+    
     const yahooTicker = ticker.toUpperCase().endsWith('-USD') ? ticker : `${ticker}-USD`;
     console.log(`[history] Falling back to Yahoo Finance for crypto ticker: ${yahooTicker}`);
     return fetchStockHistory(yahooTicker, rangeConfig.yf, rangeConfig.yfInterval);
@@ -42,9 +42,9 @@ export async function fetchAssetHistory(
 
 async function fetchCryptoHistory(id: string, days: string): Promise<HistoryDataPoint[]> {
   try {
-    // If id is a ticker like 'BTC', try to fallback or fail. 
-    // Usually we expect a valid coingeckoId (e.g. 'bitcoin').
-    // If not, we might default to ticker.toLowerCase() but that's risky.
+    
+    
+    
     const cleanId = id.toLowerCase(); 
     
     const url = `${COINGECKO_API_URL}/coins/${cleanId}/market_chart?vs_currency=usd&days=${days}`;
@@ -62,7 +62,7 @@ async function fetchCryptoHistory(id: string, days: string): Promise<HistoryData
     const data = await res.json();
     if (!data.prices || !Array.isArray(data.prices)) return [];
 
-    // Filter to one point per day (last point of each day)
+    
     const dailyMap = new Map<string, number>();
     data.prices.forEach((item: [number, number]) => {
       const dateKey = new Date(item[0]).toISOString().split('T')[0];
@@ -84,7 +84,7 @@ async function fetchStockHistory(ticker: string, range: string, interval: string
     const symbol = ticker.toUpperCase();
     const url = `${YAHOO_FINANCE_URL}/${symbol}?range=${range}&interval=${interval}`;
     
-    // Yahoo might require a user-agent to avoid blocking
+    
     const res = await fetch(url, { 
       next: { revalidate: 3600 },
       headers: {
@@ -93,8 +93,8 @@ async function fetchStockHistory(ticker: string, range: string, interval: string
     });
 
     if (!res.ok) {
-       // Try adding .US or other suffixes if direct fail?
-       // For now just return empty
+       
+       
        console.warn(`Failed to fetch stock history for ${symbol}: ${res.statusText}`);
        return [];
     }

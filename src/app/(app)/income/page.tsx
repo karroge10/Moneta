@@ -47,7 +47,7 @@ export default function IncomePage() {
   const { categories } = useCategories();
   const { currencyOptions, loading: currencyOptionsLoading } = useCurrencyOptions();
 
-  // Derive upcoming list for the card from full recurring items (no extra fetch on click)
+  
   const upcomingIncomes = useMemo(() => {
     return recurringItems
       .filter((i) => i.nextDueDate)
@@ -63,13 +63,13 @@ export default function IncomePage() {
       }));
   }, [recurringItems, categories]);
   
-  // Transaction modal state
+  
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Keep mock data for components not requested to be changed
+  
   const update = {
     date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
     message: 'Your income pipeline looks healthy.',
@@ -160,12 +160,12 @@ export default function IncomePage() {
     };
   }, [authReady, fetchIncomeData]);
 
-  // Create draft income transaction (positive amount for income)
+  
   const createDraftIncome = (): Transaction => ({
     id: crypto.randomUUID(),
     name: '',
     date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    amount: 0.01, // Positive amount indicates income
+    amount: 0.01, 
     category: null,
     icon: 'HelpCircle',
   });
@@ -308,7 +308,7 @@ export default function IncomePage() {
       }
       
       setSelectedTransaction(null);
-      fetchIncomeData(); // Refresh income data and upcoming incomes
+      fetchIncomeData(); 
     } catch (err) {
       console.error('Error saving transaction:', err);
       setError(err instanceof Error ? err.message : 'Failed to save transaction');
@@ -358,7 +358,7 @@ export default function IncomePage() {
     }
   };
 
-  // Helper to get comparison label based on time period
+  
   const getComparisonLabel = (period: TimePeriod): string => {
     switch (period) {
       case 'This Month':
@@ -376,16 +376,16 @@ export default function IncomePage() {
     }
   };
 
-  // Helper to get card title based on time period
+  
   const getAverageCardTitle = (): string => {
     if (timePeriod === 'This Month' || timePeriod === 'Last Month') return 'Average Daily';
     return 'Average';
   };
 
-  // Helper to render skeleton layout
+  
   const renderSkeletonLayout = () => (
     <>
-      {/* Mobile: Custom Layout (< 768px) */}
+      {}
       <div className="flex flex-col gap-4 px-4 pb-4 md:hidden">
         <CardSkeleton title="Update" variant="update" />
         <CardSkeleton title="Total" variant="value" />
@@ -398,7 +398,7 @@ export default function IncomePage() {
         <CardSkeleton title={getAverageCardTitle()} variant="value" />
       </div>
 
-      {/* Two-column layout: 768px - 1536px */}
+      {}
       <div className="hidden md:grid 2xl:hidden md:grid-cols-2 md:gap-4 md:px-6 md:pb-6">
         <CardSkeleton title="Update" variant="update" />
         <CardSkeleton title="Total" variant="value" />
@@ -411,7 +411,7 @@ export default function IncomePage() {
         <CardSkeleton title={getAverageCardTitle()} variant="value" />
       </div>
 
-      {/* Desktop: Pure Tailwind Bento Grid (>= 1536px) */}
+      {}
       <div className="hidden 2xl:grid 2xl:grid-cols-4 2xl:gap-4 2xl:px-6 2xl:pb-6">
         <div className="col-span-3 flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-4">
@@ -459,7 +459,7 @@ export default function IncomePage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-background">
-        {/* Desktop Header */}
+        {}
         <div className="hidden md:block">
           <DashboardHeader 
             pageName="Income"
@@ -472,7 +472,7 @@ export default function IncomePage() {
           />
         </div>
 
-        {/* Mobile Navbar */}
+        {}
         <div className="md:hidden">
           <MobileNavbar 
             pageName="Income" 
@@ -482,10 +482,10 @@ export default function IncomePage() {
           />
         </div>
 
-        {/* Loading State with Skeletons */}
+        {}
         {renderSkeletonLayout()}
 
-        {/* Transaction Modal (available even while loading) */}
+        {}
         {selectedTransaction && (
           <TransactionModal
             transaction={selectedTransaction}
@@ -508,7 +508,7 @@ export default function IncomePage() {
   if (error) {
     return (
       <main className="min-h-screen bg-background">
-        {/* Desktop Header */}
+        {}
         <div className="hidden md:block">
           <DashboardHeader 
             pageName="Income"
@@ -521,7 +521,7 @@ export default function IncomePage() {
           />
         </div>
 
-        {/* Mobile Navbar */}
+        {}
         <div className="md:hidden">
           <MobileNavbar 
             pageName="Income" 
@@ -531,7 +531,7 @@ export default function IncomePage() {
           />
         </div>
 
-        {/* Error State */}
+        {}
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
           <div className="text-body opacity-70 text-center">{error}</div>
           <button
@@ -542,7 +542,7 @@ export default function IncomePage() {
           </button>
         </div>
 
-        {/* Transaction Modal (available in error state too) */}
+        {}
         {selectedTransaction && (
           <TransactionModal
             transaction={selectedTransaction}
@@ -564,7 +564,7 @@ export default function IncomePage() {
 
   return (
     <main className="min-h-screen bg-background">
-      {/* Desktop Header */}
+      {}
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Income"
@@ -577,7 +577,7 @@ actionButton={{
         />
       </div>
 
-      {/* Mobile Navbar */}
+      {}
       <div className="md:hidden">
         <MobileNavbar 
           pageName="Income" 
@@ -587,7 +587,7 @@ actionButton={{
         />
       </div>
 
-      {/* Mobile: Custom Layout (< 768px) */}
+      {}
       <div className="flex flex-col gap-4 px-4 pb-4 md:hidden">
         <UpdateCard
           date={update.date}
@@ -636,7 +636,7 @@ actionButton={{
         )}
       </div>
 
-      {/* Two-column layout: 768px - 1536px */}
+      {}
       <div className="hidden md:grid 2xl:hidden md:grid-cols-2 md:gap-4 md:px-6 md:pb-6">
         <UpdateCard
           date={update.date}
@@ -684,11 +684,11 @@ actionButton={{
           />
         )} </div>
 
-      {/* Desktop: Pure Tailwind Bento Grid (>= 1536px) */}
+      {}
       <div className="hidden 2xl:grid 2xl:grid-cols-4 2xl:gap-4 2xl:px-6 2xl:pb-6">
-        {/* Grid 1: Left side (3 columns) */}
+        {}
         <div className="col-span-3 flex flex-col gap-4">
-          {/* Row 1: Update, Total, Estimated Tax - equal width */}
+          {}
           <div className="grid grid-cols-3 gap-4">
             <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
               <UpdateCard
@@ -717,9 +717,9 @@ actionButton={{
             </div>
           </div>
 
-          {/* Row 2: Sub-bento grid */}
+          {}
           <div className="grid grid-cols-5 gap-4 flex-1">
-            {/* Left column (3 cols): Latest Incomes + Demographic Comparison stacked */}
+            {}
             <div className="col-span-3 flex flex-col gap-4">
               <div className="flex-[7] min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <LatestIncomesCard incomes={latestIncomes} onItemClick={handleLatestIncomeClick} />
@@ -735,9 +735,9 @@ actionButton={{
               </div>
             </div>
 
-            {/* Right column (2 cols): Performance + Average */}
+            {}
             <div className="col-span-2 flex flex-col gap-4">
-              {/* Top row: Performance fills space */}
+              {}
               <div className="flex-1 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <PerformanceCard 
                   trend={performance.trend}
@@ -746,7 +746,7 @@ actionButton={{
                 />
               </div>
               
-              {/* Bottom row: Average */}
+              {}
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 {(timePeriod === 'This Month' || timePeriod === 'Last Month') && averageDaily !== null ? (
                   <AverageDailyCard amount={averageDaily.amount} trend={averageDaily.trend} trendSkipped={averageDaily.trendSkipped} />
@@ -764,7 +764,7 @@ actionButton={{
           </div>
         </div>
 
-        {/* Grid 2: Right side (1 column) - Upcoming Incomes + Top Sources */}
+        {}
         <div className="col-span-1 flex flex-col gap-4">
           <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
             <UpcomingIncomesCard incomes={upcomingIncomes} onItemClick={handleUpcomingIncomeClick} />
@@ -775,7 +775,7 @@ actionButton={{
         </div>
       </div>
 
-      {/* Transaction Modal */}
+      {}
       {selectedTransaction && (
         <TransactionModal
           transaction={selectedTransaction}

@@ -30,7 +30,7 @@ export default function GoalCard({ goal, currencyOptions = [], onClick }: GoalCa
       }}
       onClick={onClick}
     >
-      {/* Top row: Name and Status badge */}
+      {}
       <div className="flex items-center justify-between mb-4 gap-2">
         <h3 className="text-card-header flex-1 min-w-0 text-wrap-safe break-words">
           {goal.name}
@@ -65,7 +65,7 @@ export default function GoalCard({ goal, currencyOptions = [], onClick }: GoalCa
         )}
       </div>
 
-      {/* Second row: Deadline (left), Target amount (right) */}
+      {}
       <div className="flex items-center justify-between mb-4 gap-2">
         <span className="text-helper">{goal.targetDate}</span>
         <div
@@ -82,7 +82,7 @@ export default function GoalCard({ goal, currencyOptions = [], onClick }: GoalCa
         </div>
       </div>
 
-      {/* Third row: Large current amount */}
+      {}
       <div className="flex items-baseline gap-2 mb-4 min-w-0 flex-wrap">
         <span className="text-card-currency flex-shrink-0">{displayCurrency.symbol}</span>
         <span className="text-card-value break-all min-w-0">
@@ -90,12 +90,12 @@ export default function GoalCard({ goal, currencyOptions = [], onClick }: GoalCa
         </span>
       </div>
 
-      {/* Fourth row: Progress bar */}
+      {}
       <div className="mb-4">
         <ProgressBar value={goal.progress} />
       </div>
 
-      {/* Bottom row: Encouraging text (bottom-aligned) */}
+      {}
       <div className="mt-auto pt-4 pb-0">
         <p className="text-sm leading-tight" style={{ color: 'var(--accent-purple)' }}>
           {encouragingMessage}

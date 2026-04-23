@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/static-components */
+
 'use client';
 
 import React, { useMemo } from 'react';

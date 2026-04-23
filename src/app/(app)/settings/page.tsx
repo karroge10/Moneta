@@ -241,7 +241,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="flex flex-col gap-4 px-4 md:px-6">
-        {/* Main Grid Area */}
+        {}
         <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-[1.1fr_0.9fr] gap-4 items-stretch">
           <div className="flex flex-col h-full">
           <PersonalInformationCard
@@ -279,7 +279,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Full-width bottom section */}
+        {}
         <div className="w-full">
           <LoginHistoryCard history={loginHistory} loading={loginHistoryLoading} />
         </div>
@@ -290,7 +290,7 @@ export default function SettingsPage() {
         onRemove={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
       />
 
-    {/* Delete account confirmation modal */}
+    {}
     {showDeleteModal && (
       <>
         <div

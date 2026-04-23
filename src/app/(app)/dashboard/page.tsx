@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
 import UpdateCard from '@/components/dashboard/UpdateCard';
@@ -14,49 +14,51 @@ import FinancialHealthModal from '@/components/dashboard/FinancialHealthModal';
 import InvestmentsCard from '@/components/dashboard/InvestmentsCard';
 import InsightCard from '@/components/dashboard/InsightCard';
 import TopExpensesCard from '@/components/dashboard/TopExpensesCard';
-import CardSkeleton from '@/components/dashboard/CardSkeleton';
+import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
 import GoalModal from '@/components/goals/GoalModal';
 import TransactionModal from '@/components/transactions/TransactionModal';
 import Confetti from '@/components/ui/Confetti';
 import { getGoalStatus } from '@/lib/goalUtils';
 import { buildTransactionFromRecurring } from '@/lib/recurring-utils';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
-import { Transaction, ExpenseCategory, TimePeriod, Goal, Investment, Bill, RecurringItem, FinancialHealthDetails } from '@/types/dashboard';
+import { Transaction, TimePeriod, Goal, Bill } from '@/types/dashboard';
 import { useCategories } from '@/hooks/useCategories';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
-import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
-import { emptyRoundupInsight, type RoundupInsightDto } from '@/lib/roundup-insight';
+import { useDashboardData } from '@/hooks/useDashboardData';
+import { emptyRoundupInsight } from '@/lib/roundup-insight';
 
 export default function DashboardPage() {
-  const [income, setIncome] = useState({ amount: 0, trend: 0, comparisonLabel: '' });
-  const [expenses, setExpenses] = useState({ amount: 0, trend: 0, comparisonLabel: '' });
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [topExpenses, setTopExpenses] = useState<ExpenseCategory[]>([]);
-  const [investments, setInvestments] = useState<Investment[]>([]);
-  const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [financialHealth, setFinancialHealth] = useState<FinancialHealthDetails | null>(null);
-  const [financialHealthModalOpen, setFinancialHealthModalOpen] = useState(false);
-  const [roundupInsight, setRoundupInsight] = useState<RoundupInsightDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('This Month');
+  const [financialHealthModalOpen, setFinancialHealthModalOpen] = useState(false);
   
-  // Goal modal state
+  // Modal states
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Transaction modal state (for recurring from Upcoming Bills)
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const authReady = useAuthReadyForApi();
+  // Hooks
   const { categories } = useCategories();
   const { currencyOptions, loading: currencyOptionsLoading } = useCurrencyOptions();
-  const dashboardFetchSeq = useRef(0);
+  const {
+    income,
+    expenses,
+    transactions,
+    topExpenses,
+    investments,
+    recurringItems,
+    goals,
+    financialHealth,
+    roundupInsight,
+    loading,
+    error: fetchError,
+    fetchDashboardData,
+    fetchGoals,
+  } = useDashboardData(timePeriod);
 
-  // Derive upcoming bills for the card from full recurring items (include paused, show Paused badge)
   const upcomingBills = useMemo((): Bill[] => {
     return recurringItems
       .filter((i) => i.nextDueDate)
@@ -71,7 +73,7 @@ export default function DashboardPage() {
         isActive: item.isActive,
       }));
   }, [recurringItems, categories]);
-  
+
   const update = {
     date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
     message: 'Your finances are tracking correctly.',
@@ -79,97 +81,7 @@ export default function DashboardPage() {
     link: 'View Statistics'
   };
 
-  const fetchDashboardData = useCallback(
-    async (signal?: AbortSignal) => {
-      const seq = ++dashboardFetchSeq.current;
-      try {
-        setLoading(true);
-        setError(null);
-        const params = new URLSearchParams({ timePeriod });
-        const response = await fetch(`/api/dashboard?${params.toString()}`, { signal });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch dashboard data');
-        }
-
-        const data = await response.json();
-        if (seq !== dashboardFetchSeq.current) {
-          return;
-        }
-
-        setIncome({
-          amount: data.income?.amount || 0,
-          trend: data.income?.trend || 0,
-          comparisonLabel: data.income?.comparisonLabel || '',
-        });
-        setExpenses({
-          amount: data.expenses?.amount || 0,
-          trend: data.expenses?.trend || 0,
-          comparisonLabel: data.expenses?.comparisonLabel || '',
-        });
-        setTransactions(data.transactions || []);
-        setTopExpenses(data.topExpenses || []);
-        setInvestments(data.investments || []);
-        setFinancialHealth(
-          data.financialHealth != null
-            ? {
-                score: data.financialHealth.score ?? 0,
-                trend: data.financialHealth.trend ?? 0,
-                details: data.financialHealth.details ?? { saving: 0, spendingControl: 0, goals: 0, engagement: 0 },
-              }
-            : null
-        );
-        setRoundupInsight(data.roundupInsight ?? emptyRoundupInsight());
-        setRecurringItems(data.recurringItems ?? []);
-
-        const rawGoals: Goal[] = data.goals || [];
-        setGoals(rawGoals.filter((goal) => getGoalStatus(goal) !== 'completed'));
-      } catch (err) {
-        const aborted =
-          (err instanceof DOMException && err.name === 'AbortError') ||
-          (err instanceof Error && err.name === 'AbortError');
-        if (aborted) {
-          return;
-        }
-        if (seq !== dashboardFetchSeq.current) {
-          return;
-        }
-        console.error('Error fetching dashboard data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
-        setIncome({ amount: 0, trend: 0, comparisonLabel: '' });
-        setExpenses({ amount: 0, trend: 0, comparisonLabel: '' });
-        setTransactions([]);
-        setTopExpenses([]);
-        setInvestments([]);
-        setRecurringItems([]);
-        setGoals([]);
-        setFinancialHealth(null);
-        setRoundupInsight(null);
-      } finally {
-        if (seq === dashboardFetchSeq.current) {
-          setLoading(false);
-        }
-      }
-    },
-    [timePeriod]
-  );
-
-  // Fetch goals separately - filter out completed goals
-  const fetchGoals = useCallback(async () => {
-    try {
-      const response = await fetch('/api/goals');
-      if (response.ok) {
-        const data = await response.json();
-        // Filter out completed goals for dashboard
-        const activeGoals = (data.goals || []).filter((goal: Goal) => getGoalStatus(goal) !== 'completed');
-        setGoals(activeGoals);
-      }
-    } catch (err) {
-      console.error('Error fetching goals:', err);
-      setGoals([]);
-    }
-  }, []);
-
+  // Event Handlers
   const handleEditGoal = (goal: Goal) => {
     setModalMode('edit');
     setSelectedGoal(goal);
@@ -179,68 +91,37 @@ export default function DashboardPage() {
     try {
       setError(null);
       setIsSaving(true);
-      
-      // Calculate progress to check if goal is complete
-      const calculatedProgress = updatedGoal.targetAmount > 0 
-        ? (updatedGoal.currentAmount / updatedGoal.targetAmount) * 100 
-        : 0;
+      const calculatedProgress = updatedGoal.targetAmount > 0 ? (updatedGoal.currentAmount / updatedGoal.targetAmount) * 100 : 0;
       const isNowComplete = calculatedProgress >= 100;
-      
-      // Check if goal was previously incomplete and is now complete
       const wasIncomplete = selectedGoal ? selectedGoal.progress < 100 : true;
       const justCompleted = wasIncomplete && isNowComplete;
-      
       const isNew = modalMode === 'add';
-      
-      let response: Response;
-      if (isNew) {
-        response = await fetch('/api/goals', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: updatedGoal.name,
-            targetDate: updatedGoal.targetDate,
-            targetAmount: updatedGoal.targetAmount,
-            currentAmount: updatedGoal.currentAmount,
-          }),
-        });
-      } else {
-        response = await fetch('/api/goals', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: updatedGoal.id,
-            name: updatedGoal.name,
-            targetDate: updatedGoal.targetDate,
-            targetAmount: updatedGoal.targetAmount,
-            currentAmount: updatedGoal.currentAmount,
-          }),
-        });
-      }
-      
+
+      const response = await fetch('/api/goals', {
+        method: isNew ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: isNew ? undefined : updatedGoal.id,
+          name: updatedGoal.name,
+          targetDate: updatedGoal.targetDate,
+          targetAmount: updatedGoal.targetAmount,
+          currentAmount: updatedGoal.currentAmount,
+        }),
+      });
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to save goal');
       }
-      
+
       setSelectedGoal(null);
-      
-      // Show confetti if goal was just completed
-      if (justCompleted || (isNew && isNowComplete)) {
-        setShowConfetti(true);
-      }
-      
-      fetchGoals(); // Refresh goals data
+      if (justCompleted || (isNew && isNowComplete)) setShowConfetti(true);
+      fetchGoals();
     } catch (err) {
-      console.error('Error saving goal:', err);
       setError(err instanceof Error ? err.message : 'Failed to save goal');
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleCloseModal = () => {
-    setSelectedGoal(null);
   };
 
   const handleUpcomingBillClick = (bill: Bill) => {
@@ -248,10 +129,6 @@ export default function DashboardPage() {
     if (item && categories.length > 0) {
       setSelectedTransaction(buildTransactionFromRecurring(item, categories));
     }
-  };
-
-  const handleTransactionCloseModal = () => {
-    setSelectedTransaction(null);
   };
 
   const handleTransactionSave = async (updatedTransaction: Transaction) => {
@@ -277,10 +154,7 @@ export default function DashboardPage() {
           category: updatedTransaction.category,
         }),
       });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save recurring');
-      }
+      if (!response.ok) throw new Error('Failed to save recurring');
       setSelectedTransaction(null);
       fetchDashboardData();
     } catch (err) {
@@ -294,13 +168,8 @@ export default function DashboardPage() {
     if (!selectedTransaction || selectedTransaction.recurringId === undefined) return;
     try {
       setIsDeleting(true);
-      const response = await fetch(`/api/recurring?id=${selectedTransaction.recurringId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete recurring');
-      }
+      const response = await fetch(`/api/recurring?id=${selectedTransaction.recurringId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to delete recurring');
       setSelectedTransaction(null);
       fetchDashboardData();
     } catch (err) {
@@ -319,25 +188,9 @@ export default function DashboardPage() {
         const response = await fetch('/api/recurring', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: item.id,
-            name: item.name,
-            amount: item.amount,
-            type: item.type,
-            category: item.category ?? null,
-            startDate: item.startDate,
-            endDate: item.endDate ?? null,
-            frequencyUnit: item.frequencyUnit,
-            frequencyInterval: item.frequencyInterval,
-            isActive,
-          }),
+          body: JSON.stringify({ ...item, isActive }),
         });
         if (!response.ok) throw new Error('Failed to update');
-        setSelectedTransaction((prev) =>
-          prev && prev.recurringId === recurringId && prev.recurring
-            ? { ...prev, recurring: { ...prev.recurring, isActive } }
-            : prev
-        );
         fetchDashboardData();
       } catch (err) {
         console.error('Error pausing/resuming recurring:', err);
@@ -348,174 +201,45 @@ export default function DashboardPage() {
     [recurringItems, fetchDashboardData]
   );
 
-  const handleDelete = async () => {
+  const handleDeleteGoal = async () => {
     if (!selectedGoal) return;
-    
     try {
-      const response = await fetch(`/api/goals?id=${selectedGoal.id}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete goal');
-      }
-      
+      const response = await fetch(`/api/goals?id=${selectedGoal.id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to delete goal');
       setSelectedGoal(null);
-      fetchGoals(); // Refresh goals data
+      fetchGoals();
     } catch (err) {
-      console.error('Error deleting goal:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete goal');
     }
   };
 
-  useEffect(() => {
-    if (!authReady) return;
-    const ac = new AbortController();
-    void fetchDashboardData(ac.signal);
-    return () => {
-      ac.abort();
-      dashboardFetchSeq.current += 1;
-    };
-  }, [authReady, fetchDashboardData]);
-
-  // Helper to render skeleton layout
-  const renderSkeletonLayout = () => (
-    <>
-      {/* Mobile: Custom Layout (< 768px) */}
-      <div className="flex flex-col gap-4 px-4 pb-4 md:hidden">
-        <div className="grid grid-cols-2 gap-4">
-          <CardSkeleton title="Income" variant="value" />
-          <CardSkeleton title="Expenses" variant="value" />
-        </div>
-        <CardSkeleton title="Goals" variant="goal" />
-        <CardSkeleton title="Financial Health" variant="health" />
-        <CardSkeleton title="Upcoming Bills" variant="list" />
-        <CardSkeleton title="Transactions" variant="list" />
-        <CardSkeleton title="Update" variant="update" />
-        <CardSkeleton title="Round-up" variant="value" />
-        <CardSkeleton title="Investments" variant="list" />
-        <CardSkeleton title="Top Expenses" variant="chart" />
-      </div>
-
-      {/* Two-column layout: 768px - 1536px */}
-      <div className="hidden md:grid 2xl:hidden md:grid-cols-2 md:gap-4 md:px-6 md:pb-6">
-        <CardSkeleton title="Income" variant="value" />
-        <CardSkeleton title="Expenses" variant="value" />
-        <CardSkeleton title="Round-up" variant="value" />
-        <CardSkeleton title="Financial Health" variant="health" />
-        <CardSkeleton title="Goals" variant="goal" />
-        <CardSkeleton title="Upcoming Bills" variant="list" />
-        <CardSkeleton title="Transactions" variant="list" />
-        <CardSkeleton title="Top Expenses" variant="chart" />
-        <div className="col-span-2">
-          <CardSkeleton title="Investments" variant="list" />
-        </div>
-      </div>
-
-      {/* Desktop: Pure Tailwind Bento Grid */}
-      <div className="hidden 2xl:grid 2xl:grid-cols-4 2xl:gap-4 2xl:px-6 2xl:pb-6">
-        <div className="col-span-3 flex flex-col gap-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-              <CardSkeleton title="Update" variant="update" />
-            </div>
-            <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-              <CardSkeleton title="Income" variant="value" />
-            </div>
-            <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-              <CardSkeleton title="Expenses" variant="value" />
-            </div>
-          </div>
-          <div className="grid grid-cols-5 gap-4 flex-1">
-            <div className="col-span-2 flex flex-col gap-4">
-              <div className="flex-[7] min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                <CardSkeleton title="Transactions" variant="list" />
-              </div>
-              <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                <CardSkeleton title="Round-up" variant="value" />
-              </div>
-            </div>
-            <div className="col-span-3 flex flex-col gap-4">
-              <div className="grid grid-cols-5 gap-4">
-                <div className="col-span-3 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  <CardSkeleton title="Goals" variant="goal" />
-                </div>
-                <div className="col-span-2 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  <CardSkeleton title="Financial Health" variant="health" />
-                </div>
-              </div>
-              <div className="flex-1 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                <CardSkeleton title="Investments" variant="list" />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="col-span-1 flex flex-col gap-4">
-          <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-            <CardSkeleton title="Upcoming Bills" variant="list" />
-          </div>
-          <div className="flex-1 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-            <CardSkeleton title="Top Expenses" variant="chart" />
-          </div>
-        </div>
-      </div>
-    </>
-  );
-
   if (loading) {
     return (
       <main className="min-h-screen bg-background">
-        {/* Desktop Header */}
         <div className="hidden md:block">
-          <DashboardHeader 
-            timePeriod={timePeriod}
-            onTimePeriodChange={setTimePeriod}
-          />
+          <DashboardHeader timePeriod={timePeriod} onTimePeriodChange={setTimePeriod} />
         </div>
-
-        {/* Mobile Navbar */}
         <div className="md:hidden">
-          <MobileNavbar 
-            pageName="Dashboard" 
-            activeSection="dashboard"
-          />
+          <MobileNavbar pageName="Dashboard" activeSection="dashboard" />
         </div>
-
-        {/* Loading State with Skeletons */}
-        {renderSkeletonLayout()}
+        <DashboardSkeleton />
       </main>
     );
   }
 
-  if (error) {
+  const activeError = error || fetchError;
+  if (activeError) {
     return (
       <main className="min-h-screen bg-background">
-        {/* Desktop Header */}
         <div className="hidden md:block">
-          <DashboardHeader 
-            timePeriod={timePeriod}
-            onTimePeriodChange={setTimePeriod}
-          />
+          <DashboardHeader timePeriod={timePeriod} onTimePeriodChange={setTimePeriod} />
         </div>
-
-        {/* Mobile Navbar */}
         <div className="md:hidden">
-          <MobileNavbar 
-            pageName="Dashboard" 
-            activeSection="dashboard"
-          />
+          <MobileNavbar pageName="Dashboard" activeSection="dashboard" />
         </div>
-
-        {/* Error State */}
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
-          <div className="text-body opacity-70 text-center">{error}</div>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded-full bg-[#E7E4E4] text-[#282828] text-body font-medium hover:opacity-90 transition-opacity"
-          >
-            Retry
-          </button>
+          <div className="text-body opacity-70 text-center">{activeError}</div>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-full bg-[#E7E4E4] text-[#282828] text-body font-medium hover:opacity-90 transition-opacity">Retry</button>
         </div>
       </main>
     );
@@ -523,99 +247,48 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      {/* Desktop Header */}
       <div className="hidden md:block">
-        <DashboardHeader 
-          timePeriod={timePeriod}
-          onTimePeriodChange={setTimePeriod}
-        />
+        <DashboardHeader timePeriod={timePeriod} onTimePeriodChange={setTimePeriod} />
       </div>
-
-      {/* Mobile Navbar */}
       <div className="md:hidden">
-        <MobileNavbar 
-          pageName="Dashboard" 
-          activeSection="dashboard"
-        />
+        <MobileNavbar pageName="Dashboard" activeSection="dashboard" />
       </div>
 
-      {/* Mobile: Custom Layout (< 768px) */}
+      {/* Mobile Layout */}
       <div className="flex flex-col gap-4 px-4 pb-4 md:hidden">
-        {/* Income | Expenses 50/50 */}
         <div className="grid grid-cols-2 gap-4">
           <IncomeCard amount={income.amount} trend={income.trend} comparisonLabel={income.comparisonLabel} />
           <ExpenseCard amount={expenses.amount} trend={expenses.trend} comparisonLabel={expenses.comparisonLabel} />
         </div>
-
-        {/* Goals full width */}
         <GoalsCard goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} />
-
-        {/* Financial Health short row */}
-        <FinancialHealthCard
-          score={financialHealth?.score ?? 0}
-          trend={financialHealth?.trend}
-          mobile
-          onLearnClick={() => setFinancialHealthModalOpen(true)}
-        />
-
-        {/* Upcoming Bills full width */}
+        <FinancialHealthCard score={financialHealth?.score ?? 0} trend={financialHealth?.trend} mobile onLearnClick={() => setFinancialHealthModalOpen(true)} />
         <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
-
-        {/* Transactions full width */}
         <TransactionsCard transactions={transactions} onRefresh={fetchDashboardData} />
-
-        {/* Update Card */}
-        <UpdateCard
-          date={update.date}
-          message={update.message}
-          highlight={update.highlight}
-          link={update.link}
-          linkHref="/statistics"
-        />
-
-        {/* Insight short row */}
+        <UpdateCard date={update.date} message={update.message} highlight={update.highlight} link={update.link} linkHref="/statistics" />
         <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} shortRow />
-
-        {/* Investments */}
         <InvestmentsCard investments={investments} />
-
-        {/* Top Expenses */}
         <TopExpensesCard expenses={topExpenses} />
       </div>
 
-      {/* Two-column layout: 768px - 1536px */}
+      {/* Medium Layout */}
       <div className="hidden md:grid 2xl:hidden md:grid-cols-2 md:gap-4 md:px-6 md:pb-6">
         <IncomeCard amount={income.amount} trend={income.trend} comparisonLabel={income.comparisonLabel} />
         <ExpenseCard amount={expenses.amount} trend={expenses.trend} comparisonLabel={expenses.comparisonLabel} />
         <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} minimal />
-        <FinancialHealthCard
-          score={financialHealth?.score ?? 0}
-          trend={financialHealth?.trend}
-          minimal
-          onLearnClick={() => setFinancialHealthModalOpen(true)}
-        />
+        <FinancialHealthCard score={financialHealth?.score ?? 0} trend={financialHealth?.trend} minimal onLearnClick={() => setFinancialHealthModalOpen(true)} />
         <GoalsCard goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} />
         <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
         <TransactionsCard transactions={transactions} onRefresh={fetchDashboardData} />
         <TopExpensesCard expenses={topExpenses} />
-        <div className="col-span-2">
-          <InvestmentsCard investments={investments} />
-        </div>
+        <div className="col-span-2"><InvestmentsCard investments={investments} /></div>
       </div>
 
-      {/* Desktop: Pure Tailwind Bento Grid */}
+      {/* Desktop Layout */}
       <div className="hidden 2xl:grid 2xl:grid-cols-4 2xl:gap-4 2xl:px-6 2xl:pb-6">
-        {/* Grid 1: Left side (3 columns) */}
         <div className="col-span-3 flex flex-col gap-4">
-          {/* Row 1: Update, Income, Expense - equal width */}
           <div className="grid grid-cols-3 gap-4">
             <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-              <UpdateCard
-                date={update.date}
-                message={update.message}
-                highlight={update.highlight}
-                link={update.link}
-              />
+              <UpdateCard date={update.date} message={update.message} highlight={update.highlight} link={update.link} />
             </div>
             <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
               <IncomeCard amount={income.amount} trend={income.trend} comparisonLabel={income.comparisonLabel} />
@@ -624,10 +297,7 @@ export default function DashboardPage() {
               <ExpenseCard amount={expenses.amount} trend={expenses.trend} comparisonLabel={expenses.comparisonLabel} />
             </div>
           </div>
-
-          {/* Row 2: Sub-bento grid */}
           <div className="grid grid-cols-5 gap-4 flex-1">
-            {/* Left column (2 cols): Transactions + Insight stacked */}
             <div className="col-span-2 flex flex-col gap-4">
               <div className="flex-[7] min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <TransactionsCard transactions={transactions} onRefresh={fetchDashboardData} />
@@ -636,32 +306,21 @@ export default function DashboardPage() {
                 <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} />
               </div>
             </div>
-
-            {/* Right column (3 cols): Goals + Financial Health + Investments */}
             <div className="col-span-3 flex flex-col gap-4">
-              {/* Top row: Goals + Financial Health side-by-side */}
               <div className="grid grid-cols-5 gap-4">
                 <div className="col-span-3 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                   <GoalsCard goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} />
                 </div>
                 <div className="col-span-2 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                  <FinancialHealthCard
-                    score={financialHealth?.score ?? 0}
-                    trend={financialHealth?.trend}
-                    onLearnClick={() => setFinancialHealthModalOpen(true)}
-                  />
+                  <FinancialHealthCard score={financialHealth?.score ?? 0} trend={financialHealth?.trend} onLearnClick={() => setFinancialHealthModalOpen(true)} />
                 </div>
               </div>
-              
-              {/* Bottom row: Investments fills remaining space */}
               <div className="flex-1 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <InvestmentsCard investments={investments} />
               </div>
             </div>
           </div>
         </div>
-
-        {/* Grid 2: Right side (1 column) - Upcoming Bills + Top Expenses */}
         <div className="col-span-1 flex flex-col gap-4">
           <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
             <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
@@ -672,47 +331,15 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Goal Modal */}
+      {/* Modals */}
       {selectedGoal && currencyOptions.length > 0 && (
-        <GoalModal
-          goal={selectedGoal}
-          mode={modalMode}
-          currencyOptions={currencyOptions}
-          onClose={handleCloseModal}
-          onSave={handleSave}
-          onDelete={handleDelete}
-          isSaving={isSaving}
-        />
+        <GoalModal goal={selectedGoal} mode={modalMode} currencyOptions={currencyOptions} onClose={() => setSelectedGoal(null)} onSave={handleSave} onDelete={handleDeleteGoal} isSaving={isSaving} />
       )}
-
-      {/* Transaction Modal (recurring from Upcoming Bills) */}
       {selectedTransaction && categories.length > 0 && currencyOptions.length > 0 && (
-        <TransactionModal
-          transaction={selectedTransaction}
-          mode="edit"
-          onClose={handleTransactionCloseModal}
-          onSave={handleTransactionSave}
-          onDelete={handleTransactionDelete}
-          onPauseResume={handlePauseResume}
-          isSaving={isSaving}
-          isDeleting={isDeleting}
-          categories={categories}
-          currencyOptions={currencyOptions}
-          currencyOptionsLoading={currencyOptionsLoading}
-        />
+        <TransactionModal transaction={selectedTransaction} mode="edit" onClose={() => setSelectedTransaction(null)} onSave={handleTransactionSave} onDelete={handleTransactionDelete} onPauseResume={handlePauseResume} isSaving={isSaving} isDeleting={isDeleting} categories={categories} currencyOptions={currencyOptions} currencyOptionsLoading={currencyOptionsLoading} />
       )}
-
-      {/* Financial Health Score breakdown modal */}
-      <FinancialHealthModal
-        isOpen={financialHealthModalOpen}
-        onClose={() => setFinancialHealthModalOpen(false)}
-        initialData={financialHealth}
-      />
-
-      {/* Confetti */}
-      {showConfetti && (
-        <Confetti onComplete={() => setShowConfetti(false)} />
-      )}
+      <FinancialHealthModal isOpen={financialHealthModalOpen} onClose={() => setFinancialHealthModalOpen(false)} initialData={financialHealth} />
+      {showConfetti && <Confetti onComplete={() => setShowConfetti(false)} />}
     </main>
   );
 }

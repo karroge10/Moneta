@@ -55,7 +55,7 @@ export default function GoalsSummary({ goals, compact = false, loading = false }
     );
   }
 
-  // One unique color per item (no reuse) — palette stays within design system
+  
   const summaryItems: SummaryItem[] = [
     { label: 'Active Goals', value: stats.activeGoals, icon: Clock, color: '#4A90E2' },
     { label: 'Completed Goals', value: stats.completedGoals, icon: CheckCircle, color: '#74C648' },

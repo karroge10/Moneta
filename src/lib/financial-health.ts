@@ -3,10 +3,7 @@ import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency
 import { calculateGoalProgress } from '@/lib/goalUtils';
 import type { FinancialHealthDetails, TimePeriod } from '@/types/dashboard';
 
-/**
- * Financial Health always uses this period everywhere (dashboard, statistics, dedicated page),
- * independent of the UI time-range selector for other metrics.
- */
+
 export const FINANCIAL_HEALTH_TIME_PERIOD: TimePeriod = 'All Time';
 
 const WEIGHTS = {
@@ -16,8 +13,8 @@ const WEIGHTS = {
   engagement: 0.15,
 } as const;
 
-/** In-memory cache so dashboard, statistics, and financial-health page share the same score within TTL. No persistence; IndexedDB can be added later for offline/cache. */
-const CACHE_TTL_MS = 60 * 1000; // 1 minute
+
+const CACHE_TTL_MS = 60 * 1000; 
 const cache = new Map<string, { result: FinancialHealthDetails; expiresAt: number }>();
 
 function cacheKey(userId: number, timePeriod: TimePeriod, targetCurrencyId: number): string {

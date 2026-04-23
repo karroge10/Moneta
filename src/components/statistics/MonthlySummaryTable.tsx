@@ -32,7 +32,7 @@ export default function MonthlySummaryTable({ data, loading = false, error = nul
       className="flex flex-col min-h-0 flex-1"
     >
       <div className="mt-2 flex-1 flex flex-col min-h-[288px] w-full min-w-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
-        {/* Desktop Table View */}
+        {}
         <div className="hidden md:block flex-1 min-h-0 overflow-auto">
           <table className="min-w-[700px]">
             <thead className="sticky top-0 z-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
@@ -161,7 +161,7 @@ export default function MonthlySummaryTable({ data, loading = false, error = nul
           </table>
         </div>
 
-        {/* Mobile Card View */}
+        {}
         <div className="md:hidden flex-1 flex flex-col p-4 gap-4 overflow-auto">
           {loading ? (
             Array.from({ length: 3 }).map((_, i) => (

@@ -56,7 +56,7 @@ export default function TransactionsCard({ transactions, onRefresh }: Transactio
       }
       
       setSelectedTransaction(null);
-      // Refresh dashboard data if callback provided
+      
       if (onRefresh) {
         onRefresh();
       } else {
@@ -83,7 +83,7 @@ export default function TransactionsCard({ transactions, onRefresh }: Transactio
       }
       
       setSelectedTransaction(null);
-      // Refresh dashboard data if callback provided
+      
       if (onRefresh) {
         onRefresh();
       } else {
@@ -167,7 +167,7 @@ export default function TransactionsCard({ transactions, onRefresh }: Transactio
         </div>
       </Card>
 
-      {/* Transaction Modal */}
+      {}
       {selectedTransaction &&
         !categoriesLoading &&
         !currencyOptionsLoading &&

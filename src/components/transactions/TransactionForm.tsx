@@ -92,7 +92,7 @@ export default function TransactionForm({
     return initial ? new Date(initial) : new Date();
   });
 
-  // Portal positioning state for date dropdown
+  
   const [dateDropdownStyle, setDateDropdownStyle] = useState<CSSProperties | null>(null);
   const [dateOpenUpward, setDateOpenUpward] = useState(false);
 
@@ -102,15 +102,15 @@ export default function TransactionForm({
   const [recurringEndOpenUpward, setRecurringEndOpenUpward] = useState(false);
 
   useEffect(() => {
-    // Sync transaction prop to form state - necessary for controlled component
-    // Use originalDescription for the name field (what user sees and edits)
+    
+    
     const transactionToUse = {
       ...transaction,
       name: transaction.originalDescription || transaction.fullName || transaction.name,
     };
-    // This is intentional - we need to sync props to state for controlled form
+    
     setFormData(transactionToUse);
-    // Default to 'expense' if amount is 0 or missing, otherwise determine from amount sign
+    
     setTransactionType(transaction.amount < 0 ? 'expense' : transaction.amount > 0 ? 'income' : 'expense');
     const amountToShow = transaction.originalAmount !== undefined ? transaction.originalAmount : transaction.amount;
     setAmountInput(amountToShow ? Math.abs(amountToShow).toString() : '');
@@ -132,8 +132,8 @@ export default function TransactionForm({
     }
   }, [transaction]);
 
-  // Set default currency for new transactions (add mode)
-  // Only set when currency is loaded AND currencyOptions includes the currency
+  
+  
   useEffect(() => {
     if (
       mode === 'add' &&
@@ -142,11 +142,11 @@ export default function TransactionForm({
       currency?.id &&
       currencyOptions.length > 0
     ) {
-      // Check if the currency exists in currencyOptions
+      
       const currencyExists = currencyOptions.some(opt => opt.id === currency.id);
       if (currencyExists) {
         setFormData(prev => {
-          // Only update if currencyId is not already set to the user's currency
+          
           if (prev.currencyId === currency.id) {
             return prev;
           }
@@ -159,9 +159,9 @@ export default function TransactionForm({
     }
   }, [mode, currency, currencyLoading, currencyOptions, transaction.currencyId]);
 
-  // Filter categories by transaction type (client-side filtering)
+  
   const categories = allCategories.filter(cat => {
-    // Include categories that match the transaction type or have null type (for both)
+    
     return !cat.type || cat.type === transactionType;
   });
 
@@ -169,12 +169,12 @@ export default function TransactionForm({
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
 
-      // Category dropdown (absolute positioning)
+      
       if (isCategoryOpen && categoryDropdownRef.current && !categoryDropdownRef.current.contains(target)) {
         setIsCategoryOpen(false);
       }
 
-      // Date dropdown (portal) - check both container and portal ref
+      
       if (isDateOpen &&
         dateDropdownRef.current &&
         !dateDropdownRef.current.contains(target) &&
@@ -216,7 +216,7 @@ export default function TransactionForm({
     const triggerRect = recurringUnitTriggerRef.current.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const spaceBelow = viewportHeight - triggerRect.bottom;
-    const estimatedHeight = 220; // approx menu height
+    const estimatedHeight = 220; 
     setRecurringUnitOpenUpward(spaceBelow < estimatedHeight);
   }, [isRecurringUnitOpen]);
 
@@ -224,7 +224,7 @@ export default function TransactionForm({
     onFloatingPanelToggle?.(isCategoryOpen);
   }, [isCategoryOpen, onFloatingPanelToggle]);
 
-  // Position calculation for date dropdown portal
+  
   const updateDateDropdownPosition = useCallback(() => {
     if (!isDateOpen || !dateTriggerRef.current || !datePortalRef.current) return;
     const margin = 8;
@@ -356,9 +356,9 @@ export default function TransactionForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Apply transaction type to amount (negative for expense, positive for income)
+    
     const finalAmount = transactionType === 'expense' ? -formData.amount : formData.amount;
-    // When adding, transaction date is the first occurrence so it is the start date; when editing, allow explicit start date.
+    
     const startDateForRecurring = mode === 'add' ? dateInput : (recurringStartDate || dateInput);
     const recurringPayload = recurringEnabled
       ? {
@@ -371,7 +371,7 @@ export default function TransactionForm({
         isActive: transaction.recurringId !== undefined ? (transaction.recurring?.isActive ?? true) : undefined,
       }
       : undefined;
-    // Include currencyId in the saved transaction
+    
     onSave({
       ...formData,
       amount: finalAmount,
@@ -391,11 +391,11 @@ export default function TransactionForm({
     setShowDeleteConfirm(false);
   };
 
-  // Check if current category is valid for current transaction type
+  
   useEffect(() => {
     if (formData.category && allCategories.length > 0) {
       const currentCategory = allCategories.find(cat => cat.name === formData.category);
-      // If category exists but doesn't match current transaction type, clear it
+      
       if (currentCategory && currentCategory.type && currentCategory.type !== transactionType) {
         setFormData(prev => ({
           ...prev,
@@ -410,9 +410,9 @@ export default function TransactionForm({
     ? categories.find(category => category.name === formData.category) ?? null
     : null;
 
-  // Get icon component from static map (not creating new component, just getting reference)
+  
   const selectedIconName = selectedCategory?.icon;
-  // getIcon returns a component from a static map, not creating a new one
+  
   const SelectedIcon = selectedIconName ? getIcon(selectedIconName) : null;
 
   const handleCategorySelect = (categoryId: string | null) => {
@@ -468,12 +468,12 @@ export default function TransactionForm({
 
   const selectedCurrency = currencyOptions.find(c => c.id === formData.currencyId) ?? currency;
 
-  // Get the original description and translated version
+  
   const originalDescription = transaction.originalDescription || transaction.name;
   const translatedDescription = transaction.fullName || transaction.name;
 
-  // Check if translation is available and different from original
-  // Translation exists if original has Georgian characters and translated version is different
+  
+  
   const hasGeorgianInOriginal = /[\u10A0-\u10FF]/.test(originalDescription || '');
   const hasTranslation = originalDescription &&
     translatedDescription &&
@@ -743,7 +743,7 @@ export default function TransactionForm({
 
         {recurringEnabled && (
           <div className={`grid grid-cols-1 gap-3 ${mode === 'edit' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-            {/* Start Date only when editing: when adding, the transaction date above is the first occurrence and is used as start date */}
+            {}
             {mode === 'edit' && (
               <div className="flex flex-col gap-2">
                 <label className="text-body font-medium">Start Date</label>

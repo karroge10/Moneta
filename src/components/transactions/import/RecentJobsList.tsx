@@ -24,14 +24,14 @@ interface RecentJobsListProps {
   currentJobId?: string | null;
   className?: string;
   showTitle?: boolean;
-  refreshTrigger?: number; // When this changes, trigger a refresh
-  optimisticJob?: { // Optimistic job to add immediately
+  refreshTrigger?: number; 
+  optimisticJob?: { 
     id: string;
     fileName: string;
     status: JobStatus;
     createdAt: string;
   } | null;
-  onDeleteActiveJob?: () => void; // Called when the active job is deleted
+  onDeleteActiveJob?: () => void; 
 }
 
 const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
@@ -101,7 +101,7 @@ export default function RecentJobsList({
         const data = await res.json();
         const fetchedJobs = data.jobs || [];
         
-        // Merge with optimistic job if it exists and isn't already in the list
+        
         if (optimisticJob) {
           const hasOptimisticJob = fetchedJobs.some((j: Job) => j.id === optimisticJob.id);
           if (!hasOptimisticJob) {
@@ -116,27 +116,27 @@ export default function RecentJobsList({
               completedAt: null,
               error: null,
             };
-            // Add optimistic job at the top
+            
             fetchedJobs.unshift(optimisticJobEntry);
           }
         }
         
         setJobs(fetchedJobs);
-        // Set loading to false as soon as we have data (even if empty)
+        
         setIsLoading(false);
       } else {
-        // If request fails, still stop loading to avoid infinite spinner
+        
         setIsLoading(false);
       }
     } catch (error) {
       console.error('Failed to fetch recent jobs', error);
-      // Stop loading even on error to avoid infinite spinner
+      
       setIsLoading(false);
     }
   }, [optimisticJob, showAll]);
 
   const handleDelete = async (e: React.MouseEvent, jobId: string) => {
-    e.stopPropagation(); // Prevent triggering the onClick for resuming job
+    e.stopPropagation(); 
     
     if (!confirm('Are you sure you want to delete this import job? This action cannot be undone.')) {
       return;
@@ -151,10 +151,10 @@ export default function RecentJobsList({
       });
 
       if (res.ok) {
-        // Remove the job from the list immediately
+        
         setJobs(jobs.filter(job => job.id !== jobId));
         
-        // If this was the active job, reset the dropzone and review table
+        
         if (isActiveJob && onDeleteActiveJob) {
           onDeleteActiveJob();
         }
@@ -170,10 +170,10 @@ export default function RecentJobsList({
     }
   };
 
-  // Adaptive polling:
-  // - If there are active jobs (queued/processing), poll frequently (5s)
-  // - If all jobs are done, poll slowly (30s) to catch new uploads from other tabs/devices
-  // - If no jobs exist yet, start with frequent polling then back off
+  
+  
+  
+  
   const activeJobsCount = jobs.filter(j => j.status === 'queued' || j.status === 'processing').length;
   const pollInterval = activeJobsCount > 0 
     ? APP_CONFIG.polling.recentJobs.activeInterval 
@@ -188,28 +188,28 @@ export default function RecentJobsList({
     fetchJobs();
   }, [currentJobId, fetchJobs]);
 
-  // Refresh when refreshTrigger changes (used when job status changes)
+  
   useEffect(() => {
     if (refreshTrigger !== undefined && refreshTrigger > 0) {
       fetchJobs();
     }
   }, [refreshTrigger, fetchJobs]);
 
-  // Add optimistic job immediately when provided
+  
   useEffect(() => {
     if (optimisticJob) {
       setJobs(prev => {
-        // Check if job already exists (from fetch)
+        
         const exists = prev.some(j => j.id === optimisticJob.id);
         if (exists) {
-          // Update existing job
+          
           return prev.map(j => j.id === optimisticJob.id ? {
             ...j,
             status: optimisticJob.status,
             fileName: optimisticJob.fileName,
           } : j);
         } else {
-          // Add new optimistic job at the top
+          
           const optimisticJobEntry: Job = {
             id: optimisticJob.id,
             status: optimisticJob.status,
@@ -221,7 +221,7 @@ export default function RecentJobsList({
             completedAt: null,
             error: null,
           };
-          return [optimisticJobEntry, ...prev].slice(0, 5); // Keep only top 5
+          return [optimisticJobEntry, ...prev].slice(0, 5); 
         }
       });
     }

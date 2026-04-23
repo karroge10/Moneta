@@ -6,7 +6,7 @@ import { useNotificationContext } from '@/contexts/NotificationContext';
 export function useNotifications(limit: number = 10, unreadOnly: boolean = false) {
   const { notifications: allNotifications, isLoading, error, refresh } = useNotificationContext();
 
-  // Filter and limit notifications based on hook parameters
+  
   const notifications = useMemo(() => {
     let filtered = allNotifications;
     if (unreadOnly) {

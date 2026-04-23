@@ -48,7 +48,7 @@ export default function ExpensesPage() {
   const { categories } = useCategories();
   const { currencyOptions, loading: currencyOptionsLoading } = useCurrencyOptions();
 
-  // Derive upcoming list for the card from full recurring items (no extra fetch on click)
+  
   const upcomingBills = useMemo((): Bill[] => {
     return recurringItems
       .filter((i) => i.nextDueDate)
@@ -64,13 +64,13 @@ export default function ExpensesPage() {
       }));
   }, [recurringItems, categories]);
   
-  // Transaction modal state
+  
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Keep mock data for components not requested to be changed
+  
   const update = {
     date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
     message: 'Your expenses are well within limits.',
@@ -166,12 +166,12 @@ export default function ExpensesPage() {
     };
   }, [authReady, fetchExpensesData]);
 
-  // Create draft expense transaction (negative amount for expense)
+  
   const createDraftExpense = (): Transaction => ({
     id: crypto.randomUUID(),
     name: '',
     date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    amount: -0.01, // Negative amount indicates expense
+    amount: -0.01, 
     category: null,
     icon: 'HelpCircle',
   });
@@ -311,7 +311,7 @@ export default function ExpensesPage() {
       }
       
       setSelectedTransaction(null);
-      fetchExpensesData(); // Refresh expenses data and upcoming bills
+      fetchExpensesData(); 
     } catch (err) {
       console.error('Error saving transaction:', err);
       setError(err instanceof Error ? err.message : 'Failed to save transaction');
@@ -361,7 +361,7 @@ export default function ExpensesPage() {
     }
   };
 
-  // Helper to get comparison label based on time period
+  
   const getComparisonLabel = (period: TimePeriod): string => {
     switch (period) {
       case 'This Month':
@@ -379,16 +379,16 @@ export default function ExpensesPage() {
     }
   };
 
-  // Helper to get card title based on time period
+  
   const getAverageCardTitle = (): string => {
     if (timePeriod === 'This Month' || timePeriod === 'Last Month') return 'Average Daily';
     return 'Average Monthly';
   };
 
-  // Helper to render skeleton layout
+  
   const renderSkeletonLayout = () => (
     <>
-      {/* Mobile: Custom Layout (< 768px) */}
+      {}
       <div className="flex flex-col gap-4 px-4 pb-4 md:hidden">
         <CardSkeleton title="Update" variant="update" />
         <div className="grid grid-cols-2 gap-4">
@@ -403,7 +403,7 @@ export default function ExpensesPage() {
         <CardSkeleton title="Round-up" variant="value" />
       </div>
 
-      {/* Two-column layout: 768px - 1536px */}
+      {}
       <div className="hidden md:grid 2xl:hidden md:grid-cols-2 md:gap-4 md:px-6 md:pb-6">
         <CardSkeleton title="Update" variant="update" />
         <CardSkeleton title="Total" variant="value" />
@@ -416,7 +416,7 @@ export default function ExpensesPage() {
         <CardSkeleton title="Round-up" variant="value" />
       </div>
 
-      {/* Desktop: Pure Tailwind Bento Grid (>= 1536px) */}
+      {}
       <div className="hidden 2xl:grid 2xl:grid-cols-4 2xl:gap-4 2xl:px-6 2xl:pb-6">
         <div className="col-span-3 flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-4">
@@ -464,7 +464,7 @@ export default function ExpensesPage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-background">
-        {/* Desktop Header */}
+        {}
         <div className="hidden md:block">
           <DashboardHeader 
             pageName="Expenses"
@@ -477,7 +477,7 @@ export default function ExpensesPage() {
           />
         </div>
 
-        {/* Mobile Navbar */}
+        {}
         <div className="md:hidden">
           <MobileNavbar 
             pageName="Expenses" 
@@ -487,10 +487,10 @@ export default function ExpensesPage() {
           />
         </div>
 
-        {/* Loading State with Skeletons */}
+        {}
         {renderSkeletonLayout()}
 
-        {/* Transaction Modal (available even while loading) */}
+        {}
         {selectedTransaction && (
           <TransactionModal
             transaction={selectedTransaction}
@@ -513,7 +513,7 @@ export default function ExpensesPage() {
   if (error) {
     return (
       <main className="min-h-screen bg-background">
-        {/* Desktop Header */}
+        {}
         <div className="hidden md:block">
           <DashboardHeader 
             pageName="Expenses"
@@ -526,7 +526,7 @@ export default function ExpensesPage() {
           />
         </div>
 
-        {/* Mobile Navbar */}
+        {}
         <div className="md:hidden">
           <MobileNavbar 
             pageName="Expenses" 
@@ -536,7 +536,7 @@ export default function ExpensesPage() {
           />
         </div>
 
-        {/* Error State */}
+        {}
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
           <div className="text-body opacity-70 text-center">{error}</div>
           <button
@@ -547,7 +547,7 @@ export default function ExpensesPage() {
           </button>
         </div>
 
-        {/* Transaction Modal (available in error state too) */}
+        {}
         {selectedTransaction && (
           <TransactionModal
             transaction={selectedTransaction}
@@ -569,7 +569,7 @@ export default function ExpensesPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      {/* Desktop Header */}
+      {}
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Expenses"
@@ -582,7 +582,7 @@ export default function ExpensesPage() {
         />
       </div>
 
-      {/* Mobile Navbar */}
+      {}
       <div className="md:hidden">
         <MobileNavbar 
           pageName="Expenses" 
@@ -592,7 +592,7 @@ export default function ExpensesPage() {
         />
       </div>
 
-      {/* Mobile: Custom Layout (< 768px) */}
+      {}
       <div className="flex flex-col gap-4 px-4 pb-4 md:hidden">
         <UpdateCard
           date={update.date}
@@ -643,7 +643,7 @@ export default function ExpensesPage() {
         <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} shortRow />
       </div>
 
-      {/* Two-column layout: 768px - 1536px */}
+      {}
       <div className="hidden md:grid 2xl:hidden md:grid-cols-2 md:gap-4 md:px-6 md:pb-6">
         <UpdateCard
           date={update.date}
@@ -692,11 +692,11 @@ export default function ExpensesPage() {
         <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} />
       </div>
 
-      {/* Desktop: Pure Tailwind Bento Grid (>= 1536px) */}
+      {}
       <div className="hidden 2xl:grid 2xl:grid-cols-4 2xl:gap-4 2xl:px-6 2xl:pb-6">
-        {/* Grid 1: Left side (3 columns) */}
+        {}
         <div className="col-span-3 flex flex-col gap-4">
-          {/* Row 1: Update, Total, Average Monthly - equal width */}
+          {}
           <div className="grid grid-cols-3 gap-4">
             <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
               <UpdateCard
@@ -734,9 +734,9 @@ export default function ExpensesPage() {
             </div>
           </div>
 
-          {/* Row 2: Sub-bento grid */}
+          {}
           <div className="grid grid-cols-5 gap-4 flex-1">
-            {/* Left column (3 cols): Latest Expenses + Demographic Comparison stacked */}
+            {}
             <div className="col-span-3 flex flex-col gap-4">
               <div className="flex-[7] min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <LatestExpensesCard expenses={latestExpenses} onItemClick={handleLatestExpenseClick} />
@@ -752,9 +752,9 @@ export default function ExpensesPage() {
               </div>
             </div>
 
-            {/* Right column (2 cols): Performance + Insight */}
+            {}
             <div className="col-span-2 flex flex-col gap-4">
-              {/* Top row: Performance fills space */}
+              {}
               <div className="flex-1 min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <PerformanceCard 
                   trend={performance.trend}
@@ -764,7 +764,7 @@ export default function ExpensesPage() {
                 />
               </div>
               
-              {/* Bottom row: Insight */}
+              {}
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
                 <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} />
               </div>
@@ -772,7 +772,7 @@ export default function ExpensesPage() {
           </div>
         </div>
 
-        {/* Grid 2: Right side (1 column) - Upcoming Bills + Top Categories */}
+        {}
         <div className="col-span-1 flex flex-col gap-4">
           <div className="flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
             <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
@@ -783,7 +783,7 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {/* Transaction Modal */}
+      {}
       {selectedTransaction && (
         <TransactionModal
           transaction={selectedTransaction}

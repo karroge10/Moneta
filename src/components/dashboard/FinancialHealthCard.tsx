@@ -8,7 +8,7 @@ interface FinancialHealthCardProps {
   trend?: number;
   mobile?: boolean;
   minimal?: boolean;
-  /** When provided, "Learn how we calculate" opens this callback (e.g. modal) instead of linking to /financial-health */
+  
   onLearnClick?: () => void;
 }
 
@@ -40,7 +40,7 @@ function LearnTrigger({
 
 export default function FinancialHealthCard({ score, trend, mobile = false, minimal = false, onLearnClick }: FinancialHealthCardProps) {
 
-  // Empty state when score is 0
+  
   if (score === 0) {
     if (mobile) {
       return (
@@ -95,7 +95,7 @@ export default function FinancialHealthCard({ score, trend, mobile = false, mini
     );
   }
 
-  // Minimal variant: like Income/Expense cards (for two-column layout)
+  
   if (minimal) {
     return (
       <Card
@@ -120,7 +120,7 @@ export default function FinancialHealthCard({ score, trend, mobile = false, mini
     );
   }
 
-  // Mobile variant: short horizontal row
+  
   if (mobile) {
     return (
       <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 min-w-0">
@@ -137,7 +137,7 @@ export default function FinancialHealthCard({ score, trend, mobile = false, mini
     );
   }
 
-  // Desktop variant: full card
+  
   return (
     <Card
       title="Financial Health"
