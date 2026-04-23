@@ -46,7 +46,7 @@ export default function DashboardHeader({
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
-  const { notifications, refresh } = useNotifications(5, true); // Fetch top 5 unread notifications
+  const { notifications, refresh } = useNotifications(5, true); 
 
   const allButtons = actionButtons || [
     ...(secondaryButton ? [secondaryButton] : []),
@@ -127,7 +127,7 @@ export default function DashboardHeader({
                 setIsNotificationsOpen(false);
               }}
               onMarkAllRead={() => {
-                // No need to manually refresh here anymore, context handles it
+                
               }}
               onNotificationClick={async (notificationId) => {
                 try {
@@ -135,7 +135,7 @@ export default function DashboardHeader({
                     method: 'PATCH',
                   });
                   if (response.ok) {
-                    // Refresh notifications immediately to update the badge and remove purple dot
+                    
                     await refresh();
                   }
                 } catch (error) {

@@ -1,9 +1,7 @@
 import { RecurringItem, Transaction, Category } from '@/types/dashboard';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
 
-/**
- * Build a Transaction shape from a RecurringItem for use in TransactionModal (edit recurring).
- */
+
 export function buildTransactionFromRecurring(
   item: RecurringItem,
   categories: Category[]

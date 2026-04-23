@@ -16,7 +16,7 @@ interface StatisticsSummaryProps {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
-  /** When provided, the Financial Health "Learn" link opens this callback (e.g. modal) instead of linking */
+  
   onFinancialHealthLearnClick?: () => void;
 }
 
@@ -32,7 +32,7 @@ export default function StatisticsSummary({
   const largeItem = items.find(item => item.isLarge);
   const portfolioIndex = regularItems.findIndex(item => item.label === 'Portfolio Balance');
 
-  // Render order: items before Portfolio Balance, Portfolio Balance, Financial Health Score, items after
+  
   const itemsBeforePortfolio = portfolioIndex >= 0 ? regularItems.slice(0, portfolioIndex) : regularItems;
   const portfolioItem = portfolioIndex >= 0 ? regularItems[portfolioIndex] : null;
   const itemsAfterPortfolio = portfolioIndex >= 0 ? regularItems.slice(portfolioIndex + 1) : [];
@@ -100,7 +100,7 @@ export default function StatisticsSummary({
         showActions={false}
       >
         <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0" style={{ minHeight: contentMinHeight }}>
-          {/* Same order as content: 5 small rows (Income, Expenses, Income Saved, Goals, Portfolio) then Financial Health block right under */}
+          {}
           <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0 space-y-3 pr-2">
             {Array.from({ length: SKELETON_ITEMS }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-3xl" style={{ backgroundColor: 'var(--bg-primary)' }}>

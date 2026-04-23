@@ -6,7 +6,7 @@ import { Category } from '@/types/dashboard';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// GET - Fetch all categories (standard and custom)
+
 export async function GET(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       }),
     ]);
     
-    // Create a map of categoryId -> usage count
+    
     const usageMap = new Map<number, number>();
     categoryUsageCounts.forEach((item) => {
       if (item.categoryId) {
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    // Transform categories with usage counts and type
+    
     const categories: (Category & { usageCount: number; type?: string | null })[] = standardCategories.map((cat: { id: number; name: string; icon: string; color: string; type: string | null }) => ({
       id: cat.id.toString(),
       name: cat.name,
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     }));
 
     
-    // Sort by usage count (descending), then alphabetically by name
+    
     categories.sort((a, b) => {
       if (b.usageCount !== a.usageCount) {
         return b.usageCount - a.usageCount;
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       return a.name.localeCompare(b.name);
     });
     
-    // Remove usageCount from final response (it was only for sorting), but keep type
+    
     const sortedCategories: (Category & { type?: string | null })[] = categories.map(({ usageCount, ...cat }) => cat);
     
     return NextResponse.json({ categories: sortedCategories });

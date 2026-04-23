@@ -8,7 +8,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 interface AverageMonthlyCardProps {
   amount: number;
   trend: number;
-  isExpense?: boolean; // If true, use inverted color logic (negative = good for expenses)
+  isExpense?: boolean; 
   trendLabel?: string;
 }
 

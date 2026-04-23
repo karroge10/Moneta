@@ -94,7 +94,7 @@ export default function InvestmentTransactionModal({
         return () => clearTimeout(timer);
     }, []);
 
-    // Calendar state
+    
     const [isDateOpen, setIsDateOpen] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [dateDropdownStyle, setDateDropdownStyle] = useState<CSSProperties | null>(null);
@@ -102,7 +102,7 @@ export default function InvestmentTransactionModal({
     const datePortalRef = useRef<HTMLDivElement>(null);
     const dateDropdownRef = useRef<HTMLDivElement>(null);
 
-    // Initial load
+    
     useEffect(() => {
         if (transaction) {
             setFormData(transaction);
@@ -115,7 +115,7 @@ export default function InvestmentTransactionModal({
                 setCurrentMonth(new Date(initialDate));
             }
 
-            // Use the passed portfolio data to find the current balance for this asset
+            
             const portfolioAsset = portfolio.find((a: any) => 
                 (transaction.assetTicker && a.ticker === transaction.assetTicker) || 
                 (a.name.toLowerCase() === (transaction.assetName || '').toLowerCase())
@@ -129,7 +129,7 @@ export default function InvestmentTransactionModal({
         }
     }, [transaction, userCurrency.id, portfolio]);
 
-    // Calendar positioning logic
+    
     const updateDateDropdownPosition = useCallback(() => {
         if (!isDateOpen || !dateTriggerRef.current || !datePortalRef.current) return;
         const margin = 8;
@@ -197,7 +197,7 @@ export default function InvestmentTransactionModal({
         setIsDateOpen(false);
     };
 
-    // Fetch conversion rate when currency changes
+    
     useEffect(() => {
         const isToday = !dateInput || dateInput === new Date().toISOString().split('T')[0];
 
@@ -207,7 +207,7 @@ export default function InvestmentTransactionModal({
                 return;
             }
 
-            // If date is today or not set, and we have pre-fetched rates, use them
+            
             if (isToday && prefetchRates[selectedCurrencyId]) {
                 setConversionRate(prefetchRates[selectedCurrencyId]);
                 return;
@@ -254,7 +254,7 @@ export default function InvestmentTransactionModal({
         const quantity = parseFloat(quantityInput) || 0;
         const pricePerUnit = parseFloat(priceInput) || 0;
         const totalAmount = quantity * pricePerUnit;
-        // In Moneta, buy is an expense (negative), sell is an income (positive)
+        
         const amount = formData.investmentType === 'buy' ? -totalAmount : totalAmount;
         const name = `${formData.investmentType === 'buy' ? 'Bought' : 'Sold'} ${quantity} ${formData.assetTicker || formData.assetName || 'Asset'}`;
 
@@ -275,7 +275,7 @@ export default function InvestmentTransactionModal({
     const displaySymbol = selectedCurrency?.symbol || transaction.currency?.symbol || userCurrencySymbol;
     const isDifferentCurrency = selectedCurrencyId && selectedCurrencyId !== userCurrency.id;
 
-    // Calculate converted total amount
+    
     const totalAmount = (parseFloat(quantityInput) || 0) * (parseFloat(priceInput) || 0);
     const convertedTotal = conversionRate ? totalAmount * conversionRate : null;
 
@@ -351,7 +351,7 @@ export default function InvestmentTransactionModal({
                                 </div>
                             )}
 
-                            {/* Row 1: Type Selection (Buy/Sell) */}
+                            {}
                             <div className="relative bg-background border border-[#3a3a3a] rounded-xl p-0.5 flex gap-0.5 h-[42px]">
                                 <button
                                     type="button"
@@ -377,7 +377,7 @@ export default function InvestmentTransactionModal({
                                 </button>
                             </div>
 
-                            {/* Row 2: Quantity & Price */}
+                            {}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-body font-medium mb-2">Quantity</label>
@@ -394,7 +394,7 @@ export default function InvestmentTransactionModal({
                                             (() => {
                                                 if (availableQuantity === null) return 'border-[#3a3a3a]';
                                                 
-                                                // Calculate if this change creates a negative balance
+                                                
                                                 const currentTotal = availableQuantity;
                                                 const oldQty = transaction?.quantity || 0;
                                                 const oldType = transaction?.investmentType;
@@ -402,10 +402,10 @@ export default function InvestmentTransactionModal({
                                                 const newType = formData.investmentType;
                                                 
                                                 let predictedTotal = currentTotal;
-                                                // Reverse old
+                                                
                                                 if (oldType === 'buy') predictedTotal -= oldQty;
                                                 else if (oldType === 'sell') predictedTotal += oldQty;
-                                                // Apply new
+                                                
                                                 if (newType === 'buy') predictedTotal += newQty;
                                                 else if (newType === 'sell') predictedTotal -= newQty;
                                                 
@@ -467,7 +467,7 @@ export default function InvestmentTransactionModal({
                                 </div>
                             </div>
 
-                            {/* Row 3: Date & Currency */}
+                            {}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-body font-medium mb-2">Date</label>

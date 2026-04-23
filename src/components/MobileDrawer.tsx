@@ -30,7 +30,7 @@ export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboa
   const overlayRef = useRef<HTMLDivElement>(null);
   const pointerDownOnOverlay = useRef(false);
 
-  // Prevent body scroll when drawer is open
+  
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -56,7 +56,7 @@ export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboa
 
   return (
     <>
-      {/* Overlay */}
+      {}
       {isOpen && (
         <div
           ref={overlayRef}
@@ -74,7 +74,7 @@ export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboa
         />
       )}
 
-      {/* Drawer */}
+      {}
       <div
         className={`
           fixed top-0 left-0 h-full w-80 max-w-[85vw] z-50 md:hidden
@@ -87,7 +87,7 @@ export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboa
         }}
       >
         <div className="flex flex-col h-full">
-          {/* Header */}
+          {}
           <div className="flex items-center justify-between p-6 border-b border-[rgba(231,228,228,0.1)]">
             <Link href={isSignedIn ? "/dashboard" : "/"} className="flex items-center gap-3" onClick={onClose}>
               <Image src="/monetalogo.png" alt="Moneta" width={40} height={40} priority />
@@ -102,7 +102,7 @@ export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboa
             </button>
           </div>
 
-          {/* Navigation */}
+          {}
           <nav className="flex-1 overflow-y-auto py-4">
             {menuItems.map((item) => {
               const Icon = item.icon;
@@ -128,7 +128,7 @@ export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboa
             })}
           </nav>
 
-          {/* Footer */}
+          {}
           <div className="border-t border-[rgba(231,228,228,0.1)] p-4">
             <button
               type="button"

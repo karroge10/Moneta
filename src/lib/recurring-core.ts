@@ -16,7 +16,7 @@ export async function processDueRecurringItems(userId: number, now: Date) {
   const newTransactions: PrismaTransaction[] = [];
 
   for (const item of items) {
-    // Create transaction
+    
     const transaction = await db.transaction.create({
       data: {
         userId,
@@ -31,7 +31,7 @@ export async function processDueRecurringItems(userId: number, now: Date) {
 
     newTransactions.push(transaction);
 
-    // Update nextDueDate
+    
     const nextDate = new Date(item.nextDueDate);
     if (item.frequencyUnit === 'day') {
       nextDate.setDate(nextDate.getDate() + item.frequencyInterval);
@@ -68,7 +68,7 @@ export async function getExpenseRecurringItemsSerialized(userId: number, targetC
 
   if (items.length === 0) return [];
 
-  // Filter items that have nextDueDate
+  
   const validItems = items.filter(item => item.nextDueDate);
   
   const ratesMap = await preloadRatesMap(
@@ -79,7 +79,7 @@ export async function getExpenseRecurringItemsSerialized(userId: number, targetC
   return convertTransactionsWithRatesMap(
     validItems.map(item => ({
       ...item,
-      id: item.id as any, // ID type mismatch casting
+      id: item.id as any, 
       date: item.nextDueDate!,
       amount: Number(item.amount),
     })),

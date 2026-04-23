@@ -20,11 +20,11 @@ export async function GET() {
       return NextResponse.json({ error: 'No currency configured.' }, { status: 500 });
     }
 
-    // 3. Define time range for snapshots
+    
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // PARALLELIZE ALL DATA FETCHING
+    
     const [summary, recentTransactions, latestNotification, snapshots] = await Promise.all([
       getInvestmentsPortfolio(user.id, userCurrency),
       db.transaction.findMany({
@@ -44,13 +44,13 @@ export async function GET() {
       }),
     ]);
 
-    // BATCH CONVERSION for activities
+    
     const ratesMap = await preloadRatesMap(
       recentTransactions.map(t => ({ currencyId: t.currencyId, date: t.date })),
       userCurrency.id
     );
     
-    // We need to calculate amount as price * quantity for investment txs before conversion
+    
     const activitiesWithPrice = recentTransactions.map(t => ({
       ...t,
       amount: Number(t.pricePerUnit) * Number(t.quantity),
@@ -63,10 +63,10 @@ export async function GET() {
       const assetIcon = t.asset?.icon || (
         t.asset?.assetType === 'crypto' ? (
           t.asset?.pricingMode === 'live' && t.asset?.ticker ? 
-          `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${t.asset.ticker.toLowerCase()}.png` : 
+          `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${t.asset.ticker.toLowerCase()}.png`
           'BitcoinCircle'
         ) :
-        t.asset?.assetType === 'stock' ? `https://images.financialmodelingprep.com/symbol/${t.asset?.ticker?.toUpperCase()}.png` :
+        t.asset?.assetType === 'stock' ? `https://logo.clearbit.com/${t.asset.ticker.split('.')[0]}.us` :
         t.asset?.assetType === 'property' ? 'Neighbourhood' : 'Reports'
       );
 
@@ -86,7 +86,7 @@ export async function GET() {
       };
     });
 
-    // Map to Frontend expected structure
+    
     const portfolio = summary.assets.map(a => ({
       id: a.assetId.toString(),
       name: a.name,
@@ -99,14 +99,14 @@ export async function GET() {
       currentPrice: a.currentPrice,
       totalCost: a.totalCost,
       gainLoss: a.pnl,
-      changePercent: a.unrealizedPnlPercent, // Use unrealized % for current holdings
+      changePercent: a.unrealizedPnlPercent, 
       unrealizedPnl: a.unrealizedPnl,
       realizedPnl: a.realizedPnl,
       icon: a.icon || (a.type === 'crypto' ? 'BitcoinCircle' : 'Reports'),
-      priceHistory: [], // Not supported in MVP refactor
+      priceHistory: [], 
     }));
 
-    // Format notification for UpdateCard
+    
     const update = latestNotification ? {
       date: latestNotification.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       message: latestNotification.text,
@@ -122,15 +122,15 @@ export async function GET() {
     };
 
     const graphData = snapshots.map(s => ({
-        date: s.timestamp.toISOString().split('T')[0], // YYYY-MM-DD
+        date: s.timestamp.toISOString().split('T')[0], 
         value: s.totalValue,
         cost: s.totalCost,
         pnl: s.totalPnl
     }));
 
-    // If we have snapshots, use the latest one's PnL for the trend if live data is stagnant (optional logic, keeping live for now)
+    
 
-    // Calculate Total Invested Trend (vs 30 days ago)
+    
     let totalCostTrend = 0;
     let totalCostComparisonLabel = 'vs last 30 days';
 
@@ -142,7 +142,7 @@ export async function GET() {
             const diff = summary.totalCost - prevTotalCost;
             totalCostTrend = (diff / prevTotalCost) * 100;
         } else if (summary.totalCost > 0) {
-             totalCostTrend = 100; // From 0 to something is technically infinite increase, treat as 100% for UI
+             totalCostTrend = 100; 
         }
     }
 
@@ -180,13 +180,13 @@ export async function POST(request: NextRequest) {
       assetId,
       name,
       ticker,
-      assetType, // 'crypto' | 'stock' | 'other'
-      pricingMode, // 'live' | 'manual'
-      investmentType, // 'buy' | 'sell'
+      assetType, 
+      pricingMode, 
+      investmentType, 
       quantity,
       pricePerUnit,
       date,
-      currencyId, // Currency of the transaction
+      currencyId, 
       notes,
       coingeckoId,
       icon,
@@ -198,19 +198,19 @@ export async function POST(request: NextRequest) {
 
     let targetAssetId = assetId ? Number(assetId) : null;
 
-    // Create/Ensure Asset if not provided
+    
     if (!targetAssetId) {
       if (!name || !assetType) {
         return NextResponse.json({ error: 'Asset name and type required' }, { status: 400 });
       }
 
-      // For crypto/stock, ticker is usually required to fetch price, but we can be flexible if manual
+      
       if ((assetType === 'crypto' || assetType === 'stock') && !ticker) {
           return NextResponse.json({ error: 'Ticker is required for Crypto/Stock assets' }, { status: 400 });
       }
 
-      // If it's a private asset type (property/custom), we associate it with the user
-      // Stocks/Crypto considered global for now, unless we want to allow "My Private Bitcoin" (maybe later)
+      
+      
       const isPrivate = assetType === 'property' || assetType === 'custom' || assetType === 'other';
       const assetUserId = isPrivate ? user.id : undefined;
 
@@ -230,14 +230,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to resolve asset' }, { status: 500 });
     }
 
-    // Determine Transaction Type string (legacy)
+    
     const legacyType = investmentType === 'buy' ? 'expense' : 'income';
 
-    // Validation: Prevent selling more than owned
+    
     if (investmentType === 'sell') {
       const { getAssetHolding } = await import('@/lib/investments');
       const currentHolding = await getAssetHolding(user.id, targetAssetId);
-      const epsilon = 0.00000001; // Handle float precision
+      const epsilon = 0.00000001; 
       
       if (currentHolding + epsilon < Number(quantity)) {
         return NextResponse.json({ 
@@ -246,12 +246,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create Transaction
+    
     const transaction = await db.transaction.create({
       data: {
         userId: user.id,
         type: legacyType,
-        amount: 0, // Legacy amount ignored for investments
+        amount: 0, 
         description: `${investmentType === 'buy' ? 'Bought' : 'Sold'} ${quantity} ${ticker || 'Asset'}`,
         date: date ? new Date(date) : new Date(),
         currencyId: currencyId ? Number(currencyId) : user.currencyId!,

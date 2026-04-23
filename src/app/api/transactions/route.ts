@@ -8,14 +8,14 @@ import { convertAmount, convertTransactionsWithRatesMap, preloadRatesMap } from 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Format date to match frontend format (e.g., "Dec 2nd 2024")
+
 function formatDate(date: Date): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const day = date.getDate();
   const month = months[date.getMonth()];
   const year = date.getFullYear();
 
-  // Add ordinal suffix
+  
   const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
     day === 2 || day === 22 ? 'nd' :
       day === 3 || day === 23 ? 'rd' : 'th';
@@ -23,7 +23,7 @@ function formatDate(date: Date): string {
   return `${month} ${day}${suffix} ${year}`;
 }
 
-// Get icon based on category name or default
+
 function getIconForCategory(categoryName: string | null): string {
   if (!categoryName) return 'HelpCircle';
 
@@ -49,10 +49,10 @@ function getIconForCategory(categoryName: string | null): string {
   return iconMap[categoryName] || 'HelpCircle';
 }
 
-// GET - Fetch transactions with pagination and filtering
+
 export async function GET(request: NextRequest) {
   try {
-    // Get user with language included to avoid extra query
+    
     const user = await requireCurrentUserWithLanguage();
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
 
@@ -71,32 +71,32 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
 
-    // Pagination
+    
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '20', 10)));
 
-    // Filters
+    
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category');
-    const type = searchParams.get('type'); // 'expense' | 'income' | null
-    const month = searchParams.get('month'); // Format: 'YYYY-MM'
+    const type = searchParams.get('type'); 
+    const month = searchParams.get('month'); 
     const timePeriod = searchParams.get('timePeriod') || 'All Time';
 
-    // Sorting
+    
     const sortBy = searchParams.get('sortBy') || 'date';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-    // Build where clause
+    
     const where: Record<string, unknown> = {
       userId: user.id,
       investmentAssetId: null,
     };
 
-    // Date filter based on time period or month
+    
     const dateFilter: { gte?: Date; lte?: Date } = {};
     const now = new Date();
 
-    // Month filter takes precedence over time period if specified
+    
     if (month) {
       const [year, monthNum] = month.split('-').map(Number);
       dateFilter.gte = new Date(year, monthNum - 1, 1);
@@ -111,12 +111,12 @@ export async function GET(request: NextRequest) {
       where.date = dateFilter;
     }
 
-    // Type filter
+    
     if (type === 'expense' || type === 'income') {
       where.type = type;
     }
 
-    // Category filter
+    
     if (category) {
       const categoryRecord = await db.category.findFirst({
         where: {
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
       if (categoryRecord) {
         where.categoryId = categoryRecord.id;
       } else {
-        // Category not found, return empty results
+        
         return NextResponse.json({
           transactions: [],
           total: 0,
@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Search filter
+    
     if (search) {
       where.description = {
         contains: search,
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // Build orderBy clause based on sort parameters
+    
     type OrderDirection = 'asc' | 'desc';
     const direction: OrderDirection = sortOrder === 'asc' ? 'asc' : 'desc';
 
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    // Fetch paginated transactions and total count in parallel
+    
     const [total, filteredTransactions] = await Promise.all([
       db.transaction.count({ where }),
       db.transaction.findMany({
@@ -190,7 +190,7 @@ export async function GET(request: NextRequest) {
 
     const totalPages = Math.ceil(total / pageSize);
 
-    // BATCH CONVERSION: Preload all rates for the page in 1–2 queries
+    
     const ratesMap = await preloadRatesMap(
       filteredTransactions.map(t => ({ currencyId: t.currencyId, date: t.date })),
       targetCurrencyId
@@ -199,20 +199,20 @@ export async function GET(request: NextRequest) {
     const transactionsWithConverted = convertTransactionsWithRatesMap(filteredTransactions, targetCurrencyId, ratesMap);
 
 
-    // Transform to frontend format
+    
     const transactions: TransactionType[] = transactionsWithConverted.map((t) => {
-      // For transaction history page, show full name (translated if needed, but not cleaned)
+      
       const fullName = formatTransactionName(t.description, userLanguageAlias, true);
       const originalSignedAmount = t.type === 'expense' ? -t.amount : t.amount;
       const convertedSignedAmount = t.type === 'expense' ? -t.convertedAmount : t.convertedAmount;
 
       return {
         id: t.id.toString(),
-        name: fullName, // Full description for transaction history
-        fullName: fullName, // Full description for transaction modal (same as name)
-        originalDescription: t.description, // Original description from database
+        name: fullName, 
+        fullName: fullName, 
+        originalDescription: t.description, 
         date: formatDate(t.date),
-        dateRaw: t.date.toISOString().split('T')[0], // Raw date for filtering
+        dateRaw: t.date.toISOString().split('T')[0], 
         amount: convertedSignedAmount,
         originalAmount: originalSignedAmount,
         originalCurrencySymbol: t.currency?.symbol,
@@ -277,10 +277,10 @@ async function createRecurringFromPayload(params: {
   });
 }
 
-// POST - Create a new transaction
+
 export async function POST(request: NextRequest) {
   try {
-    // Get user with language included to avoid extra query
+    
     const user = await requireCurrentUserWithLanguage();
     const body = await request.json();
 
@@ -293,7 +293,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use currencyId from request if provided, otherwise use user's default currency
+    
     let currencyId = requestCurrencyId;
     if (!currencyId) {
       currencyId = user.currencyId;
@@ -313,14 +313,14 @@ export async function POST(request: NextRequest) {
       where: { id: currencyId },
     });
 
-    // Determine type and absolute amount
+    
     const type = amount >= 0 ? 'income' : 'expense';
     const absoluteAmount = Math.abs(amount);
 
-    // Parse date (format: "Dec 2nd 2024" or ISO string)
+    
     let transactionDate: Date;
     if (date.includes('st') || date.includes('nd') || date.includes('rd') || date.includes('th')) {
-      // Parse custom format
+      
       const months: Record<string, number> = {
         'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
         'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11,
@@ -334,7 +334,7 @@ export async function POST(request: NextRequest) {
       transactionDate = new Date(date);
     }
 
-    // Find category if provided
+    
     let categoryId: number | null = null;
     if (category) {
       const categoryRecord = await db.category.findUnique({
@@ -345,21 +345,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get language alias from user (already fetched with language relation)
+    
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
 
-    // Check if this is a recurring transaction
+    
     const isRecurring = body.recurring?.isRecurring === true;
     let shouldCreateTransaction = true;
     let recurringStartDate: Date | null = null;
 
     if (isRecurring) {
-      // Get the start date for recurring transaction
+      
       const startDateStr = body.recurring?.startDate || body.dateRaw || body.date;
       recurringStartDate = startDateStr ? new Date(startDateStr) : transactionDate;
 
-      // Only create transaction if startDate is today or in the past
-      // If startDate is in the future, the cron job will create it when the date arrives
+      
+      
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const startDateOnly = new Date(recurringStartDate);
@@ -368,7 +368,7 @@ export async function POST(request: NextRequest) {
       shouldCreateTransaction = startDateOnly <= today;
     }
 
-    // Create recurring schedule if requested
+    
     await createRecurringFromPayload({
       userId: user.id,
       body,
@@ -378,9 +378,9 @@ export async function POST(request: NextRequest) {
       transactionDate,
     });
 
-    // Only create transaction record if:
-    // 1. It's not a recurring transaction, OR
-    // 2. It's a recurring transaction but startDate is today or in the past
+    
+    
+    
     let newTransaction = null;
     if (shouldCreateTransaction) {
       newTransaction = await db.transaction.create({
@@ -388,7 +388,7 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           type,
           amount: absoluteAmount,
-          description: name, // Save full description
+          description: name, 
           date: transactionDate,
           categoryId,
           currencyId,
@@ -399,16 +399,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // If transaction was created, return it; otherwise return success with no transaction
+    
     if (newTransaction) {
-      // Transform to frontend format (format name for display)
+      
       const signedAmount = newTransaction.type === 'expense' ? -newTransaction.amount : newTransaction.amount;
 
       const transaction: TransactionType = {
         id: newTransaction.id.toString(),
         name: formatTransactionName(newTransaction.description, userLanguageAlias, false),
         fullName: formatTransactionName(newTransaction.description, userLanguageAlias, true),
-        originalDescription: newTransaction.description, // Original description from database
+        originalDescription: newTransaction.description, 
         date: formatDate(newTransaction.date),
         dateRaw: newTransaction.date.toISOString().split('T')[0],
         amount: signedAmount,
@@ -421,8 +421,8 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ transaction }, { status: 201 });
     } else {
-      // Recurring transaction created but startDate is in the future
-      // Return success without transaction (it will be created by cron when due)
+      
+      
       return NextResponse.json({
         message: 'Recurring transaction created. Transaction will be created when start date arrives.',
         transaction: null
@@ -437,10 +437,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT - Update an existing transaction
+
 export async function PUT(request: NextRequest) {
   try {
-    // Get user with language included to avoid extra query
+    
     const user = await requireCurrentUserWithLanguage();
     const body = await request.json();
 
@@ -453,7 +453,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Verify transaction belongs to user
+    
     const existingTransaction = await db.transaction.findFirst({
       where: {
         id: parseInt(id),
@@ -468,11 +468,11 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Determine type and absolute amount
+    
     const type = amount >= 0 ? 'income' : 'expense';
     const absoluteAmount = Math.abs(amount);
 
-    // Parse date
+    
     let transactionDate: Date;
     if (date.includes('st') || date.includes('nd') || date.includes('rd') || date.includes('th')) {
       const months: Record<string, number> = {
@@ -488,7 +488,7 @@ export async function PUT(request: NextRequest) {
       transactionDate = new Date(date);
     }
 
-    // Find category if provided
+    
     let categoryId: number | null = null;
     if (category) {
       const categoryRecord = await db.category.findUnique({
@@ -499,10 +499,10 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Validate and get currency ID
+    
     let transactionCurrencyId: number;
     if (currencyId !== undefined && currencyId !== null) {
-      // Validate currency exists
+      
       const currencyRecord = await db.currency.findUnique({
         where: { id: Number(currencyId) },
       });
@@ -514,7 +514,7 @@ export async function PUT(request: NextRequest) {
       }
       transactionCurrencyId = currencyRecord.id;
     } else {
-      // Fall back to user's default currency or existing transaction currency
+      
       transactionCurrencyId = user.currencyId ?? existingTransaction.currencyId;
       if (!transactionCurrencyId) {
         const defaultCurrency = await db.currency.findFirst();
@@ -528,26 +528,26 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Get language alias from user (already fetched with language relation)
+    
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
 
-    // Validation for Investment Transactions
+    
     if (existingTransaction.investmentAssetId && (investmentType || quantity)) {
       const { getAssetHolding } = await import('@/lib/investments');
       const currentHolding = await getAssetHolding(user.id, existingTransaction.investmentAssetId);
       
-      // Calculate what the balance WOULD BE after this change
+      
       const oldQty = Number(existingTransaction.quantity || 0);
       const oldType = existingTransaction.investmentType;
       const newQty = quantity !== undefined ? Number(quantity) : oldQty;
       const newType = investmentType || oldType;
 
-      // Reverse old impact
+      
       let adjustedHolding = currentHolding;
       if (oldType === 'buy') adjustedHolding -= oldQty;
       else if (oldType === 'sell') adjustedHolding += oldQty;
 
-      // Apply new impact
+      
       if (newType === 'buy') adjustedHolding += newQty;
       else if (newType === 'sell') adjustedHolding -= newQty;
 
@@ -559,13 +559,13 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Update transaction (save full description to database)
+    
     const updatedTransaction = await db.transaction.update({
       where: { id: parseInt(id) },
       data: {
         type,
         amount: absoluteAmount,
-        description: name, // Save full description
+        description: name, 
         date: transactionDate,
         categoryId,
         currencyId: transactionCurrencyId,
@@ -579,8 +579,8 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    // Learn merchant mapping if category was changed
-    // Only learn if category was actually set (not null) and different from before
+    
+    
     if (categoryId && categoryId !== existingTransaction.categoryId) {
       try {
         const { normalizeMerchantName, extractMerchantFromDescription } = await import('@/lib/merchant');
@@ -588,7 +588,7 @@ export async function PUT(request: NextRequest) {
         const normalizedMerchant = normalizeMerchantName(merchantName);
 
         if (normalizedMerchant) {
-          // Fire-and-forget: learn merchant mapping in background
+          
           await db.merchant.upsert({
             where: {
               userId_namePattern: {
@@ -610,15 +610,15 @@ export async function PUT(request: NextRequest) {
           });
         }
       } catch (error) {
-        // Silently fail - learning is optional, don't break transaction update
+        
         console.debug('[merchant/learn] failed during transaction update', error);
       }
     }
 
-    // Transform to frontend format (format name for display)
+    
     const signedUpdatedAmount = updatedTransaction.type === 'expense' ? -updatedTransaction.amount : updatedTransaction.amount;
 
-    // Get user's currency for conversion
+    
     const userCurrencyRecord = user.currencyId
       ? await db.currency.findUnique({ where: { id: user.currencyId } })
       : await db.currency.findFirst();
@@ -643,7 +643,7 @@ export async function PUT(request: NextRequest) {
       id: updatedTransaction.id.toString(),
       name: formatTransactionName(updatedTransaction.description, userLanguageAlias, false),
       fullName: formatTransactionName(updatedTransaction.description, userLanguageAlias, true),
-      originalDescription: updatedTransaction.description, // Original description from database
+      originalDescription: updatedTransaction.description, 
       date: formatDate(updatedTransaction.date),
       dateRaw: updatedTransaction.date.toISOString().split('T')[0],
       amount: convertedSignedAmount,
@@ -665,7 +665,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE - Delete a transaction
+
 export async function DELETE(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
@@ -679,7 +679,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Verify transaction belongs to user
+    
     const existingTransaction = await db.transaction.findFirst({
       where: {
         id: parseInt(id),
@@ -694,7 +694,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Validation for Investment Transactions
+    
     if (existingTransaction.investmentAssetId) {
       const { getAssetHolding } = await import('@/lib/investments');
       const currentHolding = await getAssetHolding(user.id, existingTransaction.investmentAssetId);
@@ -702,7 +702,7 @@ export async function DELETE(request: NextRequest) {
       const qty = Number(existingTransaction.quantity || 0);
       const type = existingTransaction.investmentType;
 
-      // If we delete, we reverse the impact
+      
       let predictedTotal = currentHolding;
       if (type === 'buy') predictedTotal -= qty;
       else if (type === 'sell') predictedTotal += qty;
@@ -715,7 +715,7 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    // Delete transaction
+    
     await db.transaction.delete({
       where: { id: parseInt(id) },
     });

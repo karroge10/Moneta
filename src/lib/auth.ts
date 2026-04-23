@@ -1,10 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { db } from './db';
 
-/**
- * Get or create a user in the database based on Clerk authentication
- * Returns the database user record, or null if not authenticated
- */
+
 export async function getCurrentUser() {
   const { userId: clerkUserId } = await auth();
 
@@ -12,7 +9,7 @@ export async function getCurrentUser() {
     return null;
   }
 
-  // Find or create user in database
+  
   let user = await db.user.findUnique({
     where: { clerkUserId },
   });
@@ -22,34 +19,43 @@ export async function getCurrentUser() {
       db.language.findFirst({ where: { alias: 'en' }, select: { id: true } }),
       db.currency.findFirst({ where: { alias: 'USD' }, select: { id: true } }),
     ]);
-    user = await db.user.create({
-      data: {
-        clerkUserId,
-        languageId: englishLanguage?.id ?? null,
-        currencyId: usdCurrency?.id ?? null,
-        dataSharingEnabled: false,
-        notificationSettings: {
-          create: {
-            pushNotifications: true,
-            upcomingBills: true,
-            upcomingIncome: true,
-            investments: true,
-            goals: true,
-            promotionalEmail: true,
-            aiInsights: true,
+
+    try {
+      user = await db.user.create({
+        data: {
+          clerkUserId,
+          languageId: englishLanguage?.id ?? null,
+          currencyId: usdCurrency?.id ?? null,
+          dataSharingEnabled: false,
+          notificationSettings: {
+            create: {
+              pushNotifications: true,
+              upcomingBills: true,
+              upcomingIncome: true,
+              investments: true,
+              goals: true,
+              promotionalEmail: true,
+              aiInsights: true,
+            },
           },
         },
-      },
-    });
+      });
+    } catch (error: any) {
+      // Handle race condition where another request created the user simultaneously
+      if (error.code === 'P2002') {
+        user = await db.user.findUnique({
+          where: { clerkUserId },
+        });
+      } else {
+        throw error;
+      }
+    }
   }
 
   return user;
 }
 
-/**
- * Get the current user's ID from Clerk and database
- * Throws an error if user is not authenticated
- */
+
 export async function requireCurrentUser() {
   const user = await getCurrentUser();
 
@@ -60,11 +66,7 @@ export async function requireCurrentUser() {
   return user;
 }
 
-/**
- * Get the current user with language relation included
- * Throws an error if user is not authenticated
- * Use this when you need the user's language preference to avoid extra queries
- */
+
 export async function requireCurrentUserWithLanguage() {
   const { userId: clerkUserId } = await auth();
 
@@ -72,7 +74,7 @@ export async function requireCurrentUserWithLanguage() {
     throw new Error('Unauthorized: User not authenticated');
   }
 
-  // Find or create user in database with language relation
+  
   let user = await db.user.findUnique({
     where: { clerkUserId },
     include: { language: true },
@@ -83,28 +85,42 @@ export async function requireCurrentUserWithLanguage() {
       db.language.findFirst({ where: { alias: 'en' }, select: { id: true } }),
       db.currency.findFirst({ where: { alias: 'USD' }, select: { id: true } }),
     ]);
-    user = await db.user.create({
-      data: {
-        clerkUserId,
-        languageId: englishLanguage?.id ?? null,
-        currencyId: usdCurrency?.id ?? null,
-        dataSharingEnabled: false,
-        notificationSettings: {
-          create: {
-            pushNotifications: true,
-            upcomingBills: true,
-            upcomingIncome: true,
-            investments: true,
-            goals: true,
-            promotionalEmail: true,
-            aiInsights: true,
+
+    try {
+      user = await db.user.create({
+        data: {
+          clerkUserId,
+          languageId: englishLanguage?.id ?? null,
+          currencyId: usdCurrency?.id ?? null,
+          dataSharingEnabled: false,
+          notificationSettings: {
+            create: {
+              pushNotifications: true,
+              upcomingBills: true,
+              upcomingIncome: true,
+              investments: true,
+              goals: true,
+              promotionalEmail: true,
+              aiInsights: true,
+            },
           },
         },
-      },
-      include: { language: true },
-    });
+        include: { language: true },
+      });
+    } catch (error: any) {
+      // Handle race condition
+      if (error.code === 'P2002') {
+        user = await db.user.findUnique({
+          where: { clerkUserId },
+          include: { language: true },
+        });
+      } else {
+        throw error;
+      }
+    }
+
     if (!user) {
-      throw new Error('Unauthorized: Failed to create user');
+      throw new Error('Unauthorized: Failed to create or find user');
     }
   }
 

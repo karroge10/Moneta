@@ -20,7 +20,7 @@ export async function GET(
             return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
         }
 
-        // Get user's preferred currency
+        
         const userCurrency =
             (user.currencyId && (await db.currency.findUnique({ where: { id: user.currencyId } }))) ||
             (await db.currency.findFirst());
@@ -29,11 +29,11 @@ export async function GET(
             return NextResponse.json({ error: 'No currency configured' }, { status: 500 });
         }
 
-        // Use the common portfolio logic to get live prices and currency conversion
+        
         const portfolio = await getInvestmentsPortfolio(user.id, userCurrency);
         const portfolioAsset = portfolio.assets.find(a => a.assetId === assetId);
 
-        // Also fetch the raw asset details for the modal
+        
         const asset = await db.asset.findUnique({
             where: { id: assetId },
             include: {
@@ -49,7 +49,7 @@ export async function GET(
             return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
         }
 
-        // Merge portfolio stats into the asset object
+        
         const assetWithStats = {
             ...asset,
             currentPrice: portfolioAsset?.currentPrice || 0,
@@ -60,9 +60,9 @@ export async function GET(
             pnlPercent: portfolioAsset?.unrealizedPnlPercent || 0,
             unrealizedPnl: portfolioAsset?.unrealizedPnl || 0,
             realizedPnl: portfolioAsset?.realizedPnl || 0,
-            pricingMode: asset.pricingMode, // Include pricing mode
-            manualPrice: asset.manualPrice, // Include raw manual price
-            icon: portfolioAsset?.icon || asset.icon, // Use derived icon from portfolio
+            pricingMode: asset.pricingMode, 
+            manualPrice: asset.manualPrice, 
+            icon: portfolioAsset?.icon || asset.icon, 
         };
 
         return NextResponse.json({ asset: assetWithStats });
@@ -91,7 +91,7 @@ export async function PUT(
             return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
         }
 
-        // Only allow updating if it's a private asset belonging to this user
+        
         if (asset.userId !== user.id) {
             return NextResponse.json({ error: 'Cannot edit global or other users assets' }, { status: 403 });
         }
@@ -129,14 +129,14 @@ export async function DELETE(
             return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
         }
 
-        // "Delete" on Portfolio means removing all Transactions for this asset for the current user.
-        // If it's a private asset, we should probably delete the Asset itself too if user wants?
-        // Current behavior: Deletes transactions.
-        // If private asset, should we delete the asset record too?
-        // User might want to keep the asset record but reset transactions?
-        // Let's stick to deleting transactions for consistency with "Delete from Portfolio".
-        // BUT if it's a private asset and we remove all transactions, it becomes an orphan record in Asset table.
-        // Let's delete the Asset record too IF it is private (userId matches).
+        
+        
+        
+        
+        
+        
+        
+        
 
         const asset = await db.asset.findUnique({ where: { id: assetId } });
 

@@ -36,23 +36,23 @@ export default function TopExpensesCard({
     color: exp.color,
   }));
 
-  // Horizontal layout: graph on left, categories on right
+  
   if (horizontal) {
     return (
       <Card title="Top Expenses">
         <div className="mt-2 flex flex-col flex-1 min-h-0">
           <div className="flex gap-6 items-start min-h-0 flex-1">
-            {/* Graph on left */}
+            {}
             <div className="flex-shrink-0 flex-1 w-[200px] h-[200px] 2xl:w-[250px] 2xl:h-[250px] min-h-0">
               <DonutChart data={chartData} />
             </div>
-            {/* Categories on right */}
+            {}
             <div className="flex-1 space-y-3 min-w-0">
               {expenses.slice(0, limit).map((expense, index) => {
                 const Icon = getIcon(expense.icon);
                 return (
                   <div key={expense.id} className="flex items-start gap-3 min-w-0">
-                    {/* Colored indicator matching donut chart */}
+                    {}
                     <div className="flex-shrink-0 w-3 h-3 rounded-full mt-1.5" style={{ backgroundColor: expense.color }} />
                     <div className="flex-shrink-0">
                       <div
@@ -79,7 +79,7 @@ export default function TopExpensesCard({
     );
   }
 
-  // Vertical layout: graph on top, categories below
+  
   return (
     <Card title="Top Expenses">
       <div className="mt-2 flex flex-col flex-1 min-h-0">
@@ -91,7 +91,7 @@ export default function TopExpensesCard({
             const Icon = getIcon(expense.icon);
             return (
               <div key={expense.id} className="flex items-start gap-3 min-w-0">
-                {/* Colored indicator matching donut chart */}
+                {}
                 <div className="flex-shrink-0 w-3 h-3 rounded-full mt-1.5" style={{ backgroundColor: expense.color }} />
                 <div className="flex-shrink-0">
                   <div

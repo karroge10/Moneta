@@ -1,18 +1,15 @@
 import { db } from './db';
 import { Prisma } from '@prisma/client';
 
-/**
- * Fetches today's exchange rates for major currency pairs and stores them in the database.
- * This runs daily via the cron job to ensure we have current rates without API calls during user sessions.
- */
+
 export async function updateDailyExchangeRates(): Promise<{ success: boolean; updated: number; errors: string[] }> {
     const errors: string[] = [];
     let updated = 0;
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize to start of day
+    today.setHours(0, 0, 0, 0); 
 
     try {
-        // Fetch all currencies in the system
+        
         const currencies = await db.currency.findMany({
             select: { id: true, alias: true }
         });
@@ -21,8 +18,8 @@ export async function updateDailyExchangeRates(): Promise<{ success: boolean; up
             return { success: true, updated: 0, errors: [] };
         }
 
-        // Define major currency pairs to fetch
-        // We'll fetch USD as base against all other currencies
+        
+        
         const baseCurrency = currencies.find(c => c.alias.toLowerCase() === 'usd');
 
         if (!baseCurrency) {
@@ -30,12 +27,12 @@ export async function updateDailyExchangeRates(): Promise<{ success: boolean; up
             return { success: true, updated: 0, errors: ['USD currency not configured'] };
         }
 
-        // Get all other currencies
+        
         const targetCurrencies = currencies.filter(c => c.id !== baseCurrency.id);
 
         for (const targetCurrency of targetCurrencies) {
             try {
-                // Check if we already have a rate for today
+                
                 const existing = await db.exchangeRate.findFirst({
                     where: {
                         baseCurrencyId: baseCurrency.id,
@@ -49,7 +46,7 @@ export async function updateDailyExchangeRates(): Promise<{ success: boolean; up
                     continue;
                 }
 
-                // Fetch rate from Frankfurter API
+                
                 const dateStr = today.toISOString().split('T')[0];
                 const url = `https://api.frankfurter.app/${dateStr}?from=${baseCurrency.alias}&to=${targetCurrency.alias}`;
 
@@ -67,7 +64,7 @@ export async function updateDailyExchangeRates(): Promise<{ success: boolean; up
                     continue;
                 }
 
-                // Store in database
+                
                 await db.exchangeRate.create({
                     data: {
                         baseCurrencyId: baseCurrency.id,

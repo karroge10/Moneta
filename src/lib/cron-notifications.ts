@@ -1,21 +1,16 @@
-/**
- * Scheduled in-app notifications for recurring items and goals.
- * Invoked from /api/cron/recurring per user after recurring transactions are processed.
- *
- * Lookahead windows use UTC calendar dates for stable cron behavior (documented tradeoff vs user TZ).
- */
+
 
 import { db } from './db';
 import { createNotification } from './notifications';
 import { calculateGoalProgress } from './goalUtils';
 
-/** Notify when a recurring item is due within this many days from today (UTC), inclusive. */
+
 const RECURRING_LOOKAHEAD_DAYS = 3;
 
-/** Warn when a goal target date is within this many days (UTC) and not yet met. */
+
 const GOAL_DEADLINE_LOOKAHEAD_DAYS = 7;
 
-/** Skip creating a new row if the same dedupe token was used for this type recently. */
+
 const DEDUPE_WINDOW_MS = 36 * 60 * 60 * 1000;
 
 function startOfUtcDay(d: Date): Date {
@@ -84,13 +79,11 @@ async function hasGoalDeadlineToken(userId: number, token: string): Promise<bool
   return existing != null;
 }
 
-/**
- * Remind about upcoming recurring expenses/income. Dedupe per recurring row + due date (UTC day).
- */
+
 export async function notifyUpcomingRecurring(userId: number, now: Date): Promise<void> {
   const todayStart = startOfUtcDay(now);
   const windowEnd = addUtcDays(todayStart, RECURRING_LOOKAHEAD_DAYS);
-  // end of last included day
+  
   windowEnd.setUTCHours(23, 59, 59, 999);
 
   const items = await db.recurringTransaction.findMany({
@@ -122,9 +115,7 @@ export async function notifyUpcomingRecurring(userId: number, now: Date): Promis
   }
 }
 
-/**
- * Goal reminders: approaching deadline (not complete), and first-time complete celebration.
- */
+
 export async function notifyGoalEvents(userId: number, now: Date): Promise<void> {
   const todayStart = startOfUtcDay(now);
   const deadlineEnd = addUtcDays(todayStart, GOAL_DEADLINE_LOOKAHEAD_DAYS);

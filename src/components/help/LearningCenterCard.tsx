@@ -48,7 +48,7 @@ export default function LearningCenterCard() {
           setCompletedIds(new Set(ids.filter((x): x is string => typeof x === 'string')));
         }
       } catch {
-        /* ignore */
+        
       } finally {
         if (!cancelled) setProgressLoaded(true);
       }
@@ -71,7 +71,7 @@ export default function LearningCenterCard() {
           setCompletedIds((prev) => new Set(prev).add(lessonId));
         }
       } catch {
-        /* ignore */
+        
       }
     },
     [authReady],

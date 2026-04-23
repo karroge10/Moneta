@@ -7,36 +7,18 @@ import { UploadedTransaction } from '@/types/dashboard';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * Applies merchant-based categorization to transactions from the database
- * This replicates the EXACT logic from the import route to ensure consistency
- * 
- * Matching priority:
- * 1. Special transaction types (commissions → "Other", others → null/uncategorized)
- * 2. Income transactions → remain uncategorized (null)
- * 3. User-specific merchant overrides (from MerchantUser table)
- * 4. Global merchant database (from MerchantGlobal table)
- * 5. Python processor suggestion (fallback)
- * 
- * Note: All transactions are saved - no transactions are filtered out completely.
- * Roundup, currency exchange, transfers, deposits, and ATM withdrawals are saved but remain uncategorized.
- * 
- * Matching strategies (in order):
- * - Exact match (normalized merchant name)
- * - Word-based match (using findMerchantByBaseWords)
- * - Fuzzy match (similarity >= 0.65 threshold)
- */
+
 async function analyzeCategorization(transactions: UploadedTransaction[], userId: number): Promise<UploadedTransaction[]> {
   console.log(`[categorization] Starting categorization for ${transactions.length} transactions (userId: ${userId})`);
   
-  // Pre-fetch categories
+  
   const allCategories = await db.category.findMany();
   const categoryMap = new Map<string, number>();
   allCategories.forEach((cat: { name: string; id: number }) => {
     categoryMap.set(cat.name.toLowerCase(), cat.id);
   });
 
-  // Pre-fetch global merchants
+  
   const globalMerchants = await db.merchantGlobal.findMany();
   const globalMerchantMap = new Map<string, number>();
   const globalMerchantPatterns: string[] = [];
@@ -46,7 +28,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
     globalMerchantPatterns.push(merchant.namePattern);
   });
 
-  // Pre-fetch user-specific merchants (learned from corrections - overrides global)
+  
   const userMerchants = await db.merchant.findMany({
     where: { userId },
     include: { category: true },
@@ -61,49 +43,49 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
 
   console.log(`[categorization] Loaded ${allCategories.length} categories, ${globalMerchants.length} global merchants, ${userMerchants.length} user merchants`);
 
-  // Category name mapping (Python processor → database)
+  
   const categoryNameMapping: Record<string, string> = {
     'transportation': 'transportation',
     'transport': 'transportation',
     'utilities': 'other',
   };
 
-  // Apply categorization logic to each transaction (matching import route logic)
+  
   const categorizedTransactions = transactions
     .map((tx) => {
-      // CRITICAL: Use translatedDescription for matching (descriptions are in Georgian)
+      
       const descriptionForMatching = tx.translatedDescription || tx.description;
       
-      // Check for special transaction types FIRST
+      
       const specialType = detectSpecialTransactionType(descriptionForMatching);
       
-      // Note: All transactions are saved - no transactions are filtered out completely
-      // Special types like roundup, currency exchange, transfers, deposits, and ATM withdrawals
-      // return null to be saved but remain uncategorized (no merchant matching)
       
-      // Determine transaction type based on amount
+      
+      
+      
+      
       const type = tx.amount >= 0 ? 'income' : 'expense';
       
-      // Extract merchant name for matching (needed for all transactions)
+      
       const merchantName = extractMerchantFromDescription(descriptionForMatching);
       const normalizedMerchant = normalizeMerchantName(merchantName);
       
       let categoryId: number | null = null;
       let skipMerchantMatching = false;
       
-      // Skip auto-categorization for income transactions (amount >= 0)
-      // Income transactions should remain uncategorized unless explicitly set by user
-      // Note: In callback route, there's no user selection, so income always stays null
+      
+      
+      
       if (type === 'income' && !categoryId) {
         console.log(`[categorization] ⊘ Skipping auto-categorization for income transaction: "${tx.description.substring(0, 50)}..."`);
-        // Keep categoryId as null (uncategorized)
+        
         return {
           ...tx,
           category: null,
         };
       }
       
-      // Handle special transaction types that should be categorized (e.g., commissions → "Other")
+      
       if (specialType && specialType !== 'EXCLUDE') {
         const specialCategoryId = categoryMap.get(specialType.toLowerCase());
         if (specialCategoryId) {
@@ -113,14 +95,14 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
         }
       }
       
-      // Priority 1: User-specific merchant overrides (only if not skipped)
+      
       if (!skipMerchantMatching && !categoryId) {
-        // Exact match
+        
         if (userMerchantMap.has(normalizedMerchant)) {
           categoryId = userMerchantMap.get(normalizedMerchant)!;
           console.log(`[categorization] ✓ User exact: "${merchantName}" -> categoryId: ${categoryId}`);
         } else {
-          // Word-based match
+          
           const foundMerchant = findMerchantByBaseWords(descriptionForMatching, userMerchantPatterns);
           if (foundMerchant) {
             const foundNormalized = normalizeMerchantName(foundMerchant);
@@ -130,7 +112,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
             }
           }
           
-          // Fuzzy match (threshold: 0.65)
+          
           if (!categoryId) {
             let bestMatch: { pattern: string; catId: number; similarity: number } | null = null;
             for (const [pattern, catId] of userMerchantMap.entries()) {
@@ -151,14 +133,14 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
         }
       }
       
-      // Priority 2: Global merchant database (only if not skipped and no user match)
+      
       if (!skipMerchantMatching && !categoryId) {
-        // Exact match
+        
         if (globalMerchantMap.has(normalizedMerchant)) {
           categoryId = globalMerchantMap.get(normalizedMerchant)!;
           console.log(`[categorization] ✓ Global exact: "${merchantName}" -> categoryId: ${categoryId}`);
         } else {
-          // Word-based match
+          
           const foundMerchant = findMerchantByBaseWords(descriptionForMatching, globalMerchantPatterns);
           if (foundMerchant) {
             const foundNormalized = normalizeMerchantName(foundMerchant);
@@ -168,7 +150,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
             }
           }
           
-          // Fuzzy match (threshold: 0.65)
+          
           if (!categoryId) {
             let bestMatch: { pattern: string; catId: number; similarity: number } | null = null;
             for (const [pattern, catId] of globalMerchantMap.entries()) {
@@ -189,11 +171,11 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
         }
       }
       
-      // Priority 3: Python processor suggestion (fallback)
+      
       if (!categoryId && tx.category) {
         let categoryName = tx.category.toLowerCase();
         
-        // Apply mapping if needed
+        
         if (categoryNameMapping[categoryName]) {
           categoryName = categoryNameMapping[categoryName];
         }
@@ -204,7 +186,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
         }
       }
       
-      // Convert categoryId to category name
+      
       if (categoryId) {
         const matchedCategory = allCategories.find(c => c.id === categoryId);
         if (matchedCategory) {
@@ -215,13 +197,13 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
         }
       }
       
-      // No match found - keep as uncategorized (null)
+      
       return {
         ...tx,
         category: null,
       };
     })
-    .filter((tx): tx is UploadedTransaction => tx !== null); // Remove excluded transactions
+    .filter((tx): tx is UploadedTransaction => tx !== null); 
   
   console.log(`[categorization] Completed: ${categorizedTransactions.length} transactions (${transactions.length - categorizedTransactions.length} excluded)`);
   
@@ -247,12 +229,12 @@ export async function POST(
       return NextResponse.json({ error: 'Missing jobId' }, { status: 400 });
     }
 
-    // Basic validation
+    
     if (typeof progress !== 'number' && !status) {
       return NextResponse.json({ error: 'Missing progress or status' }, { status: 400 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    
     const updateData: any = {
       updatedAt: new Date(),
     };
@@ -269,7 +251,7 @@ export async function POST(
       }
     }
 
-    // Store transaction counts for better time estimation
+    
     if (typeof processedCount === 'number') {
       updateData.processedCount = processedCount;
     }
@@ -277,14 +259,14 @@ export async function POST(
       updateData.totalCount = totalCount;
     }
 
-    // Store final result if provided (when marking as completed)
-    // Apply merchant categorization before storing
+    
+    
     if (result !== undefined && status === 'completed') {
-      // Run categorization on the transactions
+      
       if (result.transactions && Array.isArray(result.transactions) && result.transactions.length > 0) {
         console.log(`[job-progress] Running categorization for ${result.transactions.length} transactions`);
         
-        // Get userId from the job
+        
         const job = await db.pdfProcessingJob.findUnique({
           where: { id: jobId },
           select: { userId: true },
@@ -303,24 +285,24 @@ export async function POST(
       updateData.result = result;
     }
 
-    // Use prisma update instead of raw SQL for simplicity unless there's a specific reason
+    
     await db.pdfProcessingJob.update({
       where: { id: jobId },
       data: updateData,
     });
 
-    // Create notification when job completes (only if not already created)
+    
     if (status === 'completed') {
       try {
-        // Get job details to find userId
+        
         const job = await db.pdfProcessingJob.findUnique({
           where: { id: jobId },
           select: { userId: true, fileName: true },
         });
 
         if (job && (await shouldCreateNotification(job.userId, 'PDF Processing'))) {
-          // Create notification for completed job
-          // No duplicate check needed - each job only completes once
+          
+          
           const now = new Date();
           
           await db.notification.create({
@@ -338,11 +320,11 @@ export async function POST(
         }
       } catch (notifError) {
         console.error(`[job-progress] Failed to create notification for job ${jobId}:`, notifError);
-        // Don't fail the job update if notification creation fails
+        
       }
     }
 
-    // Create notification when job fails
+    
     if (status === 'failed') {
       try {
         const job = await db.pdfProcessingJob.findUnique({
@@ -369,7 +351,7 @@ export async function POST(
         }
       } catch (notifError) {
         console.error(`[job-progress] Failed to create failure notification for job ${jobId}:`, notifError);
-        // Don't fail the job update if notification creation fails
+        
       }
     }
 

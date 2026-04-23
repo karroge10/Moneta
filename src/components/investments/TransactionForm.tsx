@@ -41,7 +41,7 @@ export default function TransactionForm({
             ? toLocalDateInputString(new Date(transaction.date))
             : toLocalDateInputString(new Date())
     );
-    const [notes, setNotes] = useState(transaction?.description || ''); // Description used as notes/details
+    const [notes, setNotes] = useState(transaction?.description || ''); 
 
     const [isDateOpen, setIsDateOpen] = useState(false);
     const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -63,7 +63,7 @@ export default function TransactionForm({
         }
     }, [isDateOpen]);
 
-    // Click outside handling for date picker
+    
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as Node;
@@ -104,7 +104,7 @@ export default function TransactionForm({
                 </div>
             </div>
 
-            {/* Buy / Sell Toggle */}
+            {}
             <div className="grid grid-cols-2 bg-background p-1 rounded-xl border border-[#3a3a3a]">
                 <button
                     type="button"

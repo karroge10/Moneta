@@ -10,14 +10,14 @@ import { computeRoundupInsight } from '@/lib/roundup-insight';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Format date to match frontend format (e.g., "Dec 2nd 2024")
+
 function formatDate(date: Date): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const day = date.getDate();
   const month = months[date.getMonth()];
   const year = date.getFullYear();
 
-  // Add ordinal suffix
+  
   const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
     day === 2 || day === 22 ? 'nd' :
       day === 3 || day === 23 ? 'rd' : 'th';
@@ -25,26 +25,26 @@ function formatDate(date: Date): string {
   return `${month} ${day}${suffix} ${year}`;
 }
 
-// Format month for grouping (e.g., "January 2025")
+
 function formatMonth(date: Date): string {
   const months = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
   return `${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-// Format month for performance data (e.g., "Jan 2025")
+
 function formatMonthShort(date: Date): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-// Format day for daily performance data (single month) - e.g. "Jan 1", "Dec 15"
+
 function formatDayWithMonth(date: Date): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${months[date.getMonth()]} ${date.getDate()}`;
 }
 
-// Get icon based on category name
+
 function getIconForCategory(categoryName: string | null): string {
   if (!categoryName) return 'HelpCircle';
 
@@ -72,12 +72,10 @@ function getIconForCategory(categoryName: string | null): string {
   return iconMap[categoryName] || 'HelpCircle';
 }
 
-// Color palette for categories - limited to purple, green, and red only
+
 const categoryColors = ['#AC66DA', '#74C648', '#D93F3F'];
 
-/**
- * Calculate date range for a given time period
- */
+
 function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; end: Date } {
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -121,9 +119,7 @@ function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; en
   }
 }
 
-/**
- * Get the comparison date range for trend calculation
- */
+
 function getComparisonDateRange(period: TimePeriod, now: Date): { start: Date; end: Date } | null {
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -142,7 +138,7 @@ function getComparisonDateRange(period: TimePeriod, now: Date): { start: Date; e
       };
 
     case 'This Year': {
-      // Compare YTD to same YTD last year (e.g. Jan 1–Jan 31 2025 vs Jan 1–Jan 31 2024)
+      
       const lastYearSameMonthLastDay = new Date(year - 1, now.getMonth() + 1, 0).getDate();
       const day = Math.min(now.getDate(), lastYearSameMonthLastDay);
       return {
@@ -165,9 +161,7 @@ function getComparisonDateRange(period: TimePeriod, now: Date): { start: Date; e
   }
 }
 
-/**
- * Get human-readable comparison label for trend display
- */
+
 function getComparisonLabel(period: TimePeriod): string {
   switch (period) {
     case 'This Month':
@@ -185,7 +179,7 @@ function getComparisonLabel(period: TimePeriod): string {
   }
 }
 
-// GET - Fetch expenses page data
+
 export async function GET(request: NextRequest) {
   try {
     const user = await requireCurrentUserWithLanguage();
@@ -212,8 +206,8 @@ export async function GET(request: NextRequest) {
     const selectedRange = getDateRangeForPeriod(timePeriod, now);
     const comparisonRange = getComparisonDateRange(timePeriod, now);
 
-    // Fetch core data in parallel
-    const minRequiredDate = new Date(now.getFullYear() - 1, 0, 1); // For average calculation we need since start of last year
+    
+    const minRequiredDate = new Date(now.getFullYear() - 1, 0, 1); 
     
     const [allExpenseTransactions, userCurrency, portfolioSummary] = await Promise.all([
       db.transaction.findMany({
@@ -248,11 +242,11 @@ export async function GET(request: NextRequest) {
       ratesMap
     );
 
-    // Helper: normalize to calendar date (strip time) for consistent period bucketing across timezones
+    
     const toDateOnly = (d: Date): Date =>
       new Date(new Date(d).getFullYear(), new Date(d).getMonth(), new Date(d).getDate());
 
-    // Helper function to check if a date is within a range (calendar-date comparison, not timestamp)
+    
     const isInRange = (date: Date, start: Date, end: Date): boolean => {
       const d = toDateOnly(date);
       const s = toDateOnly(start);
@@ -260,14 +254,14 @@ export async function GET(request: NextRequest) {
       return d >= s && d <= e;
     };
 
-    // Calculate selected period expenses
+    
     const selectedPeriodTransactions = transactionsWithConverted.filter((t) =>
       isInRange(t.date, selectedRange.start, selectedRange.end)
     );
 
     const selectedPeriodExpenses = selectedPeriodTransactions.reduce((sum: number, t) => sum + t.convertedAmount, 0);
 
-    // Calculate comparison period expenses
+    
     let comparisonExpenses = 0;
     if (comparisonRange) {
       const comparisonTransactions = transactionsWithConverted.filter((t) =>
@@ -276,10 +270,10 @@ export async function GET(request: NextRequest) {
       comparisonExpenses = comparisonTransactions.reduce((sum: number, t) => sum + t.convertedAmount, 0);
     }
 
-    // Skip trend for "This Year" when only one month has passed (January) — not enough data for meaningful comparison
+    
     const skipComparison = timePeriod === 'This Year' && now.getMonth() === 0;
 
-    // For "All Time": growth since beginning (first month vs last month with data)
+    
     let allTimeTrend = 0;
     let allTimeAverageTrend = 0;
     if (timePeriod === 'All Time' && selectedPeriodTransactions.length > 0) {
@@ -306,7 +300,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Calculate trend
+    
     const expenseTrend =
       timePeriod === 'All Time'
         ? allTimeTrend
@@ -318,7 +312,7 @@ export async function GET(request: NextRequest) {
 
     const trendSkipped = skipComparison || (timePeriod !== 'All Time' && (!comparisonRange || comparisonExpenses === 0));
 
-    // Calculate top expense categories
+    
     const categoryTotals = new Map<string, { amount: number; categoryId: number; categoryName: string }>();
 
     selectedPeriodTransactions.forEach((t) => {
@@ -337,14 +331,14 @@ export async function GET(request: NextRequest) {
       existing.amount += t.convertedAmount;
     });
 
-    // Convert to array and sort by amount
+    
     const topCategoriesArray = Array.from(categoryTotals.values())
       .sort((a, b) => b.amount - a.amount)
-      .slice(0, 3); // Top 3
+      .slice(0, 3); 
 
     const totalExpenses = selectedPeriodExpenses;
 
-    // Format top categories with percentages and colors
+    
     const topCategories: ExpenseCategory[] = topCategoriesArray.map((cat, index: number) => {
       const percentage = totalExpenses > 0
         ? Math.round((cat.amount / totalExpenses) * 100)
@@ -360,9 +354,9 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Get latest expense transactions grouped by month
+    
     const latestExpenses: LatestExpense[] = selectedPeriodTransactions
-      .slice(0, 20) // Limit to 20 most recent
+      .slice(0, 20) 
       .map((t) => {
         const displayName = formatTransactionName(t.description, userLanguageAlias, false);
         const fullName = formatTransactionName(t.description, userLanguageAlias, true);
@@ -374,7 +368,7 @@ export async function GET(request: NextRequest) {
           originalDescription: t.description,
           date: formatDate(t.date),
           dateRaw: t.date.toISOString().split('T')[0],
-          amount: -t.convertedAmount, // Expenses are negative
+          amount: -t.convertedAmount, 
           originalAmount: -t.amount,
           originalCurrencySymbol: t.currency?.symbol,
           originalCurrencyAlias: t.currency?.alias,
@@ -384,14 +378,14 @@ export async function GET(request: NextRequest) {
         };
       });
 
-    // Calculate performance data
-    // For "This Month" and "Last Month", use daily breakdown
-    // For other periods, use monthly breakdown
+    
+    
+    
     const isMonthlyPeriod = timePeriod === 'This Month' || timePeriod === 'Last Month';
     const performanceTotals = new Map<string, number>();
 
     if (isMonthlyPeriod) {
-      // Daily breakdown for monthly periods
+      
       selectedPeriodTransactions.forEach((t) => {
         const dayKey = formatDayWithMonth(t.date);
         if (!performanceTotals.has(dayKey)) {
@@ -400,7 +394,7 @@ export async function GET(request: NextRequest) {
         performanceTotals.set(dayKey, performanceTotals.get(dayKey)! + t.convertedAmount);
       });
     } else {
-      // Monthly breakdown for longer periods
+      
       selectedPeriodTransactions.forEach((t) => {
         const monthKey = formatMonthShort(t.date);
         if (!performanceTotals.has(monthKey)) {
@@ -410,23 +404,23 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Sort chronologically
+    
     const performanceData: PerformanceDataPoint[] = Array.from(performanceTotals.entries())
       .map(([date, value]) => ({ date, value }))
       .sort((a, b) => {
-        // Parse date string to compare
+        
         if (isMonthlyPeriod) {
-          // For daily-with-month: "Jan 1", "Dec 15" - extract day from "Mon D" or "Mon DD"
+          
           const dayA = parseInt(a.date.split(' ')[1] || '1') || 1;
           const dayB = parseInt(b.date.split(' ')[1] || '1') || 1;
           return dayA - dayB;
         } else {
-          // For monthly: "Jan 2025" -> parse to date object
+          
           return new Date(a.date).getTime() - new Date(b.date).getTime();
         }
       });
 
-    // Average card: always compare current year vs previous year (average monthly across all months)
+    
     const currentYear = now.getFullYear();
     const currentYearStart = new Date(currentYear, 0, 1);
     const currentYearEnd = new Date(currentYear, 11, 31, 23, 59, 59, 999);
@@ -438,7 +432,7 @@ export async function GET(request: NextRequest) {
     const totalLastYear = transactionsWithConverted
       .filter((t) => isInRange(t.date, lastYearStart, lastYearEnd))
       .reduce((sum, t) => sum + t.convertedAmount, 0);
-    // Use months elapsed this year (1–12) so YTD isn't penalized (e.g. Jan only → divide by 1, not 12)
+    
     const monthsElapsedThisYear = Math.max(1, now.getMonth() + 1);
     const avgMonthlyCurrentYear = totalCurrentYear / monthsElapsedThisYear;
     const avgMonthlyLastYear = totalLastYear / 12;
@@ -450,7 +444,7 @@ export async function GET(request: NextRequest) {
     const averageTrendSkipped = avgMonthlyLastYear === 0;
 
 
-    // Calculate average monthly expenses (or average daily for single month periods)
+    
     let averageMonthlyExpenses = 0;
     let averageDailyExpenses = 0;
 
@@ -467,14 +461,14 @@ export async function GET(request: NextRequest) {
 
     const roundupInsight = await computeRoundupInsight(selectedPeriodExpenses, portfolioSummary.assets);
 
-    // Calculate internal trend for performance graph
+    
     const firstPerfValue = performanceData.length > 0 ? performanceData[0].value : 0;
     const lastPerfValue = performanceData.length > 0 ? performanceData[performanceData.length - 1].value : 0;
     const internalTrend = firstPerfValue > 0 
       ? Math.round(((lastPerfValue - firstPerfValue) / firstPerfValue) * 100) 
       : (lastPerfValue > 0 ? 100 : 0);
 
-    // Use internal trend for performance text to match graph visual
+    
     const performanceTrendText = performanceData.length < 2
       ? 'Not enough data to show trends'
       : internalTrend > 0
@@ -483,7 +477,7 @@ export async function GET(request: NextRequest) {
           ? `Your expenses decreased ${Math.abs(internalTrend)}% ${timePeriod.toLowerCase()}`
           : `Your expenses remained stable ${timePeriod.toLowerCase()}`;
 
-    // Demographic Comparison calculation
+    
     let demographicPercentage = 0;
     let demographicMessage = '';
     const demographicComparisonsDisabled = user.dataSharingEnabled !== true;
@@ -507,7 +501,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Calculate next month prediction (only for "This Month")
+    
     let nextMonthPrediction = 0;
     if (timePeriod === 'This Month') {
       const currentDay = now.getDate();
@@ -515,18 +509,18 @@ export async function GET(request: NextRequest) {
       const daysElapsed = currentDay;
 
       if (daysElapsed > 0 && selectedPeriodExpenses > 0) {
-        // Calculate average daily spending so far
+        
         const averageDailySpending = selectedPeriodExpenses / daysElapsed;
-        // Project for full month
+        
         nextMonthPrediction = averageDailySpending * daysInMonth;
       } else {
-        // If no data yet, use last month's average if available
+        
         if (comparisonRange) {
           const comparisonTransactions = transactionsWithConverted.filter((t) =>
             isInRange(t.date, comparisonRange.start, comparisonRange.end)
           );
           const comparisonTotal = comparisonTransactions.reduce((sum: number, t) => sum + t.convertedAmount, 0);
-          nextMonthPrediction = comparisonTotal; // Use last month's total as prediction
+          nextMonthPrediction = comparisonTotal; 
         }
       }
     }
@@ -571,7 +565,7 @@ export async function GET(request: NextRequest) {
       stack: error instanceof Error ? error.stack : undefined,
     });
 
-    // Return more specific error message for debugging
+    
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch expenses data';
     return NextResponse.json(
       { error: errorMessage },

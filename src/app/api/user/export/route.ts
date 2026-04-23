@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // Get internal user ID from DB
+    
     const dbUser = await db.user.findUnique({
       where: { clerkUserId: user.id },
       select: { id: true },
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       return new NextResponse('User not found', { status: 404 });
     }
 
-    // Fetch all transactions for this user
+    
     const transactions = await db.transaction.findMany({
       where: { userId: dbUser.id },
       include: {
@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
       orderBy: { date: 'desc' },
     });
 
-    // We return JSON, the client will convert it to CSV to avoid server-side complexity with CSV libraries
-    // and to handle the download more elegantly in the browser.
+    
+    
     return NextResponse.json({
       success: true,
       data: transactions.map(t => ({

@@ -1,6 +1,4 @@
-/**
- * Learning Center lesson content (single primary CTA per lesson in the modal).
- */
+
 export interface LearningCenterLesson {
   id: string;
   title: string;

@@ -9,7 +9,7 @@ interface AverageDailyCardProps {
   amount: number;
   trend: number;
   trendSkipped?: boolean;
-  isExpense?: boolean; // If true, use inverted color logic (negative = good for expenses)
+  isExpense?: boolean; 
 }
 
 export default function AverageDailyCard({ amount, trend, trendSkipped, isExpense = false }: AverageDailyCardProps) {

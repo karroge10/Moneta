@@ -1,21 +1,21 @@
 export interface Transaction {
   id: string;
-  name: string; // Cleaned/display name
-  fullName?: string; // Full original description (for transaction modal)
-  originalDescription?: string; // Original description from database (before translation)
+  name: string; 
+  fullName?: string; 
+  originalDescription?: string; 
   date: string;
-  dateRaw?: string; // ISO date string (YYYY-MM-DD) for filtering
-  amount: number; // Converted amount in user's preferred currency
+  dateRaw?: string; 
+  amount: number; 
   category: string | null;
   icon: string;
-  originalAmount?: number; // Amount in statement currency (signed)
+  originalAmount?: number; 
   originalCurrencySymbol?: string;
   originalCurrencyAlias?: string;
-  currencyId?: number; // Currency ID for editing
+  currencyId?: number; 
   recurring?: RecurringSettings;
-  /** Set when this "transaction" is actually a recurring item (future view); used for Pause and PUT recurring */
+  
   recurringId?: number;
-  /** When true = active, when false = paused; used in upcoming list to show Paused badge */
+  
   isActive?: boolean;
   color?: string;
 }
@@ -27,7 +27,7 @@ export interface Bill {
   amount: number;
   category: string;
   icon: string;
-  /** When true = active, when false = paused; used in upcoming list to show Paused badge */
+  
   isActive?: boolean;
 }
 
@@ -37,14 +37,14 @@ export interface RecurringSettings {
   isRecurring: boolean;
   frequencyUnit: RecurringFrequencyUnit;
   frequencyInterval: number;
-  startDate: string; // ISO date string
+  startDate: string; 
   endDate?: string | null;
   type?: 'income' | 'expense';
-  /** Paused state for recurring items (future view); when false = active, when true = paused */
+  
   isActive?: boolean;
 }
 
-/** Recurring item from GET /api/recurring (full list, not upcoming-only) */
+
 export interface RecurringItem {
   id: number;
   name: string;
@@ -62,7 +62,7 @@ export interface RecurringItem {
   lastGeneratedAt: string | null;
 }
 
-/** Row shape for future (recurring) table; compatible with table columns + Status */
+
 export interface RecurringRow {
   id: string;
   name: string;
@@ -163,14 +163,14 @@ export interface Category {
   name: string;
   icon: string;
   color: string;
-  type?: string | null; // 'income' | 'expense' | null (for both/all types)
+  type?: string | null; 
 }
 
 export interface InvestmentActivity {
   id: string;
   assetName: string;
   date: string;
-  change: string; // e.g., "+0.021 BTC", "-1 NVDA"
+  change: string; 
   changeType: 'positive' | 'negative';
   icon: string;
 }
@@ -178,16 +178,16 @@ export interface InvestmentActivity {
 export interface DemographicComparison {
   id: string;
   label: string;
-  /** Summary-style line: first token colored (e.g. "+12%"); rest e.g. "higher than other users"; null = same */
+  
   change: string | null;
   icon: string;
   iconColor: string;
-  /** When true, negative delta is green and positive is red (e.g. expenses). */
+  
   invertChangeColor?: boolean;
 }
 
 export interface MonthlySummaryRow {
-  month: string; // Format: "Jan 2025"
+  month: string; 
   income: number;
   expenses: number;
   savings: number;
@@ -201,11 +201,11 @@ export interface StatisticsSummaryItem {
   id: string;
   label: string;
   value: string | number;
-  change: string; // e.g., "+35% from beginning"
+  change: string; 
   icon: string;
   iconColor: string;
-  isLarge?: boolean; // For Financial Health Score card
-  link?: string; // Optional link text
+  isLarge?: boolean; 
+  link?: string; 
 }
 
 export interface TransactionUploadMetadata {

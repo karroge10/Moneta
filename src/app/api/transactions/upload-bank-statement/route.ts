@@ -26,7 +26,7 @@ function shouldDebugTransaction(description: string): boolean {
   return DEBUG_PATTERN_SET.some(pattern => lowered.includes(pattern));
 }
 
-// Helper: Call Python service (async/background)
+
 async function processPdfInBackground(
   file: File, 
   jobId: string, 
@@ -58,7 +58,7 @@ async function processPdfInBackground(
 
     const result = await response.json() as TransactionUploadResponse;
     
-    // Check for sample data (failure)
+    
     if (result.transactions && result.transactions.length === 3) {
       const sampleDescriptions = ['Sample Subscription', 'Coffee Shop', 'Salary'];
       const isSampleData = result.transactions.every(tx => 
@@ -71,13 +71,13 @@ async function processPdfInBackground(
       }
     }
 
-    // Analyze & Categorize
+    
     let finalTransactions = result.transactions || [];
     if (finalTransactions.length > 0) {
       finalTransactions = await analyzeCategorization(finalTransactions, userId);
     }
 
-    // Mark complete
+    
     await updateJobStatus(jobId, 'completed', 100, {
       transactions: finalTransactions,
       metadata: result.metadata
@@ -90,17 +90,17 @@ async function processPdfInBackground(
   }
 }
 
-// Helper: Update job status in DB
+
 async function updateJobStatus(
   jobId: string, 
   status: string, 
   progress?: number, 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
   result?: any, 
   error?: string
 ) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    
     const data: any = { status, updatedAt: new Date() };
     if (progress !== undefined) data.progress = progress;
     if (result !== undefined) data.result = result;
@@ -112,7 +112,7 @@ async function updateJobStatus(
       data
     });
 
-    // Create notification when job completes (only if not already created)
+    
     if (status === 'completed') {
       try {
         const job = await db.pdfProcessingJob.findUnique({
@@ -121,8 +121,8 @@ async function updateJobStatus(
         });
 
         if (job && (await shouldCreateNotification(job.userId, 'PDF Processing'))) {
-          // Create notification for completed job
-          // No duplicate check needed - each job only completes once
+          
+          
           const now = new Date();
           
           await db.notification.create({
@@ -143,7 +143,7 @@ async function updateJobStatus(
       }
     }
 
-    // Create notification when job fails
+    
     if (status === 'failed' && error) {
       try {
         const job = await db.pdfProcessingJob.findUnique({
@@ -177,17 +177,17 @@ async function updateJobStatus(
 }
 
 async function analyzeCategorization(transactions: UploadedTransaction[], userId: number): Promise<UploadedTransaction[]> {
-  // This function matches merchants and applies categories from database
-  // Similar logic to what's in import route, but simplified for upload response
   
-  // Pre-fetch categories
+  
+  
+  
   const allCategories = await db.category.findMany();
   const categoryMap = new Map<string, number>();
   allCategories.forEach((cat: { name: string; id: number }) => {
     categoryMap.set(cat.name.toLowerCase(), cat.id);
   });
 
-  // Pre-fetch global merchants
+  
   const globalMerchants = await db.merchantGlobal.findMany();
   const globalMerchantMap = new Map<string, number>();
   const globalMerchantPatterns: string[] = [];
@@ -197,7 +197,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
     globalMerchantPatterns.push(merchant.namePattern);
   });
 
-  // Pre-fetch user merchants (overrides global)
+  
   const userMerchants = await db.merchant.findMany({
     where: { userId },
     include: { category: true },
@@ -210,15 +210,15 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
     userMerchantPatterns.push(merchant.namePattern);
   });
 
-  // Apply merchant matching to transactions
+  
   return transactions.map((tx) => {
-    // Always use translated description for checks (categories are in English)
+    
     const descriptionForMatching = tx.translatedDescription || tx.description;
     
-    // Check for special transaction types FIRST
+    
     const specialType = detectSpecialTransactionType(descriptionForMatching);
     
-    // Determine type: positive = income, negative = expense
+    
     const type = tx.amount >= 0 ? 'income' : 'expense';
     
     let categoryId: number | null = null;
@@ -226,18 +226,18 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
     let skipMerchantMatching = false;
     let matchSource: string | null = null;
 
-    // Skip auto-categorization for income transactions (amount >= 0)
-    // Income transactions should remain uncategorized unless explicitly set by user
+    
+    
     if (type === 'income') {
-      // Keep categoryId as null (uncategorized)
+      
       return { ...tx, category: null };
     }
 
-    // Handle special transaction types that should be categorized (e.g., commissions → "Other")
+    
     if (specialType && specialType !== 'EXCLUDE') {
-        // Note: All transactions are saved. 'EXCLUDE' isn't returned by detectSpecialTransactionType anymore in practice,
-        // but if it returns a category string (like 'other'), we map it.
-        // If it returns null (for withdrawals, transfers), we leave it uncategorized.
+        
+        
+        
         const specialCategoryId = categoryMap.get(specialType.toLowerCase());
         if (specialCategoryId) {
             categoryId = specialCategoryId;
@@ -245,21 +245,21 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
             skipMerchantMatching = true;
         }
     } else if (specialType === 'EXCLUDE') {
-        // Should technically not happen given current logic, but if so, leave uncategorized
+        
         skipMerchantMatching = true;
     }
 
-    // Extract merchant name
+    
     const merchantName = extractMerchantFromDescription(descriptionForMatching);
     const normalizedMerchant = normalizeMerchantName(merchantName);
     
     if (!categoryId && !skipMerchantMatching) {
-        // 1. User Override
+        
         if (userMerchantMap.has(normalizedMerchant)) {
             categoryId = userMerchantMap.get(normalizedMerchant)!;
             matchSource = 'user-exact';
         } else {
-            // User word match
+            
             const foundUserMerchant = findMerchantByBaseWords(descriptionForMatching, userMerchantPatterns);
             if (foundUserMerchant) {
                 const norm = normalizeMerchantName(foundUserMerchant);
@@ -270,13 +270,13 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
             }
         }
 
-        // 2. Global Merchant
+        
         if (!categoryId) {
             if (globalMerchantMap.has(normalizedMerchant)) {
                 categoryId = globalMerchantMap.get(normalizedMerchant)!;
                 matchSource = 'global-exact';
             } else {
-                // Global word match
+                
                 const foundGlobalMerchant = findMerchantByBaseWords(descriptionForMatching, globalMerchantPatterns);
                 if (foundGlobalMerchant) {
                     const norm = normalizeMerchantName(foundGlobalMerchant);
@@ -288,9 +288,9 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
             }
         }
 
-        // 3. Fuzzy Match (Fallback)
+        
         if (!categoryId) {
-            // Check user merchants fuzzy
+            
             for (const [pattern, catId] of userMerchantMap.entries()) {
                 const similarity = fuzzyMatch(normalizedMerchant, pattern);
                 if (similarity > 0.85) {
@@ -299,7 +299,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
                     break;
                 }
             }
-            // Check global merchants fuzzy
+            
             if (!categoryId) {
                 for (const [pattern, catId] of globalMerchantMap.entries()) {
                     const similarity = fuzzyMatch(normalizedMerchant, pattern);
@@ -313,7 +313,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
         }
     }
     
-    // If matched, update category
+    
     if (categoryId) {
       const matchedCategory = allCategories.find(c => c.id === categoryId);
       if (matchedCategory) {
@@ -347,7 +347,7 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
       });
     }
     
-    // If no match, return with null category (ensure we don't pass through hallucinated category strings from Python if any remain)
+    
     return {
         ...tx,
         category: null
@@ -365,13 +365,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'A PDF file is required.' }, { status: 400 });
     }
 
-    // 1. Create Job Entry Immediately
+    
     const fileArrayBuffer = await file.arrayBuffer();
     const fileContentBuffer = Buffer.from(fileArrayBuffer);
     const fileName = file.name;
 
-    // Use Prisma (or raw if preferred) to create initial job
-    // Switching to Prisma for cleaner syntax, but ensuring buffer is handled
+    
+    
     const serviceUrl = process.env.PYTHON_SERVICE_URL;
 
     const job = await db.pdfProcessingJob.create({
@@ -387,8 +387,8 @@ export async function POST(request: NextRequest) {
 
     const jobId = job.id;
 
-    // 2. Calculate Queue Position (Fix for completed/failed exclusion)
-    // Count active jobs created before this one
+    
+    
     const earlierJobsCount = await db.pdfProcessingJob.count({
       where: {
         status: { in: ['queued', 'processing'] },
@@ -396,10 +396,10 @@ export async function POST(request: NextRequest) {
       }
     });
     
-    // Assuming 1 concurrent worker limit for now
+    
     const queuePosition = Math.max(0, earlierJobsCount);
 
-    // 3. Trigger Background Processing (Fire & Forget)
+    
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
     let callbackUrl = `${appUrl}/api/internal/jobs/${jobId}/progress`;
 
@@ -415,13 +415,13 @@ export async function POST(request: NextRequest) {
     }
     
     if (serviceUrl) {
-      // Mark job as processing so background workers do not pick it up
+      
       await updateJobStatus(jobId, 'processing', 0);
-      // Don't await this! Let it run in background
+      
       processPdfInBackground(file, jobId, callbackUrl, user.id, serviceUrl);
     }
 
-    // 4. Return Immediate Response
+    
     return NextResponse.json({
       jobId,
       fileName,

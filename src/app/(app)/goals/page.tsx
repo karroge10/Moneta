@@ -29,7 +29,7 @@ export default function GoalsPage() {
     setToasts((prev) => [...prev, { id, message, type }]);
   }, []);
   
-  // Modal state
+  
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [isSaving, setIsSaving] = useState(false);
@@ -78,7 +78,7 @@ export default function GoalsPage() {
     };
   }, [authReady, fetchGoals]);
 
-  // Create draft goal for adding
+  
   const createDraftGoal = (): Goal => {
     const today = new Date();
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -114,13 +114,13 @@ export default function GoalsPage() {
     try {
       setIsSaving(true);
       
-      // Calculate progress to check if goal is complete
+      
       const calculatedProgress = updatedGoal.targetAmount > 0 
         ? (updatedGoal.currentAmount / updatedGoal.targetAmount) * 100 
         : 0;
       const isNowComplete = calculatedProgress >= 100;
       
-      // Check if goal was previously incomplete and is now complete
+      
       const wasIncomplete = selectedGoal ? selectedGoal.progress < 100 : true;
       const justCompleted = wasIncomplete && isNowComplete;
       
@@ -162,12 +162,12 @@ export default function GoalsPage() {
       setSelectedGoal(null);
       addToast('Goal saved');
       
-      // Show confetti if goal was just completed
+      
       if (justCompleted || (isNew && isNowComplete)) {
         setShowConfetti(true);
       }
       
-      fetchGoals(); // Refresh goals data
+      fetchGoals(); 
     } catch (err) {
       console.error('Error saving goal:', err);
       addToast(err instanceof Error ? err.message : 'Failed to save goal', 'error');
@@ -195,7 +195,7 @@ export default function GoalsPage() {
       
       setSelectedGoal(null);
       addToast('Goal deleted');
-      fetchGoals(); // Refresh goals data
+      fetchGoals(); 
     } catch (err) {
       console.error('Error deleting goal:', err);
       addToast(err instanceof Error ? err.message : 'Failed to delete goal', 'error');
@@ -226,7 +226,7 @@ export default function GoalsPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      {/* Desktop Header */}
+      {}
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Goals"
@@ -237,7 +237,7 @@ export default function GoalsPage() {
         />
       </div>
 
-      {/* Mobile Navbar */}
+      {}
       <div className="md:hidden">
         <MobileNavbar 
           pageName="Goals" 
@@ -247,21 +247,21 @@ export default function GoalsPage() {
         />
       </div>
 
-      {/* Error Banner */}
-      {/* Content — same layout when loading; cards show skeleton internally */}
-      {/* Mobile: stacked (prioritize goals first) */}
+      {}
+      {}
+      {}
       <div className="md:hidden flex flex-col gap-4 px-4 pb-4">
         <GoalsList goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} loading={loading} />
         <GoalsSummary goals={goals} compact loading={loading} />
       </div>
 
-      {/* Tablet & small desktop (< xl): vertical flow with goals first */}
+      {}
       <div className="hidden md:flex xl:hidden flex-col gap-4 md:px-6 md:pb-6">
         <GoalsList goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} loading={loading} />
         <GoalsSummary goals={goals} compact loading={loading} />
       </div>
 
-      {/* Desktop: generous canvas */}
+      {}
       <div className="hidden xl:grid xl:grid-cols-3 xl:gap-4 xl:px-6 xl:pb-6">
         <div className="col-span-2 min-h-0 flex flex-col">
           <GoalsList goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} loading={loading} />
@@ -271,7 +271,7 @@ export default function GoalsPage() {
         </div>
       </div>
 
-      {/* Goal Modal */}
+      {}
       {selectedGoal && currencyOptions.length > 0 && (
         <GoalModal
           goal={selectedGoal}
@@ -284,7 +284,7 @@ export default function GoalsPage() {
         />
       )}
 
-      {/* Confetti */}
+      {}
       {showConfetti && (
         <Confetti onComplete={() => setShowConfetti(false)} />
       )}

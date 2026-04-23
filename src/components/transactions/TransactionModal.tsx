@@ -40,7 +40,7 @@ export default function TransactionModal({
   const [isFloatingPanelOpen, setIsFloatingPanelOpen] = useState(false);
   const { loading: currencyLoading } = useCurrency();
   
-  // Show loading overlay when currency or currencyOptions are loading
+  
   const isLoadingCurrencyData = currencyLoading || currencyOptionsLoading;
 
   useEffect(() => {

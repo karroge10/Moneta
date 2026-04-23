@@ -42,7 +42,7 @@ export default function GoalsCard({ goals, currencyOptions = [], onGoalClick }: 
     );
   }
 
-  // Ensure activeIndex is within bounds
+  
   const safeIndex = Math.min(activeIndex, goals.length - 1);
   const goal = goals[safeIndex];
   const goalStatus = getGoalStatus(goal);
@@ -68,10 +68,10 @@ export default function GoalsCard({ goals, currencyOptions = [], onGoalClick }: 
           className="flex-1 min-h-0 cursor-pointer transition-opacity hover:opacity-90"
           onClick={() => onGoalClick?.(goal)}
         >
-          {/* Target date */}
+          {}
           <div className="text-helper mb-2">{goal.targetDate}</div>
           
-          {/* Goal name and target amount */}
+          {}
           <div className="flex items-center justify-between mb-2 gap-2 min-w-0">
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <div className="text-body font-medium text-wrap-safe break-words min-w-0">{goal.name}</div>
@@ -118,17 +118,17 @@ export default function GoalsCard({ goals, currencyOptions = [], onGoalClick }: 
             </div>
           </div>
           
-          {/* Current amount */}
+          {}
           <div className="flex items-baseline gap-2 mb-4 min-w-0 flex-wrap">
             <span className="text-card-currency flex-shrink-0 opacity-50">{displayCurrency.symbol}</span>
             <span className="text-card-value break-all min-w-0"> {goal.currentAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
           
-          {/* Progress bar */}
+          {}
           <ProgressBar value={goal.progress} />
         </div>
         
-        {/* Info message - only show if not completed */}
+        {}
         {goal.progress < 100 && (
           <div className="flex items-start gap-2 mt-4 text-sm min-w-0" style={{ color: 'var(--accent-purple)' }}>
             <InfoCircle width={18} height={18} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" />

@@ -5,17 +5,13 @@ import { db } from '@/lib/db';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/transactions/add-rent
- * Add rent transactions for each month starting from October 2024
- * Creates transactions on the 12th of each month for the current user
- */
+
 export async function POST(request: NextRequest) {
   try {
-    // Get current user
+    
     const user = await requireCurrentUser();
     
-    // Find Rent category
+    
     const rentCategory = await db.category.findUnique({
       where: { name: 'Rent' },
     });
@@ -27,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Get user's default currency
+    
     let currencyId = user.currencyId;
     if (!currencyId) {
       const defaultCurrency = await db.currency.findFirst();
@@ -40,21 +36,21 @@ export async function POST(request: NextRequest) {
       currencyId = defaultCurrency.id;
     }
     
-    // Generate dates from October 2024 to current month
-    const startDate = new Date(2024, 9, 12); // October 12, 2024 (month is 0-indexed)
+    
+    const startDate = new Date(2024, 9, 12); 
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
     
     const transactionsToCreate = [];
     
-    // Generate transactions for each month
+    
     let currentDate = new Date(startDate);
     while (
       currentDate.getFullYear() < currentYear ||
       (currentDate.getFullYear() === currentYear && currentDate.getMonth() <= currentMonth)
     ) {
-      // Check if transaction already exists for this date
+      
       const existingTransaction = await db.transaction.findFirst({
         where: {
           userId: user.id,
@@ -67,7 +63,7 @@ export async function POST(request: NextRequest) {
       });
       
       if (!existingTransaction) {
-        // Format description as "Month Year Rent Total" (e.g., "August 2024 Rent Total")
+        
         const transactionDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 12);
         const monthName = transactionDate.toLocaleDateString('en-US', { month: 'long' });
         const year = transactionDate.getFullYear();
@@ -85,7 +81,7 @@ export async function POST(request: NextRequest) {
         });
       }
       
-      // Move to next month
+      
       currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 12);
     }
     
@@ -96,7 +92,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Create all transactions
+    
     const result = await db.transaction.createMany({
       data: transactionsToCreate,
       skipDuplicates: true,

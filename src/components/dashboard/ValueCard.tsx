@@ -8,10 +8,7 @@ interface ValueCardProps {
   bottomRow: ReactNode;
 }
 
-/**
- * Shared card for dashboard value displays (Total, Estimated Tax, Average Monthly, etc.).
- * Same structure everywhere: title, value area, bottom description row.
- */
+
 export default function ValueCard({ title, children, bottomRow }: ValueCardProps) {
   return (
     <div className="card-surface flex flex-col px-6 py-4 rounded-[30px] gap-3 h-full">

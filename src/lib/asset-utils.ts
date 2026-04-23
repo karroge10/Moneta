@@ -1,9 +1,9 @@
 export const getAssetColor = (type?: string) => {
     switch (type?.toLowerCase()) {
-        case 'crypto': return '#AC66DA'; // Purple
-        case 'stock': return '#74C648';  // Green
-        case 'property': return '#EAB308'; // Amber
-        case 'custom': return '#9CA3AF'; // Gray
+        case 'crypto': return '#AC66DA'; 
+        case 'stock': return '#74C648';  
+        case 'property': return '#EAB308'; 
+        case 'custom': return '#9CA3AF'; 
         default: return '#AC66DA';
     }
 };
@@ -11,10 +11,10 @@ export const getAssetColor = (type?: string) => {
 export const getDerivedAssetIcon = (type?: string, ticker?: string | null, pricingMode?: string) => {
     if (pricingMode === 'live') {
         if (type?.toLowerCase() === 'stock' && ticker) {
-            return `https://images.financialmodelingprep.com/symbol/${ticker.toUpperCase()}.png`;
+            return `https://logo.clearbit.com/${ticker}.us`;
         }
         if (type?.toLowerCase() === 'crypto' && ticker) {
-            return `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${ticker.toLowerCase()}.png`;
+            return `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${ticker.toLowerCase()}.png`;
         }
     }
 

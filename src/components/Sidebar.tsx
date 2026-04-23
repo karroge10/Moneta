@@ -28,11 +28,11 @@ export default function Sidebar({ activeSection }: SidebarProps) {
   const pathname = usePathname();
   const { isSignedIn } = useAuth();
   
-  // Determine active section from pathname if not provided
+  
   const getActiveSection = () => {
     if (activeSection) return activeSection;
     
-    // Don't highlight sidebar items when on settings, help, or other non-main pages
+    
     if (pathname === "/settings" || pathname === "/help" || pathname.startsWith("/help")) {
       return null;
     }
@@ -45,7 +45,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
     if (pathname === "/goals") return "goals";
     if (pathname === "/statistics") return "statistics";
     
-    return null; // default - no active section for unknown pages
+    return null; 
   };
   
   const currentActiveSection = getActiveSection();
@@ -56,7 +56,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
       return false;
     }
   });
-  // Sync body class with collapsed state
+  
   useEffect(() => {
     document.body.classList.toggle("sidebar-collapsed", isCollapsed);
   }, [isCollapsed]);
@@ -80,7 +80,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
 
   return (
     <aside className="sidebar">
-      {/* Logo and Collapse Button */}
+      {}
       <div className="sidebar-logo">
         <Link href={isSignedIn ? "/dashboard" : "/"} className="sidebar-brand" aria-label="Go to dashboard">
           <Image src="/monetalogo.png" alt="Moneta" width={48} height={48} priority />
@@ -95,7 +95,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
         </button>
       </div>
 
-      {/* Scrollable MENU area */}
+      {}
       <div className="sidebar-scroll">
         <nav>
           {menuItems.map((item) => {
@@ -118,7 +118,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
 
 
 
-      {/* Footer with Auth */}
+      {}
       <div className="sidebar-footer">
         <ClerkLoading>
           <div className="sidebar-logout pointer-events-none" aria-hidden="true">

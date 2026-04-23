@@ -21,12 +21,12 @@ export default function MobileNavbar({ pageName, timePeriod, onTimePeriodChange,
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const timePeriodOptions: TimePeriod[] = ['This Month', 'This Year', 'All Time'];
-  const { notifications, refresh } = useNotifications(5, true); // Fetch top 5 unread notifications
+  const { notifications, refresh } = useNotifications(5, true); 
 
-  // Update optimistic state when notifications change
+  
   useEffect(() => {
-    // This useEffect is now mostly empty as we use notifications.length directly,
-    // but we can keep it for other side effects if needed, or remove it.
+    
+    
   }, [notifications]);
 
   useEffect(() => {
@@ -87,7 +87,7 @@ export default function MobileNavbar({ pageName, timePeriod, onTimePeriodChange,
                 setIsNotificationsOpen(false);
               }}
               onMarkAllRead={() => {
-                // Handled by context
+                
               }}
               onNotificationClick={async (notificationId) => {
                 try {
@@ -95,9 +95,9 @@ export default function MobileNavbar({ pageName, timePeriod, onTimePeriodChange,
                     method: 'PATCH',
                   });
                   if (response.ok) {
-                    // Update locally via context if we choose to expose that, 
-                    // or just rely on the next poll/PATCH refresh.
-                    // For now, simplicity.
+                    
+                    
+                    
                   }
                 } catch (error) {
                   console.error('Failed to mark notification as read:', error);

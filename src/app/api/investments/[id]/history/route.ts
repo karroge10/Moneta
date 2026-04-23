@@ -27,7 +27,7 @@ export async function GET(
             return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
         }
 
-        // Check ownership if private
+        
         if (asset.userId && asset.userId !== user.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
@@ -43,7 +43,7 @@ export async function GET(
                     range
                 );
 
-                // Convert history from USD to user's currency
+                
                 const usd = await db.currency.findFirst({ 
                     where: { alias: { equals: 'usd', mode: 'insensitive' } } 
                 });
@@ -51,7 +51,7 @@ export async function GET(
 
                 if (usd && userCurrencyId && usd.id !== userCurrencyId && history.length > 0) {
                     const { convertAmount } = await import('@/lib/currency-conversion');
-                    // Use latest rate for the whole history trend (efficient for charts)
+                    
                     const rate = await convertAmount(1, usd.id, userCurrencyId, new Date());
                     history = history.map(point => ({
                         ...point,

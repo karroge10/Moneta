@@ -1,8 +1,4 @@
-/**
- * ISO 3166-1 alpha-2 country codes with full names.
- * Used for country selection with flags (flagsapi.com).
- * No external API - internal list only.
- */
+
 export interface Country {
   code: string;
   name: string;
@@ -206,10 +202,7 @@ export const COUNTRIES: Country[] = [
   { code: 'EU', name: 'European Union' },
 ];
 
-/**
- * Resolve a country by ISO code (e.g. "DE") or full name (e.g. "Germany").
- * Returns { code, name } for display (flag + label). Case-insensitive for name.
- */
+
 export function getCountryByCodeOrName(str: string): { code: string; name: string } | null {
   if (!str || typeof str !== 'string') return null;
   const trimmed = str.trim();
