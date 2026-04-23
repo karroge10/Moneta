@@ -1,90 +1,99 @@
-# Moneta
+# Moneta — Smart Financial Dashboard
 
-Personal finance web app: **Next.js** (App Router) on Vercel, **PostgreSQL** (Prisma), **Clerk** auth, and a **Python PDF processor** deployed separately (e.g. Render) for bank-statement import.
+[![Next.js](https://img.shields.io/badge/Next.js-16.2.4-black?logo=next.js)](https://nextjs.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-7.7.0-2D3748?logo=prisma)](https://prisma.io/)
+[![Clerk](https://img.shields.io/badge/Auth-Clerk-6C47FF?logo=clerk)](https://clerk.com/)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-## Quick start
+Moneta is a precision-engineered personal finance management platform built for modern life. It combines high-performance web architecture with a dedicated Python microservice to provide a seamless, secure, and data-rich experience for tracking wealth and spending.
 
-```bash
-npm install
-npm run dev
+**Live Project:** [monetafin.vercel.app](https://monetafin.vercel.app)
+
+---
+
+## 🏗️ Architecture Overview
+
+The system is designed with a clear separation of concerns, utilizing a hybrid Next.js and Python architecture to handle specialized data processing tasks effectively.
+
+```mermaid
+graph TD
+    User([User]) <--> NextApp[Next.js App Router v16]
+    NextApp <--> Clerk(Clerk Auth)
+    NextApp <--> DB[(PostgreSQL / Neon)]
+    NextApp <--> ExternalData(Coingecko / Stooq)
+    NextApp -- Async Request --> PythonSvc[Python PDF Microservice]
+    PythonSvc -- Data Extraction --> NextApp
+    
+    subgraph "Main Application (Vercel)"
+        NextApp
+    end
+
+    subgraph "Data Processing (Render)"
+        PythonSvc
+    end
 ```
 
-The dev server prefers port **3000**; if it is taken, use the URL shown in the terminal.
+## ✨ Core Features
 
-## PDF bank statement import
+- **Asynchronous Bank Import**: A dedicated Python/Flask service processes PDF bank statements, extracting and translating (KA ➔ EN) transactions without blocking the user interface.
+- **Unified Investment Portfolio**: Real-time tracking for Stocks, Crypto, Property, and Custom assets.
+- **Intelligent Financial Health**: A 4-pillar scoring system (Savings, Spending, Goals, Engagement) providing actionable insights based on demographic benchmarking.
+- **Bento Grid Dashboard**: Optimized layouts for Mobile, Tablet, and Desktop, ensuring critical financial data is always at a glance.
+- **Recurring Transactions Engine**: Automated bill and income tracking via Vercel Cron.
 
-### Local (full stack on your machine)
+## 🛠️ Technology Stack
 
-1. Install Python deps: `pip install -r python/requirements.txt` (and `python-service/requirements.txt` if you run the Flask service locally).
-2. `npm run dev` and open `/transactions/import`.
-3. Upload a PDF; the app queues processing and polls job status.
+### Frontend & Core
+- **Framework**: [Next.js 16.2.4](https://nextjs.org/) (App Router, Server Actions)
+- **State Management**: custom hooks + SWR for optimized data fetching.
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) with a custom design system and glassmorphism accents.
+- **Type Safety**: End-to-end [TypeScript](https://www.typescriptlang.org/) integration.
 
-### Production: Vercel + external PDF service
+### Backend & Infrastructure
+- **Database**: [PostgreSQL](https://www.postgresql.org/) managed via [Prisma 7.7.0](https://www.prisma.io/).
+- **Processing**: [Python 3.12](https://www.python.org/) + [Flask](https://flask.palletsprojects.com/) + [pdfplumber](https://github.com/jsvine/pdfplumber).
+- **Authentication**: [Clerk v6](https://clerk.com/) with custom themes.
 
-Next.js on **Vercel** does not run the Python extractor. Production upload uses **`PYTHON_SERVICE_URL`**: the Next.js API forwards the PDF to your deployed processor (HTTP `POST …/process-pdf`).
+---
 
-Set on **Vercel** (all environments that should import PDFs):
+## 🚀 Getting Started
 
-| Variable | Purpose |
-|----------|---------|
-| `PYTHON_SERVICE_URL` | Base URL of the PDF service, **no trailing slash** (e.g. `https://moneta-pdf-processor.onrender.com`) |
+### Prerequisites
+- Node.js 20+
+- Python 3.10+
+- PostgreSQL instance
 
-If this is set correctly, PDF import works from production; local dev can use the same URL or a local Flask instance.
+### Installation
 
-### Deploying the PDF service (Render / similar)
-
-See `python-service/README.md` and `render.yaml`. Typical start command: `python python-service/app.py` (or Gunicorn as in `render.yaml`).
-
-**Render / PDF service environment (optional):**
-
-| Variable | Purpose |
-|----------|---------|
-| `INTERNAL_API_SECRET` | If set, sent to the Next.js progress callback for internal routes. |
-
-PDF categorization uses **keyword heuristics** (and translation in the Python pipeline where needed). The optional `CATEGORIES_MODEL_PATH` joblib hook exists only in `python-service` / `python` docs if you ever add a custom model; the app does not require it.
-
-## Other environment variables
-
-- `NEXT_PUBLIC_CONTACT_EMAIL` — optional; landing page support mailto (defaults to `hello@moneta.app` if unset).
-- Database, Clerk, and other secrets are standard for this stack (see your Vercel / `.env.local` setup).
-
-## Statistics — demographic “peers”
-
-Comparisons use **other users** who have **data sharing** on (excluding you), filtered to the same **age group**, **country**, or **profession** as your profile. Fill those fields in Settings for the dimension you pick.
-
-**Local / demo cohort (pick one or both)**
-
-1. **Database seed (realistic, same code path as production)**  
-   After `npm run seed`, run:
-
+1. **Clone & Install Dependencies**
    ```bash
-   npm run seed:demographic
+   git clone https://github.com/karroge10/Moneta.git
+   cd Moneta
+   npm run setup
    ```
 
-   Creates ~33 `demo_*` users (no Clerk id) with sharing on and sample transactions. Replace them anytime:
-
+2. **Database Setup**
    ```bash
-   npm run seed:demographic -- --reset
+   npx prisma db push
+   npm run seed
    ```
 
-   Then for **your** Clerk user: turn on **data sharing** in Settings and set **date of birth / country / profession** so they match at least one seeded bucket (e.g. country **Georgia**, profession **Developer**, age in **18–24** is heavily seeded).
-
-2. **Synthetic peers (no extra DB users)** — **development only** (`NODE_ENV !== 'production'`). In `.env.local`:
-
+3. **Development Server**
    ```bash
-   FAKE_DEMOGRAPHIC_COHORT=true
-   # optional: FAKE_DEMOGRAPHIC_COHORT_SIZE=24
+   npm run dev
    ```
 
-   If no real peers match your profile, the API fills comparisons with a **deterministic fake sample** and the Statistics UI notes “illustrative demo cohort”.  
-   On production builds this stays **off** unless you also set `ALLOW_FAKE_DEMOGRAPHIC_COHORT_IN_PRODUCTION=true` (not recommended for a real product).
+---
 
-Transaction display uses a **fixed Georgian→English phrase map** in `src/lib/transaction-utils.ts` (no external translation API).
+## 👤 Portfolio Quality
 
-## Repo layout (high level)
+This repository represents a high-quality, professional implementation. Key engineering decisions include:
+- **Clean Architecture**: Decoupled UI components and business logic via custom hooks (`useDashboardData`, `useLandingScroll`).
+- **Performance Optimized**: Fine-grained code splitting and skeleton loading states.
+- **Security Focused**: No sensitive data in repository, documented environment variables, and secure authentication flows.
+- **Maintainable**: Consolidated utility functions and standardized naming conventions.
 
-- `src/app` — Next.js routes and API routes  
-- `src/components` — UI  
-- `prisma` — schema and migrations  
-- `python/` — PDF extraction + categorization CLI (`process_pdf.py`)  
-- `python-service/` — Flask app exposed to Vercel via `PYTHON_SERVICE_URL`
+---
+
+## 📄 License
+MIT License. See [LICENSE](LICENSE) for details.

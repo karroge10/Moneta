@@ -24,7 +24,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         if (!isLoaded || !isSignedIn) {
             return;
         }
-        // Only fetch if tab is visible to save resources
+        
         if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
             return;
         }
@@ -79,10 +79,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
         fetchNotifications();
 
-        // Refresh notifications every 60 seconds (increased from 30s)
+        
         const interval = setInterval(fetchNotifications, 60000);
 
-        // Listen for custom event to refresh notifications immediately
+        
         const handleRefreshEvent = () => {
             fetchNotifications();
         };

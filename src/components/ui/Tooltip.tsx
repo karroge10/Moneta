@@ -17,7 +17,7 @@ export default function Tooltip({ content, children, className = '' }: TooltipPr
 
   useEffect(() => {
     if (isVisible && triggerRef.current && tooltipRef.current) {
-      // Use requestAnimationFrame to ensure tooltip is rendered before calculating position
+      
       requestAnimationFrame(() => {
         if (!triggerRef.current || !tooltipRef.current) return;
 
@@ -29,14 +29,14 @@ export default function Tooltip({ content, children, className = '' }: TooltipPr
         let top = triggerRect.bottom + 8;
         let left = triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2;
 
-        // Adjust if tooltip goes off screen horizontally
+        
         if (left < 8) {
           left = 8;
         } else if (left + tooltipRect.width > viewportWidth - 8) {
           left = viewportWidth - tooltipRect.width - 8;
         }
 
-        // If not enough space below, show above
+        
         if (top + tooltipRect.height > viewportHeight - 8) {
           top = triggerRect.top - tooltipRect.height - 8;
         }
@@ -52,7 +52,7 @@ export default function Tooltip({ content, children, className = '' }: TooltipPr
   };
 
   const handleMouseLeave = () => {
-    // Small delay to allow moving cursor to tooltip
+    
     setTimeout(() => {
       if (!isHoveringTooltipRef.current) {
         setIsVisible(false);
@@ -79,7 +79,7 @@ export default function Tooltip({ content, children, className = '' }: TooltipPr
           {
             ref: (node: HTMLElement | null) => {
               triggerRef.current = node;
-              // Handle existing ref if present
+              
               const existingRef = (children as any).ref;
               if (existingRef) {
                 if (typeof existingRef === 'function') {

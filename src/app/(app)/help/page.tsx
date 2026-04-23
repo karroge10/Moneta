@@ -29,14 +29,14 @@ export default function HelpPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      {/* Desktop Header */}
+      {}
       <div className="hidden md:block">
         <DashboardHeader 
           pageName="Help Center"
         />
       </div>
 
-      {/* Mobile Navbar */}
+      {}
       <div className="md:hidden">
         <MobileNavbar 
           pageName="Help Center" 
@@ -46,8 +46,8 @@ export default function HelpPage() {
         />
       </div>
 
-    {/* Content */}
-    {/* Mobile: stacked */}
+    {}
+    {}
     <div className="md:hidden flex flex-col gap-4 px-4 pb-4">
       <FAQSection faqItems={faqData} />
       <SendFeedbackCard />
@@ -55,7 +55,7 @@ export default function HelpPage() {
       <LegalSection />
     </div>
 
-    {/* Tablet: even split */}
+    {}
     <div className="hidden md:grid 2xl:hidden md:grid-cols-[1fr_1fr] md:gap-4 md:px-6 md:pb-6">
       <div className="min-h-0">
         <FAQSection faqItems={faqData} />
@@ -67,7 +67,7 @@ export default function HelpPage() {
       </div>
     </div>
 
-    {/* Desktop: weighted to FAQ */}
+    {}
     <div className="hidden 2xl:grid 2xl:grid-cols-[1.1fr_0.9fr] 2xl:gap-4 2xl:px-6 2xl:pb-6">
       <div className="min-h-0">
         <FAQSection faqItems={faqData} />

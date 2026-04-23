@@ -37,10 +37,10 @@ export default function NotificationsDropdown({
     }
   }, [isOpen, onClose]);
 
-  // Mark all as read when dropdown opens
+  
   useEffect(() => {
     if (isOpen && notifications.some(n => !n.read)) {
-      // Mark all notifications as read immediately in local state
+      
       markAsReadLocally();
 
       fetch('/api/notifications', {
@@ -65,14 +65,14 @@ export default function NotificationsDropdown({
       className="absolute top-full mt-2 right-0 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[320px] max-w-[400px]"
       style={{ backgroundColor: 'var(--bg-surface)' }}
     >
-      {/* Header */}
+      {}
       <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(231, 228, 228, 0.1)' }}>
         <h3 className="text-body font-semibold" style={{ color: '#E7E4E4' }}>
           Notifications
         </h3>
       </div>
 
-      {/* Notifications List */}
+      {}
       <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
         {hasNotifications ? (
           <div className="py-2">
@@ -82,7 +82,7 @@ export default function NotificationsDropdown({
                 href="/notifications"
                 onClick={async (e) => {
                   e.preventDefault();
-                  // Mark specific notification as read locally if needed (already marked all though)
+                  
                   markAsReadLocally(notification.id);
                   await onNotificationClick?.(notification.id);
                   setTimeout(() => {
@@ -131,7 +131,7 @@ export default function NotificationsDropdown({
         )}
       </div>
 
-      {/* Footer with View All button */}
+      {}
       <div className="px-4 py-2 border-t" style={{ borderColor: 'rgba(231, 228, 228, 0.1)' }}>
         <Link
           href="/notifications"

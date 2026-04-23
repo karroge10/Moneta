@@ -12,7 +12,7 @@ import FinancialHealthModal from '@/components/dashboard/FinancialHealthModal';
 import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 import { MonthlySummaryRow, StatisticsSummaryItem, DemographicComparison, FinancialHealthDetails } from '@/types/dashboard';
 
-/** Statistics always use All Time; no period selector. */
+
 const STATISTICS_TIME_PERIOD = 'All Time';
 
 interface AverageExpense {
@@ -130,18 +130,18 @@ export default function StatisticsPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      {/* Desktop Header */}
+      {}
       <div className="hidden md:block">
         <DashboardHeader pageName="Statistics" />
       </div>
 
-      {/* Mobile Navbar — no time period selector; statistics are always All Time */}
+      {}
       <div className="md:hidden">
         <MobileNavbar pageName="Statistics" activeSection="statistics" />
       </div>
 
-      {/* Content — same layout when loading; cards show skeleton internally */}
-      {/* Mobile: stacked */}
+      {}
+      {}
       <div className="md:hidden flex flex-col gap-4 px-4 pb-4">
 
         <DemographicComparisonsSection
@@ -177,9 +177,9 @@ export default function StatisticsPage() {
         />
       </div>
 
-      {/* Tablet/Desktop: top row (2 cols below 2xl, 3 cols at 2xl) + bottom row (full-width table) */}
+      {}
       <div className="hidden md:flex flex-col gap-4 md:px-6 md:pb-6 min-h-[calc(100vh-120px)]">
-        {/* Top row: fixed height so Expenses list cuts off at container; left column and Demographic list scroll if needed */}
+        {}
         <div className="grid md:grid-cols-2 2xl:grid-cols-[1fr_1.3fr_1fr] md:grid-rows-1 gap-4 h-[900px] min-h-[900px] max-h-[900px] shrink-0 items-stretch">
           <div className="flex flex-col gap-4 min-h-0 h-full pr-1">
 
@@ -215,7 +215,7 @@ export default function StatisticsPage() {
           </div>
         </div>
 
-        {/* Bottom row: Monthly Summary — full width */}
+        {}
         <div className="flex-1 flex flex-col min-h-[320px]">
           <MonthlySummaryTable
             data={monthlySummary}

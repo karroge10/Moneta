@@ -115,14 +115,14 @@ export default async function RootLayout({
       afterSignOutUrl="/"
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/dashboard"
-      allowedRedirectOrigins={[currentSiteUrl, "http://localhost:3000", "http://127.0.0.1:3000"]}
+      allowedRedirectOrigins={[currentSiteUrl, "http://localhost:3000"]}
     >
       <html lang="en" suppressHydrationWarning>
         <body
           className={`${sen.variable} antialiased`}
         >
           <QueryProvider>
-            {/* CurrencyProvider wraps everything to ensure useCurrency is always available */}
+            {}
             <CurrencyProvider>
               <NotificationProvider>
               <ToastProvider>

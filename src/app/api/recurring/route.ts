@@ -17,7 +17,7 @@ interface RecurringPayload {
   currencyId?: number;
   category?: string | null;
   type: RecurringType;
-  startDate: string; // ISO date string
+  startDate: string; 
   endDate?: string | null;
   frequencyUnit: FrequencyUnit;
   frequencyInterval: number;
@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const userCurrencyId = await getUserCurrencyId(user.currencyId ?? undefined);
 
-    // Generate due transactions before returning data
+    
     await processDueRecurringItems(user.id, now);
 
     const { searchParams } = new URL(request.url);
@@ -264,8 +264,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Only create initial transaction if startDate is today or in the past
-    // If startDate is in the future, wait until that date arrives (cron will handle it)
+    
+    
     if (body.createInitial && startDate <= new Date()) {
       await processDueRecurringItems(user.id, new Date());
     }

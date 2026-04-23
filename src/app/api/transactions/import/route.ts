@@ -107,28 +107,28 @@ export async function POST(request: NextRequest) {
 
     const currencyId = resolvedCurrency.id;
 
-    // Pre-fetch all categories to build a lookup map (do this first)
+    
     const allCategories = await db.category.findMany();
     const categoryMap = new Map<string, number>();
     allCategories.forEach((cat: { name: string; id: number }) => {
       categoryMap.set(cat.name.toLowerCase(), cat.id);
     });
 
-    // Pre-fetch global merchants (shared by all users)
+    
     const globalMerchants = await db.merchantGlobal.findMany();
     const globalMerchantMap = new Map<string, number>();
     const globalMerchantPatterns: string[] = [];
     globalMerchants.forEach((merchant: { namePattern: string; categoryId: number }) => {
-      // Store both original and normalized patterns for matching
+      
       const normalizedPattern = normalizeMerchantName(merchant.namePattern);
       globalMerchantMap.set(normalizedPattern, merchant.categoryId);
-      // Also store original pattern for substring matching
+      
       globalMerchantPatterns.push(merchant.namePattern);
       console.log(`[merchant-setup] Global merchant: "${merchant.namePattern}" -> normalized: "${normalizedPattern}" -> categoryId: ${merchant.categoryId}`);
     });
     console.log(`[merchant-setup] Loaded ${globalMerchants.length} global merchants`);
 
-    // Pre-fetch user's merchant mappings (learned from previous corrections - overrides global)
+    
     const userMerchants = await db.merchant.findMany({
       where: { userId: user.id },
       include: { category: true },
@@ -136,25 +136,25 @@ export async function POST(request: NextRequest) {
     const userMerchantMap = new Map<string, number>();
     const userMerchantPatterns: string[] = [];
     userMerchants.forEach((merchant: { namePattern: string; categoryId: number }) => {
-      // Store both original and normalized patterns for matching
+      
       const normalizedPattern = normalizeMerchantName(merchant.namePattern);
       userMerchantMap.set(normalizedPattern, merchant.categoryId);
-      // Also store original pattern for substring matching
+      
       userMerchantPatterns.push(merchant.namePattern);
       console.log(`[merchant-setup] User merchant: "${merchant.namePattern}" -> normalized: "${normalizedPattern}" -> categoryId: ${merchant.categoryId}`);
     });
     console.log(`[merchant-setup] Loaded ${userMerchants.length} user merchants`);
 
-    // Map Python processor category names to database category names
+    
     const categoryNameMapping: Record<string, string> = {
-      'transportation': 'transportation', // Direct match
-      'transport': 'transportation', // Python uses "Transport", DB has "Transportation"
-      'utilities': 'other', // Map old Utilities category to Other
+      'transportation': 'transportation', 
+      'transport': 'transportation', 
+      'utilities': 'other', 
     };
 
     console.log(`[merchant-import] Processing ${transactions.length} transactions`);
     
-    // Sanitize and prepare transactions for database with category matching
+    
     let matchedCount = 0;
     let unmatchedCount = 0;
     const unmatchedTransactions: Array<{
@@ -170,30 +170,30 @@ export async function POST(request: NextRequest) {
         const amount = Number(item.amount) || 0;
         const date = new Date(item.date);
         
-        // Determine type: positive = income, negative = expense
+        
         const type = amount >= 0 ? 'income' : 'expense';
         const absoluteAmount = Math.abs(amount);
 
-        // Match category: Priority 0) User-selected category (from UI), 1) Special transaction types, 2) User override, 3) Global merchant DB, 4) Python suggestion
+        
         let categoryId = null;
         let matchedMerchant: string | null = null;
         let matchMethod: string | null = null;
         
-        // Check for special transaction types FIRST (before user selection or Python suggestions)
-        // Always use translated description for checks (categories are in English)
+        
+        
         const descriptionForMatching = item.translatedDescription || item.description;
         const specialType = detectSpecialTransactionType(descriptionForMatching);
         
-        // Note: All transactions are saved - no transactions are filtered out completely
-        // Special types like roundup, currency exchange, transfers, deposits, and ATM withdrawals
-        // return null to be saved but remain uncategorized (no merchant matching)
         
-        // Priority 0: If user provided a category in the UI, use it directly (skip all matching)
-        // If user explicitly set category to null/empty, also skip matching (save as uncategorized)
+        
+        
+        
+        
+        
         if (item.category !== undefined && item.category !== null && item.category !== '') {
           let categoryName = item.category.toLowerCase();
           
-          // Apply mapping if needed
+          
           if (categoryNameMapping[categoryName]) {
             categoryName = categoryNameMapping[categoryName];
           }
@@ -203,50 +203,50 @@ export async function POST(request: NextRequest) {
             matchMethod = 'user-selected';
             console.log(`[merchant-match] ✓ User-selected category: "${categoryName}" -> categoryId: ${categoryId}`);
           } else {
-            // User selected a category but it wasn't found - save as uncategorized (don't re-run matching)
+            
             console.log(`[merchant-match] ⚠ User-selected category "${categoryName}" not found, saving as uncategorized`);
           }
         } else if (item.category === null || item.category === '') {
-          // User explicitly cleared the category - save as uncategorized (don't re-run matching)
+          
           console.log(`[merchant-match] ⊘ User cleared category, saving as uncategorized`);
         }
         
-        // Extract and normalize merchant name (needed for matching and logging)
+        
         const merchantName = extractMerchantFromDescription(descriptionForMatching);
         const normalizedMerchant = normalizeMerchantName(merchantName);
         
-        // Track why this transaction didn't match (for unmatched transactions)
+        
         const unmatchedReasons: string[] = [];
         const checkedPatterns: Array<{ pattern: string; similarity: number; type: string }> = [];
         
-        // Skip auto-categorization for income transactions (amount >= 0)
-        // Income transactions should remain uncategorized unless explicitly set by user
+        
+        
         if (type === 'income' && !categoryId) {
           console.log(`[merchant-match] ⊘ Skipping auto-categorization for income transaction: "${item.description.substring(0, 50)}..."`);
-          // Keep categoryId as null (uncategorized)
+          
         }
-        // Only run matching logic if user didn't provide a category and it's not an income transaction
+        
         else if (!categoryId) {
           let skipMerchantMatching = false;
           
           if (specialType && specialType !== 'EXCLUDE') {
-            // Special type that should be categorized (e.g., commissions -> other)
-            // Note: All transactions are saved - withdrawals, transfers, etc. return null and remain uncategorized
+            
+            
             const specialCategoryId = categoryMap.get(specialType.toLowerCase());
             if (specialCategoryId) {
               categoryId = specialCategoryId;
               matchMethod = 'special-transaction-type';
-              skipMerchantMatching = true; // Already categorized, skip merchant matching
+              skipMerchantMatching = true; 
             }
           }
           
-          // Get all merchant patterns for substring matching (use original patterns, not normalized)
+          
           const allUserPatterns = userMerchantPatterns;
           const allGlobalPatterns = globalMerchantPatterns;
           
-          // Priority 1: User override (learned from corrections) - only if not skipped
+          
           if (!skipMerchantMatching) {
-          // Try exact match first
+          
           if (userMerchantMap.has(normalizedMerchant)) {
             categoryId = userMerchantMap.get(normalizedMerchant) ?? null;
             matchedMerchant = normalizedMerchant;
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
           } else {
             unmatchedReasons.push(`User exact match: "${normalizedMerchant}" not found in user merchant map`);
             
-            // Try word-based matching in description (matches base words like "yandex" in "YANDEX.GO")
+            
             const foundMerchant = findMerchantByBaseWords(descriptionForMatching, allUserPatterns);
             if (foundMerchant) {
               const foundNormalized = normalizeMerchantName(foundMerchant);
@@ -271,12 +271,12 @@ export async function POST(request: NextRequest) {
               unmatchedReasons.push(`User word match: no base words found in description`);
             }
             
-            // Fuzzy user merchant match - fallback with stricter threshold
+            
             if (!categoryId) {
               let bestMatch: { pattern: string; catId: number; similarity: number } | null = null;
               for (const [pattern, catId] of userMerchantMap.entries()) {
                 const similarity = fuzzyMatch(normalizedMerchant, pattern);
-                // Also try matching against translated description
+                
                 const descSimilarity = fuzzyMatch(descriptionForMatching.toLowerCase(), pattern);
                 const maxSimilarity = Math.max(similarity, descSimilarity);
               checkedPatterns.push({ pattern, similarity: maxSimilarity, type: 'user-fuzzy' });
@@ -299,9 +299,9 @@ export async function POST(request: NextRequest) {
           }
         }
         
-        // Priority 2: Global merchant database (if no user override and not skipped)
+        
         if (!skipMerchantMatching && !categoryId) {
-          // Try exact match first
+          
           if (globalMerchantMap.has(normalizedMerchant)) {
             categoryId = globalMerchantMap.get(normalizedMerchant) ?? null;
             matchedMerchant = normalizedMerchant;
@@ -310,7 +310,7 @@ export async function POST(request: NextRequest) {
           } else {
             unmatchedReasons.push(`Global exact match: "${normalizedMerchant}" not found in global merchant map`);
             
-            // Try word-based matching in description (matches base words like "yandex" in "YANDEX.GO")
+            
             const foundMerchant = findMerchantByBaseWords(descriptionForMatching, allGlobalPatterns);
             if (foundMerchant) {
               const foundNormalized = normalizeMerchantName(foundMerchant);
@@ -326,14 +326,14 @@ export async function POST(request: NextRequest) {
               unmatchedReasons.push(`Global word match: no base words found in description`);
             }
             
-            // Fuzzy global merchant match - fallback with stricter threshold
+            
             if (!categoryId) {
               let bestMatch: { pattern: string; catId: number; similarity: number } | null = null;
-              // Only check top candidates to avoid too much logging
+              
               const topCandidates: Array<{ pattern: string; catId: number; similarity: number }> = [];
               for (const [pattern, catId] of globalMerchantMap.entries()) {
                 const similarity = fuzzyMatch(normalizedMerchant, pattern);
-                // Also try matching against translated description
+                
                 const descSimilarity = fuzzyMatch(descriptionForMatching.toLowerCase(), pattern);
                 const maxSimilarity = Math.max(similarity, descSimilarity);
               checkedPatterns.push({ pattern, similarity: maxSimilarity, type: 'global-fuzzy' });
@@ -345,7 +345,7 @@ export async function POST(request: NextRequest) {
                 }
               }
               }
-              // Sort and show top 5 candidates
+              
               topCandidates.sort((a, b) => b.similarity - a.similarity);
               const top5 = topCandidates.slice(0, 5);
               if (top5.length > 0 && top5[0].similarity > 0) {
@@ -363,11 +363,11 @@ export async function POST(request: NextRequest) {
           }
         }
         
-          // Priority 3: Python processor suggestion (fallback) - only if no category found yet
+          
           if (!categoryId && item.category) {
             let categoryName = item.category.toLowerCase();
             
-            // Apply mapping if needed
+            
             if (categoryNameMapping[categoryName]) {
               categoryName = categoryNameMapping[categoryName];
             }
@@ -382,7 +382,7 @@ export async function POST(request: NextRequest) {
           } else if (!categoryId && !item.category) {
             unmatchedReasons.push(`Python suggestion: no category provided by processor`);
           }
-        } // End of if (!categoryId) block - only run matching if user didn't select a category
+        } 
         
         if (shouldDebugTransaction(item.description)) {
           const matchedCategoryName = categoryId ? [...categoryMap.entries()].find(([name, id]) => id === categoryId)?.[0] ?? null : null;
@@ -400,7 +400,7 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // Log if no match found
+        
         if (!categoryId) {
           unmatchedCount++;
           unmatchedTransactions.push({
@@ -423,9 +423,9 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           type,
           amount: absoluteAmount,
-          // Store the original description (user can edit it later if needed)
+          
           description: item.description,
-          source: 'pdf_import', // Always use 'pdf_import' instead of PDF filename
+          source: 'pdf_import', 
           date,
           categoryId,
           currencyId,
@@ -435,7 +435,7 @@ export async function POST(request: NextRequest) {
         item !== null && Boolean(item?.description) && !isNaN(item?.date.getTime())
       );
 
-    // Log comprehensive summary - VERY VISIBLE
+    
     console.log('\n\n');
     console.log('█'.repeat(80));
     console.log('█'.repeat(80));
@@ -490,30 +490,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Bulk insert all transactions at once (much faster than one-by-one)
+    
     await db.transaction.createMany({
       data: transactionsToCreate,
       skipDuplicates: true,
     });
 
-    // Fetch the created transactions for response (optimized query)
-    // Use a more efficient query: get recent transactions by createdAt timestamp
-    // This avoids expensive date range queries on large datasets
+    
+    
+    
     const now = new Date();
     const createdTransactions = await db.transaction.findMany({
       where: {
         userId: user.id,
-        source: 'pdf_import', // Always use 'pdf_import' instead of PDF filename
+        source: 'pdf_import', 
         createdAt: {
-          gte: new Date(now.getTime() - 60000), // Last 60 seconds (should be enough for import)
+          gte: new Date(now.getTime() - 60000), 
         },
       },
       orderBy: { createdAt: 'desc' },
       take: transactionsToCreate.length,
     });
 
-    // Fetch categories for the response
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    
+    
     const categoryIds = [...new Set(createdTransactions.map((tx: any) => tx.categoryId).filter(Boolean))];
     const categories = categoryIds.length > 0 
       ? await db.category.findMany({
@@ -522,32 +522,32 @@ export async function POST(request: NextRequest) {
       : [];
     const categoryById = new Map(categories.map((cat: { id: number; name: string }) => [cat.id, cat.name]));
 
-    // Transform to match response format
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    
+    
     const responseTransactions = createdTransactions.map((tx: any) => ({
       id: tx.id.toString(),
       date: tx.date.toISOString().split('T')[0],
       description: tx.description,
-      translatedDescription: tx.description, // Same as description since we stored the translated version
+      translatedDescription: tx.description, 
       amount: tx.type === 'income' ? tx.amount : -tx.amount,
       category: tx.categoryId ? categoryById.get(tx.categoryId) ?? null : null,
     }));
 
     console.info('[transactions/import] persisted transactions', responseTransactions.length);
 
-    // Learn merchant mappings if provided (batched for performance)
+    
     if (merchantsToLearn && merchantsToLearn.length > 0) {
       console.log(`[merchants/learn] Learning ${merchantsToLearn.length} merchant mappings`);
       const { normalizeMerchantName, extractMerchantFromDescription } = await import('@/lib/merchant');
       
-      // Process merchants in parallel batches (max 10 concurrent)
+      
       const batchSize = 10;
       const batches: Array<typeof merchantsToLearn> = [];
       for (let i = 0; i < merchantsToLearn.length; i += batchSize) {
         batches.push(merchantsToLearn.slice(i, i + batchSize));
       }
       
-      // Process batches sequentially, but items within batch in parallel
+      
       for (const batch of batches) {
         await Promise.all(
           batch.map(async (item) => {
@@ -580,7 +580,7 @@ export async function POST(request: NextRequest) {
                 console.warn(`[merchants/learn] ⚠ Could not extract merchant from: "${item.description}"`);
               }
             } catch (error) {
-              // Silently fail - learning is optional
+              
               console.debug('[merchants/learn] Failed to learn merchant mapping', error);
             }
           })
@@ -589,7 +589,7 @@ export async function POST(request: NextRequest) {
       console.log(`[merchants/learn] Completed learning ${merchantsToLearn.length} merchant mappings`);
     }
 
-    // Create notification about successful import
+    
     try {
       if (await shouldCreateNotification(user.id, 'PDF Processing')) {
         const now = new Date();
@@ -606,14 +606,14 @@ export async function POST(request: NextRequest) {
       }
     } catch (notifError) {
       console.error('[transactions/import] Failed to create notification:', notifError);
-      // Don't fail the import if notification creation fails
+      
     }
 
     return NextResponse.json({ ok: true, transactions: responseTransactions });
   } catch (error) {
     console.error('[transactions/import] error', error);
     
-    // Handle authentication errors
+    
     if (error instanceof Error && error.message.includes('Unauthorized')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -637,15 +637,15 @@ export async function GET(request: NextRequest) {
     const search = (searchParams.get('search') ?? '').toLowerCase();
     const category = searchParams.get('category');
 
-    // Build where clause
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    
+    
     const where: any = {
       userId: user.id,
       investmentAssetId: null,
     };
 
     if (category) {
-      // Find category by name
+      
       const categoryRecord = await db.category.findFirst({
         where: {
           name: {
@@ -658,7 +658,7 @@ export async function GET(request: NextRequest) {
       if (categoryRecord) {
         where.categoryId = categoryRecord.id;
       } else {
-        // If category not found, return empty results
+        
         return NextResponse.json({
           transactions: [],
           total: 0,
@@ -672,10 +672,10 @@ export async function GET(request: NextRequest) {
       where.description = { contains: search, mode: 'insensitive' };
     }
 
-    // Get total count
+    
     const total = await db.transaction.count({ where });
 
-    // Get paginated results
+    
     const transactions = await db.transaction.findMany({
       where,
       skip: (page - 1) * pageSize,
@@ -686,13 +686,13 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Transform to match UploadedTransaction format
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    
+    
     const pageItems = transactions.map((tx: any) => ({
       id: tx.id.toString(),
       date: tx.date.toISOString().split('T')[0],
       description: tx.description,
-      translatedDescription: tx.description, // Same as description
+      translatedDescription: tx.description, 
       amount: tx.type === 'income' ? tx.amount : -tx.amount,
       category: tx.category?.name ?? null,
     }));

@@ -27,7 +27,7 @@ export default function TypeFilter({ value, onChange }: TypeFilterProps) {
   const displayValue = value === 'expense' ? 'Expenses' : value === 'income' ? 'Income' : 'All types';
   const textColor = isHovered ? '#AC66DA' : '#E7E4E4';
 
-  // Get icon for selected value
+  
   const getSelectedIcon = () => {
     if (value === 'expense') return ShoppingBag;
     if (value === 'income') return Wallet;

@@ -68,7 +68,7 @@ export default function FAQSection({ faqItems }: FAQSectionProps) {
       }
     >
       <div className="flex flex-col gap-6">
-        {/* Search and Filter */}
+        {}
         <div className="flex items-center gap-3">
           <div className="flex-[0.6]">
             <SearchBar
@@ -125,7 +125,7 @@ export default function FAQSection({ faqItems }: FAQSectionProps) {
           </div>
         </div>
 
-        {/* FAQ List */}
+        {}
         <div className="flex flex-col gap-6">
           {filteredFAQs.map((item) => (
             <div

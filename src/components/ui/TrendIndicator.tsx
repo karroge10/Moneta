@@ -4,16 +4,16 @@ import { getTrendColor, getExpenseTrendColor, formatPercentage } from '@/lib/uti
 interface TrendIndicatorProps {
   value: number;
   label: string;
-  isExpense?: boolean; // If true, use inverted color logic (negative = good for expenses)
+  isExpense?: boolean; 
 }
 
 export default function TrendIndicator({ value, label, isExpense = false }: TrendIndicatorProps) {
   const color = isExpense ? getExpenseTrendColor(value) : getTrendColor(value);
-  // For expenses: negative value means spending less (good), so show StatDown in green
-  // For income: positive value means earning more (good), so show StatUp in green
+  
+  
   const Icon = isExpense 
-    ? (value <= 0 ? StatDown : StatUp) // For expenses: negative/zero = good (down arrow green), positive = bad (up arrow red)
-    : (value >= 0 ? StatUp : StatDown); // For income: positive = good (up arrow green), negative = bad (down arrow red)
+    ? (value <= 0 ? StatDown : StatUp) 
+    : (value >= 0 ? StatUp : StatDown); 
   
   return (
     <div className="flex items-start gap-2">

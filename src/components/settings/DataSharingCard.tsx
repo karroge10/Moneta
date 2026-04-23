@@ -8,7 +8,7 @@ interface DataSharingCardProps {
   isEnabled?: boolean;
   onToggle?: (enabled: boolean) => void;
   loading?: boolean;
-  /** When true, toggle is disabled (e.g. while saving). */
+  
   disabled?: boolean;
 }
 

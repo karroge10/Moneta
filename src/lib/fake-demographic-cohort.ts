@@ -1,7 +1,4 @@
-/**
- * Deterministic synthetic peer metrics when no real cohort matches (dev / demos).
- * Enable with FAKE_DEMOGRAPHIC_COHORT=true in .env.local — do not use on a real production cohort.
- */
+
 
 function mulberry32(seed: number) {
   return function next() {
@@ -33,9 +30,7 @@ export type SyntheticPeerMetrics = {
   peerHealth: number[];
 };
 
-/**
- * Builds N peer-like metric arrays jittered around the current user's anchors so comparison strings are non-trivial.
- */
+
 export function buildSyntheticPeerMetrics(
   seed: number,
   count: number,

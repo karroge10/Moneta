@@ -26,10 +26,10 @@ export default function MonthFilter({ value, onChange, availableMonths, formatMo
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Determine display value
+  
   let displayValue = 'All Time';
   if (value) {
-    // Check if it's a time period or a month
+    
     if (value === 'this_month' || value === 'this_year') {
       const periodMap: Record<string, string> = {
         'this_month': 'This Month',
@@ -43,7 +43,7 @@ export default function MonthFilter({ value, onChange, availableMonths, formatMo
   
   const textColor = isHovered ? '#AC66DA' : '#E7E4E4';
 
-  // Time period options first, then months
+  
   const timePeriodOptions = [
     { value: '', label: 'All Time' },
     { value: 'this_month', label: 'This Month' },

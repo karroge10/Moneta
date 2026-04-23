@@ -7,11 +7,7 @@ export const dynamic = 'force-dynamic';
 
 const ALLOWED_CATEGORIES = ['Bug Report', 'Feature Request', 'Other'] as const;
 
-/**
- * POST /api/feedback
- * Saves feedback to the database. Auth optional; if authenticated, userId is set.
- * No email is sent; data is stored only in DB.
- */
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

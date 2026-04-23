@@ -61,7 +61,7 @@ interface DemographicComparisonsSectionProps {
   loading?: boolean;
   demographicComparisonsDisabled?: boolean;
   demographicCohortValueMissing?: boolean;
-  /** True when the API filled comparisons with a synthetic peer sample (local / non-prod). */
+  
   syntheticDemographicCohort?: boolean;
   demographicDimension: DemographicDimension;
   onDemographicChange: (dimension: DemographicDimension) => void;

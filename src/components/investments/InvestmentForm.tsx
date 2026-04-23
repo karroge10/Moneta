@@ -70,7 +70,7 @@ export default function InvestmentForm({
   const { addToast } = useToast();
   const [step, setStep] = useState<Step>(initialAsset ? 'details' : 'type_selection');
 
-  // Form State
+  
   const [formState, setFormState] = useState({
     name: initialAsset?.name || '',
     ticker: initialAsset?.ticker || '',
@@ -96,7 +96,7 @@ export default function InvestmentForm({
   const [conversionRate, setConversionRate] = useState<number | null>(null);
   const [isLoadingRate, setIsLoadingRate] = useState(false);
 
-  // Portal refs and state for date picker
+  
   const dateTriggerRef = useRef<HTMLButtonElement>(null);
   const datePortalRef = useRef<HTMLDivElement>(null);
   const dateDropdownRef = useRef<HTMLDivElement>(null);
@@ -128,7 +128,7 @@ export default function InvestmentForm({
     }
   }, [searchQuery, runSearch, step]);
 
-  // Fetch conversion rate when currency or date changes
+  
   useEffect(() => {
     const isToday = !formState.date || formState.date.split('T')[0] === new Date().toISOString().split('T')[0];
 
@@ -138,7 +138,7 @@ export default function InvestmentForm({
         return;
       }
 
-      // If date is today or not set, and we have pre-fetched rates, use them
+      
       if (isToday && prefetchRates[formState.currencyId]) {
         setConversionRate(prefetchRates[formState.currencyId]);
         return;
@@ -166,8 +166,8 @@ export default function InvestmentForm({
     onFloatingPanelToggle?.(isDateOpen);
   }, [isDateOpen, onFloatingPanelToggle]);
 
-  // Determine if the selected asset is already in our portfolio
-  // This is used to decide if we can sell it
+  
+  
   useEffect(() => {
     if (step === 'details' && (formState.name || formState.ticker)) {
       const portfolioAsset = portfolio.find((a: any) => 
@@ -179,7 +179,7 @@ export default function InvestmentForm({
         setAvailableQuantity(portfolioAsset.quantity || 0);
       } else {
         setAvailableQuantity(0);
-        // If it's a new asset, force to Buy mode
+        
         setFormState(prev => ({ ...prev, investmentType: 'buy' }));
       }
     }
@@ -250,7 +250,7 @@ export default function InvestmentForm({
       pricingMode = 'live';
     }
 
-    // Default to USD for live assets if available
+    
     const usdCurrency = propCurrencyOptions.find(c => c.alias === 'USD');
 
     setFormState((s) => ({
@@ -279,8 +279,8 @@ export default function InvestmentForm({
 
   const handleBack = () => {
     if (step === 'details') {
-      // Reset name, ticker and price when going back to search/type selection
-      // This ensures a clean slate for the user
+      
+      
       if (!initialAsset) {
         setFormState(s => ({
           ...s,
@@ -310,7 +310,7 @@ export default function InvestmentForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
+    
     if (!formState.name) {
         addToast('Name is required', 'error');
         return;
@@ -318,7 +318,7 @@ export default function InvestmentForm({
 
     onSave({
       ...formState,
-      // Ticker is optional now for private assets
+      
       ticker: formState.ticker || null, 
       quantity: Number(formState.quantity),
       pricePerUnit: Number(formState.pricePerUnit),
@@ -334,7 +334,7 @@ export default function InvestmentForm({
     <div className="flex flex-col h-full bg-[#282828]">
       <div className={`flex-1 px-6 py-6 space-y-6 custom-scrollbar ${isDateOpen ? 'overflow-visible' : 'overflow-y-auto'}`}>
 
-        {/* STEP 1: TYPE */}
+        {}
         {step === 'type_selection' && (
           <div className="space-y-6">
             <div>
@@ -352,7 +352,7 @@ export default function InvestmentForm({
                     onClick={() => setFormState((s) => ({
                       ...s,
                       assetType: opt.id as any,
-                      // Reset live-asset specific fields when manually changing type
+                      
                       name: '',
                       ticker: '',
                       coingeckoId: '',
@@ -375,7 +375,7 @@ export default function InvestmentForm({
           </div>
         )}
 
-        {/* STEP 2: SEARCH */}
+        {}
         {step === 'search' && (
           <div className="space-y-5">
             <div className="relative">
@@ -464,7 +464,7 @@ export default function InvestmentForm({
           </div>
         )}
 
-        {/* STEP 3: DETAILS */}
+        {}
         {step === 'details' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -473,12 +473,9 @@ export default function InvestmentForm({
                   <AssetLogo src={formState.icon} size={22} className="text-[#AC66DA]" />
                 </div>
                 <div className="flex-1">
-                  {/* ========================================
-                      MANUAL NAME INPUT DESIGN OPTIONS
-                      Choose one version below
-                  ======================================== */}
+                  {}
                   
-                  {/* VERSION 1: Standard Input Field (ACTIVE) - Matches other form inputs */}
+                  {}
                   {(formState.assetType === 'property' || formState.assetType === 'custom') ? (
                     <div>
                       <input 
@@ -494,33 +491,9 @@ export default function InvestmentForm({
                     <h3 className="text-lg font-bold">{formState.name || 'New Investment'}</h3>
                   )}
 
-                  {/* VERSION 2: Inline Editable with Underline (COMMENTED OUT)
-                  {(formState.assetType === 'property' || formState.assetType === 'custom') ? (
-                    <input 
-                      value={formState.name}
-                      onChange={(e) => setFormState(s => ({ ...s, name: e.target.value }))}
-                      className="text-lg font-bold bg-transparent border-b-2 border-[#3a3a3a] hover:border-[#AC66DA] focus:border-[#AC66DA] focus:outline-none w-full transition-colors placeholder:text-[#8C8C8C] pb-1"
-                      style={{ color: 'var(--text-primary)' }}
-                      placeholder="Asset Name"
-                    />
-                  ) : (
-                    <h3 className="text-lg font-bold">{formState.name || 'New Investment'}</h3>
-                  )}
-                  */}
+                  {}
 
-                  {/* VERSION 3: Subtle Background with Rounded Corners (COMMENTED OUT)
-                  {(formState.assetType === 'property' || formState.assetType === 'custom') ? (
-                    <input 
-                      value={formState.name}
-                      onChange={(e) => setFormState(s => ({ ...s, name: e.target.value }))}
-                      className="text-lg font-bold bg-background/50 border border-transparent hover:border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none w-full transition-colors placeholder:text-[#8C8C8C] px-3 py-1.5 rounded-lg"
-                      style={{ color: 'var(--text-primary)' }}
-                      placeholder="Asset Name"
-                    />
-                  ) : (
-                    <h3 className="text-lg font-bold">{formState.name || 'New Investment'}</h3>
-                  )}
-                  */}
+                  {}
                   
                   <div className="flex items-center gap-2 mt-1">
                     {formState.ticker && (
@@ -564,7 +537,7 @@ export default function InvestmentForm({
               </button>
             </div>
 
-            {/* Price/Quantity Section */}
+            {}
             <div className={isSaving ? 'opacity-50 pointer-events-none' : ''}>
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>

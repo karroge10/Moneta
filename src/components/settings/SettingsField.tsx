@@ -6,19 +6,19 @@ import { ReactNode } from 'react';
 import ReviewDatePicker from '@/components/transactions/shared/ReviewDatePicker';
 import TypeaheadSelect, { type TypeaheadOption } from '@/components/ui/TypeaheadSelect';
 
-/** Unified option with optional icon/symbol for dropdowns */
+
 export interface SelectOptionItem {
   value: string;
   label: string;
   symbol?: string;
-  /** When symbol is present, display text next to it (e.g. "USD" for "$ USD") */
+  
   alias?: string;
   icon?: ReactNode;
-  /** ISO 3166-1 alpha-2 for flags (typeahead). */
+  
   countryCode?: string;
-  /** Extra search terms (typeahead). */
+  
   searchTerms?: string[];
-  /** Additional display text on the right, e.g. currency symbol. */
+  
   suffix?: string;
 }
 
@@ -36,16 +36,16 @@ interface SettingsFieldProps {
   icon: ReactNode;
   type: 'input' | 'select' | 'date' | 'typeahead';
   options?: string[];
-  /** When provided, used for select with optional icons/symbols; overrides options for display */
+  
   optionItems?: SelectOptionItem[];
   placeholder?: string;
-  /** Enable type-ahead filter (e.g. for currency) - only for type="select" */
+  
   searchable?: boolean;
-  /** Search input placeholder for typeahead. */
+  
   searchPlaceholder?: string;
-  /** When true (typeahead only), render dropdown in a portal so it is not clipped. */
+  
   dropdownInPortal?: boolean;
-  /** When true, field is disabled (e.g. while saving). */
+  
   disabled?: boolean;
   onEdit?: () => void;
   onChange?: (value: string) => void;

@@ -16,8 +16,8 @@ export default function InsightCard({ insight, shortRow = false, minimal = false
   const { currency } = useCurrency();
   const isEmpty = insight.periodExpenses <= 0;
 
-  // Use Bitcoin scenario specifically if available and requested (or if it's the winner)
-  // Otherwise fallback to the general winner
+  
+  
   const displayScenario = insight.bitcoinScenario || insight.investScenario;
 
   if (isEmpty) {

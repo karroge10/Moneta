@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const limit = Math.min(100, Math.max(1, Number.parseInt(searchParams.get('limit') ?? '20', 10)));
 
-    // Fetch jobs for the user (default 20, can be increased via query param)
+    
     const jobs = await (db as PrismaClient & {
       pdfProcessingJob: {
         findMany: (args: any) => Promise<any[]>;
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Calculate processedCount from result.transactions if processedCount is null
+    
     const jobsWithCounts = jobs.map(job => {
       if (job.status === 'completed' && (!job.processedCount || job.processedCount === 0)) {
         try {
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
             };
           }
         } catch (e) {
-          // Ignore errors parsing result
+          
         }
       }
       return job;

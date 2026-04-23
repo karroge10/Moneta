@@ -45,7 +45,7 @@ interface PersonalInformationCardProps {
   userImageUrl?: string | null;
   onOpenAccountProfile?: () => void;
   loading?: boolean;
-  /** When true, fields are disabled (e.g. while saving). */
+  
   disabled?: boolean;
   className?: string;
 }
@@ -158,7 +158,7 @@ export default function PersonalInformationCard({
   return (
     <Card title="Personal Information" showActions={false} className={className}>
       <div className="flex flex-col gap-6">
-        {/* Profile Section */}
+        {}
         <div className="flex items-start gap-4">
           <div className="shrink-0">
             {onOpenAccountProfile ? (
@@ -246,7 +246,7 @@ export default function PersonalInformationCard({
           </div>
         </div>
 
-        {/* Input/Select Fields */}
+        {}
         <div className="flex flex-col gap-4">
           <SettingsField
             label="Country"
@@ -293,7 +293,7 @@ export default function PersonalInformationCard({
         </div>
 
 
-        {/* Tax: label + switch on one row; when enabled, number input only */}
+        {}
         {onTaxUpdate && (
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">

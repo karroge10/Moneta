@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// PATCH - Mark notification as read
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -22,7 +22,7 @@ export async function PATCH(
       );
     }
 
-    // Verify the notification belongs to the user
+    
     const notification = await db.notification.findFirst({
       where: {
         id: notificationId,
@@ -37,7 +37,7 @@ export async function PATCH(
       );
     }
 
-    // Mark as read
+    
     await db.notification.update({
       where: { id: notificationId },
       data: { read: true },

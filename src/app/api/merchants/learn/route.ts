@@ -1,7 +1,4 @@
-/**
- * API endpoint to learn merchant-to-category mappings from user corrections
- * Called when user manually corrects a category during import or edits a transaction
- */
+
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
@@ -27,7 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify category exists
+    
     const category = await db.category.findUnique({
       where: { id: categoryId },
     });
@@ -39,9 +36,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract and normalize merchant name
-    // Description should already be in English (translatedDescription) when called from import flow
-    // But handle both cases: if it's still in original language, try to extract anyway
+    
+    
+    
     const merchantName = extractMerchantFromDescription(description);
     const normalizedMerchant = normalizeMerchantName(merchantName);
 
@@ -57,7 +54,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Upsert merchant mapping (create or increment matchCount)
+    
     const merchant = await db.merchant.upsert({
       where: {
         userId_namePattern: {

@@ -1,32 +1,28 @@
-/**
- * Maps ISO 4217 currency codes (alias) to ISO 3166-1 alpha-2 country codes.
- * Used for displaying flags in currency pickers via flagsapi.com.
- * EUR maps to EU (European Union). Multi-country currencies use a representative country.
- */
+
 export const CURRENCY_COUNTRY_MAP: Record<string, string> = {
-  GEL: 'GE', // Georgian Lari
-  USD: 'US', // US Dollar
-  EUR: 'EU', // Euro (European Union)
-  GBP: 'GB', // British Pound
-  RUB: 'RU', // Russian Ruble
-  TRY: 'TR', // Turkish Lira
-  AMD: 'AM', // Armenian Dram
-  KZT: 'KZ', // Kazakhstani Tenge
-  UAH: 'UA', // Ukrainian Hryvnia
-  JPY: 'JP', // Japanese Yen
-  CNY: 'CN', // Chinese Yuan
-  CHF: 'CH', // Swiss Franc
-  CAD: 'CA', // Canadian Dollar
-  AUD: 'AU', // Australian Dollar
-  PLN: 'PL', // Polish Zloty
-  SEK: 'SE', // Swedish Krona
-  NOK: 'NO', // Norwegian Krone
-  DKK: 'DK', // Danish Krone
-  INR: 'IN', // Indian Rupee
-  KRW: 'KR', // South Korean Won
+  GEL: 'GE', 
+  USD: 'US', 
+  EUR: 'EU', 
+  GBP: 'GB', 
+  RUB: 'RU', 
+  TRY: 'TR', 
+  AMD: 'AM', 
+  KZT: 'KZ', 
+  UAH: 'UA', 
+  JPY: 'JP', 
+  CNY: 'CN', 
+  CHF: 'CH', 
+  CAD: 'CA', 
+  AUD: 'AU', 
+  PLN: 'PL', 
+  SEK: 'SE', 
+  NOK: 'NO', 
+  DKK: 'DK', 
+  INR: 'IN', 
+  KRW: 'KR', 
 };
 
-/** Full display names for currency options (e.g. USD -> "United States Dollar"). */
+
 export const CURRENCY_DISPLAY_NAMES: Record<string, string> = {
   USD: 'United States Dollar',
   EUR: 'Euro',
@@ -55,7 +51,7 @@ export function getDisplayNameForCurrency(currencyAlias: string): string | undef
   return CURRENCY_DISPLAY_NAMES[upper];
 }
 
-/** Extra search terms for currency typeahead (e.g. "United States" -> USD). */
+
 export const CURRENCY_SEARCH_TERMS: Record<string, string[]> = {
   USD: ['United States', 'United States Dollar', 'USA', 'America'],
   EUR: ['European Union', 'Eurozone', 'Europe'],
@@ -104,7 +100,7 @@ export type CurrencyTypeaheadOption = {
   searchTerms?: string[];
 };
 
-/** Builds unified TypeaheadOption format for currency selectors: [flag] [symbol] Display Name (ALIAS) */
+
 export function buildCurrencyTypeaheadOptions(
   currencyOptions: CurrencyOption[],
   valueFormat: 'id' | 'display' = 'id'

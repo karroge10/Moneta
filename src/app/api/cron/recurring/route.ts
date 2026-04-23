@@ -6,19 +6,9 @@ import { updateDailyExchangeRates } from '@/lib/currency-update';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/cron/recurring
- * Vercel Cron endpoint that runs daily maintenance tasks:
- * 1. Processes recurring transactions for all users
- * 2. Updates daily exchange rates for currency conversions
- * 
- * Security: Verifies User-Agent is 'vercel-cron/1.0' (set by Vercel) OR
- * optional CRON_SECRET header (for manual testing).
- * 
- * Schedule: Configured in vercel.json to run daily at 2:00 AM UTC.
- */
+
 export async function GET(request: NextRequest) {
-  // Log immediately to verify function is being called
+  
   console.log('[cron] Endpoint called at:', new Date().toISOString());
   console.log('[cron] Headers:', {
     userAgent: request.headers.get('user-agent'),
@@ -26,7 +16,7 @@ export async function GET(request: NextRequest) {
   });
 
   try {
-    // Security check: Vercel sets User-Agent to 'vercel-cron/1.0' for cron requests
+    
     const userAgent = request.headers.get('user-agent') || '';
     const cronSecret = request.headers.get('x-cron-secret');
     const expectedSecret = process.env.CRON_SECRET;
@@ -34,7 +24,7 @@ export async function GET(request: NextRequest) {
     const isVercelCron = userAgent.includes('vercel-cron');
     const hasValidSecret = expectedSecret && cronSecret === expectedSecret;
 
-    // Log for debugging
+    
     console.log('[cron] Security check:', {
       userAgent,
       isVercelCron,
@@ -58,12 +48,12 @@ export async function GET(request: NextRequest) {
 
     const now = new Date();
 
-    // ===== TASK 1: Update Exchange Rates =====
+    
     console.log('[cron] Starting currency exchange rate update...');
     const currencyUpdateResult = await updateDailyExchangeRates();
     console.log('[cron] Currency update completed:', currencyUpdateResult);
 
-    // ===== TASK 2: Process Recurring Transactions & Snapshots =====
+    
     console.log('[cron] Starting users maintenance task...');
     const users = await db.user.findMany({
       include: {
@@ -82,7 +72,7 @@ export async function GET(request: NextRequest) {
       try {
         console.log(`[cron] Processing user ${user.id}...`);
 
-        // 2a. Recurring Transactions
+        
         const beforeCount = await db.transaction.count({
           where: { userId: user.id },
         });
@@ -93,12 +83,12 @@ export async function GET(request: NextRequest) {
         const created = afterCount - beforeCount;
         transactionsCreated += created;
 
-        // 2b. Portfolio Snapshot
+        
         const userCurrency = user.currency || await db.currency.findFirst();
         if (userCurrency) {
           const portfolio = await getInvestmentsPortfolio(user.id, userCurrency);
           
-          // Only save if there's actual value or cost to track
+          
           if (portfolio.totalValue > 0 || portfolio.totalCost > 0) {
             await db.portfolioSnapshot.create({
               data: {
@@ -112,7 +102,7 @@ export async function GET(request: NextRequest) {
             snapshotsCreated += 1;
             console.log(`[cron] User ${user.id}: Saved snapshot. Value=${portfolio.totalValue.toFixed(2)}`);
 
-            // Generate Performance Alerts
+            
             const { generatePerformanceAlerts } = await import('@/lib/notifications');
             await generatePerformanceAlerts(user.id, portfolio.totalValue, userCurrency.symbol);
           }

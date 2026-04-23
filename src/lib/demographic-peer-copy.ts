@@ -1,6 +1,4 @@
-/**
- * Short demographic delta strings for statistics (Summary-style: signed value + "higher" / "less").
- */
+
 
 const THAN_OTHER_USERS = ' than other users';
 
@@ -26,7 +24,7 @@ export function demographicChangeIncome(userVal: number, peerValues: number[]): 
   return formatSignedPctVsAvg(userVal, average(peerValues));
 }
 
-/** Same %-vs-average as income; UI inverts green/red (lower spending is better). */
+
 export function demographicChangeExpense(userVal: number, peerValues: number[]): string | null {
   return formatSignedPctVsAvg(userVal, average(peerValues));
 }

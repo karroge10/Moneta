@@ -9,14 +9,14 @@ interface PerformanceCardProps {
   trend: number;
   trendText: string;
   data: PerformanceDataPoint[];
-  isExpense?: boolean; // If true, use inverted color logic (negative = good for expenses)
+  isExpense?: boolean; 
 }
 
 export default function PerformanceCard({ trend, trendText, data, isExpense = false }: PerformanceCardProps) {
   const { currency } = useCurrency();
   const trendColor = isExpense ? getExpenseTrendColor(trend) : getTrendColor(trend);
-  // For expenses: negative trend means spending less (good), so show StatDown in green
-  // For income: positive trend means earning more (good), so show StatUp in green
+  
+  
   const Icon = isExpense 
     ? (trend <= 0 ? StatDown : StatUp)
     : (trend >= 0 ? StatUp : StatDown);

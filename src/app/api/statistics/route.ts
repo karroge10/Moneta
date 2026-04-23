@@ -25,9 +25,7 @@ const VALID_AGE_GROUPS = ['18-24', '25-34', '35-44', '45-54', '55+'] as const;
 const DEMOGRAPHIC_DIMENSIONS = ['age', 'country', 'profession'] as const;
 const MIN_COHORT_SIZE = 1;
 
-/**
- * Derive age group from date of birth (as of today).
- */
+
 function getAgeGroup(dateOfBirth: Date | null): string | null {
   if (!dateOfBirth) return null;
   const today = new Date();
@@ -46,7 +44,7 @@ function getAgeGroup(dateOfBirth: Date | null): string | null {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Get icon based on category name or default
+
 function getIconForCategory(categoryName: string | null): string {
   if (!categoryName) return 'HelpCircle';
   
@@ -73,9 +71,7 @@ function getIconForCategory(categoryName: string | null): string {
   return iconMap[categoryName] || 'HelpCircle';
 }
 
-/**
- * Calculate date range for a given time period
- */
+
 function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; end: Date } {
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -119,17 +115,13 @@ function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; en
   }
 }
 
-/**
- * Helper function to check if a date is within a range
- */
+
 function isInRange(date: Date, start: Date, end: Date): boolean {
   const d = new Date(date);
   return d >= start && d <= end;
 }
 
-/**
- * Format month label (e.g., "Jan 2025")
- */
+
 function formatMonthLabel(date: Date): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${months[date.getMonth()]} ${date.getFullYear()}`;
@@ -187,13 +179,13 @@ function buildDemographicComparisonsFromPeerArrays(
   ];
 }
 
-// GET - Fetch statistics data
+
 export async function GET(request: NextRequest) {
   const startTotal = Date.now();
   try {
     const user = await requireCurrentUserWithLanguage();
     const now = new Date();
-    // console.log(`[stat-prof] Start: ${now.toISOString()}`);
+    
 
 
     const userCurrencyRecord = user.currencyId
@@ -211,7 +203,7 @@ export async function GET(request: NextRequest) {
     console.log(`[stat-prof] Auth & Currency: ${Date.now() - startTotal}ms`);
     const startFilters = Date.now();
     
-    // Get time period and demographic dimension from query params. Cohort is always "same as me" (current user's age/country/profession).
+    
     const { searchParams } = new URL(request.url);
     const demographicOnly = searchParams.get('demographicOnly') === '1';
     const timePeriod = (searchParams.get('timePeriod') || 'All Time') as TimePeriod;
@@ -227,7 +219,7 @@ export async function GET(request: NextRequest) {
           ? (user.country ?? '').trim()
           : (user.profession ?? '').trim();
 
-    // Calculate date range for selected period
+    
     const selectedRange = getDateRangeForPeriod(timePeriod, now);
 
 
@@ -314,7 +306,7 @@ export async function GET(request: NextRequest) {
           }
         : { countries: [] as string[], professions: [] as string[] };
       if (user.dataSharingEnabled === true) {
-        // userHealthForDemographic already fetched in parallel fetch above
+        
         const filteredCohort = cohortValueFromUser
           ? cohortUsers.filter((u) => {
               if (demographicDimension === 'age') return getAgeGroup(u.dateOfBirth) === cohortValueFromUser;
@@ -431,7 +423,7 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Full response path: fetch all core data for the user in parallel
+    
     const [allTransactions, goals, cohortUsers, portfolioSummary, financialHealth] = await Promise.all([
 
       db.transaction.findMany({
@@ -449,16 +441,16 @@ export async function GET(request: NextRequest) {
     ]);
 
 
-    // Preload exchange rates for all transactions we'll need (user + cohort) in 1–2 queries
+    
     let allTransactionsForRates: { currencyId: number; date: Date }[] = allTransactions.map((t) => ({
       currencyId: t.currencyId,
       date: t.date,
     }));
 
-    // If we'll need cohort data, process cohort users and their transactions
+    
     let cohortTxByUserId = new Map<number, { amount: number; currencyId: number; date: Date; type: string }[]>();
     if (user.dataSharingEnabled === true) {
-      // cohortUsers already fetched in Promise.all above
+      
       const filteredCohort = cohortValueFromUser
         ? cohortUsers.filter((u) => {
             if (demographicDimension === 'age') return getAgeGroup(u.dateOfBirth) === cohortValueFromUser;
@@ -504,12 +496,12 @@ export async function GET(request: NextRequest) {
       ratesMap,
     );
 
-    // Filter transactions by selected period
+    
     const periodTransactions = transactionsWithConverted.filter((t) => 
       isInRange(t.date, selectedRange.start, selectedRange.end)
     );
 
-    // Calculate total income and expenses
+    
     const totalIncome = periodTransactions
       .filter((t) => t.type === 'income')
       .reduce((sum: number, t) => sum + t.convertedAmount, 0);
@@ -520,7 +512,7 @@ export async function GET(request: NextRequest) {
     
     const incomeSaved = totalIncome - totalExpenses;
 
-    // Calculate monthly summaries (last 12 months)
+    
     const monthlySummaries: MonthlySummaryRow[] = [];
     const monthMap = new Map<string, {
       income: number;
@@ -528,7 +520,7 @@ export async function GET(request: NextRequest) {
       categoryTotals: Map<string, number>;
     }>();
 
-    // Process transactions for monthly summaries
+    
     transactionsWithConverted.forEach((transaction) => {
       const monthKey = formatMonthLabel(transaction.date);
       
@@ -553,11 +545,11 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Convert to array and format
+    
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const sortedMonths = Array.from(monthMap.entries())
       .sort((a, b) => {
-        // Parse month labels to sort chronologically
+        
         const [monthNameA, yearStrA] = a[0].split(' ');
         const [monthNameB, yearStrB] = b[0].split(' ');
         const monthIndexA = monthNames.indexOf(monthNameA);
@@ -566,12 +558,12 @@ export async function GET(request: NextRequest) {
         const dateB = new Date(parseInt(yearStrB, 10), monthIndexB);
         return dateB.getTime() - dateA.getTime();
       })
-      .slice(0, 12); // Last 12 months
+      .slice(0, 12); 
 
     sortedMonths.forEach(([month, data]) => {
       const savings = data.income - data.expenses;
       
-      // Find top category
+      
       let topCategory = { name: 'N/A', percentage: 0 };
       if (data.categoryTotals.size > 0) {
         const sortedCategories = Array.from(data.categoryTotals.entries())
@@ -597,7 +589,7 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // Calculate average expenses by category
+    
     const categoryTotals = new Map<string, { total: number; count: number }>();
     
     periodTransactions
@@ -610,10 +602,10 @@ export async function GET(request: NextRequest) {
         categoryTotals.set(categoryName, existing);
       });
 
-    // Calculate total expenses for percentage calculation
+    
     const totalExpensesForAverage = totalExpenses;
 
-    // 24 distinct hues — one per color family (no duplicate greens, blues, purples)
+    
     const categoryColors = [
       '#74C648', '#AC66DA', '#D93F3F', '#4A90E2', '#FF8C00', '#00B4D8', '#8E44AD', '#1ABC9C',
       '#E74C3C', '#F1C40F', '#E91E8C', '#FFBF00', '#00CED1', '#FF6B6B', '#6A5ACD', '#E67E22',
@@ -621,10 +613,10 @@ export async function GET(request: NextRequest) {
     ];
     const colorCount = categoryColors.length;
     const entries = Array.from(categoryTotals.entries());
-    // Spread indices across palette to avoid similar colors; when few categories, each gets unique
+    
     const getColorIndex = (i: number, total: number) =>
       total <= colorCount ? i : Math.floor((i * (colorCount - 1)) / Math.max(1, total - 1)) % colorCount;
-    // amount = total spend in category (matches percentage); sort by total descending
+    
     const averageExpenses = entries
       .map(([name, data], index) => {
         const categoryTotal = data.total;
@@ -646,13 +638,13 @@ export async function GET(request: NextRequest) {
     const totalGoals = goals.length;
     const completedGoals = goals.filter((g) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
     const goalsSuccessRate = totalGoals > 0 
-      ? Math.round((completedGoals / totalGoals) * 100 * 10) / 10 // Round to 1 decimal
+      ? Math.round((completedGoals / totalGoals) * 100 * 10) / 10 
       : 0;
 
 
     const portfolioBalance = portfolioSummary.totalValue;
 
-    // Demographic comparisons: only when current user has data sharing enabled
+    
     const startComparisonProcessing = Date.now();
     let demographicComparisons: DemographicComparison[] = [];
     let demographicCohortSize = 0;
@@ -663,7 +655,7 @@ export async function GET(request: NextRequest) {
     if (user.dataSharingEnabled !== true) {
       demographicComparisonsDisabled = true;
     } else {
-      // cohortUsers and cohortTxByUserId already fetched in the preload block above
+      
       const countries = [...new Set(cohortUsers.map((u) => u.country).filter((c): c is string => c != null && c !== ''))].sort();
       const professions = [...new Set(cohortUsers.map((u) => u.profession).filter((p): p is string => p != null && p !== ''))].sort();
       cohortFilters = { countries, professions };
@@ -698,7 +690,7 @@ export async function GET(request: NextRequest) {
         }
         const snapshotByUserId = new Map(recentSnapshots.map(s => [s.userId, s.totalValue]));
 
-        // BATCH CONVERSION for cohort
+        
         const allCohortRawTx: any[] = [];
         for (const [uid, txs] of cohortTxByUserId) {
           txs.forEach(t => allCohortRawTx.push({ ...t, userId: uid }));
@@ -791,7 +783,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Calculate trend from beginning (compare first period to last period)
+    
     let incomeTrend = 0;
     let expensesTrend = 0;
     
@@ -808,7 +800,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Build summary items
+    
 
     const summaryItems: StatisticsSummaryItem[] = [
       {

@@ -1,6 +1,4 @@
-/**
- * Strip internal dedupe tokens appended by cron-generated notifications (see cron-notifications.ts).
- */
+
 export function notificationTextForDisplay(text: string): string {
   return text
     .replace(

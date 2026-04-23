@@ -8,14 +8,14 @@ export interface PortfolioAsset {
   ticker: string;
   type: AssetType;
   quantity: number;
-  avgPrice: number; // Average buy price of REMAINING holdings (FIFO basis)
+  avgPrice: number; 
   currentPrice: number;
   currentValue: number;
-  totalCost: number; // Cost of remaining quantity
+  totalCost: number; 
   unrealizedPnl: number;
   unrealizedPnlPercent: number;
-  realizedPnl: number; // Profit/Loss from items already sold
-  pnl: number; // Total PnL (Realized + Unrealized)
+  realizedPnl: number; 
+  pnl: number; 
   pricingMode: PricingMode;
   icon?: string;
 }
@@ -30,7 +30,7 @@ export interface PortfolioSummary {
   assets: PortfolioAsset[];
 }
 
-// Map ticker to CoinGecko ID (could be moved to DB or config)
+
 const coingeckoMap: Record<string, string> = {
   BTC: 'bitcoin',
   ETH: 'ethereum',
@@ -41,7 +41,7 @@ const coingeckoMap: Record<string, string> = {
   DOGE: 'dogecoin',
   LTC: 'litecoin',
   XRP: 'ripple',
-  // Add more as needed or rely on Asset.coingeckoId
+  
 };
 
 async function fetchCryptoPrices(ids: string[]): Promise<Record<string, number>> {
@@ -71,7 +71,7 @@ async function fetchStockPrices(tickers: string[]): Promise<Record<string, numbe
     return lower.endsWith('.us') ? lower : `${lower}.us`;
   }).join('+');
 
-  const url = `https://stooq.pl/q/l/?s=${symbols}&f=sd2t2ohlcv&h&e=json`;
+  const url = `https://stooq.com/q/l/?s=${symbols}&f=sd2t2ohlcv&h&e=json`;
 
   try {
     const res = await fetch(url, { next: { revalidate: 60 } });
@@ -96,10 +96,10 @@ async function fetchStockPrices(tickers: string[]): Promise<Record<string, numbe
 export async function getInvestmentsPortfolio(userId: number, targetCurrency: Currency): Promise<PortfolioSummary> {
   console.log('[investments] Getting portfolio for user', userId, 'target', targetCurrency.alias);
 
-  // Resolve USD currency ID for live price conversion
+  
   const usd = await db.currency.findFirst({ where: { alias: { equals: 'usd', mode: 'insensitive' } } });
 
-  // 1. Fetch all investment transactions
+  
   const transactions = await db.transaction.findMany({
     where: {
       userId,
@@ -112,7 +112,7 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
     orderBy: { date: 'asc' },
   });
 
-  // 2. Identify assets involved
+  
   const assetMap = new Map<number, {
     asset: any;
     txs: typeof transactions;
@@ -126,7 +126,7 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
     assetMap.get(t.investmentAssetId)!.txs.push(t);
   }
 
-  // 3. Prepare for Live Pricing
+  
   const cryptoIds: string[] = [];
   const stockTickers: string[] = [];
 
@@ -147,7 +147,7 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
     preloadRatesMap(
       [
         ...transactions.map(t => ({ currencyId: t.currencyId, date: t.date })),
-        // Include today's rate for live price conversion
+        
         ...(usd ? [{ currencyId: usd.id, date: new Date() }] : [])
       ],
       targetCurrency.id
@@ -159,11 +159,11 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
   let globalTotalCost = 0;
   let globalTotalRealizedPnl = 0;
 
-  // 4. Aggregation Logic
+  
   for (const [assetId, { asset, txs }] of assetMap) {
     if (!asset) continue;
 
-    // FIFO Lots tracking
+    
     let buyLots: { qty: number; costPerUnit: number }[] = [];
     let realizedPnl = 0;
     let lastPrice = 0;
@@ -185,13 +185,13 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
           const lot = buyLots[0];
           const sellQty = Math.min(remainingToSell, lot.qty);
           
-          // Calculate gain for this portion of the sell
+          
           const gain = sellQty * (pricePerUnit - lot.costPerUnit);
           realizedPnl += gain;
 
           lot.qty -= sellQty;
           remainingToSell -= sellQty;
-          if (lot.qty <= 0.00000001) { // Use a small epsilon for float comparison
+          if (lot.qty <= 0.00000001) { 
             buyLots.shift();
           }
         }
@@ -202,7 +202,7 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
     const remainingCost = buyLots.reduce((sum, l) => sum + (l.qty * l.costPerUnit), 0);
     const avgPrice = remainingQty > 0 ? remainingCost / remainingQty : 0;
 
-    // Determine Current Price
+    
     let currentPrice = lastPrice;
     let isLivePriceInUSD = false;
 
@@ -223,7 +223,7 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
       currentPrice = Number(asset.manualPrice);
     }
 
-    // Convert Live USD price to Target Currency immediately if needed
+    
     if (isLivePriceInUSD && usd && targetCurrency.id !== usd.id) {
       const rate = ratesMap.get(buildCacheKey(usd.id, targetCurrency.id, new Date())) ?? 1;
       currentPrice = currentPrice * rate;
@@ -237,11 +237,11 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
     let derivedIcon = asset.assetType === 'crypto' ? 'BitcoinCircle' : asset.assetType === 'stock' ? 'Cash' : asset.assetType === 'property' ? 'Neighbourhood' : 'Reports';
     if (asset.pricingMode === 'live') {
       if (asset.assetType === 'stock' && asset.ticker) {
-        derivedIcon = `https://images.financialmodelingprep.com/symbol/${asset.ticker.toUpperCase()}.png`;
+        derivedIcon = `https://logo.clearbit.com/${asset.ticker.split('.')[0]}.us`;
       } else if (asset.assetType === 'crypto' && asset.ticker) {
-        // Use a reliable crypto icon CDN as fallback for live assets
-        // We use the ticker-based URL which is fairly standard
-        derivedIcon = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${asset.ticker.toLowerCase()}.png`;
+        
+        
+        derivedIcon = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${asset.ticker.toLowerCase()}.png`;
       }
     }
 
@@ -285,7 +285,7 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
 
 async function fetchCryptoHistory(id: string, days: number = 30): Promise<{ date: string; value: number }[]> {
   try {
-    const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}&interval=daily`;
+    const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`;
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
     
@@ -306,7 +306,7 @@ export async function getInvestmentPriceHistory(assetId: number, maxPoints: numb
   const asset = await db.asset.findUnique({ where: { id: assetId } });
   if (!asset) return [];
 
-  // 1. Manual assets -> Flat line
+  
   if (asset.pricingMode === 'manual') {
     const price = Number(asset.manualPrice || 0);
     return Array.from({ length: maxPoints }).map((_, i) => {
@@ -319,7 +319,7 @@ export async function getInvestmentPriceHistory(assetId: number, maxPoints: numb
     });
   }
 
-  // 2. Crypto
+  
   if (asset.assetType === 'crypto') {
     const cgId = asset.coingeckoId || (asset.ticker ? coingeckoMap[asset.ticker] : null);
     if (cgId) {
@@ -330,10 +330,10 @@ export async function getInvestmentPriceHistory(assetId: number, maxPoints: numb
     }
   }
 
-  // 3. Stocks/Others -> Live Price Flat Line (fallback)
+  
   let currentPrice = 0;
   if (asset.assetType === 'stock' && asset.ticker) {
-    // Reuse existing fetcher for single item
+    
     try {
         const prices = await fetchStockPrices([asset.ticker]);
         currentPrice = prices[asset.ticker] || 0;
@@ -352,9 +352,7 @@ export async function getInvestmentPriceHistory(assetId: number, maxPoints: numb
     });
 }
 
-/**
- * Calculates current quantity of an asset owned by a user
- */
+
 export async function getAssetHolding(userId: number, assetId: number): Promise<number> {
   const transactions = await db.transaction.findMany({
     where: {

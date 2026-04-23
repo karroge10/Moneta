@@ -62,13 +62,13 @@ function UnauthorizedContent() {
   
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 md:px-8 py-12 relative overflow-hidden">
-      {/* Soft ambient background */}
+      {}
       <div className="pointer-events-none absolute inset-0 opacity-30" aria-hidden>
         <div className="absolute top-1/2 left-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#AC66DA]/30 blur-[100px]" />
       </div>
 
       <div className="max-w-lg w-full mx-auto text-center space-y-8 rounded-[30px] p-8 md:p-12 surface-elevated bg-[#282828] border border-[#3a3a3a] shadow-xl relative z-10">
-        {/* Logo in Circle */}
+        {}
         <div className="flex justify-center -mt-16">
           <div className="p-2 rounded-full bg-[#202020] border border-[#3a3a3a] shadow-lg">
             <div className="p-3 bg-[#282828] rounded-full">
@@ -83,12 +83,12 @@ function UnauthorizedContent() {
           </div>
         </div>
 
-        {/* Heading */}
+        {}
         <h1 className="text-page-title text-[#E7E4E4] font-bold">
           Access Restricted
         </h1>
 
-        {/* Description & Loading Wrapper */}
+        {}
         <ClerkLoading>
           <div className="space-y-4">
             <p className="text-body text-[#E7E4E4] opacity-80 leading-relaxed max-w-md mx-auto">
@@ -120,7 +120,7 @@ function UnauthorizedContent() {
             </SignedIn>
           </div>
 
-          {/* Action Buttons */}
+          {}
           <div className="flex flex-col items-center justify-center pt-2 w-full mt-4">
             <SignedOut>
               <button 
@@ -156,7 +156,7 @@ function UnauthorizedContent() {
           </div>
         </ClerkLoaded>
 
-        {/* Back to Home Link */}
+        {}
         <div className="pt-6 border-t border-[#3a3a3a] w-full mt-8">
           <button
             type="button"

@@ -3,10 +3,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 
-/**
- * DELETE /api/user/account
- * Permanently delete the current user: Clerk user first, then DB user (cascade clears related data).
- */
+
 export async function DELETE() {
   try {
     const user = await requireCurrentUser();

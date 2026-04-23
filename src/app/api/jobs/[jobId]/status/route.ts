@@ -15,7 +15,7 @@ export async function GET(
     const user = await requireCurrentUser();
     const { jobId } = await params;
 
-    // Type assertion needed until Prisma client is regenerated to include PdfProcessingJob model
+    
     const job = await (db as PrismaClient & {
       pdfProcessingJob: {
         findFirst: (args: { where: { id: string; userId: number } }) => Promise<{
@@ -37,7 +37,7 @@ export async function GET(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    // Extract transactions from result JSON if available
+    
     const result = job.result as { transactions?: UploadedTransaction[]; metadata?: { currency?: string; source?: string; periodStart?: string; periodEnd?: string } } | null;
     
     return NextResponse.json({

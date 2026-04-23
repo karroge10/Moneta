@@ -6,7 +6,7 @@ import TransactionMonthGroup from './shared/TransactionMonthGroup';
 import TransactionRow from './shared/TransactionRow';
 import SearchBar from './shared/SearchBar';
 import CategoryFilter from './shared/CategoryFilter';
-import { groupTransactionsByMonth, filterTransactions } from '@/lib/transactionUtils';
+import { groupTransactionsByMonth, filterTransactions } from '@/lib/transaction-utils';
 import Card from '@/components/ui/Card';
 
 interface TransactionListProps {
@@ -31,7 +31,7 @@ export default function TransactionList({
   const groupedByMonth = groupTransactionsByMonth(filteredTransactions);
   const months = Object.keys(groupedByMonth);
 
-  // Initialize with first month expanded only on initial mount
+  
   React.useEffect(() => {
     if (!hasInitializedRef.current && months.length > 0) {
       setExpandedMonth(months[0]);
@@ -39,7 +39,7 @@ export default function TransactionList({
     }
   }, [months]);
 
-  // Reset expanded month when filters change (but don't auto-expand)
+  
   React.useEffect(() => {
     if (hasInitializedRef.current && expandedMonth && !months.includes(expandedMonth)) {
       setExpandedMonth(null);
@@ -48,10 +48,10 @@ export default function TransactionList({
 
   const handleMonthToggle = (month: string) => {
     if (expandedMonth === month) {
-      // Close the currently expanded month
+      
       setExpandedMonth(null);
     } else {
-      // Open the clicked month (this automatically closes the previous one)
+      
       setExpandedMonth(month);
     }
   };

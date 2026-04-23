@@ -12,7 +12,7 @@ interface PortfolioCardProps {
   onEdit?: (investment: Investment) => void;
 }
 
-// Simple placeholder for mini trend graph
+
 function MiniTrendGraph({ history, isPositive }: { history?: { price: number }[], isPositive: boolean }) {
   if (!history || history.length < 2) {
     return (

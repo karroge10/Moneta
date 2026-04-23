@@ -13,9 +13,9 @@ interface PortfolioDesignProps {
     onAssetClick: (investment: Investment) => void;
 }
 
-// ============================================
-// OPTION 1: COMPACT LIST WITH MINI CHARTS
-// ============================================
+
+
+
 export function CompactListDesign({ portfolio, currency, onAssetClick }: PortfolioDesignProps) {
     return (
         <div className="h-full overflow-y-auto pr-2 custom-scrollbar">
@@ -26,7 +26,7 @@ export function CompactListDesign({ portfolio, currency, onAssetClick }: Portfol
                         onClick={() => onAssetClick(item)}
                         className="flex items-center gap-3 p-3 bg-background rounded-xl border border-[#3a3a3a] cursor-pointer hover:border-[#AC66DA] transition-colors group"
                     >
-                        {/* Icon + Name */}
+                        {}
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div 
                                 className="w-10 h-10 icon-circle flex-shrink-0"
@@ -53,7 +53,7 @@ export function CompactListDesign({ portfolio, currency, onAssetClick }: Portfol
 
 
 
-                        {/* Value + Change */}
+                        {}
                         <div className="text-right flex-shrink-0">
                             <div className="text-body font-semibold tabular-nums">{currency.symbol}{formatSmartNumber(item.currentValue || 0)}</div>
                             <div className={`text-helper font-semibold flex items-center justify-end gap-1 ${(item.changePercent || 0) >= 0 ? 'text-[#74C648]' : 'text-[#D93F3F]'}`}>
@@ -72,9 +72,9 @@ export function CompactListDesign({ portfolio, currency, onAssetClick }: Portfol
     );
 }
 
-// ============================================
-// OPTION 2: CAROUSEL/SLIDER CARDS
-// ============================================
+
+
+
 export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioDesignProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const itemsPerPage = 3;
@@ -95,7 +95,7 @@ export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioD
 
     return (
         <div className="relative">
-            {/* Carousel Container */}
+            {}
             <div className="overflow-hidden">
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[200px]">
                     {visibleItems.map((item) => (
@@ -104,7 +104,7 @@ export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioD
                             onClick={() => onAssetClick(item)}
                             className="p-5 bg-background rounded-3xl border-2 border-[#3a3a3a] cursor-pointer hover:border-[#AC66DA] transition-colors"
                         >
-                            {/* Header with Icon */}
+                            {}
                             <div className="flex items-center gap-3 mb-4">
                                 <div 
                                     className="w-14 h-14 icon-circle shrink-0"
@@ -131,7 +131,7 @@ export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioD
                                 <div className="text-xl font-bold">{currency.symbol}{formatSmartNumber(item.currentValue || 0)}</div>
                             </div>
 
-                            {/* Performance Badge */}
+                            {}
                             <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${(item.changePercent || 0) >= 0 ? 'bg-[#74C648]/10 border border-[#74C648]/30' : 'bg-[#D93F3F]/10 border border-[#D93F3F]/30'}`}>
                                 {(item.changePercent || 0) >= 0 ? (
                                     <StatUp width={14} height={14} className="text-[#74C648]" strokeWidth={2.5} />
@@ -150,7 +150,7 @@ export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioD
                 </div>
             </div>
 
-            {/* Navigation Controls */}
+            {}
             {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-4 mt-4">
                     <button
@@ -161,7 +161,7 @@ export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioD
                         <NavArrowLeft width={16} height={16} strokeWidth={2.5} />
                     </button>
 
-                    {/* Dots Indicator */}
+                    {}
                     <div className="flex gap-2">
                         {Array.from({ length: totalPages }).map((_, idx) => (
                             <button
@@ -186,9 +186,9 @@ export function CarouselDesign({ portfolio, currency, onAssetClick }: PortfolioD
     );
 }
 
-// ============================================
-// OPTION 3: TABLE VIEW WITH SORTABLE COLUMNS
-// ============================================
+
+
+
 type SortField = 'name' | 'assetType' | 'value' | 'change';
 type SortDirection = 'asc' | 'desc';
 

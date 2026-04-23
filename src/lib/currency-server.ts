@@ -1,13 +1,7 @@
 import { db } from './db';
 import { getCurrentUser } from './auth';
 
-/**
- * Get the current user's currency from the database (SERVER-SIDE ONLY)
- * Returns default currency (USD) if user has no currency set
- * 
- * This function can only be used in Server Components or API routes.
- * For Client Components, use the useCurrency hook instead.
- */
+
 export async function getUserCurrency() {
   try {
     const user = await getCurrentUser();
@@ -36,9 +30,7 @@ export async function getUserCurrency() {
   }
 }
 
-/**
- * Get default currency (USD) as fallback
- */
+
 export function getDefaultCurrency() {
   return {
     id: 0,

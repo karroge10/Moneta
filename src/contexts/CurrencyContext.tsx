@@ -13,7 +13,7 @@ interface Currency {
   alias: string;
 }
 
-/** Subset of GET /api/user/settings shared app-wide (one fetch via CurrencyProvider). */
+
 export interface UserSettingsSnapshot {
   name: string | null;
   email: string | null;
@@ -46,7 +46,7 @@ const DEFAULT_CURRENCY: Currency = {
 };
 
 const CACHE_KEY_PREFIX = 'user-currency-';
-const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12h
+const CACHE_TTL_MS = 12 * 60 * 60 * 1000; 
 
 function getCacheKey(userId: string | undefined): string | null {
   return userId ? `${CACHE_KEY_PREFIX}${userId}` : null;

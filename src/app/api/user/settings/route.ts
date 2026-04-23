@@ -7,10 +7,7 @@ import {
   DEFAULT_NOTIFICATION_SETTINGS,
 } from '@/lib/notification-settings';
 
-/**
- * GET /api/user/settings
- * Get current user's settings and option lists for language/currency
- */
+
 export async function GET() {
   try {
     const user = await requireCurrentUser();
@@ -89,11 +86,7 @@ export async function GET() {
   }
 }
 
-/**
- * PATCH /api/user/settings
- * Update current user's settings
- * Body: { dateOfBirth?, country?, languageId?, currencyId?, incomeTaxRate?, dataSharingEnabled? }
- */
+
 export async function PATCH(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
@@ -197,7 +190,7 @@ export async function PATCH(request: NextRequest) {
             validated[key] = DEFAULT_NOTIFICATION_SETTINGS[key];
           }
         }
-        // Prisma requires relation ops (create/update/upsert) for nested writes, not a plain object
+        
         updateData.notificationSettings = {
           upsert: {
             create: validated,

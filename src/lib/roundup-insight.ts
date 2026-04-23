@@ -1,18 +1,14 @@
-/**
- * Hypothetical "round-up" projection: 1% of period spending, compared to
- * a fixed savings APY and (only when it beats savings) the best recent
- * performer among benchmark + portfolio cryptos. No ML / AI.
- */
+
 
 import type { PortfolioAsset } from '@/lib/investments';
 
-/** Modeled round-up rate (1% of card/period spending) */
+
 export const ROUNDUP_RATE = 0.01;
-/** Illustrative high-yield savings APY when no asset beats it */
+
 export const SAVINGS_APR = 0.07;
-/** Cap extrapolated annual return used for display (avoids absurd projections) */
+
 const MAX_SCENARIO_APR = 0.75;
-/** Cap raw 30d return before annualization */
+
 const MAX_R30 = 0.45;
 
 const BENCHMARKS: { coingeckoId: string; label: string; ticker: string }[] = [
@@ -72,7 +68,7 @@ function clamp(n: number, min: number, max: number): number {
 
 async function fetch30dReturnDecimal(coingeckoId: string): Promise<number | null> {
   try {
-    const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=usd&days=30&interval=daily`;
+    const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=usd&days=30`;
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return null;
     const data = (await res.json()) as { prices?: [number, number][] };
@@ -109,9 +105,7 @@ export function portfolioCryptoBenchmarks(assets: PortfolioAsset[]): { coingecko
   return out;
 }
 
-/**
- * @param periodExpenseTotal — spending in the selected period (user currency, positive)
- */
+
 export async function computeRoundupInsight(
   periodExpenseTotal: number,
   portfolioAssets: PortfolioAsset[],
