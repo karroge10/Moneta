@@ -85,15 +85,5 @@ graph TD
 
 ---
 
-## 👤 Portfolio Quality
-
-This repository represents a high-quality, professional implementation. Key engineering decisions include:
-- **Clean Architecture**: Decoupled UI components and business logic via custom hooks (`useDashboardData`, `useLandingScroll`).
-- **Performance Optimized**: Fine-grained code splitting and skeleton loading states.
-- **Security Focused**: No sensitive data in repository, documented environment variables, and secure authentication flows.
-- **Maintainable**: Consolidated utility functions and standardized naming conventions.
-
----
-
 ## 📄 License
 MIT License. See [LICENSE](LICENSE) for details.

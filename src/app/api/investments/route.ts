@@ -62,9 +62,9 @@ export async function GET() {
     const recentActivities = convertedActivities.map((t: any) => {
       const assetIcon = t.asset?.icon || (
         t.asset?.assetType === 'crypto' ? (
-          t.asset?.pricingMode === 'live' && t.asset?.ticker ? 
-          `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${t.asset.ticker.toLowerCase()}.png`
-          'BitcoinCircle'
+          t.asset?.pricingMode === 'live' && t.asset?.ticker
+            ? `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${t.asset.ticker.toLowerCase()}.png`
+            : 'BitcoinCircle'
         ) :
         t.asset?.assetType === 'stock' ? `https://logo.clearbit.com/${t.asset.ticker.split('.')[0]}.us` :
         t.asset?.assetType === 'property' ? 'Neighbourhood' : 'Reports'

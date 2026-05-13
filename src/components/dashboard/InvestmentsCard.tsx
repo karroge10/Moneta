@@ -69,7 +69,7 @@ export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
                     className="w-12 h-12 icon-circle"
                     style={{ backgroundColor: `${getAssetColor(investment.assetType)}1a` }}
                   >
-                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: getAssetColor(investment.assetType) }} className="mt-0" />
+                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: getAssetColor(investment.assetType) }} />
                   </div>
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden">

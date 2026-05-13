@@ -640,7 +640,7 @@ export default function ExpensesPage() {
           link={demographicComparison?.link || 'Statistics'}
           linkHref={demographicComparison?.link === 'Settings' ? '/settings' : '/statistics'}
         />
-        <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} shortRow />
+        <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} timePeriod={timePeriod} shortRow />
       </div>
 
       {}
@@ -689,7 +689,7 @@ export default function ExpensesPage() {
           link={demographicComparison?.link || 'Statistics'}
           linkHref={demographicComparison?.link === 'Settings' ? '/settings' : '/statistics'}
         />
-        <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} />
+        <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} timePeriod={timePeriod} />
       </div>
 
       {}
@@ -766,7 +766,7 @@ export default function ExpensesPage() {
               
               {}
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} />
+                <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} timePeriod={timePeriod} />
               </div>
             </div>
           </div>

@@ -390,11 +390,13 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                                 className="opacity-0 group-hover:opacity-100 text-[#AC66DA] hover:text-[#9A4FB8] transition-opacity shrink-0 disabled:opacity-0"
                                                                 title="Rename Asset"
                                                             >
-                                                                <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http:
+                                                                <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                    <path d="M14.363 5.652l1.48-1.48a2 2 0 012.829 0l1.414 1.414a2 2 0 010 2.828l-1.48 1.48m-4.243-4.242l-9.616 9.615a2 2 0 00-.578 1.238l-.242 2.74a1 1 0 001.084 1.085l2.74-.242a2 2 0 001.24-.578l9.615-9.616m-4.243-4.242l4.242 4.242" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+                                                                </svg>
                                                             </button>
                                                         )}
                                                     </div>
-                                                )      }
+                                                )}
                                             </div>
 
                                             {asset.pricingMode === 'live' && asset.currentPrice && (
@@ -516,8 +518,8 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                         className="absolute top-2 right-2 transition-opacity p-1.5 rounded-full hover:bg-[#282828] disabled:opacity-0"
                                                         title="Edit Value"
                                                     >
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http:
-                                                            <path d="M14.363 5.652l1.48-1.48a2 2 0 012.829 0l1.414 1.414a2 2 0 010 2.828l-1.48 1.48m-4.243-4.242l-9.616 9.615a2 2 0 00-.578 1.238l-.242 2.74a1 1 0 001.084 1.085l2.74-.242a2 2 0 001.24-.578l9.615-9.616m-4.243-4.242l4.242 4.242" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"></path>
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" strokeWidth="2" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                            <path d="M14.363 5.652l1.48-1.48a2 2 0 012.829 0l1.414 1.414a2 2 0 010 2.828l-1.48 1.48m-4.243-4.242l-9.616 9.615a2 2 0 00-.578 1.238l-.242 2.74a1 1 0 001.084 1.085l2.74-.242a2 2 0 001.24-.578l9.615-9.616m-4.243-4.242l4.242 4.242" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
                                                         </svg>
                                                     </button>
                                                 )}
