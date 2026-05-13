@@ -265,7 +265,7 @@ export default function DashboardPage() {
         <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
         <TransactionsCard transactions={transactions} onRefresh={fetchDashboardData} />
         <UpdateCard date={update.date} message={update.message} highlight={update.highlight} link={update.link} linkHref="/statistics" />
-        <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} shortRow />
+        <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} timePeriod={timePeriod} shortRow />
         <InvestmentsCard investments={investments} />
         <TopExpensesCard expenses={topExpenses} />
       </div>
@@ -274,7 +274,7 @@ export default function DashboardPage() {
       <div className="hidden md:grid 2xl:hidden md:grid-cols-2 md:gap-4 md:px-6 md:pb-6">
         <IncomeCard amount={income.amount} trend={income.trend} comparisonLabel={income.comparisonLabel} />
         <ExpenseCard amount={expenses.amount} trend={expenses.trend} comparisonLabel={expenses.comparisonLabel} />
-        <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} minimal />
+        <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} timePeriod={timePeriod} minimal />
         <FinancialHealthCard score={financialHealth?.score ?? 0} trend={financialHealth?.trend} minimal onLearnClick={() => setFinancialHealthModalOpen(true)} />
         <GoalsCard goals={goals} currencyOptions={currencyOptions} onGoalClick={handleEditGoal} />
         <UpcomingBillsCard bills={upcomingBills} onItemClick={handleUpcomingBillClick} />
@@ -303,7 +303,7 @@ export default function DashboardPage() {
                 <TransactionsCard transactions={transactions} onRefresh={fetchDashboardData} />
               </div>
               <div className="min-h-0 flex flex-col [&>.card-surface]:h-full [&>.card-surface]:flex [&>.card-surface]:flex-col">
-                <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} />
+                <InsightCard insight={roundupInsight ?? emptyRoundupInsight()} timePeriod={timePeriod} />
               </div>
             </div>
             <div className="col-span-3 flex flex-col gap-4">
