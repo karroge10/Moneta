@@ -33,7 +33,7 @@ export interface Bill {
 
 export type RecurringFrequencyUnit = 'day' | 'week' | 'month' | 'year';
 
-export interface RecurringSettings {
+interface RecurringSettings {
   isRecurring: boolean;
   frequencyUnit: RecurringFrequencyUnit;
   frequencyInterval: number;
@@ -164,15 +164,6 @@ export interface Category {
   icon: string;
   color: string;
   type?: string | null; 
-}
-
-export interface InvestmentActivity {
-  id: string;
-  assetName: string;
-  date: string;
-  change: string; 
-  changeType: 'positive' | 'negative';
-  icon: string;
 }
 
 export interface DemographicComparison {

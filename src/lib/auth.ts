@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
+import { Prisma } from '@prisma/client';
 import { db } from './db';
 
 
@@ -40,9 +41,9 @@ export async function getCurrentUser() {
           },
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle race condition where another request created the user simultaneously
-      if (error.code === 'P2002') {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         user = await db.user.findUnique({
           where: { clerkUserId },
         });
@@ -107,9 +108,9 @@ export async function requireCurrentUserWithLanguage() {
         },
         include: { language: true },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle race condition
-      if (error.code === 'P2002') {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         user = await db.user.findUnique({
           where: { clerkUserId },
           include: { language: true },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, cloneElement, isValidElement, type ReactElement } from 'react';
+import { useState, useRef, useEffect, cloneElement, isValidElement, type ReactElement, type MutableRefObject } from 'react';
 
 interface TooltipProps {
   content: string;
@@ -79,19 +79,21 @@ export default function Tooltip({ content, children, className = '' }: TooltipPr
           {
             ref: (node: HTMLElement | null) => {
               triggerRef.current = node;
-              
-              const existingRef = (children as any).ref;
-              if (existingRef) {
-                if (typeof existingRef === 'function') {
-                  existingRef(node);
-                } else if (existingRef && typeof existingRef === 'object' && 'current' in existingRef) {
-                  (existingRef as React.MutableRefObject<HTMLElement | null>).current = node;
+              const childRef = (children as ReactElement & { ref?: React.Ref<HTMLElement> }).ref;
+              if (childRef) {
+                if (typeof childRef === 'function') {
+                  childRef(node);
+                } else if (typeof childRef === 'object' && childRef !== null && 'current' in childRef) {
+                  const mutable = childRef as MutableRefObject<HTMLElement | null>;
+                  // Merging into an object ref requires updating `.current` (React-supported pattern).
+                  // eslint-disable-next-line react-hooks/immutability -- ref merge callback
+                  mutable.current = node;
                 }
               }
             },
             onMouseEnter: handleMouseEnter,
             onMouseLeave: handleMouseLeave,
-            className: `${((children.props as any)?.className || '')} ${className}`.trim(),
+            className: `${((children.props as { className?: string }).className || '')} ${className}`.trim(),
           }
         )
       )

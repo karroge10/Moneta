@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UploadedTransaction, TransactionUploadMetadata } from '@/types/dashboard';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { Prisma } from '@prisma/client';
 import { shouldCreateNotification } from '@/lib/notification-settings';
 import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, findMerchantByBaseWords, detectSpecialTransactionType } from '@/lib/merchant';
 
@@ -385,7 +386,7 @@ export async function POST(request: NextRequest) {
         } 
         
         if (shouldDebugTransaction(item.description)) {
-          const matchedCategoryName = categoryId ? [...categoryMap.entries()].find(([name, id]) => id === categoryId)?.[0] ?? null : null;
+          const matchedCategoryName = categoryId ? [...categoryMap.entries()].find(([_name, id]) => id === categoryId)?.[0] ?? null : null;
           console.log('[import-debug]', {
             description: item.description,
             type,
@@ -514,7 +515,7 @@ export async function POST(request: NextRequest) {
 
     
     
-    const categoryIds = [...new Set(createdTransactions.map((tx: any) => tx.categoryId).filter(Boolean))];
+    const categoryIds = [...new Set(createdTransactions.map((tx) => tx.categoryId).filter(Boolean))];
     const categories = categoryIds.length > 0 
       ? await db.category.findMany({
           where: { id: { in: categoryIds as number[] } },
@@ -524,7 +525,7 @@ export async function POST(request: NextRequest) {
 
     
     
-    const responseTransactions = createdTransactions.map((tx: any) => ({
+    const responseTransactions = createdTransactions.map((tx) => ({
       id: tx.id.toString(),
       date: tx.date.toISOString().split('T')[0],
       description: tx.description,
@@ -639,7 +640,7 @@ export async function GET(request: NextRequest) {
 
     
     
-    const where: any = {
+    const where: Prisma.TransactionWhereInput = {
       userId: user.id,
       investmentAssetId: null,
     };
@@ -688,7 +689,7 @@ export async function GET(request: NextRequest) {
 
     
     
-    const pageItems = transactions.map((tx: any) => ({
+    const pageItems = transactions.map((tx) => ({
       id: tx.id.toString(),
       date: tx.date.toISOString().split('T')[0],
       description: tx.description,

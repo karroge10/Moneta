@@ -11,11 +11,6 @@ interface PortfolioPerformanceChartProps {
     isLoading?: boolean;
 }
 
-const BENCHMARKS = [
-    { label: 'S&P 500', value: 'SPY' },
-    { label: 'BTC', value: 'BTC' },
-];
-
 export default function PortfolioPerformanceChart({ data, currencySymbol, onRangeChange, isLoading }: PortfolioPerformanceChartProps) {
     const [timeframe, setTimeframe] = useState('1M');
 

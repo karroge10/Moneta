@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { shouldCreateNotification } from '@/lib/notification-settings';
 import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, findMerchantByBaseWords, detectSpecialTransactionType } from '@/lib/merchant';
 import { UploadedTransaction } from '@/types/dashboard';
+import { Prisma } from '@prisma/client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -235,7 +236,7 @@ export async function POST(
     }
 
     
-    const updateData: any = {
+    const updateData: Prisma.PdfProcessingJobUpdateInput = {
       updatedAt: new Date(),
     };
 

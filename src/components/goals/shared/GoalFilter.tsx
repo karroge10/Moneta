@@ -35,7 +35,6 @@ export default function GoalFilter({ selectedStatus, onSelect }: GoalFilterProps
   const selectedOption = statusOptions.find(opt => opt.value === selectedStatus) || statusOptions[0];
   const displayValue = selectedOption.label;
   const textColor = isHovered ? '#AC66DA' : '#E7E4E4';
-  const DisplayIcon = selectedOption.icon;
 
   return (
     <div className="relative" ref={ref}>

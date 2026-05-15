@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@clerk/nextjs';
 
-export type CurrencyOption = {
+type CurrencyOption = {
   id: number;
   name: string;
   symbol: string;

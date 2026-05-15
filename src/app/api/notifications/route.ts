@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
 }
 
 
-export async function PATCH(request: NextRequest) {
+export async function PATCH(_request: NextRequest) {
   try {
     const user = await requireCurrentUser();
 

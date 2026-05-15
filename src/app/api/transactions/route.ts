@@ -4,7 +4,21 @@ import { db } from '@/lib/db';
 import { Transaction as TransactionType } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
 import { convertAmount, convertTransactionsWithRatesMap, preloadRatesMap } from '@/lib/currency-conversion';
+import type { InvestmentType, FrequencyUnit } from '@prisma/client';
 
+interface TransactionUpsertBody {
+  name?: string;
+  amount?: number;
+  recurring?: {
+    isRecurring?: boolean;
+    frequencyUnit?: string;
+    frequencyInterval?: number;
+    startDate?: string;
+    endDate?: string | null;
+  };
+  dateRaw?: string;
+  date?: string;
+}
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -241,7 +255,7 @@ export async function GET(request: NextRequest) {
 
 async function createRecurringFromPayload(params: {
   userId: number;
-  body: any;
+  body: TransactionUpsertBody;
   type: 'income' | 'expense';
   currencyId: number;
   categoryId: number | null;
@@ -251,7 +265,10 @@ async function createRecurringFromPayload(params: {
   const recurring = body.recurring;
   if (!recurring?.isRecurring) return;
 
-  const frequencyUnit = recurring.frequencyUnit || 'month';
+  const frequencyUnitRaw = recurring.frequencyUnit || 'month';
+  const frequencyUnit = (['day', 'week', 'month', 'year'].includes(frequencyUnitRaw)
+    ? frequencyUnitRaw
+    : 'month') as FrequencyUnit;
   const frequencyInterval = recurring.frequencyInterval || 1;
   const startDateStr = recurring.startDate || body.dateRaw || body.date;
   const endDateStr = recurring.endDate;
@@ -264,8 +281,8 @@ async function createRecurringFromPayload(params: {
     data: {
       userId,
       type,
-      name: body.name,
-      amount: Math.abs(body.amount),
+      name: body.name ?? '',
+      amount: Math.abs(Number(body.amount ?? 0)),
       currencyId,
       categoryId,
       startDate,
@@ -282,7 +299,13 @@ export async function POST(request: NextRequest) {
   try {
     
     const user = await requireCurrentUserWithLanguage();
-    const body = await request.json();
+    const body = (await request.json()) as TransactionUpsertBody & {
+      name: string;
+      date: string;
+      amount: number;
+      category?: string | null;
+      currencyId?: number;
+    };
 
     const { name, date, amount, category, currencyId: requestCurrencyId } = body;
 
@@ -296,7 +319,7 @@ export async function POST(request: NextRequest) {
     
     let currencyId = requestCurrencyId;
     if (!currencyId) {
-      currencyId = user.currencyId;
+      currencyId = user.currencyId ?? undefined;
       if (!currencyId) {
         const defaultCurrency = await db.currency.findFirst();
         if (!defaultCurrency) {
@@ -442,7 +465,17 @@ export async function PUT(request: NextRequest) {
   try {
     
     const user = await requireCurrentUserWithLanguage();
-    const body = await request.json();
+    const body = (await request.json()) as {
+      id: string | number;
+      name: string;
+      date: string;
+      amount: number;
+      category?: string | null;
+      currencyId?: number;
+      investmentType?: string;
+      quantity?: number;
+      pricePerUnit?: number;
+    };
 
     const { id, name, date, amount, category, currencyId, investmentType, quantity, pricePerUnit } = body;
 
@@ -456,7 +489,7 @@ export async function PUT(request: NextRequest) {
     
     const existingTransaction = await db.transaction.findFirst({
       where: {
-        id: parseInt(id),
+        id: parseInt(String(id), 10),
         userId: user.id,
       },
     });
@@ -561,7 +594,7 @@ export async function PUT(request: NextRequest) {
 
     
     const updatedTransaction = await db.transaction.update({
-      where: { id: parseInt(id) },
+      where: { id: parseInt(String(id), 10) },
       data: {
         type,
         amount: absoluteAmount,
@@ -569,7 +602,7 @@ export async function PUT(request: NextRequest) {
         date: transactionDate,
         categoryId,
         currencyId: transactionCurrencyId,
-        investmentType: investmentType as any,
+        investmentType: investmentType as InvestmentType,
         quantity: quantity !== undefined ? Number(quantity) : undefined,
         pricePerUnit: pricePerUnit !== undefined ? Number(pricePerUnit) : undefined,
       },
@@ -682,7 +715,7 @@ export async function DELETE(request: NextRequest) {
     
     const existingTransaction = await db.transaction.findFirst({
       where: {
-        id: parseInt(id),
+        id: parseInt(String(id), 10),
         userId: user.id,
       },
     });
@@ -717,7 +750,7 @@ export async function DELETE(request: NextRequest) {
 
     
     await db.transaction.delete({
-      where: { id: parseInt(id) },
+      where: { id: parseInt(String(id), 10) },
     });
 
     return NextResponse.json({ success: true });

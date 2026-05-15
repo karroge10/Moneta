@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const whereClause: any = {
+    const whereClause: Prisma.PortfolioSnapshotWhereInput = {
       userId: user.id,
     };
 

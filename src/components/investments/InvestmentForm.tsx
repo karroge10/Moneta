@@ -3,47 +3,39 @@
 import { useState, useCallback, useEffect, useRef, useLayoutEffect, CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Xmark,
   Search as SearchIcon,
   BitcoinCircle,
   Cash,
   Neighbourhood,
   NavArrowRight,
   NavArrowLeft,
-  CheckCircle,
   ViewGrid,
   NavArrowDown,
-  Plus,
-  Minus,
   FloppyDisk
 } from 'iconoir-react';
 import { Investment } from '@/types/dashboard';
+import type { InvestmentAssetType, InvestmentCreatePayload, InvestmentSearchResultAsset } from '@/types/investments';
 import { CalendarPanel } from '@/components/transactions/shared/CalendarPanel';
-import CurrencySelector from '@/components/transactions/import/CurrencySelector';
-import { CurrencyOption } from '@/components/transactions/import/CurrencySelector';
-import { formatDateForDisplay, formatDateToInput } from '@/lib/dateFormatting';
+import CurrencySelector, { type CurrencyOption } from '@/components/transactions/import/CurrencySelector';
+import { formatDateForDisplay } from '@/lib/dateFormatting';
 import Spinner from '@/components/ui/Spinner';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
-import { formatNumber, formatSmartNumber } from '@/lib/utils';
+import { formatSmartNumber } from '@/lib/utils';
 import AssetLogo from './AssetLogo';
 import { getDerivedAssetIcon } from '@/lib/asset-utils';
 import { useToast } from '@/contexts/ToastContext';
-
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse bg-[#3a3a3a] rounded-xl ${className}`} />;
-}
 
 interface InvestmentFormProps {
   mode: 'add';
   initialAsset?: {
     name: string;
-    ticker: string;
-    assetType: 'crypto' | 'stock' | 'property' | 'custom';
+    ticker?: string | null;
+    assetType?: 'crypto' | 'stock' | 'property' | 'custom';
     coingeckoId?: string;
     icon?: string;
   };
-  onSave: (data: any) => void;
+  onSave: (data: InvestmentCreatePayload) => void;
   onCancel: () => void;
   currencyOptions: CurrencyOption[];
   isSaving?: boolean;
@@ -56,7 +48,7 @@ type Step = 'type_selection' | 'search' | 'details';
 const EMPTY_PORTFOLIO: Investment[] = [];
 
 export default function InvestmentForm({
-  mode,
+  mode: _mode,
   initialAsset,
   onSave,
   onCancel,
@@ -87,9 +79,9 @@ export default function InvestmentForm({
   });
 
   const [availableQuantity, setAvailableQuantity] = useState<number | null>(null);
-  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [isLoadingBalance, _setIsLoadingBalance] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<InvestmentSearchResultAsset[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -101,8 +93,6 @@ export default function InvestmentForm({
   const datePortalRef = useRef<HTMLDivElement>(null);
   const dateDropdownRef = useRef<HTMLDivElement>(null);
   const [dateDropdownStyle, setDateDropdownStyle] = useState<CSSProperties | null>(null);
-
-  const isLive = formState.assetType === 'crypto' || formState.assetType === 'stock';
 
   const runSearch = useCallback(async () => {
     if (!searchQuery || searchQuery.length < 2) {
@@ -170,7 +160,7 @@ export default function InvestmentForm({
   
   useEffect(() => {
     if (step === 'details' && (formState.name || formState.ticker)) {
-      const portfolioAsset = portfolio.find((a: any) => 
+      const portfolioAsset = portfolio.find((a) => 
         (formState.ticker && a.ticker === formState.ticker) || 
         (a.name.toLowerCase() === formState.name.toLowerCase())
       );
@@ -239,9 +229,9 @@ export default function InvestmentForm({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isDateOpen]);
 
-  const handleSelectAsset = (asset: any) => {
+  const handleSelectAsset = (asset: InvestmentSearchResultAsset) => {
     let coingeckoId = '';
-    let pricingMode = 'manual';
+    let pricingMode: 'live' | 'manual' = 'manual';
 
     if (asset.id.startsWith('coingecko:')) {
       coingeckoId = asset.id.replace('coingecko:', '');
@@ -259,7 +249,7 @@ export default function InvestmentForm({
       ticker: (asset.ticker || asset.symbol || '').toUpperCase(),
       assetType: asset.type,
       coingeckoId,
-      pricingMode: pricingMode as any,
+      pricingMode,
       pricePerUnit: asset.price ? asset.price.toString() : '',
       icon: asset.icon,
       currencyId: (asset.type === 'crypto' || asset.type === 'stock') && usdCurrency ? usdCurrency.id : s.currencyId,
@@ -351,7 +341,7 @@ export default function InvestmentForm({
                     type="button"
                     onClick={() => setFormState((s) => ({
                       ...s,
-                      assetType: opt.id as any,
+                      assetType: opt.id as InvestmentAssetType,
                       
                       name: '',
                       ticker: '',

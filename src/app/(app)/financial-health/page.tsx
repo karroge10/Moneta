@@ -46,7 +46,6 @@ export default function FinancialHealthPage() {
   }, [authReady, fetchData]);
 
   const score = data?.score ?? 0;
-  const trend = data?.trend ?? 0;
   const details = data?.details;
   const isEmpty = score === 0 && !loading && !error;
 

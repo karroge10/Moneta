@@ -104,8 +104,10 @@ export default function SettingsField({
   useEffect(() => {
     if (isOpen && searchable) {
       setSearchQuery('');
-      setTimeout(() => searchInputRef.current?.focus(), 0);
+      const id = window.setTimeout(() => searchInputRef.current?.focus(), 0);
+      return () => clearTimeout(id);
     }
+    return undefined;
   }, [isOpen, searchable]);
 
   const handleSelect = (optionValue: string) => {

@@ -402,9 +402,3 @@ export function findMerchantByBaseWords(description: string, merchantPatterns: s
   return null;
 }
 
-
-export function findMerchantInDescription(description: string, merchantPatterns: string[]): string | null {
-  
-  return findMerchantByBaseWords(description, merchantPatterns);
-}
-

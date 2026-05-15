@@ -40,7 +40,7 @@ export default function GoalForm({
     ? (currencyOptions.find((c) => c.id === formData.currencyId) ?? userCurrency)
     : userCurrency;
   const [isDateOpen, setIsDateOpen] = useState(false);
-  const [dateInput, setDateInput] = useState('');
+  const [dateInput, setDateInput] = useState(() => formatDateToInput(goal.targetDate) ?? '');
   const dateDropdownRef = useRef<HTMLDivElement>(null);
   const dateTriggerRef = useRef<HTMLButtonElement>(null);
   const datePortalRef = useRef<HTMLDivElement>(null);
@@ -51,21 +51,11 @@ export default function GoalForm({
   
   
   const [dateDropdownStyle, setDateDropdownStyle] = useState<CSSProperties | null>(null);
-  const [dateOpenUpward, setDateOpenUpward] = useState(false);
+  const [, setDateOpenUpward] = useState(false);
   
   const [targetAmountInput, setTargetAmountInput] = useState(goal.targetAmount.toString());
   const [currentAmountInput, setCurrentAmountInput] = useState(goal.currentAmount.toString());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  useEffect(() => {
-    
-    setFormData(goal);
-    setTargetAmountInput(goal.targetAmount.toString());
-    setCurrentAmountInput(goal.currentAmount.toString());
-    const initial = formatDateToInput(goal.targetDate);
-    setDateInput(initial);
-    setCurrentMonth(initial ? new Date(initial) : new Date());
-  }, [goal]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -121,7 +111,6 @@ export default function GoalForm({
 
   useLayoutEffect(() => {
     if (!isDateOpen) {
-      setDateDropdownStyle(null);
       return;
     }
 

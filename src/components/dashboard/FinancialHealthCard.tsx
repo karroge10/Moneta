@@ -38,7 +38,7 @@ function LearnTrigger({
 }
 
 
-export default function FinancialHealthCard({ score, trend, mobile = false, minimal = false, onLearnClick }: FinancialHealthCardProps) {
+export default function FinancialHealthCard({ score, trend: _trend, mobile = false, minimal = false, onLearnClick }: FinancialHealthCardProps) {
 
   
   if (score === 0) {

@@ -41,7 +41,6 @@ export default function IncomePage() {
   });
   const [average, setAverage] = useState<{ amount: number; trend: number; trendSkipped?: boolean; subtitle: string }>({ amount: 0, trend: 0, subtitle: 'Monthly average based on selected time period' });
   const [averageDaily, setAverageDaily] = useState<{ amount: number; trend: number; trendSkipped?: boolean } | null>(null);
-  const [nextMonthPrediction, setNextMonthPrediction] = useState<number | null>(null);
   const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
   const [demographicComparison, setDemographicComparison] = useState<{ message: string; percentage: number; percentageLabel: string; link: string } | null>(null);
   const { categories } = useCategories();

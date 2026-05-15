@@ -7,43 +7,20 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { formatDateForDisplay, formatDateToInput } from '@/lib/dateFormatting';
 import CurrencySelector from '@/components/transactions/import/CurrencySelector';
 import { useCurrencyOptions } from '@/hooks/useCurrencyOptions';
-import { formatNumber, formatSmartNumber } from '@/lib/utils';
+import { formatSmartNumber } from '@/lib/utils';
 import { CalendarPanel } from '@/components/transactions/shared/CalendarPanel';
 import AssetLogo from './AssetLogo';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { getDerivedAssetIcon } from '@/lib/asset-utils';
-import { Investment } from '@/types/dashboard';
+import type { InvestmentTransactionEditState } from '@/types/investments';
+import type { Investment } from '@/types/dashboard';
 
 import Spinner from '@/components/ui/Spinner';
 
-function Skeleton({ className }: { className?: string }) {
-    return <div className={`animate-pulse bg-[#3a3a3a] rounded-xl ${className}`} />;
-}
-
-interface InvestmentTransaction {
-    id: string;
-    date: string;
-    investmentType: 'buy' | 'sell';
-    quantity: number;
-    pricePerUnit: number;
-    assetName?: string;
-    assetTicker?: string;
-    assetType?: string;
-    icon?: string;
-    name?: string;
-    amount?: number;
-    currency?: {
-        symbol: string;
-        alias: string;
-        id: number;
-    };
-    currencyId?: number;
-}
-
 interface InvestmentTransactionModalProps {
-    transaction: InvestmentTransaction | null;
+    transaction: InvestmentTransactionEditState | null;
     onClose: () => void;
-    onSave: (transaction: InvestmentTransaction) => void;
+    onSave: (transaction: InvestmentTransactionEditState) => void;
     onDelete?: () => Promise<void> | void;
     isSaving?: boolean;
     isDeleting?: boolean;
@@ -69,7 +46,7 @@ export default function InvestmentTransactionModal({
     const overlayRef = useRef<HTMLDivElement>(null);
     const pointerDownOnOverlay = useRef(false);
 
-    const [formData, setFormData] = useState<InvestmentTransaction>(
+    const [formData, setFormData] = useState<InvestmentTransactionEditState>(
         transaction || {
             id: '',
             date: '',
@@ -84,15 +61,9 @@ export default function InvestmentTransactionModal({
     const [selectedCurrencyId, setSelectedCurrencyId] = useState<number | null>(null);
     const [conversionRate, setConversionRate] = useState<number | null>(null);
     const [isLoadingRate, setIsLoadingRate] = useState(false);
-    const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [availableQuantity, setAvailableQuantity] = useState<number | null>(null);
-    const [isLoadingBalance, setIsLoadingBalance] = useState(false);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setIsInitialLoading(false), 300);
-        return () => clearTimeout(timer);
-    }, []);
+    const [isLoadingBalance, _setIsLoadingBalance] = useState(false);
 
     
     const [isDateOpen, setIsDateOpen] = useState(false);
@@ -116,7 +87,7 @@ export default function InvestmentTransactionModal({
             }
 
             
-            const portfolioAsset = portfolio.find((a: any) => 
+            const portfolioAsset = portfolio.find((a) => 
                 (transaction.assetTicker && a.ticker === transaction.assetTicker) || 
                 (a.name.toLowerCase() === (transaction.assetName || '').toLowerCase())
             );

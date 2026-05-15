@@ -1,5 +1,5 @@
 
-export const CURRENCY_COUNTRY_MAP: Record<string, string> = {
+const CURRENCY_COUNTRY_MAP: Record<string, string> = {
   GEL: 'GE', 
   USD: 'US', 
   EUR: 'EU', 
@@ -23,7 +23,7 @@ export const CURRENCY_COUNTRY_MAP: Record<string, string> = {
 };
 
 
-export const CURRENCY_DISPLAY_NAMES: Record<string, string> = {
+const CURRENCY_DISPLAY_NAMES: Record<string, string> = {
   USD: 'United States Dollar',
   EUR: 'Euro',
   GBP: 'British Pound',
@@ -46,13 +46,13 @@ export const CURRENCY_DISPLAY_NAMES: Record<string, string> = {
   DKK: 'Danish Krone',
 };
 
-export function getDisplayNameForCurrency(currencyAlias: string): string | undefined {
+function getDisplayNameForCurrency(currencyAlias: string): string | undefined {
   const upper = currencyAlias.toUpperCase();
   return CURRENCY_DISPLAY_NAMES[upper];
 }
 
 
-export const CURRENCY_SEARCH_TERMS: Record<string, string[]> = {
+const CURRENCY_SEARCH_TERMS: Record<string, string[]> = {
   USD: ['United States', 'United States Dollar', 'USA', 'America'],
   EUR: ['European Union', 'Eurozone', 'Europe'],
   GBP: ['United Kingdom', 'British', 'UK', 'England'],
@@ -75,12 +75,12 @@ export const CURRENCY_SEARCH_TERMS: Record<string, string[]> = {
   DKK: ['Denmark', 'Danish'],
 };
 
-export function getCountryCodeForCurrency(currencyAlias: string): string | undefined {
+function getCountryCodeForCurrency(currencyAlias: string): string | undefined {
   const upper = currencyAlias.toUpperCase();
   return CURRENCY_COUNTRY_MAP[upper];
 }
 
-export function getSearchTermsForCurrency(currencyAlias: string): string[] {
+function getSearchTermsForCurrency(currencyAlias: string): string[] {
   const upper = currencyAlias.toUpperCase();
   return CURRENCY_SEARCH_TERMS[upper] ?? [];
 }
@@ -92,7 +92,7 @@ export type CurrencyOption = {
   alias: string;
 };
 
-export type CurrencyTypeaheadOption = {
+type CurrencyTypeaheadOption = {
   value: string;
   label: string;
   symbol?: string;

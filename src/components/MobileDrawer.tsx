@@ -12,7 +12,6 @@ import {
   CalendarCheck,
   Reports,
   LogOut,
-  NavArrowLeft,
   Xmark,
   Settings,
   HeadsetHelp,

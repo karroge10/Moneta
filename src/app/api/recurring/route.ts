@@ -67,27 +67,6 @@ function getIconForCategory(categoryName: string | null): string {
   return iconMap[categoryName] || 'HelpCircle';
 }
 
-function addInterval(date: Date, unit: FrequencyUnit, interval: number): Date {
-  const next = new Date(date);
-  switch (unit) {
-    case 'day':
-      next.setDate(next.getDate() + interval);
-      break;
-    case 'week':
-      next.setDate(next.getDate() + interval * 7);
-      break;
-    case 'month':
-      next.setMonth(next.getMonth() + interval);
-      break;
-    case 'year':
-      next.setFullYear(next.getFullYear() + interval);
-      break;
-    default:
-      break;
-  }
-  return next;
-}
-
 async function resolveCategoryId(userId: number, categoryName?: string | null): Promise<number | null> {
   if (!categoryName) return null;
   const category = await db.category.findFirst({

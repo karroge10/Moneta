@@ -1,30 +1,3 @@
-
-function formatCurrencyWithCode(
-  amount: number,
-  currencyCode: string = 'USD',
-  locale: string = 'en-US'
-): string {
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: currencyCode,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch (error) {
-    
-    const formatted = amount.toLocaleString('en-US', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    });
-    return `$${formatted}`;
-  }
-}
-
-export function formatCurrency(amount: number, currencyCode: string = 'USD'): string {
-  return formatCurrencyWithCode(amount, currencyCode);
-}
-
 export function formatNumber(amount: number, withDecimals = true): string {
   return amount.toLocaleString('en-US', {
     minimumFractionDigits: withDecimals ? 2 : 0,
@@ -41,16 +14,6 @@ export function formatSmartNumber(value: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: maxDecimals,
   });
-}
-
-
-export function formatAmountWithSymbol(
-  amount: number,
-  symbol: string = '$',
-  withDecimals = true
-): string {
-  const formatted = formatNumber(amount, withDecimals);
-  return `${symbol}${formatted}`;
 }
 
 export function getHealthColor(score: number): string {

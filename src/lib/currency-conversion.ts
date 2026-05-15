@@ -30,7 +30,7 @@ async function getCurrencyAlias(id: number): Promise<string | null> {
 }
 
 
-async function fetchCbrRateRecursive(date: Date, depth = 0): Promise<any | null> {
+async function fetchCbrRateRecursive(date: Date, depth = 0): Promise<{ Valute?: Record<string, { Value: number; Nominal: number }> } | null> {
   if (depth > 14) {
     console.warn(`[currency] CBR depth limit reached (${depth} days back).`);
     return null;
@@ -45,7 +45,7 @@ async function fetchCbrRateRecursive(date: Date, depth = 0): Promise<any | null>
     const res = await fetch(url);
     if (res.ok) {
       console.log(`[currency] Fetched CBR data for ${yyyy}-${mm}-${dd} (depth: ${depth})`);
-      return await res.json();
+      return (await res.json()) as { Valute?: Record<string, { Value: number; Nominal: number }> };
     } else if (res.status === 404) {
       
       const prevDate = new Date(date);
@@ -83,7 +83,7 @@ async function fetchHistoricalRate(
         const rate = data.rates?.[quote];
         if (rate) return Number(rate);
       }
-    } catch (e) {
+    } catch {
       console.warn('[currency] Frankfurter fetch failed, trying fallback...');
     }
   }
@@ -98,7 +98,7 @@ async function fetchHistoricalRate(
     
     const getRubValue = (curr: string) => {
       if (curr === 'RUB') return 1;
-      const valute = cbrData.Valute[curr];
+      const valute = cbrData.Valute?.[curr];
       if (!valute) return null;
       return valute.Value / valute.Nominal;
     };
@@ -385,60 +385,5 @@ export async function convertAmount(
   const converted = new Prisma.Decimal(amount).mul(new Prisma.Decimal(rate));
   return Number(converted.toString());
 }
-
-
-const CONVERSION_CONCURRENCY_LIMIT = 3;
-
-export async function convertTransactionsToTarget<T extends { amount: number; currencyId: number; date: Date }>(
-  transactions: T[],
-  targetCurrencyId: number,
-): Promise<(T & { convertedAmount: number })[]> {
-  const results: (T & { convertedAmount: number })[] = [];
-  for (let i = 0; i < transactions.length; i += CONVERSION_CONCURRENCY_LIMIT) {
-    const chunk = transactions.slice(i, i + CONVERSION_CONCURRENCY_LIMIT);
-    const converted = await Promise.all(
-      chunk.map(async (t) => {
-        const convertedAmount = await convertAmount(
-          t.amount,
-          t.currencyId,
-          targetCurrencyId,
-          t.date,
-        );
-        return { ...t, convertedAmount };
-      }),
-    );
-    results.push(...converted);
-  }
-  return results;
-}
-
-
-export async function convertTransactionsToTargetSimple<T extends { amount: number; currencyId: number }>(
-  transactions: T[],
-  targetCurrencyId: number,
-): Promise<(T & { convertedAmount: number })[]> {
-  
-  const today = new Date();
-
-  const results: (T & { convertedAmount: number })[] = [];
-  for (let i = 0; i < transactions.length; i += CONVERSION_CONCURRENCY_LIMIT) {
-    const chunk = transactions.slice(i, i + CONVERSION_CONCURRENCY_LIMIT);
-    const converted = await Promise.all(
-      chunk.map(async (t) => {
-        const convertedAmount = await convertAmount(
-          t.amount,
-          t.currencyId,
-          targetCurrencyId,
-          today, 
-        );
-        return { ...t, convertedAmount };
-      }),
-    );
-    results.push(...converted);
-  }
-  return results;
-}
-
-
 
 

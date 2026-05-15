@@ -1,5 +1,6 @@
 'use client';
 
+import type { ComponentType, CSSProperties } from 'react';
 import Card from '@/components/ui/Card';
 import DonutChart from '@/components/ui/DonutChart';
 import { Investment } from '@/types/dashboard';
@@ -26,7 +27,7 @@ const TYPE_NAMES: Record<string, string> = {
     other: 'Others',
 };
 
-const TYPE_ICONS: Record<string, any> = {
+const TYPE_ICONS: Record<string, ComponentType<{ width?: number; height?: number; strokeWidth?: number; style?: CSSProperties }>> = {
     crypto: BitcoinCircle,
     stock: Cash,
     property: Neighbourhood,

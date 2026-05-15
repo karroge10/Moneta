@@ -71,7 +71,7 @@ export default function Features() {
   );
 }
 
-function FeatureCard({ icon, title, description, imageSrc, imageAlt, color }: { 
+function FeatureCard({ icon, title, description, imageSrc, imageAlt, color: _color }: { 
   icon: React.ReactNode; 
   title: string; 
   description: string; 

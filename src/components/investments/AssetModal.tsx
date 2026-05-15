@@ -13,6 +13,14 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 import { getAssetColor, getDerivedAssetIcon } from '@/lib/asset-utils';
 import { formatSmartNumber } from '@/lib/utils';
 import { useToast } from '@/contexts/ToastContext';
+import type {
+    AssetDetailTransactionRow,
+    AssetUpdatePayload,
+    InvestmentForAddTransaction,
+    InvestmentHistoryApiRow,
+    InvestmentTransactionEditState,
+    PriceHistoryPoint,
+} from '@/types/investments';
 
 import LineChart from '@/components/ui/LineChart';
 
@@ -20,7 +28,7 @@ interface AssetModalProps {
     isOpen: boolean;
     onClose: () => void;
     assetId: string;
-    onAddTransaction: (asset: any) => void;
+    onAddTransaction: (asset: InvestmentForAddTransaction) => void;
     onSuccess?: () => void;
 }
 
@@ -34,11 +42,11 @@ const fetcher = (url: string) => fetch(url).then(async (r) => {
 
 export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction, onSuccess }: AssetModalProps) {
     const { currency } = useCurrency();
-    const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
+    const [editingTransaction, setEditingTransaction] = useState<InvestmentTransactionEditState | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [showDeleteAssetConfirm, setShowDeleteAssetConfirm] = useState(false);
-    const [transactionToDelete, setTransactionToDelete] = useState<any | null>(null);
+    const [transactionToDelete, setTransactionToDelete] = useState<Pick<AssetDetailTransactionRow, 'id' | 'investmentType' | 'quantity'> | null>(null);
     const [isDeletingTransaction, setIsDeletingTransaction] = useState(false);
     const { addToast } = useToast();
 
@@ -50,7 +58,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
 
     
     const [historyRange, setHistoryRange] = useState('1M');
-    const [historyData, setHistoryData] = useState<any[]>([]);
+    const [historyData, setHistoryData] = useState<PriceHistoryPoint[]>([]);
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
     const { data, error, isLoading, isValidating, mutate: mutateAsset } = useSWR(
@@ -75,7 +83,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                     if (res.ok) {
                         const json = await res.json();
                         if (json.history) {
-                             setHistoryData(json.history.map((h: any) => ({ date: h.date, value: h.price })));
+                             setHistoryData(json.history.map((h: InvestmentHistoryApiRow) => ({ date: h.date, value: h.price })));
                         } else {
                             setHistoryData([]);
                         }
@@ -102,7 +110,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
         }
     }, [asset]);
 
-    const handleUpdateAsset = async (updates: any) => {
+    const handleUpdateAsset = async (updates: AssetUpdatePayload) => {
         try {
             setIsSaving(true);
             const res = await fetch(`/api/investments/${assetId}`, {
@@ -148,7 +156,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
         let totalQuantity = 0;
         let totalInvested = 0;
 
-        asset.transactions.forEach((tx: any) => {
+        asset.transactions.forEach((tx: AssetDetailTransactionRow) => {
             const qty = Number(tx.quantity);
             const price = Number(tx.pricePerUnit);
             if (tx.investmentType === 'buy') {
@@ -169,6 +177,8 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
 
         return { totalInvested, currentValue, unrealizedPnL, roi, totalQuantity };
     }, [asset]);
+
+    const memoizedPortfolio = useMemo(() => (asset ? [asset] : []), [asset]);
 
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
@@ -192,9 +202,11 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
 
     if (!isOpen) return null;
 
-    const handleEditTransaction = (tx: any) => {
+    const handleEditTransaction = (tx: AssetDetailTransactionRow) => {
         setEditingTransaction({
             ...tx,
+            quantity: Number(tx.quantity),
+            pricePerUnit: Number(tx.pricePerUnit),
             assetName: asset?.name,
             assetTicker: asset?.ticker,
             icon: asset?.icon,
@@ -232,7 +244,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
         }
     };
 
-    const handleSaveTransaction = async (txData: any) => {
+    const handleSaveTransaction = async (txData: InvestmentTransactionEditState) => {
         try {
             setIsSaving(true);
             const res = await fetch('/api/transactions', {
@@ -302,8 +314,6 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
     };
 
     const currencySymbol = currency.symbol;
-
-    const memoizedPortfolio = useMemo(() => asset ? [asset] : [], [asset]);
 
     return createPortal(
         <>
@@ -635,7 +645,7 @@ export default function AssetModal({ isOpen, onClose, assetId, onAddTransaction,
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {asset?.transactions?.map((tx: any) => {
+                                                        {asset?.transactions?.map((tx: AssetDetailTransactionRow) => {
                                                             const isBuy = tx.investmentType === 'buy';
                                                             const total = Number(tx.quantity) * Number(tx.pricePerUnit);
                                                             return (

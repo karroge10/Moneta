@@ -44,7 +44,7 @@ function formatDayWithMonth(date: Date): string {
 }
 
 
-function getIconForCategory(categoryName: string | null, merchantName?: string): string {
+function getIconForCategory(categoryName: string | null, _merchantName?: string): string {
   if (categoryName) {
     const iconMap: Record<string, string> = {
       'Rent': 'City',
@@ -165,24 +165,6 @@ function getComparisonDateRange(period: TimePeriod, now: Date): { start: Date; e
 }
 
 
-function getComparisonLabel(period: TimePeriod): string {
-  switch (period) {
-    case 'This Month':
-      return 'from last month';
-    case 'Last Month':
-      return 'from 2 months ago';
-    case 'This Year':
-      return 'from last year';
-    case 'Last Year':
-      return 'from 2 years ago';
-    case 'All Time':
-      return '';
-    default:
-      return '';
-  }
-}
-
-
 export async function GET(request: NextRequest) {
   try {
     const user = await requireCurrentUserWithLanguage();
@@ -277,7 +259,6 @@ export async function GET(request: NextRequest) {
 
     
     let allTimeTrend = 0;
-    let allTimeAverageTrend = 0;
     if (timePeriod === 'All Time' && selectedPeriodTransactions.length > 0) {
       const monthlyTotals = new Map<string, number>();
       selectedPeriodTransactions.forEach((t) => {
@@ -298,7 +279,6 @@ export async function GET(request: NextRequest) {
             : lastMonthTotal > 0
               ? 100
               : 0;
-        allTimeAverageTrend = allTimeTrend;
       }
     }
 
@@ -336,7 +316,7 @@ export async function GET(request: NextRequest) {
 
     
     const topSourcesArray = Array.from(sourceTotals.entries())
-      .map(([name, data]) => ({
+      .map(([_name, data]) => ({
         name: data.categoryName || data.merchantName,
         amount: data.amount,
         categoryName: data.categoryName,
@@ -466,8 +446,6 @@ export async function GET(request: NextRequest) {
       const numberOfMonths = performanceData.length || 1;
       averageMonthlyIncome = totalIncome / numberOfMonths;
     }
-
-    const comparisonLabel = getComparisonLabel(timePeriod);
 
     
     const firstPerfValue = performanceData.length > 0 ? performanceData[0].value : 0;

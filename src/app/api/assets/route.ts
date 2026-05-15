@@ -1,5 +1,4 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { db } from '@/lib/db';
 import { searchAssets } from '@/lib/assets';
 import { requireCurrentUser } from '@/lib/auth';
 

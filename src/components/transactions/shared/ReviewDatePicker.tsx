@@ -21,7 +21,7 @@ export default function ReviewDatePicker({ value, onChange, disabled = false, pl
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownStyle, setDropdownStyle] = useState<CSSProperties | null>(null);
-  const [openUpward, setOpenUpward] = useState(false);
+  const [, setOpenUpward] = useState(false);
 
   useEffect(() => {
     const inputValue = formatDateToInput(value);

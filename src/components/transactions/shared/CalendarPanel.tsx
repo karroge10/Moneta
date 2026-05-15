@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavArrowLeft, NavArrowRight, NavArrowDown } from 'iconoir-react';
 
-export type CalendarControlAlignment = 'start' | 'center' | 'end';
+type CalendarControlAlignment = 'start' | 'center' | 'end';
 
-export interface CalendarPanelProps {
+interface CalendarPanelProps {
   selectedDate: string;
   currentMonth: Date;
   onChange: (value: string) => void;
@@ -231,8 +231,4 @@ export function CalendarPanel({
     </div>
   );
 }
-
-export default CalendarPanel;
-
-
 

@@ -80,7 +80,7 @@ async function hasGoalDeadlineToken(userId: number, token: string): Promise<bool
 }
 
 
-export async function notifyUpcomingRecurring(userId: number, now: Date): Promise<void> {
+async function notifyUpcomingRecurring(userId: number, now: Date): Promise<void> {
   const todayStart = startOfUtcDay(now);
   const windowEnd = addUtcDays(todayStart, RECURRING_LOOKAHEAD_DAYS);
   
@@ -116,7 +116,7 @@ export async function notifyUpcomingRecurring(userId: number, now: Date): Promis
 }
 
 
-export async function notifyGoalEvents(userId: number, now: Date): Promise<void> {
+async function notifyGoalEvents(userId: number, now: Date): Promise<void> {
   const todayStart = startOfUtcDay(now);
   const deadlineEnd = addUtcDays(todayStart, GOAL_DEADLINE_LOOKAHEAD_DAYS);
   deadlineEnd.setUTCHours(23, 59, 59, 999);

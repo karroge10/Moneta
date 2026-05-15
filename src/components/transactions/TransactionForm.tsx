@@ -94,12 +94,12 @@ export default function TransactionForm({
 
   
   const [dateDropdownStyle, setDateDropdownStyle] = useState<CSSProperties | null>(null);
-  const [dateOpenUpward, setDateOpenUpward] = useState(false);
+  const [, setDateOpenUpward] = useState(false);
 
   const [recurringStartDropdownStyle, setRecurringStartDropdownStyle] = useState<CSSProperties | null>(null);
-  const [recurringStartOpenUpward, setRecurringStartOpenUpward] = useState(false);
+  const [, setRecurringStartOpenUpward] = useState(false);
   const [recurringEndDropdownStyle, setRecurringEndDropdownStyle] = useState<CSSProperties | null>(null);
-  const [recurringEndOpenUpward, setRecurringEndOpenUpward] = useState(false);
+  const [, setRecurringEndOpenUpward] = useState(false);
 
   useEffect(() => {
     

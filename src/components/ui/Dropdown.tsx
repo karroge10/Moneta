@@ -11,7 +11,7 @@ interface DropdownProps {
   iconLeft?: ReactNode;
 }
 
-export default function Dropdown({ label, options, value, onChange, iconLeft }: DropdownProps) {
+export default function Dropdown({ label: _label, options, value, onChange, iconLeft }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 

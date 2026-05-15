@@ -12,7 +12,7 @@ interface ToastProps {
   onClose: () => void;
 }
 
-export default function Toast({ message, type = 'success', duration = 3000, onClose }: ToastProps) {
+function Toast({ message, type = 'success', duration = 3000, onClose }: ToastProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const onCloseRef = useRef(onClose);

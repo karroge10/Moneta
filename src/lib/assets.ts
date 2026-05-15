@@ -1,5 +1,5 @@
 import { db } from './db';
-import { Asset, AssetType, PricingMode, Prisma } from '@prisma/client';
+import { AssetType, PricingMode, Prisma } from '@prisma/client';
 
 export async function searchAssets(query: string, userId?: number) {
     if (!query) return [];
@@ -33,12 +33,6 @@ export async function searchAssets(query: string, userId?: number) {
     });
 }
 
-export async function getAssetById(id: number) {
-    return db.asset.findUnique({
-        where: { id },
-    });
-}
-
 export async function ensureAsset(
     ticker: string | null,
     name: string,
@@ -66,7 +60,7 @@ export async function ensureAsset(
 
     
     if (userId) {
-        const privateQuery: any = {
+        const privateQuery: Prisma.AssetWhereInput = {
             userId,
             assetType,
             name: { equals: name, mode: 'insensitive' }

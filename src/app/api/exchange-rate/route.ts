@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
     try {
-        const user = await requireCurrentUser();
+        await requireCurrentUser();
         const searchParams = request.nextUrl.searchParams;
         const fromId = searchParams.get('from');
         const toId = searchParams.get('to');

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TransactionUploadResponse, UploadedTransaction } from '@/types/dashboard';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { Prisma } from '@prisma/client';
 import { shouldCreateNotification } from '@/lib/notification-settings';
 import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, findMerchantByBaseWords, detectSpecialTransactionType } from '@/lib/merchant';
 
@@ -96,14 +97,16 @@ async function updateJobStatus(
   status: string, 
   progress?: number, 
   
-  result?: any, 
+  result?: unknown, 
   error?: string
 ) {
   try {
     
-    const data: any = { status, updatedAt: new Date() };
+    const data: Prisma.PdfProcessingJobUpdateInput = { status, updatedAt: new Date() };
     if (progress !== undefined) data.progress = progress;
-    if (result !== undefined) data.result = result;
+    if (result !== undefined) {
+      data.result = result === null ? Prisma.JsonNull : (result as Prisma.InputJsonValue);
+    }
     if (error !== undefined) data.error = error;
     if (status === 'completed') data.completedAt = new Date();
 
@@ -222,7 +225,6 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
     const type = tx.amount >= 0 ? 'income' : 'expense';
     
     let categoryId: number | null = null;
-    let matchedCategoryName: string | null = null;
     let skipMerchantMatching = false;
     let matchSource: string | null = null;
 

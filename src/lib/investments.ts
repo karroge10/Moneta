@@ -1,6 +1,6 @@
 import { db } from './db';
-import { Currency, InvestmentType, AssetType, PricingMode } from '@prisma/client';
-import { preloadRatesMap, convertTransactionsWithRatesMap, buildCacheKey } from './currency-conversion';
+import { Currency, AssetType, PricingMode } from '@prisma/client';
+import { preloadRatesMap, buildCacheKey } from './currency-conversion';
 
 export interface PortfolioAsset {
   assetId: number;
@@ -114,12 +114,13 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
 
   
   const assetMap = new Map<number, {
-    asset: any;
+    asset: NonNullable<(typeof transactions)[number]['asset']>;
     txs: typeof transactions;
   }>();
 
   for (const t of transactions) {
     if (!t.investmentAssetId) continue;
+    if (!t.asset) continue;
     if (!assetMap.has(t.investmentAssetId)) {
       assetMap.set(t.investmentAssetId, { asset: t.asset, txs: [] });
     }
@@ -133,7 +134,8 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
   for (const item of assetMap.values()) {
     if (item.asset?.pricingMode === 'live') {
       if (item.asset.assetType === 'crypto') {
-        const id = item.asset.coingeckoId || coingeckoMap[item.asset.ticker];
+        const sym = item.asset.ticker;
+        const id = item.asset.coingeckoId || (sym ? coingeckoMap[sym] : undefined);
         if (id) cryptoIds.push(id);
       } else if (item.asset.assetType === 'stock' && item.asset.ticker) {
         stockTickers.push(item.asset.ticker);
@@ -160,11 +162,11 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
   let globalTotalRealizedPnl = 0;
 
   
-  for (const [assetId, { asset, txs }] of assetMap) {
+  for (const [, { asset, txs }] of assetMap) {
     if (!asset) continue;
 
     
-    let buyLots: { qty: number; costPerUnit: number }[] = [];
+    const buyLots: { qty: number; costPerUnit: number }[] = [];
     let realizedPnl = 0;
     let lastPrice = 0;
 
@@ -248,7 +250,7 @@ export async function getInvestmentsPortfolio(userId: number, targetCurrency: Cu
     portfolioAssets.push({
       assetId: asset.id,
       name: asset.name,
-      ticker: asset.ticker,
+      ticker: asset.ticker ?? '',
       type: asset.assetType,
       quantity: remainingQty,
       avgPrice,

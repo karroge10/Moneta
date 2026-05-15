@@ -39,7 +39,7 @@ export default function PrivacyPage() {
               <ul className="list-disc pl-5 space-y-2">
                 <li><strong>Account Information:</strong> Managed via Clerk (email, name, authentication logs).</li>
                 <li><strong>Financial Data:</strong> Transactions, assets, and goals that you manually input or import via PDF.</li>
-                <li><strong>Usage Data:</strong> Basic technical logs to help us improve the application's performance.</li>
+                <li><strong>Usage Data:</strong> Basic technical logs to help us improve the application&apos;s performance.</li>
               </ul>
             </section>
 

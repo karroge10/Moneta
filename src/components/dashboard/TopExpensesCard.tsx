@@ -48,7 +48,7 @@ export default function TopExpensesCard({
             </div>
             {}
             <div className="flex-1 space-y-3 min-w-0">
-              {expenses.slice(0, limit).map((expense, index) => {
+              {expenses.slice(0, limit).map((expense, _index) => {
                 const Icon = getIcon(expense.icon);
                 return (
                   <div key={expense.id} className="flex items-start gap-3 min-w-0">
@@ -87,7 +87,7 @@ export default function TopExpensesCard({
           <DonutChart data={chartData} />
         </div>
         <div className="space-y-3 mt-4 shrink-0">
-          {expenses.slice(0, limit).map((expense, index) => {
+          {expenses.slice(0, limit).map((expense, _index) => {
             const Icon = getIcon(expense.icon);
             return (
               <div key={expense.id} className="flex items-start gap-3 min-w-0">
