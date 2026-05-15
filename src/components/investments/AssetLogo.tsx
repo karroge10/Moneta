@@ -30,10 +30,11 @@ export default function AssetLogo({ src, size = 20, className = "", style, fallb
         );
     }
 
-    const Icon = getIcon(error && fallback ? fallback : src);
+    const iconName = error && fallback ? fallback : src;
+    const IconComponent = getIcon(iconName);
     return (
         <span className={className} style={style}>
-            <Icon width={size} height={size} strokeWidth={1.5} />
+            {React.createElement(IconComponent, { width: size, height: size, strokeWidth: 1.5 })}
         </span>
     );
 }

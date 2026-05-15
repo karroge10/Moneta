@@ -21,7 +21,7 @@ export default function MobileNavbar({ pageName, timePeriod, onTimePeriodChange,
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const timePeriodOptions: TimePeriod[] = ['This Month', 'This Year', 'All Time'];
-  const { notifications, refresh } = useNotifications(5, true); 
+  const { notifications } = useNotifications(5, true); 
 
   
   useEffect(() => {

@@ -4,6 +4,12 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { mutate } from 'swr';
 import { Investment, PerformanceDataPoint } from '@/types/dashboard';
+import type {
+  InvestmentCreatePayload,
+  InvestmentForAddTransaction,
+  InvestmentRecentActivity,
+  InvestmentTransactionEditState,
+} from '@/types/investments';
 import { Plus, Xmark } from 'iconoir-react';
 import DashboardHeader from '@/components/DashboardHeader';
 import MobileNavbar from '@/components/MobileNavbar';
@@ -49,7 +55,7 @@ interface InvestmentsApiResponse {
     trendText: string;
     data: PerformanceDataPoint[];
   };
-  recentActivities: any[];
+  recentActivities: InvestmentRecentActivity[];
 }
 
 export default function InvestmentsPage() {
@@ -59,15 +65,15 @@ export default function InvestmentsPage() {
   const { addToast } = useToast();
   const [data, setData] = useState<InvestmentsApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
-  const [initialAssetForAdd, setInitialAssetForAdd] = useState<any | null>(null);
+  const [initialAssetForAdd, setInitialAssetForAdd] = useState<InvestmentForAddTransaction | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<InvestmentTransactionEditState | null>(null);
   const [isSavingTx, setIsSavingTx] = useState(false);
   const [isDeletingTx, setIsDeletingTx] = useState(false);
   const [performanceData, setPerformanceData] = useState<PerformanceDataPoint[]>([]);
@@ -154,7 +160,7 @@ export default function InvestmentsPage() {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isAddModalOpen, isSaving]);
 
-  const handleSaveInvestment = async (formData: any) => {
+  const handleSaveInvestment = async (formData: InvestmentCreatePayload) => {
     setIsSaving(true);
     try {
       const res = await fetch('/api/investments', {
@@ -183,7 +189,7 @@ export default function InvestmentsPage() {
     }
   };
 
-  const handleSaveTransaction = async (txData: any) => {
+  const handleSaveTransaction = async (txData: InvestmentTransactionEditState) => {
     try {
       setIsSavingTx(true);
       const res = await fetch('/api/transactions', {
@@ -230,7 +236,7 @@ export default function InvestmentsPage() {
     setSelectedAssetId(investment.id);
   };
 
-  const openAddTransaction = (asset?: any) => {
+  const openAddTransaction = (asset?: InvestmentForAddTransaction) => {
     if (asset) {
       setInitialAssetForAdd(asset);
     } else {
@@ -239,7 +245,7 @@ export default function InvestmentsPage() {
     setAddModalOpen(true);
   };
 
-  const handleTransactionClick = (activity: any) => {
+  const handleTransactionClick = (activity: InvestmentRecentActivity) => {
     setEditingTransaction({
       id: activity.id,
       date: activity.date,
@@ -338,7 +344,7 @@ export default function InvestmentsPage() {
               <div className="flex-1 flex flex-col min-h-0 w-full min-w-0 rounded-3xl border border-[#3a3a3a] overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
                 {data?.recentActivities && data.recentActivities.length > 0 ? (
                   <div className="flex-1 overflow-auto max-h-[400px] p-4 flex flex-col gap-4">
-                    {data.recentActivities.map((activity: any) => (
+                    {data.recentActivities.map((activity) => (
                       <div
                         key={activity.id}
                         className="p-4 rounded-2xl border border-[#3a3a3a] bg-background-secondary cursor-pointer active:scale-[0.98] transition-transform"
@@ -475,7 +481,7 @@ export default function InvestmentsPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {data.recentActivities.map((activity: any) => (
+                            {data.recentActivities.map((activity) => (
                               <tr
                                 key={activity.id}
                                 className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
@@ -526,7 +532,7 @@ export default function InvestmentsPage() {
                       </div>
                       {}
                       <div className="lg:hidden p-4 flex flex-col gap-4 overflow-auto">
-                        {data.recentActivities.map((activity: any) => (
+                        {data.recentActivities.map((activity) => (
                           <div
                             key={activity.id}
                             className="p-4 rounded-2xl border border-[#3a3a3a] bg-background-secondary cursor-pointer active:scale-[0.98] transition-transform"
@@ -690,7 +696,7 @@ export default function InvestmentsPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {data.recentActivities.map((activity: any) => (
+                          {data.recentActivities.map((activity) => (
                             <tr
                               key={activity.id}
                               className="border-t border-[#2A2A2A] cursor-pointer hover:opacity-80 transition-opacity"
@@ -788,7 +794,7 @@ export default function InvestmentsPage() {
             <div className="flex-1 overflow-y-auto">
               <InvestmentForm
                 mode="add"
-                initialAsset={initialAssetForAdd}
+                initialAsset={initialAssetForAdd ?? undefined}
                 onSave={handleSaveInvestment}
                 onCancel={() => setAddModalOpen(false)}
                 currencyOptions={currencyOptions}

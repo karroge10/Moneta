@@ -115,7 +115,7 @@ function UnauthorizedContent() {
             </SignedOut>
             <SignedIn>
               <p className="text-body text-[#E7E4E4] opacity-80 leading-relaxed max-w-md mx-auto">
-                You're already signed in, but you don't have access to this feature. Return to your dashboard.
+                You&apos;re already signed in, but you don&apos;t have access to this feature. Return to your dashboard.
               </p>
             </SignedIn>
           </div>

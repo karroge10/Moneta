@@ -95,6 +95,7 @@ export default function GoalModal({
           <div className={`flex-1 ${isFloatingPanelOpen ? 'overflow-visible' : 'overflow-y-auto'}`}>
             <div className="p-6 pb-8">
               <GoalForm
+                key={goal.id}
                 goal={goal}
                 mode={mode}
                 currencyOptions={currencyOptions}

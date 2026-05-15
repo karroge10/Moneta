@@ -119,7 +119,7 @@ async function main() {
                 date: t.date,
                 currencyId: usd.id,
                 investmentAssetId: t.investmentAssetId,
-                investmentType: t.investmentType as any,
+                investmentType: t.investmentType as import('@prisma/client').InvestmentType,
                 quantity: t.quantity,
                 pricePerUnit: t.pricePerUnit,
             },

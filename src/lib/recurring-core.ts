@@ -79,7 +79,7 @@ export async function getExpenseRecurringItemsSerialized(userId: number, targetC
   return convertTransactionsWithRatesMap(
     validItems.map(item => ({
       ...item,
-      id: item.id as any, 
+      id: String(item.id),
       date: item.nextDueDate!,
       amount: Number(item.amount),
     })),

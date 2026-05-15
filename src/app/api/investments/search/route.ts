@@ -24,7 +24,7 @@ async function searchCoingecko(query: string): Promise<SearchResult[]> {
   if (!res.ok) return [];
   const data = await res.json();
   const coins = (data?.coins || []).slice(0, 6);
-  return coins.map((coin: any) => ({
+  return coins.map((coin: { id: string; name: string; symbol?: string; large?: string; thumb?: string }) => ({
     id: `coingecko:${coin.id}`,
     name: coin.name,
     symbol: coin.symbol?.toUpperCase?.() || coin.id,

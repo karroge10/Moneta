@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Settings, LogOut, Plus, HeadsetHelp, Upload, CalendarCheck } from 'iconoir-react';
+import { Bell, Settings, LogOut, Plus, HeadsetHelp, CalendarCheck } from 'iconoir-react';
 import Link from 'next/link';
 import { useClerk } from '@clerk/nextjs';
 import NotificationsDropdown from '@/components/notifications/NotificationsDropdown';

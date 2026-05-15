@@ -2,9 +2,9 @@ import { NextResponse, NextRequest } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getInvestmentsPortfolio } from '@/lib/investments';
-import { ensureAsset, getAssetById } from '@/lib/assets';
+import { ensureAsset } from '@/lib/assets';
 import { AssetType, PricingMode, InvestmentType } from '@prisma/client';
-import { convertAmount, convertTransactionsWithRatesMap, preloadRatesMap } from '@/lib/currency-conversion';
+import { convertTransactionsWithRatesMap, preloadRatesMap } from '@/lib/currency-conversion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -59,14 +59,15 @@ export async function GET() {
     
     const convertedActivities = convertTransactionsWithRatesMap(activitiesWithPrice, userCurrency.id, ratesMap);
 
-    const recentActivities = convertedActivities.map((t: any) => {
+    const recentActivities = convertedActivities.map((t) => {
       const assetIcon = t.asset?.icon || (
         t.asset?.assetType === 'crypto' ? (
           t.asset?.pricingMode === 'live' && t.asset?.ticker
             ? `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${t.asset.ticker.toLowerCase()}.png`
             : 'BitcoinCircle'
         ) :
-        t.asset?.assetType === 'stock' ? `https://logo.clearbit.com/${t.asset.ticker.split('.')[0]}.us` :
+        t.asset?.assetType === 'stock' && t.asset.ticker
+          ? `https://logo.clearbit.com/${t.asset.ticker.split('.')[0]}.us` :
         t.asset?.assetType === 'property' ? 'Neighbourhood' : 'Reports'
       );
 
@@ -132,7 +133,7 @@ export async function GET() {
 
     
     let totalCostTrend = 0;
-    let totalCostComparisonLabel = 'vs last 30 days';
+    const totalCostComparisonLabel = 'vs last 30 days';
 
     if (snapshots.length > 0) {
         const startSnapshot = snapshots[0];
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
       pricePerUnit,
       date,
       currencyId, 
-      notes,
+      notes: _notes,
       coingeckoId,
       icon,
     } = body;

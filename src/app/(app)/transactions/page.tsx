@@ -31,6 +31,28 @@ function truncateName(name: string, maxLength: number): string {
   return name.substring(0, maxLength) + '...';
 }
 
+type SortColumn = 'date' | 'description' | 'type' | 'amount' | 'category';
+type SortOrder = 'asc' | 'desc';
+
+function TransactionSortIcon({
+  column,
+  sortColumn,
+  sortOrder,
+}: {
+  column: SortColumn;
+  sortColumn: SortColumn;
+  sortOrder: SortOrder;
+}) {
+  if (sortColumn !== column) {
+    return null;
+  }
+  return sortOrder === 'asc' ? (
+    <NavArrowUp width={14} height={14} strokeWidth={2} />
+  ) : (
+    <NavArrowDown width={14} height={14} strokeWidth={2} />
+  );
+}
+
 type ViewMode = 'past' | 'future';
 
 export default function TransactionsPage() {
@@ -73,8 +95,6 @@ export default function TransactionsPage() {
   const [monthFilter, setMonthFilter] = useState<string>(''); 
 
   
-  type SortColumn = 'date' | 'description' | 'type' | 'amount' | 'category';
-  type SortOrder = 'asc' | 'desc';
   const [sortColumn, setSortColumn] = useState<SortColumn>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
@@ -485,22 +505,11 @@ export default function TransactionsPage() {
     setCurrentPage(1);
   };
 
-  const SortIcon = ({ column }: { column: SortColumn }) => {
-    if (sortColumn !== column) {
-      return null;
-    }
-    return sortOrder === 'asc' ? (
-      <NavArrowUp width={14} height={14} strokeWidth={2} />
-    ) : (
-      <NavArrowDown width={14} height={14} strokeWidth={2} />
-    );
-  };
-
   
   const recurringRowsData = useMemo(() => {
     if (viewMode !== 'future') return { rows: [] as RecurringRow[], total: 0, totalPages: 0 };
     const q = debouncedSearchQuery.toLowerCase().trim();
-    let filtered = recurringItems.filter((item) => {
+    const filtered = recurringItems.filter((item) => {
       if (q && !item.name.toLowerCase().includes(q)) return false;
       if (categoryFilter && item.category !== categoryFilter) return false;
       if (typeFilter && item.type !== typeFilter) return false;
@@ -568,7 +577,6 @@ export default function TransactionsPage() {
 
   const displayLoading = viewMode === 'past' ? loading : recurringLoading;
   const displayTotal = viewMode === 'past' ? total : recurringRowsData.total;
-  const displayTotalPages = viewMode === 'past' ? totalPages : recurringRowsData.totalPages;
 
   return (
     <main className="min-h-screen bg-background">
@@ -683,7 +691,7 @@ export default function TransactionsPage() {
                       >
                         <span className="flex items-center gap-1">
                           Date
-                          <SortIcon column="date" />
+                          <TransactionSortIcon column="date" sortColumn={sortColumn} sortOrder={sortOrder} />
                         </span>
                       </th>
                       <th
@@ -692,7 +700,7 @@ export default function TransactionsPage() {
                       >
                         <span className="flex items-center gap-1">
                           Description
-                          <SortIcon column="description" />
+                          <TransactionSortIcon column="description" sortColumn={sortColumn} sortOrder={sortOrder} />
                         </span>
                       </th>
                       <th
@@ -701,7 +709,7 @@ export default function TransactionsPage() {
                       >
                         <span className="flex items-center gap-1">
                           Type
-                          <SortIcon column="type" />
+                          <TransactionSortIcon column="type" sortColumn={sortColumn} sortOrder={sortOrder} />
                         </span>
                       </th>
                       <th
@@ -710,7 +718,7 @@ export default function TransactionsPage() {
                       >
                         <span className="flex items-center gap-1">
                           Amount
-                          <SortIcon column="amount" />
+                          <TransactionSortIcon column="amount" sortColumn={sortColumn} sortOrder={sortOrder} />
                         </span>
                       </th>
                       <th
@@ -719,7 +727,7 @@ export default function TransactionsPage() {
                       >
                         <span className="flex items-center gap-1">
                           Category
-                          <SortIcon column="category" />
+                          <TransactionSortIcon column="category" sortColumn={sortColumn} sortOrder={sortOrder} />
                         </span>
                       </th>
                       {viewMode === 'future' && (
@@ -912,7 +920,7 @@ export default function TransactionsPage() {
                     {viewMode === 'past' ? 'No transactions found.' : 'No upcoming recurring transactions.'}
                   </div>
                 ) : (
-                  (viewMode === 'past' ? transactions : (recurringRowsData.rows as any[])).map((item, idx) => {
+                  (viewMode === 'past' ? transactions : recurringRowsData.rows).map((item, idx) => {
                     const isExpense = item.amount < 0;
                     const absoluteAmount = Math.abs(item.amount);
                     const categoryObj = categories.find(c => c.name === item.category);

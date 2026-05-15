@@ -15,11 +15,11 @@ interface CardProps {
 export default function Card({
   title,
   children,
-  showActions = true,
+  showActions: _showActions = true,
   customHeader,
   href,
   className = '',
-  onAdd,
+  onAdd: _onAdd,
   action,
 }: CardProps) {
   return (

@@ -157,8 +157,10 @@ export default function TypeaheadSelect({
   useEffect(() => {
     if (isOpen) {
       setSearchQuery('');
-      setTimeout(() => searchInputRef.current?.focus(), 0);
+      const id = window.setTimeout(() => searchInputRef.current?.focus(), 0);
+      return () => clearTimeout(id);
     }
+    return undefined;
   }, [isOpen]);
 
   const handleSelect = (optionValue: string) => {

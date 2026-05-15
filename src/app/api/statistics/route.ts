@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';
+import type { Goal } from '@prisma/client';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { calculateGoalProgress } from '@/lib/goalUtils';
@@ -21,9 +22,26 @@ import {
   demographicComparisonSeed,
 } from '@/lib/fake-demographic-cohort';
 
-const VALID_AGE_GROUPS = ['18-24', '25-34', '35-44', '45-54', '55+'] as const;
 const DEMOGRAPHIC_DIMENSIONS = ['age', 'country', 'profession'] as const;
 const MIN_COHORT_SIZE = 1;
+
+type CohortSqlAggRow = {
+  userId: unknown;
+  type: string;
+  currencyId: unknown;
+  month: Date;
+  total: unknown;
+};
+
+type CohortTxWithUserId = {
+  amount: number;
+  currencyId: number;
+  date: Date;
+  type: string;
+  userId: number;
+};
+
+type ConvertedCohortTx = CohortTxWithUserId & { convertedAmount: number };
 
 
 function getAgeGroup(dateOfBirth: Date | null): string | null {
@@ -201,7 +219,6 @@ export async function GET(request: NextRequest) {
 
     const targetCurrencyId = userCurrencyRecord.id;
     console.log(`[stat-prof] Auth & Currency: ${Date.now() - startTotal}ms`);
-    const startFilters = Date.now();
     
     
     const { searchParams } = new URL(request.url);
@@ -243,7 +260,7 @@ export async function GET(request: NextRequest) {
         getInvestmentsPortfolio(user.id, userCurrencyRecord),
       ]);
       
-      let cohortTxByUserId = new Map<number, { amount: number; currencyId: number; date: Date; type: string }[]>();
+      const cohortTxByUserId = new Map<number, { amount: number; currencyId: number; date: Date; type: string }[]>();
       let allTransactionsForRates: { currencyId: number; date: Date }[] = periodTx.map((t) => ({ currencyId: t.currencyId, date: t.date }));
       if (user.dataSharingEnabled === true) {
         const filteredCohort = cohortValueFromUser
@@ -257,7 +274,7 @@ export async function GET(request: NextRequest) {
           : [];
         if (filteredCohort.length >= MIN_COHORT_SIZE) {
           const cohortIds = filteredCohort.map((u) => u.id);
-          const cohortAggs: any[] = await db.$queryRaw`
+          const cohortAggs = await db.$queryRaw<CohortSqlAggRow[]>`
             SELECT "userId", "type", "currencyId", DATE_TRUNC('month', "date") as "month", SUM("amount") as "total"
             FROM "Transaction"
             WHERE "userId" IN (${Prisma.join(cohortIds)}) 
@@ -320,10 +337,10 @@ export async function GET(request: NextRequest) {
           const cohortIds = filteredCohort.map(u => u.id);
           
           const cohortGoalsAll = await db.goal.findMany({ where: { userId: { in: cohortIds } } });
-          const cohortGoalsByUserId = new Map();
+          const cohortGoalsByUserId = new Map<number, Goal[]>();
           for (const g of cohortGoalsAll) {
             if (!cohortGoalsByUserId.has(g.userId)) cohortGoalsByUserId.set(g.userId, []);
-            cohortGoalsByUserId.get(g.userId).push(g);
+            cohortGoalsByUserId.get(g.userId)!.push(g);
           }
           
           const recentSnapshots = await db.portfolioSnapshot.findMany({
@@ -344,7 +361,7 @@ export async function GET(request: NextRequest) {
             const cohortExpenses = withConverted.filter((t) => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
             
             const cohortGoals = cohortGoalsByUserId.get(cohortUser.id) || [];
-            const cgDone = cohortGoals.filter((g: any) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
+            const cgDone = cohortGoals.filter((g: Goal) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
             const goalsSuccessRateC = cohortGoals.length > 0 ? (cgDone / cohortGoals.length) * 100 : 0;
             const portfolioBal = snapshotByUserId.get(cohortUser.id) || 0;
             
@@ -448,7 +465,7 @@ export async function GET(request: NextRequest) {
     }));
 
     
-    let cohortTxByUserId = new Map<number, { amount: number; currencyId: number; date: Date; type: string }[]>();
+    const cohortTxByUserId = new Map<number, { amount: number; currencyId: number; date: Date; type: string }[]>();
     if (user.dataSharingEnabled === true) {
       
       const filteredCohort = cohortValueFromUser
@@ -461,7 +478,7 @@ export async function GET(request: NextRequest) {
         : [];
       if (filteredCohort.length >= MIN_COHORT_SIZE) {
         const cohortIds = filteredCohort.map((u) => u.id);
-        const cohortAggs: any[] = await db.$queryRaw`
+        const cohortAggs = await db.$queryRaw<CohortSqlAggRow[]>`
           SELECT "userId", "type", "currencyId", DATE_TRUNC('month', "date") as "month", SUM("amount") as "total"
           FROM "Transaction"
           WHERE "userId" IN (${Prisma.join(cohortIds)}) 
@@ -645,7 +662,7 @@ export async function GET(request: NextRequest) {
     const portfolioBalance = portfolioSummary.totalValue;
 
     
-    const startComparisonProcessing = Date.now();
+    
     let demographicComparisons: DemographicComparison[] = [];
     let demographicCohortSize = 0;
     let syntheticDemographicCohort = false;
@@ -683,22 +700,22 @@ export async function GET(request: NextRequest) {
             distinct: ['userId'],
           })
         ]);
-        const cohortGoalsByUserId = new Map();
+        const cohortGoalsByUserId = new Map<number, Goal[]>();
         for (const g of cohortGoalsAll) {
           if (!cohortGoalsByUserId.has(g.userId)) cohortGoalsByUserId.set(g.userId, []);
-          cohortGoalsByUserId.get(g.userId).push(g);
+          cohortGoalsByUserId.get(g.userId)!.push(g);
         }
         const snapshotByUserId = new Map(recentSnapshots.map(s => [s.userId, s.totalValue]));
 
         
-        const allCohortRawTx: any[] = [];
+        const allCohortRawTx: CohortTxWithUserId[] = [];
         for (const [uid, txs] of cohortTxByUserId) {
           txs.forEach(t => allCohortRawTx.push({ ...t, userId: uid }));
         }
         const allCohortConverted = convertTransactionsWithRatesMap(allCohortRawTx, targetCurrencyId, ratesMap);
-        const cohortConvertedByUserId = new Map<number, any[]>();
+        const cohortConvertedByUserId = new Map<number, ConvertedCohortTx[]>();
         for (const t of allCohortConverted) {
-          const uid = (t as any).userId;
+          const uid = t.userId;
           if (!cohortConvertedByUserId.has(uid)) cohortConvertedByUserId.set(uid, []);
           cohortConvertedByUserId.get(uid)!.push(t);
         }
@@ -710,7 +727,7 @@ export async function GET(request: NextRequest) {
           const cohortExpenses = userConverted.filter((t) => t.type === 'expense').reduce((s, t) => s + (t.convertedAmount || 0), 0);
           
           const cohortGoals = cohortGoalsByUserId.get(cohortUser.id) || [];
-          const cgDone = cohortGoals.filter((g: any) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
+          const cgDone = cohortGoals.filter((g: Goal) => calculateGoalProgress(g.currentAmount, g.targetAmount) >= 100).length;
           const cohortGoalsRate = cohortGoals.length > 0 ? (cgDone / cohortGoals.length) * 100 : 0;
           const portfolioBal = snapshotByUserId.get(cohortUser.id) || 0;
           

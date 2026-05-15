@@ -38,7 +38,7 @@ export default function NotFound() {
 
         {}
         <p className="text-body text-[#E7E4E4] opacity-80 leading-relaxed max-w-md mx-auto">
-          The page you're looking for doesn't exist, has been moved, or is temporarily unavailable. Let's get you back.
+          The page you&apos;re looking for doesn&apos;t exist, has been moved, or is temporarily unavailable. Let&apos;s get you back.
         </p>
 
         {}

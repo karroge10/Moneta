@@ -8,6 +8,15 @@ interface ExportDataCardProps {
   loading?: boolean;
 }
 
+interface ExportTransactionRow {
+  Date: string;
+  Name: string;
+  Amount: number;
+  Currency: string;
+  Type: string;
+  Category: string;
+}
+
 export default function ExportDataCard({ loading = false }: ExportDataCardProps) {
   const [exporting, setExporting] = useState(false);
 
@@ -20,7 +29,7 @@ export default function ExportDataCard({ loading = false }: ExportDataCardProps)
         throw new Error('Export failed');
       }
 
-      const { data } = await response.json();
+      const { data } = await response.json() as { data: ExportTransactionRow[] };
       
       if (!data || data.length === 0) {
           alert('No transactions found to export.');
@@ -35,7 +44,7 @@ export default function ExportDataCard({ loading = false }: ExportDataCardProps)
       const lastRow = data.length + 1;
       const filterRange = `A1:F${lastRow}`;
 
-      let xml = `
+      const xml = `
         <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http:
         <head>
           <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">
@@ -72,7 +81,7 @@ export default function ExportDataCard({ loading = false }: ExportDataCardProps)
               </tr>
             </thead>
             <tbody>
-              ${data.map((row: any) => `
+              ${data.map((row: ExportTransactionRow) => `
                 <tr>
                   <td class="date-cell">${row.Date}</td>
                   <td>${row.Name}</td>

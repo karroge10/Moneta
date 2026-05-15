@@ -34,7 +34,7 @@ export default function TermsPage() {
             
             <section className="space-y-3">
               <h2 className="text-xl font-bold text-[#E7E4E4] mt-8 mb-4">2. Description of Service</h2>
-              <p>Moneta is a personal financial dashboard provided as a free service. It is designed for informational and tracking purposes only. Moneta does NOT provide financial, investment, legal, or tax advice. All data and calculations are provided "as is" and should be verified independently.</p>
+              <p>Moneta is a personal financial dashboard provided as a free service. It is designed for informational and tracking purposes only. Moneta does NOT provide financial, investment, legal, or tax advice. All data and calculations are provided &quot;as is&quot; and should be verified independently.</p>
             </section>
 
             <section className="space-y-3">
@@ -54,7 +54,7 @@ export default function TermsPage() {
 
             <section className="space-y-3">
               <h2 className="text-xl font-bold text-[#E7E4E4] mt-8 mb-4">6. Limitation of Liability</h2>
-              <p>In no event shall Moneta or its developers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on Moneta's website.</p>
+              <p>In no event shall Moneta or its developers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on Moneta&apos;s website.</p>
             </section>
 
             <section className="space-y-3">

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { Mail, WarningTriangle, InfoCircle, NavArrowDown } from 'iconoir-react';
+import { Mail, WarningTriangle, NavArrowDown } from 'iconoir-react';
 import Card from '@/components/ui/Card';
 
 export default function SendFeedbackCard() {

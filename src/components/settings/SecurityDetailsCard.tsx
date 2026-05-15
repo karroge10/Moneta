@@ -33,12 +33,12 @@ interface SecurityDetailsCardProps {
 
 export default function SecurityDetailsCard({
   settings,
-  onEdit,
-  onChange,
+  onEdit: _onEdit,
+  onChange: _onChange,
   onOpenAccountProfile,
   onDeleteAccount,
   loading = false,
-  disabled = false,
+  disabled: _disabled = false,
 }: SecurityDetailsCardProps) {
   const openProfile = onOpenAccountProfile;
 

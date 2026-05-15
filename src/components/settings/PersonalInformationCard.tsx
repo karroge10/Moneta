@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import SettingsField from './SettingsField';
 import { UserSettings } from '@/types/dashboard';
@@ -52,7 +51,7 @@ interface PersonalInformationCardProps {
 
 export default function PersonalInformationCard({
   settings,
-  onEdit,
+  onEdit: _onEdit,
   onChange,
   incomeTaxRate = null,
   onTaxUpdate,
@@ -64,7 +63,6 @@ export default function PersonalInformationCard({
   disabled = false,
   className = '',
 }: PersonalInformationCardProps) {
-  const ICON_STYLE = { width: 18, height: 18, strokeWidth: 1.5, style: { color: '#B9B9B9' } };
   const countryOptionItems: SelectOptionItem[] = COUNTRIES.map((c) => ({
     value: c.name,
     label: c.name,

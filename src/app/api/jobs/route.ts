@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
-import type { PrismaClient } from '@prisma/client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,11 +12,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(100, Math.max(1, Number.parseInt(searchParams.get('limit') ?? '20', 10)));
 
     
-    const jobs = await (db as PrismaClient & {
-      pdfProcessingJob: {
-        findMany: (args: any) => Promise<any[]>;
-      };
-    }).pdfProcessingJob.findMany({
+    const jobs = await db.pdfProcessingJob.findMany({
       where: {
         userId: user.id,
       },

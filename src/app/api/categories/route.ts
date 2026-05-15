@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const user = await requireCurrentUser();
 
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     });
     
     
-    const sortedCategories: (Category & { type?: string | null })[] = categories.map(({ usageCount, ...cat }) => cat);
+    const sortedCategories: (Category & { type?: string | null })[] = categories.map(({ usageCount: _usageCount, ...cat }) => cat);
     
     return NextResponse.json({ categories: sortedCategories });
   } catch (error) {

@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
     t = mark('auth-and-currency', t);
 
     
-    const [_, batch, financialHealth, investmentsPortfolio] = await Promise.all([
+    const [, batch, financialHealth, investmentsPortfolio] = await Promise.all([
       processDueRecurringItems(user.id, now),
 
       (async () => {

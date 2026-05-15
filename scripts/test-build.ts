@@ -18,13 +18,14 @@ try {
   });
   console.log('\n✅ TypeScript check passed! Build should succeed on Vercel.\n');
   process.exit(0);
-} catch (error: any) {
+} catch (error: unknown) {
   console.error('\n❌ TypeScript check failed:');
-  if (error.stdout) {
-    console.error(error.stdout.toString());
+  const err = error as { stdout?: Buffer; stderr?: Buffer };
+  if (err.stdout) {
+    console.error(err.stdout.toString());
   }
-  if (error.stderr) {
-    console.error(error.stderr.toString());
+  if (err.stderr) {
+    console.error(err.stderr.toString());
   }
   process.exit(1);
 }

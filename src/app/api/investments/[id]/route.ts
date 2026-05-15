@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { Prisma } from '@prisma/client';
 import { getInvestmentsPortfolio } from '@/lib/investments';
 
 export const runtime = 'nodejs';
@@ -98,7 +99,7 @@ export async function PUT(
 
         const { name, ticker, manualPrice } = body;
 
-        const updateData: any = {};
+        const updateData: Prisma.AssetUpdateInput = {};
         if (name !== undefined) updateData.name = name;
         if (ticker !== undefined) updateData.ticker = ticker || null;
         if (manualPrice !== undefined) updateData.manualPrice = manualPrice;

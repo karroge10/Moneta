@@ -3,8 +3,10 @@
 import { XAxis, YAxis, ResponsiveContainer, Tooltip, Area, AreaChart } from 'recharts';
 import { formatNumber } from '@/lib/utils';
 
+type LineDatum = { date: string; value: number };
+
 interface LineChartProps {
-  data: Array<{ date: string; value: number }>;
+  data: LineDatum[];
   noPadding?: boolean;
   currencySymbol?: string;
 }
@@ -54,7 +56,13 @@ const formatXAxisLabel = (dateStr: string) => {
 };
 
 
-const CustomXAxisTick = ({ x, y, payload }: any) => {
+type XAxisTickProps = {
+  x: number;
+  y: number;
+  payload: { value: string };
+};
+
+const CustomXAxisTick = ({ x, y, payload }: XAxisTickProps) => {
   const formatted = formatXAxisLabel(payload.value);
 
   if ('isFullDate' in formatted && formatted.isFullDate) {
@@ -107,7 +115,17 @@ const CustomXAxisTick = ({ x, y, payload }: any) => {
 };
 
 
-const CustomTooltip = ({ active, payload, currencySymbol = '$' }: any) => {
+type TooltipPayloadEntry = { payload: LineDatum };
+
+const CustomTooltip = ({
+  active,
+  payload,
+  currencySymbol = '$',
+}: {
+  active?: boolean;
+  payload?: TooltipPayloadEntry[];
+  currencySymbol?: string;
+}) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const dateStr = data.date;
@@ -166,7 +184,7 @@ export default function LineChart({ data, noPadding = false, currencySymbol = '$
             dataKey="date"
             axisLine={{ stroke: 'rgba(231, 228, 228, 0.3)' }}
             tickLine={{ stroke: 'rgba(231, 228, 228, 0.3)' }}
-            tick={<CustomXAxisTick />}
+            tick={(props) => <CustomXAxisTick {...(props as XAxisTickProps)} />}
             height={54}
             tickMargin={16}
             interval={interval}

@@ -12,7 +12,7 @@ interface UpdateCardProps {
   isUnread?: boolean;
 }
 
-export default function UpdateCard({ date, message, highlight, link, linkHref, isUnread = false }: UpdateCardProps) {
+export default function UpdateCard({ date, message, highlight, link, linkHref, isUnread: _isUnread = false }: UpdateCardProps) {
   return (
     <Card
       title="Update"

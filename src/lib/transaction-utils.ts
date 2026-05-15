@@ -1,9 +1,5 @@
-import { Transaction } from '@/types/dashboard';
 
-
-
-
-export function cleanTransactionName(description: string): string {
+function cleanTransactionName(description: string): string {
   if (!description) return '';
   
   let cleaned = description.trim();
@@ -54,7 +50,7 @@ const GEORGIAN_TO_ENGLISH: Record<string, string> = {
 };
 
 
-export function translateToEnglish(text: string): string {
+function translateToEnglish(text: string): string {
   if (!text) return text;
   
   
@@ -117,53 +113,4 @@ export function formatTransactionName(
   }
   
   return cleaned;
-}
-
-export function groupTransactionsByMonth(transactions: Transaction[]): Record<string, Transaction[]> {
-  const grouped: Record<string, Transaction[]> = {};
-  
-  transactions.forEach(transaction => {
-    
-    const dateMatch = transaction.date.match(/(\w+)\s+\d+[a-z]+\s+(\d+)/);
-    if (dateMatch) {
-      const monthName = dateMatch[1];
-      const year = dateMatch[2];
-      
-      const monthMap: Record<string, string> = {
-        'Jan': 'January', 'Feb': 'February', 'Mar': 'March', 'Apr': 'April',
-        'May': 'May', 'Jun': 'June', 'Jul': 'July', 'Aug': 'August',
-        'Sep': 'September', 'Oct': 'October', 'Nov': 'November', 'Dec': 'December',
-      };
-      
-      const fullMonthName = monthMap[monthName] || monthName;
-      const monthKey = `${fullMonthName} ${year}`;
-      
-      if (!grouped[monthKey]) {
-        grouped[monthKey] = [];
-      }
-      grouped[monthKey].push(transaction);
-    }
-  });
-  
-  return Object.fromEntries(
-    Object.entries(grouped).sort((a, b) => {
-      return new Date(b[0]).getTime() - new Date(a[0]).getTime();
-    })
-  );
-}
-
-export function filterTransactions(
-  transactions: Transaction[],
-  searchQuery: string,
-  categoryFilter: string | null
-): Transaction[] {
-  return transactions.filter(transaction => {
-    const matchesSearch = !searchQuery || 
-      transaction.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      transaction.date.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = !categoryFilter || transaction.category === categoryFilter;
-    
-    return matchesSearch && matchesCategory;
-  });
 }

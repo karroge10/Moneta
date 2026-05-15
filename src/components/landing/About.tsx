@@ -12,7 +12,7 @@ export default function About() {
               A new standard for<br/>your financial life
             </h2>
             <p className="text-body text-[#E7E4E4] opacity-70 text-lg leading-relaxed max-w-md mx-auto md:mx-0">
-              Moneta was engineered to solve a clear problem: financial apps are often cluttered and designed to sell user data. Managing your money shouldn't be a chore.
+              Moneta was engineered to solve a clear problem: financial apps are often cluttered and designed to sell user data. Managing your money shouldn&apos;t be a chore.
             </p>
           </div>
           

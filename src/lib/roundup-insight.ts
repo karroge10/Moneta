@@ -2,7 +2,7 @@ import { unstable_cache } from 'next/cache';
 
 import type { PortfolioAsset } from '@/lib/investments';
 
-export const ROUNDUP_RATE = 0.01;
+const ROUNDUP_RATE = 0.01;
 
 /** How long we reuse the same 1-year return numbers (per asset) across all users. */
 const RETURN_CACHE_REVALIDATE_SEC = 86_400;
@@ -34,7 +34,7 @@ const TICKER_TO_COINGECKO: Record<string, string> = {
   LTC: 'litecoin',
 };
 
-export interface YearAgoBestDto {
+interface YearAgoBestDto {
   label: string;
   ticker: string;
   /** Total USD return over ~past year (e.g. 0.25 = +25%). */
@@ -120,7 +120,7 @@ const getCachedYahoo1yReturn = unstable_cache(
   { revalidate: RETURN_CACHE_REVALIDATE_SEC },
 );
 
-export function portfolioCryptoBenchmarks(assets: PortfolioAsset[]): { coingeckoId: string; label: string; ticker: string }[] {
+function portfolioCryptoBenchmarks(assets: PortfolioAsset[]): { coingeckoId: string; label: string; ticker: string }[] {
   const out: { coingeckoId: string; label: string; ticker: string }[] = [];
   const seen = new Set<string>();
   for (const a of assets) {
@@ -137,7 +137,7 @@ export function portfolioCryptoBenchmarks(assets: PortfolioAsset[]): { coingecko
   return out;
 }
 
-export function portfolioStockBenchmarks(assets: PortfolioAsset[]): { yahooSymbol: string; label: string; ticker: string }[] {
+function portfolioStockBenchmarks(assets: PortfolioAsset[]): { yahooSymbol: string; label: string; ticker: string }[] {
   const out: { yahooSymbol: string; label: string; ticker: string }[] = [];
   const seen = new Set<string>();
   for (const a of assets) {

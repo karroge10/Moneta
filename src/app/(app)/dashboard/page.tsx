@@ -18,7 +18,6 @@ import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
 import GoalModal from '@/components/goals/GoalModal';
 import TransactionModal from '@/components/transactions/TransactionModal';
 import Confetti from '@/components/ui/Confetti';
-import { getGoalStatus } from '@/lib/goalUtils';
 import { buildTransactionFromRecurring } from '@/lib/recurring-utils';
 import { formatDateForDisplay } from '@/lib/dateFormatting';
 import { Transaction, TimePeriod, Goal, Bill } from '@/types/dashboard';

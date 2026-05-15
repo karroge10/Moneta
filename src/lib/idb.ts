@@ -66,23 +66,3 @@ export async function idbSet<T>(key: string, value: T): Promise<void> {
     console.warn('[idb] set failed', err);
   }
 }
-
-export async function idbDelete(key: string): Promise<void> {
-  try {
-    const db = await getDB();
-    if (!db) return;
-
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.delete(key);
-
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-      tx.onabort = () => reject(tx.error);
-    });
-  } catch (err) {
-    console.warn('[idb] delete failed', err);
-  }
-}
-
