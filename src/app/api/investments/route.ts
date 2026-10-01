@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { moneyToNumber } from '@/lib/money';
 import { getInvestmentsPortfolio } from '@/lib/investments';
 import { ensureAsset } from '@/lib/assets';
 import { AssetType, PricingMode, InvestmentType } from '@prisma/client';
@@ -124,9 +125,9 @@ export async function GET() {
 
     const graphData = snapshots.map(s => ({
         date: s.timestamp.toISOString().split('T')[0], 
-        value: s.totalValue,
-        cost: s.totalCost,
-        pnl: s.totalPnl
+        value: moneyToNumber(s.totalValue),
+        cost: moneyToNumber(s.totalCost),
+        pnl: moneyToNumber(s.totalPnl)
     }));
 
     
@@ -137,7 +138,7 @@ export async function GET() {
 
     if (snapshots.length > 0) {
         const startSnapshot = snapshots[0];
-        const prevTotalCost = startSnapshot.totalCost || 0;
+        const prevTotalCost = moneyToNumber(startSnapshot.totalCost);
         
         if (prevTotalCost > 0) {
             const diff = summary.totalCost - prevTotalCost;

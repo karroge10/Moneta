@@ -4,7 +4,8 @@ import { db } from '@/lib/db';
 import { Transaction as TransactionType } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
 import { convertAmount, convertTransactionsWithRatesMap, preloadRatesMap } from '@/lib/currency-conversion';
-import type { InvestmentType, FrequencyUnit } from '@prisma/client';
+import { Prisma, type InvestmentType, type FrequencyUnit } from '@prisma/client';
+import { moneyToNumber, parseMoney } from '@/lib/money';
 
 interface TransactionUpsertBody {
   name?: string;
@@ -217,7 +218,8 @@ export async function GET(request: NextRequest) {
     const transactions: TransactionType[] = transactionsWithConverted.map((t) => {
       
       const fullName = formatTransactionName(t.description, userLanguageAlias, true);
-      const originalSignedAmount = t.type === 'expense' ? -t.amount : t.amount;
+      const originalAmount = moneyToNumber(t.amount);
+      const originalSignedAmount = t.type === 'expense' ? -originalAmount : originalAmount;
       const convertedSignedAmount = t.type === 'expense' ? -t.convertedAmount : t.convertedAmount;
 
       return {
@@ -277,12 +279,14 @@ async function createRecurringFromPayload(params: {
   const nextDueDate = startDate;
   const endDate = endDateStr ? new Date(endDateStr) : undefined;
 
+  const recurringAmount = parseMoney(body.amount) ?? new Prisma.Decimal(0);
+
   await db.recurringTransaction.create({
     data: {
       userId,
       type,
       name: body.name ?? '',
-      amount: Math.abs(Number(body.amount ?? 0)),
+      amount: recurringAmount.abs(),
       currencyId,
       categoryId,
       startDate,
@@ -307,9 +311,10 @@ export async function POST(request: NextRequest) {
       currencyId?: number;
     };
 
-    const { name, date, amount, category, currencyId: requestCurrencyId } = body;
+    const { name, date, category, currencyId: requestCurrencyId } = body;
+    const amount = parseMoney(body.amount);
 
-    if (!name || !date || amount === undefined) {
+    if (!name || !date || amount === null) {
       return NextResponse.json(
         { error: 'Missing required fields: name, date, amount' },
         { status: 400 }
@@ -337,8 +342,8 @@ export async function POST(request: NextRequest) {
     });
 
     
-    const type = amount >= 0 ? 'income' : 'expense';
-    const absoluteAmount = Math.abs(amount);
+    const type = amount.gte(0) ? 'income' : 'expense';
+    const absoluteAmount = amount.abs();
 
     
     let transactionDate: Date;
@@ -425,7 +430,8 @@ export async function POST(request: NextRequest) {
     
     if (newTransaction) {
       
-      const signedAmount = newTransaction.type === 'expense' ? -newTransaction.amount : newTransaction.amount;
+      const newAmount = moneyToNumber(newTransaction.amount);
+      const signedAmount = newTransaction.type === 'expense' ? -newAmount : newAmount;
 
       const transaction: TransactionType = {
         id: newTransaction.id.toString(),
@@ -477,9 +483,10 @@ export async function PUT(request: NextRequest) {
       pricePerUnit?: number;
     };
 
-    const { id, name, date, amount, category, currencyId, investmentType, quantity, pricePerUnit } = body;
+    const { id, name, date, category, currencyId, investmentType, quantity, pricePerUnit } = body;
+    const amount = parseMoney(body.amount);
 
-    if (!id || !name || !date || amount === undefined) {
+    if (!id || !name || !date || amount === null) {
       return NextResponse.json(
         { error: 'Missing required fields: id, name, date, amount' },
         { status: 400 }
@@ -502,8 +509,8 @@ export async function PUT(request: NextRequest) {
     }
 
     
-    const type = amount >= 0 ? 'income' : 'expense';
-    const absoluteAmount = Math.abs(amount);
+    const type = amount.gte(0) ? 'income' : 'expense';
+    const absoluteAmount = amount.abs();
 
     
     let transactionDate: Date;
@@ -649,7 +656,8 @@ export async function PUT(request: NextRequest) {
     }
 
     
-    const signedUpdatedAmount = updatedTransaction.type === 'expense' ? -updatedTransaction.amount : updatedTransaction.amount;
+    const updatedAmount = moneyToNumber(updatedTransaction.amount);
+    const signedUpdatedAmount = updatedTransaction.type === 'expense' ? -updatedAmount : updatedAmount;
 
     
     const userCurrencyRecord = user.currencyId

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { moneyToNumber } from '@/lib/money';
 import { currentUser } from '@clerk/nextjs/server';
 
 export const runtime = 'nodejs';
@@ -39,7 +40,7 @@ export async function GET(_request: NextRequest) {
       data: transactions.map(t => ({
         Date: new Date(t.date).toLocaleDateString(),
         Name: t.description || 'Transaction',
-        Amount: t.amount,
+        Amount: moneyToNumber(t.amount),
         Currency: t.currency.alias,
         Type: t.type,
         Category: t.category?.name || 'Uncategorized',

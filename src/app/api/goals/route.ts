@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { calculateGoalProgress } from '@/lib/goalUtils';
+import { moneyToNumber, parseMoney, type MoneyValue } from '@/lib/money';
 import { Goal } from '@/types/dashboard';
 
 export const runtime = 'nodejs';
@@ -59,9 +60,7 @@ export async function GET(_request: NextRequest) {
       id: goal.id.toString(),
       name: goal.name,
       targetDate: formatDate(goal.targetDate),
-      targetAmount: goal.targetAmount,
-      currentAmount: goal.currentAmount,
-      progress: calculateGoalProgress(goal.currentAmount, goal.targetAmount),
+      ...goalAmountsForResponse(goal),
       currencyId: goal.currencyId ?? undefined,
       createdAt: goal.createdAt.toISOString(),
       updatedAt: goal.updatedAt.toISOString(),
@@ -83,24 +82,25 @@ export async function POST(request: NextRequest) {
     const user = await requireCurrentUser();
     const body = await request.json();
     
-    const { name, targetDate, targetAmount, currentAmount, currencyId } = body;
+    const { name, targetDate, currencyId } = body;
+    const targetAmount = parseMoney(body.targetAmount);
+    const initialCurrentAmount = parseMoney(body.currentAmount ?? 0);
     
-    if (!name || !targetDate || targetAmount === undefined) {
+    if (!name || !targetDate || targetAmount === null || initialCurrentAmount === null) {
       return NextResponse.json(
         { error: 'Missing required fields: name, targetDate, targetAmount' },
         { status: 400 }
       );
     }
     
-    if (targetAmount <= 0) {
+    if (targetAmount.lte(0)) {
       return NextResponse.json(
         { error: 'Target amount must be greater than 0' },
         { status: 400 }
       );
     }
     
-    const initialCurrentAmount = currentAmount ?? 0;
-    if (initialCurrentAmount < 0) {
+    if (initialCurrentAmount.lt(0)) {
       return NextResponse.json(
         { error: 'Current amount cannot be negative' },
         { status: 400 }
@@ -136,9 +136,7 @@ export async function POST(request: NextRequest) {
       id: newGoal.id.toString(),
       name: newGoal.name,
       targetDate: formatDate(newGoal.targetDate),
-      targetAmount: newGoal.targetAmount,
-      currentAmount: newGoal.currentAmount,
-      progress: calculateGoalProgress(newGoal.currentAmount, newGoal.targetAmount),
+      ...goalAmountsForResponse(newGoal),
       currencyId: newGoal.currencyId ?? undefined,
     };
     
@@ -158,23 +156,25 @@ export async function PUT(request: NextRequest) {
     const user = await requireCurrentUser();
     const body = await request.json();
     
-    const { id, name, targetDate, targetAmount, currentAmount, currencyId } = body;
+    const { id, name, targetDate, currencyId } = body;
+    const targetAmount = parseMoney(body.targetAmount);
+    const currentAmount = parseMoney(body.currentAmount);
     
-    if (!id || !name || !targetDate || targetAmount === undefined || currentAmount === undefined) {
+    if (!id || !name || !targetDate || targetAmount === null || currentAmount === null) {
       return NextResponse.json(
         { error: 'Missing required fields: id, name, targetDate, targetAmount, currentAmount' },
         { status: 400 }
       );
     }
     
-    if (targetAmount <= 0) {
+    if (targetAmount.lte(0)) {
       return NextResponse.json(
         { error: 'Target amount must be greater than 0' },
         { status: 400 }
       );
     }
     
-    if (currentAmount < 0) {
+    if (currentAmount.lt(0)) {
       return NextResponse.json(
         { error: 'Current amount cannot be negative' },
         { status: 400 }
@@ -227,9 +227,7 @@ export async function PUT(request: NextRequest) {
       id: updatedGoal.id.toString(),
       name: updatedGoal.name,
       targetDate: formatDate(updatedGoal.targetDate),
-      targetAmount: updatedGoal.targetAmount,
-      currentAmount: updatedGoal.currentAmount,
-      progress: calculateGoalProgress(updatedGoal.currentAmount, updatedGoal.targetAmount),
+      ...goalAmountsForResponse(updatedGoal),
       currencyId: updatedGoal.currencyId ?? undefined,
     };
     
@@ -289,3 +287,13 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
+
+function goalAmountsForResponse(goal: { targetAmount: MoneyValue; currentAmount: MoneyValue }) {
+  const targetAmount = moneyToNumber(goal.targetAmount);
+  const currentAmount = moneyToNumber(goal.currentAmount);
+  return {
+    targetAmount,
+    currentAmount,
+    progress: calculateGoalProgress(currentAmount, targetAmount),
+  };
+}

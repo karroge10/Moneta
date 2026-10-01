@@ -176,8 +176,8 @@ async function main() {
   });
   let goalDeadlineCandidates = 0;
   for (const g of goals) {
-    if (g.targetAmount <= 0) continue;
-    const pct = Math.min(100, (g.currentAmount / g.targetAmount) * 100);
+    if (g.targetAmount.lte(0)) continue;
+    const pct = Math.min(100, g.currentAmount.div(g.targetAmount).mul(100).toNumber());
     if (pct >= 100) continue;
     if (g.targetDate >= todayStart && g.targetDate <= goalWindowEnd) goalDeadlineCandidates++;
   }
