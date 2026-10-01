@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TransactionUploadResponse, UploadedTransaction } from '@/types/dashboard';
 import { requireCurrentUser } from '@/lib/auth';
+import { checkPdfImportAllowed } from '@/lib/billing/entitlements';
 import { db } from '@/lib/db';
 import { Prisma } from '@prisma/client';
 import { shouldCreateNotification } from '@/lib/notification-settings';
@@ -360,6 +361,18 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
 export async function POST(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
+
+    const importAllowance = await checkPdfImportAllowed(user.id);
+    if (!importAllowance.allowed) {
+      return NextResponse.json(
+        {
+          error: `Free plan includes ${importAllowance.limit} PDF imports per month. Upgrade to Premium in Settings for unlimited imports.`,
+          code: 'PDF_IMPORT_LIMIT',
+        },
+        { status: 402 },
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file');
 

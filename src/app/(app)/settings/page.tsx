@@ -12,6 +12,7 @@ import SecurityDetailsCard from '@/components/settings/SecurityDetailsCard';
 
 import DataSharingCard from '@/components/settings/DataSharingCard';
 import ExportDataCard from '@/components/settings/ExportDataCard';
+import PlanCard from '@/components/settings/PlanCard';
 import { ToastContainer, type ToastType } from '@/components/ui/Toast';
 import { useCurrency } from '@/hooks/useCurrency';
 
@@ -277,6 +278,10 @@ export default function SettingsPage() {
               <ExportDataCard loading={preferencesLoading} />
             </div>
           </div>
+        </div>
+
+        <div className="w-full">
+          <PlanCard enabled={authReady} />
         </div>
 
         {}

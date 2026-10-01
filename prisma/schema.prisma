@@ -25,6 +25,9 @@ model User {
   dataSharingEnabled Boolean? @default(false)
   incomeTaxRate    Float?  // Percentage (e.g., 25.0 for 25%). null = disabled
 
+  // Billing (Stripe, test mode only)
+  stripeCustomerId String? @unique
+
   // Relations
   language    Language?    @relation(fields: [languageId], references: [id])
   currency    Currency?    @relation(fields: [currencyId], references: [id])
@@ -39,6 +42,59 @@ model User {
   portfolioSnapshots PortfolioSnapshot[]
   assets           Asset[]
   learningLessonProgress LearningLessonProgress[]
+  subscription     Subscription?
+  payments         Payment[]
+}
+
+// Billing: our copy of the user's Stripe subscription, kept in sync by the webhook.
+// One row per user; a new subscription after cancelling replaces the old one.
+model Subscription {
+  id                   Int       @id @default(autoincrement())
+  userId               Int       @unique
+  stripeSubscriptionId String    @unique
+  stripePriceId        String
+  // Mirrors Stripe's status: active | trialing | past_due | unpaid | canceled |
+  // incomplete | incomplete_expired | paused. Access is derived from it in lib/billing.
+  status               String
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  canceledAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Billing: one row per Stripe invoice (each subscription charge attempt lands here).
+model Payment {
+  id                   Int      @id @default(autoincrement())
+  userId               Int
+  stripeInvoiceId      String   @unique
+  stripeSubscriptionId String?
+  // Stripe invoice status: paid | open (payment failed, Stripe is retrying) | void | uncollectible
+  status               String
+  // Integer minor units exactly as Stripe sends them (400 = $4.00), with the ISO currency.
+  amountDueMinor       Int
+  amountPaidMinor      Int
+  currency             String
+  attemptCount         Int      @default(0)
+  nextPaymentAttemptAt DateTime? // when Stripe will retry a failed charge (null once paid)
+  hostedInvoiceUrl     String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Billing: every Stripe webhook event we have processed, keyed by Stripe's event id.
+// Stripe delivers at-least-once, so the same event can arrive twice; the primary key
+// makes the second insert fail and we skip it.
+model StripeEvent {
+  id          String   @id // evt_...
+  type        String
+  processedAt DateTime @default(now())
 }
 
 // Learning Center: opening a lesson marks it complete (one row per user per lesson)

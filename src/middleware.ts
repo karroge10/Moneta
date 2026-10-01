@@ -9,7 +9,9 @@ const isPublicRoute = createRouteMatcher([
   "/sign-up(.*)", 
   "/terms(.*)", 
   "/privacy(.*)", 
-  "/api/feedback(.*)"
+  "/api/feedback(.*)",
+  // Stripe calls this without a user session; it is authenticated by its signature instead.
+  "/api/webhooks/stripe"
 ]);
 
 
