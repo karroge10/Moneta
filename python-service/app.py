@@ -25,8 +25,6 @@ if str(REPO_ROOT) not in sys.path:
 from python.process_pdf import (  # noqa: E402
     build_transaction_payload,
     extract_transactions_with_pdfplumber,
-    prefetch_translations,
-    translate_to_english,
 )
 
 logger = logging.getLogger('pdf_service')
@@ -99,21 +97,8 @@ def process_pdf():
                 }), 400
 
             total = len(transactions)
-            logger.info('Starting translation for %d transactions', total)
-            report_progress(job_id, callback_url, 30, 'processing', processed_count=0, total_count=total)
-
-            prefetch_translations(tx.description for tx in transactions)
-            result_transactions = []
-            for index, tx in enumerate(transactions, start=1):
-                translated = translate_to_english(tx.description)
-                tx_payload = build_transaction_payload(tx, translated)
-                result_transactions.append(tx_payload)
-
-                if index % 25 == 0 or index == total:
-                    logger.info('Progress: processed %d/%d transactions', index, total)
-                    current_progress = 30 + int((index / total) * 60)
-                    report_progress(job_id, callback_url, current_progress, 'processing', processed_count=index, total_count=total)
-
+            result_transactions = [build_transaction_payload(tx) for tx in transactions]
+            report_progress(job_id, callback_url, 90, 'processing', processed_count=total, total_count=total)
             logger.info('Completed processing %d transactions', total)
 
             final_result = {

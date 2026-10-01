@@ -5,7 +5,7 @@ The CLI workflow is:
 1. Read the PDF path from argv[1].
 2. Extract transactions with pdfplumber (tables first, then text lines).
    An unreadable PDF yields zero transactions.
-3. Translate descriptions to English. Categorization happens on the Next.js side.
+3. Return descriptions as printed. Translation and categorization happen on the Next.js side.
 4. Emit a JSON payload to stdout that matches TransactionUploadResponse plus metadata.
 """
 
@@ -14,10 +14,7 @@ from __future__ import annotations
 import json
 import re
 import sys
-import threading
-import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -34,10 +31,6 @@ try:
 except ImportError:  # pragma: no cover
     pdfplumber = None  # type: ignore
 
-try:
-    from deep_translator import GoogleTranslator  # type: ignore
-except ImportError:  # pragma: no cover
-    GoogleTranslator = None  # type: ignore
 
 
 DATE_FORMATS: Tuple[str, ...] = (
@@ -104,153 +97,6 @@ class StatementMetadata:
     source: Optional[str] = None
     period_start: Optional[str] = None
     period_end: Optional[str] = None
-
-
-_translation_cache: Dict[str, str] = {}
-_recent_failures: Dict[str, float] = {}
-_translation_lock = threading.Lock()
-_last_translation_at = 0.0
-_translation_paused_until = 0.0
-
-# Google's free endpoint allows about 5 requests per second; stay a little under it.
-TRANSLATION_MIN_INTERVAL_SECONDS = 0.25
-TRANSLATION_WORKERS = 4
-TRANSLATION_ATTEMPTS = 3
-TRANSLATION_RATE_LIMIT_PAUSE_SECONDS = 5.0
-# Whole-statement budget, so an import never stalls on translation; leftovers keep the original text.
-TRANSLATION_BUDGET_SECONDS = 150.0
-TRANSLATION_RETRY_AFTER_SECONDS = 300.0
-TRANSLATION_CACHE_LIMIT = 5000
-_translator: Optional[GoogleTranslator] = None
-
-if GoogleTranslator is not None:
-    try:  # pragma: no cover
-        _translator = GoogleTranslator(source="auto", target="en")
-    except Exception as e:
-        logger.warning("Translator unavailable: %s", e)
-        _translator = None
-
-
-def prefetch_translations(texts: Iterable[str]) -> None:
-    """
-    Translates every distinct description up front, a few at a time in parallel, within
-    TRANSLATION_BUDGET_SECONDS. The per-row translate_to_english calls that follow read the cache.
-    """
-    if _translator is None:
-        return
-    pending = _unique_untranslated(texts)
-    if not pending:
-        return
-    deadline = time.monotonic() + TRANSLATION_BUDGET_SECONDS
-    started = time.monotonic()
-    with ThreadPoolExecutor(max_workers=TRANSLATION_WORKERS) as pool:
-        results = list(pool.map(lambda text: _translate_once(text, deadline), pending))
-    translated_count = sum(1 for result in results if result is not None)
-    logger.info(
-        "Translated %d of %d distinct descriptions in %.1fs",
-        translated_count,
-        len(pending),
-        time.monotonic() - started,
-    )
-
-
-def translate_to_english(text: str) -> str:
-    """Translation of one description; the original text when translation is unavailable."""
-    if not text:
-        return text
-    key = _cache_key(text)
-    cached = _translation_cache.get(key)
-    if cached is not None:
-        return cached
-    deadline = time.monotonic() + TRANSLATION_BUDGET_SECONDS
-    translated = _translate_once(key, deadline)
-    return translated if translated is not None else text
-
-
-def _translate_once(key: str, deadline: float) -> Optional[str]:
-    """
-    Translates and caches one normalized description. Returns None when it could not be
-    translated; that text is then not retried for TRANSLATION_RETRY_AFTER_SECONDS. Failures are
-    never cached as translations, because the cache outlives the request.
-    """
-    if _translator is None or _failed_recently(key):
-        return None
-    for _ in range(TRANSLATION_ATTEMPTS):
-        if not _wait_for_translation_slot(deadline):
-            break
-        try:  # pragma: no cover
-            translated = _translator.translate(key)
-        except Exception as e:  # pragma: no cover
-            if "too many requests" in str(e).lower():
-                _pause_translation()
-                continue
-            logger.warning("Translation failed, keeping original text: %s", e)
-            break
-        result = (translated or "").strip() or key
-        _remember_translation(key, result)
-        return result
-    _recent_failures[key] = time.monotonic() + TRANSLATION_RETRY_AFTER_SECONDS
-    return None
-
-
-def _wait_for_translation_slot(deadline: float) -> bool:
-    """
-    Blocks until the next request may go out: at most one per TRANSLATION_MIN_INTERVAL_SECONDS
-    across all threads, and not during a rate-limit pause. False once the deadline would pass.
-    """
-    global _last_translation_at
-    with _translation_lock:
-        now = time.monotonic()
-        ready_at = max(_last_translation_at + TRANSLATION_MIN_INTERVAL_SECONDS, _translation_paused_until)
-        if ready_at > deadline:
-            return False
-        if ready_at > now:
-            time.sleep(ready_at - now)
-        _last_translation_at = time.monotonic()
-        return True
-
-
-def _pause_translation() -> None:
-    global _translation_paused_until
-    with _translation_lock:
-        pause_until = time.monotonic() + TRANSLATION_RATE_LIMIT_PAUSE_SECONDS
-        if pause_until > _translation_paused_until:
-            _translation_paused_until = pause_until
-            logger.warning("Translation rate-limited; pausing %.0fs", TRANSLATION_RATE_LIMIT_PAUSE_SECONDS)
-
-
-def _failed_recently(key: str) -> bool:
-    retry_at = _recent_failures.get(key)
-    if retry_at is None:
-        return False
-    if time.monotonic() >= retry_at:
-        _recent_failures.pop(key, None)
-        return False
-    return True
-
-
-def _unique_untranslated(texts: Iterable[str]) -> List[str]:
-    seen = set()
-    pending = []
-    for text in texts:
-        cleaned = _cache_key(text or "")
-        if not cleaned or cleaned in seen or cleaned in _translation_cache:
-            continue
-        seen.add(cleaned)
-        pending.append(cleaned)
-    return pending
-
-
-def _cache_key(text: str) -> str:
-    """Descriptions are cached with inner newlines flattened and outer whitespace removed."""
-    return text.replace("\n", " ").strip()
-
-
-def _remember_translation(text: str, translated: str) -> None:
-    if len(_translation_cache) >= TRANSLATION_CACHE_LIMIT:
-        _translation_cache.clear()
-    _translation_cache[text] = translated
-    _recent_failures.pop(text, None)
 
 
 def parse_date(value: str) -> Optional[str]:
@@ -1175,24 +1021,21 @@ def main() -> int:
         },
     }
 
-    total = len(extracted_transactions)
-    prefetch_translations(item.description for item in extracted_transactions)
-    for index, item in enumerate(extracted_transactions, start=1):
-        translated = translate_to_english(item.description)
-        if index % 25 == 0 or index == total:
-            logger.info("Progress: translated %d/%d rows", index, total)
-        payload["transactions"].append(build_transaction_payload(item, translated))
+    payload["transactions"] = [build_transaction_payload(item) for item in extracted_transactions]
 
     print(json.dumps(payload, ensure_ascii=False))
     return 0
 
 
-def build_transaction_payload(item: RawTransaction, translated: str) -> Dict[str, object]:
-    """JSON shape shared by the CLI, app.py and worker.py. Categories are assigned on the Next.js side."""
+def build_transaction_payload(item: RawTransaction) -> Dict[str, object]:
+    """
+    JSON shape shared by the CLI, app.py and worker.py. translatedDescription starts as the printed
+    text: the Next.js side translates Georgian from the user's history and a glossary, then categorizes.
+    """
     return {
         "date": item.date,
         "description": item.description,
-        "translatedDescription": translated,
+        "translatedDescription": item.description,
         "amount": round(float(item.amount), 2),
         "category": None,
         "confidence": 0.0,
