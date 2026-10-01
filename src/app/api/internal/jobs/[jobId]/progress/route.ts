@@ -5,6 +5,7 @@ import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, find
 import { UploadedTransaction } from '@/types/dashboard';
 import { JobStatus, Prisma } from '@prisma/client';
 import { verifyInternalSecret } from '@/lib/api-errors';
+import { fillMissingTranslations } from '@/lib/statement-translation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -80,7 +81,8 @@ export async function POST(
           return NextResponse.json({ error: 'Job not found' }, { status: 404 });
         }
         
-        result.transactions = await analyzeCategorization(result.transactions, job.userId);
+        const translated = await fillMissingTranslations(job.userId, result.transactions as UploadedTransaction[]);
+        result.transactions = await analyzeCategorization(translated, job.userId);
         console.log(`[job-progress] Categorization complete`);
       }
       updateData.result = result;

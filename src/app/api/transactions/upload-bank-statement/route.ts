@@ -3,6 +3,7 @@ import { TransactionUploadResponse, UploadedTransaction } from '@/types/dashboar
 import { requireCurrentUser } from '@/lib/auth';
 import { errorResponse } from '@/lib/api-errors';
 import { checkPdfImportAllowed } from '@/lib/billing/entitlements';
+import { fillMissingTranslations } from '@/lib/statement-translation';
 import { db } from '@/lib/db';
 import { JobStatus, Prisma } from '@prisma/client';
 import { shouldCreateNotification } from '@/lib/notification-settings';
@@ -156,22 +157,12 @@ async function processPdfInBackground(
     const result = await response.json() as TransactionUploadResponse;
     
     
-    if (result.transactions && result.transactions.length === 3) {
-      const sampleDescriptions = ['Sample Subscription', 'Coffee Shop', 'Salary'];
-      const isSampleData = result.transactions.every(tx => 
-        sampleDescriptions.some(sample => tx.description.includes(sample))
-      );
-      
-      if (isSampleData) {
-        await updateJobStatus(jobId, 'failed', 0, undefined, 'Failed to extract transactions from PDF. Structure mismatch.');
-        return;
-      }
-    }
 
     
     let finalTransactions = result.transactions || [];
     if (finalTransactions.length > 0) {
-      finalTransactions = await analyzeCategorization(finalTransactions, userId);
+      const translated = await fillMissingTranslations(userId, finalTransactions);
+      finalTransactions = await analyzeCategorization(translated, userId);
     }
 
     
