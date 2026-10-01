@@ -5,7 +5,7 @@ import { getStripe } from './stripe';
  * Returns the user's Stripe customer id, creating the customer on first use.
  *
  * Two layers stop duplicate customers:
- *   - Idempotency key "customer:<userId>": if this call times out after Stripe created the
+ *   - Idempotency key "customer:<env>:<userId>": if this call times out after Stripe created the
  *     customer and we retry (or two requests race), Stripe returns the same customer
  *     instead of making a second one. Keys are remembered by Stripe for at least 24 hours.
  *   - The DB write only fills an empty stripeCustomerId, so a racing request can't
@@ -14,9 +14,13 @@ import { getStripe } from './stripe';
 export async function ensureStripeCustomer(user: { id: number; stripeCustomerId: string | null }): Promise<string> {
   if (user.stripeCustomerId) return user.stripeCustomerId;
 
+  // The key must be unique across everything sharing this Stripe account. Local dev and
+  // production share one sandbox and have overlapping user ids, so the environment is
+  // part of the key; otherwise local user 1 and production user 1 get the same customer.
+  const environment = process.env.VERCEL_ENV ?? 'local';
   const customer = await getStripe().customers.create(
-    { metadata: { userId: String(user.id) } },
-    { idempotencyKey: `customer:${user.id}` },
+    { metadata: { userId: String(user.id), environment } },
+    { idempotencyKey: `customer:${environment}:${user.id}` },
   );
 
   await db.user.updateMany({
