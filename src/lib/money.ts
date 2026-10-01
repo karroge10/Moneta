@@ -13,18 +13,20 @@ import { Prisma } from '@prisma/client';
 export type MoneyValue = Prisma.Decimal | number | string;
 
 /** Matches @db.Decimal(19, 4) in prisma/schema.prisma. */
-export const MONEY_SCALE = 4;
+const MONEY_SCALE = 4;
 
 export function parseMoney(value: unknown): Prisma.Decimal | null {
-  if (value === null || value === undefined || value === '') return null;
-  if (typeof value !== 'number' && typeof value !== 'string') return null;
-  try {
-    const decimal = new Prisma.Decimal(value);
-    if (!decimal.isFinite()) return null;
-    return decimal.toDecimalPlaces(MONEY_SCALE);
-  } catch {
-    return null;
-  }
+  const decimal = parseDecimal(value);
+  return decimal ? decimal.toDecimalPlaces(MONEY_SCALE) : null;
+}
+
+/** Matches @db.Decimal(18, 8) for investment quantity and pricePerUnit. */
+export const QUANTITY_SCALE = 8;
+
+/** Like parseMoney, but keeps 8 dp for investment quantities and unit prices. */
+export function parseQuantity(value: unknown): Prisma.Decimal | null {
+  const decimal = parseDecimal(value);
+  return decimal ? decimal.toDecimalPlaces(QUANTITY_SCALE) : null;
 }
 
 export function moneyToNumber(value: MoneyValue): number {
@@ -35,4 +37,15 @@ export function sumMoney(values: MoneyValue[]): Prisma.Decimal {
   let total = new Prisma.Decimal(0);
   for (const value of values) total = total.plus(value);
   return total;
+}
+
+function parseDecimal(value: unknown): Prisma.Decimal | null {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  try {
+    const decimal = new Prisma.Decimal(value);
+    return decimal.isFinite() ? decimal : null;
+  } catch {
+    return null;
+  }
 }

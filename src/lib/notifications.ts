@@ -1,5 +1,6 @@
 import { db } from './db';
 import { shouldCreateNotification } from './notification-settings';
+import { addUtcDays } from './dates';
 
 export async function createNotification(userId: number, {
   type,
@@ -29,11 +30,10 @@ export async function generatePerformanceAlerts(userId: number, currentTotalValu
   
   
   
-  const isMonday = now.getDay() === 1;
+  const isMonday = now.getUTCDay() === 1;
   
   if (isMonday) {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(now.getDate() - 7);
+    const sevenDaysAgo = addUtcDays(now, -7);
     
     
     const oldSnapshot = await db.portfolioSnapshot.findFirst({
@@ -64,8 +64,7 @@ export async function generatePerformanceAlerts(userId: number, currentTotalValu
   }
 
   
-  const yesterday = new Date();
-  yesterday.setDate(now.getDate() - 1);
+  const yesterday = addUtcDays(now, -1);
   
   const yesterdaySnapshot = await db.portfolioSnapshot.findFirst({
     where: {

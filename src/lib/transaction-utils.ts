@@ -114,3 +114,38 @@ export function formatTransactionName(
   
   return cleaned;
 }
+
+const MONTH_ABBREVIATIONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DISPLAY_DATE_PATTERN = /^([A-Za-z]{3})[A-Za-z]*\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})$/;
+
+/** "Jan 5th 2026" for the UTC day of `date`. */
+export function formatDisplayDate(date: Date): string {
+  const day = date.getUTCDate();
+  const month = MONTH_ABBREVIATIONS[date.getUTCMonth()];
+  const year = date.getUTCFullYear();
+  return `${month} ${day}${ordinalSuffix(day)} ${year}`;
+}
+
+/**
+ * Parses either a display date ("Jan 5th 2026") or any string Date understands (ISO "2026-01-05").
+ * Display dates become UTC midnight of that day. Returns null when the input is not a date.
+ */
+export function parseDisplayDate(value: string): Date | null {
+  const match = DISPLAY_DATE_PATTERN.exec(value.trim());
+  if (match) {
+    const month = MONTH_ABBREVIATIONS.indexOf(match[1]);
+    if (month < 0) return null;
+    const day = Number(match[2]);
+    const year = Number(match[3]);
+    return new Date(Date.UTC(year, month, day));
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function ordinalSuffix(day: number): string {
+  if (day === 1 || day === 21 || day === 31) return 'st';
+  if (day === 2 || day === 22) return 'nd';
+  if (day === 3 || day === 23) return 'rd';
+  return 'th';
+}

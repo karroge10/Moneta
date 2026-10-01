@@ -10,9 +10,7 @@ export const getAssetColor = (type?: string) => {
 
 export const getDerivedAssetIcon = (type?: string, ticker?: string | null, pricingMode?: string) => {
     if (pricingMode === 'live') {
-        if (type?.toLowerCase() === 'stock' && ticker) {
-            return `https://logo.clearbit.com/${ticker}.us`;
-        }
+        // Stocks use the generic icon below: the Clearbit logo API they used to load from was shut down.
         if (type?.toLowerCase() === 'crypto' && ticker) {
             return `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${ticker.toLowerCase()}.png`;
         }

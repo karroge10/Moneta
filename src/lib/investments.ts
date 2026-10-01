@@ -1,6 +1,10 @@
 import { db } from './db';
-import { Currency, AssetType, PricingMode } from '@prisma/client';
-import { preloadRatesMap, buildCacheKey } from './currency-conversion';
+import { fetchStockHistory, fetchStockPrices } from './stock-prices';
+import { Prisma, type Asset, type Currency, type AssetType, type PricingMode } from '@prisma/client';
+import { buildCacheKey, preloadRates, type RatesMap } from './currency-conversion';
+import { addUtcDays, toDateKey } from './dates';
+import { moneyToNumber, sumMoney } from './money';
+import { aggregateHolding, valueHolding, type Holding } from './investment-holdings';
 
 export interface PortfolioAsset {
   assetId: number;
@@ -18,6 +22,10 @@ export interface PortfolioAsset {
   pnl: number; 
   pricingMode: PricingMode;
   icon?: string;
+  /** Live price could not be fetched; the holding is excluded from portfolio totals. */
+  priceMissing: boolean;
+  /** An FX rate was missing (cost basis or live price); the holding is excluded from totals. */
+  rateMissing: boolean;
 }
 
 export interface PortfolioSummary {
@@ -28,10 +36,12 @@ export interface PortfolioSummary {
   totalPnl: number;
   pnlPercent: number;
   assets: PortfolioAsset[];
+  /** Holdings left out of the totals because a price or FX rate was missing. */
+  missingValuations: number;
 }
 
 
-const coingeckoMap: Record<string, string> = {
+const COINGECKO_IDS: Record<string, string> = {
   BTC: 'bitcoin',
   ETH: 'ethereum',
   SOL: 'solana',
@@ -41,8 +51,275 @@ const coingeckoMap: Record<string, string> = {
   DOGE: 'dogecoin',
   LTC: 'litecoin',
   XRP: 'ripple',
-  
 };
+
+export async function getInvestmentsPortfolio(userId: number, targetCurrency: Currency): Promise<PortfolioSummary> {
+  const usd = await db.currency.findFirst({ where: { alias: { equals: 'usd', mode: 'insensitive' } } });
+
+  const transactions = await db.transaction.findMany({
+    where: {
+      userId,
+      investmentAssetId: { not: null },
+    },
+    include: {
+      asset: true,
+      currency: true,
+    },
+    orderBy: { date: 'asc' },
+  });
+
+  const assetMap = new Map<number, {
+    asset: NonNullable<(typeof transactions)[number]['asset']>;
+    txs: typeof transactions;
+  }>();
+
+  for (const t of transactions) {
+    if (!t.investmentAssetId) continue;
+    if (!t.asset) continue;
+    if (!assetMap.has(t.investmentAssetId)) {
+      assetMap.set(t.investmentAssetId, { asset: t.asset, txs: [] });
+    }
+    assetMap.get(t.investmentAssetId)!.txs.push(t);
+  }
+
+  const cryptoIds: string[] = [];
+  const stockTickers: string[] = [];
+
+  for (const item of assetMap.values()) {
+    if (item.asset.pricingMode !== 'live') continue;
+    if (item.asset.assetType === 'crypto') {
+      const id = coingeckoIdFor(item.asset);
+      if (id) cryptoIds.push(id);
+    } else if (item.asset.assetType === 'stock' && item.asset.ticker) {
+      stockTickers.push(item.asset.ticker);
+    }
+  }
+
+  const now = new Date();
+  const rateRequests = transactions.map((t) => ({ currencyId: t.currencyId, date: t.date }));
+  if (usd) rateRequests.push({ currencyId: usd.id, date: now });
+
+  const [cryptoPrices, stockPrices, ratesMap] = await Promise.all([
+    fetchCryptoPrices(cryptoIds),
+    fetchStockPrices(stockTickers),
+    preloadRates(rateRequests, targetCurrency.id),
+  ]);
+
+  const usdRate = usd ? usdToTargetRate(usd.id, targetCurrency.id, now, ratesMap) : null;
+  const portfolioAssets: PortfolioAsset[] = [];
+  const valued: { value: Prisma.Decimal; cost: Prisma.Decimal; realized: Prisma.Decimal }[] = [];
+  let missingValuations = 0;
+
+  for (const { asset, txs } of assetMap.values()) {
+    const holdingTxs = txs.map((t) => ({
+      investmentType: t.investmentType,
+      quantity: t.quantity,
+      convertedPricePerUnit: convertPrice(t, targetCurrency.id, ratesMap),
+    }));
+    const holding = aggregateHolding(holdingTxs);
+    const livePriceUsd = livePriceFor(asset, cryptoPrices, stockPrices);
+    const price = resolveCurrentPrice(asset, holding, livePriceUsd, usdRate);
+    const valuation = valueHolding(holding, price.value ?? new Prisma.Decimal(0));
+    const excluded = holding.rateMissing || price.priceMissing || price.rateMissing;
+
+    if (excluded) {
+      missingValuations += 1;
+    } else {
+      valued.push({ value: valuation.currentValue, cost: holding.totalCost, realized: holding.realizedPnl });
+    }
+
+    portfolioAssets.push({
+      assetId: asset.id,
+      name: asset.name,
+      ticker: asset.ticker ?? '',
+      type: asset.assetType,
+      quantity: moneyToNumber(holding.quantity),
+      avgPrice: moneyToNumber(valuation.avgPrice),
+      currentPrice: price.value ? moneyToNumber(price.value) : 0,
+      currentValue: moneyToNumber(valuation.currentValue),
+      totalCost: moneyToNumber(holding.totalCost),
+      unrealizedPnl: moneyToNumber(valuation.unrealizedPnl),
+      unrealizedPnlPercent: valuation.unrealizedPnlPercent,
+      realizedPnl: moneyToNumber(holding.realizedPnl),
+      pnl: moneyToNumber(valuation.totalPnl),
+      pricingMode: asset.pricingMode,
+      icon: asset.icon || deriveAssetIcon(asset),
+      priceMissing: price.priceMissing,
+      rateMissing: holding.rateMissing || price.rateMissing,
+    });
+  }
+
+  const totalValue = sumMoney(valued.map((v) => v.value));
+  const totalCost = sumMoney(valued.map((v) => v.cost));
+  const totalRealized = sumMoney(valued.map((v) => v.realized));
+  const totalUnrealized = totalValue.minus(totalCost);
+  const totalPnl = totalRealized.plus(totalUnrealized);
+  const pnlRatio = totalCost.gt(0) ? totalPnl.div(totalCost) : new Prisma.Decimal(0);
+
+  return {
+    totalValue: moneyToNumber(totalValue),
+    totalCost: moneyToNumber(totalCost),
+    totalUnrealizedPnl: moneyToNumber(totalUnrealized),
+    totalRealizedPnl: moneyToNumber(totalRealized),
+    totalPnl: moneyToNumber(totalPnl),
+    pnlPercent: pnlRatio.mul(100).toNumber(),
+    assets: portfolioAssets,
+    missingValuations,
+  };
+}
+
+export async function getInvestmentPriceHistory(userId: number, assetId: number, maxPoints: number = 30): Promise<{ date: string; value: number }[]> {
+  // Shared assets have no owner; private assets are visible only to the user who created them.
+  const asset = await db.asset.findFirst({
+    where: { id: assetId, OR: [{ userId: null }, { userId }] },
+  });
+  if (!asset) return [];
+
+  if (asset.pricingMode === 'manual') {
+    const price = Number(asset.manualPrice || 0);
+    return flatHistory(price, maxPoints);
+  }
+
+  if (asset.assetType === 'crypto') {
+    const cgId = coingeckoIdFor(asset);
+    if (cgId) {
+      const history = await fetchCryptoHistory(cgId, maxPoints);
+      if (history.length > 0) {
+        return history.slice(-maxPoints);
+      }
+    }
+  }
+
+  if (asset.assetType === 'stock' && asset.ticker) {
+    return fetchStockHistory(asset.ticker, maxPoints);
+  }
+  // No price source: an empty history is shown as "no data" instead of a made-up flat line.
+  return [];
+}
+
+export async function getAssetHolding(userId: number, assetId: number): Promise<Prisma.Decimal> {
+  const transactions = await db.transaction.findMany({
+    where: {
+      userId,
+      investmentAssetId: assetId,
+    },
+    select: {
+      quantity: true,
+      investmentType: true,
+    },
+  });
+
+  let total = new Prisma.Decimal(0);
+  for (const t of transactions) {
+    const qty = t.quantity ?? new Prisma.Decimal(0);
+    if (t.investmentType === 'buy') total = total.plus(qty);
+    else if (t.investmentType === 'sell') total = total.minus(qty);
+  }
+  return total;
+}
+
+/** Icon used when the asset has none of its own. */
+function deriveAssetIcon(asset: Pick<Asset, 'assetType' | 'pricingMode' | 'ticker'>): string {
+  if (asset.pricingMode === 'live' && asset.ticker) {
+    if (asset.assetType === 'crypto') {
+      const symbol = asset.ticker.toLowerCase();
+      return `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${symbol}.png`;
+    }
+  }
+  if (asset.assetType === 'crypto') return 'BitcoinCircle';
+  if (asset.assetType === 'stock') return 'Cash';
+  if (asset.assetType === 'property') return 'Neighbourhood';
+  return 'Reports';
+}
+
+type CurrentPrice = { value: Prisma.Decimal | null; priceMissing: boolean; rateMissing: boolean };
+
+/**
+ * Live assets use the fetched USD price converted at today's USD rate. Manual assets use the
+ * manual price, falling back to the last transaction price. Nothing is ever substituted with 1.
+ */
+function resolveCurrentPrice(
+  asset: Asset,
+  holding: Holding,
+  livePriceUsd: number | null,
+  usdRate: Prisma.Decimal | null,
+): CurrentPrice {
+  if (asset.pricingMode === 'live') {
+    if (livePriceUsd === null) return { value: null, priceMissing: true, rateMissing: false };
+    if (!usdRate) return { value: null, priceMissing: false, rateMissing: true };
+    const usdPrice = new Prisma.Decimal(livePriceUsd);
+    return { value: usdPrice.mul(usdRate), priceMissing: false, rateMissing: false };
+  }
+  const manual = asset.manualPrice ?? holding.lastPrice;
+  return { value: manual, priceMissing: false, rateMissing: false };
+}
+
+function livePriceFor(
+  asset: Asset,
+  cryptoPrices: Record<string, number>,
+  stockPrices: Record<string, number>,
+): number | null {
+  if (asset.pricingMode !== 'live') return null;
+  if (asset.assetType === 'crypto') {
+    const id = coingeckoIdFor(asset);
+    return id && cryptoPrices[id] ? cryptoPrices[id] : null;
+  }
+  if (asset.assetType === 'stock' && asset.ticker) {
+    return stockPrices[asset.ticker] || null;
+  }
+  return null;
+}
+
+function convertPrice(
+  t: { pricePerUnit: Prisma.Decimal | null; currencyId: number; date: Date },
+  targetCurrencyId: number,
+  ratesMap: RatesMap,
+): Prisma.Decimal | null {
+  const price = t.pricePerUnit ?? new Prisma.Decimal(0);
+  if (t.currencyId === targetCurrencyId) return price;
+  const key = buildCacheKey(t.currencyId, targetCurrencyId, t.date);
+  const rate = ratesMap.get(key);
+  return rate ? price.mul(rate) : null;
+}
+
+function usdToTargetRate(usdId: number, targetId: number, now: Date, ratesMap: RatesMap): Prisma.Decimal | null {
+  if (usdId === targetId) return new Prisma.Decimal(1);
+  const key = buildCacheKey(usdId, targetId, now);
+  return ratesMap.get(key) ?? null;
+}
+
+function coingeckoIdFor(asset: Pick<Asset, 'coingeckoId' | 'ticker'>): string | null {
+  if (asset.coingeckoId) return asset.coingeckoId;
+  return asset.ticker ? COINGECKO_IDS[asset.ticker] ?? null : null;
+}
+
+/** One point per UTC day ending today, all at the same price. */
+function flatHistory(price: number, points: number): { date: string; value: number }[] {
+  const today = new Date();
+  return Array.from({ length: points }).map((_, i) => {
+    const day = addUtcDays(today, i - (points - 1));
+    return { date: toDateKey(day), value: price };
+  });
+}
+
+async function fetchCryptoHistory(id: string, days: number = 30): Promise<{ date: string; value: number }[]> {
+  try {
+    const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`;
+    const res = await fetch(url, { next: { revalidate: 3600 } });
+    if (!res.ok) return [];
+    
+    const data = await res.json();
+    if (!data.prices || !Array.isArray(data.prices)) return [];
+
+    return data.prices.map((item: [number, number]) => {
+      const day = new Date(item[0]);
+      return { date: toDateKey(day), value: item[1] };
+    });
+  } catch (error) {
+    console.error(`Failed to fetch crypto history for ${id}`, error);
+    return [];
+  }
+}
 
 async function fetchCryptoPrices(ids: string[]): Promise<Record<string, number>> {
   if (ids.length === 0) return {};
@@ -63,319 +340,3 @@ async function fetchCryptoPrices(ids: string[]): Promise<Record<string, number>>
   }
 }
 
-async function fetchStockPrices(tickers: string[]): Promise<Record<string, number>> {
-  if (tickers.length === 0) return {};
-  const unique = Array.from(new Set(tickers));
-  const symbols = unique.map(t => {
-    const lower = t.toLowerCase();
-    return lower.endsWith('.us') ? lower : `${lower}.us`;
-  }).join('+');
-
-  const url = `https://stooq.com/q/l/?s=${symbols}&f=sd2t2ohlcv&h&e=json`;
-
-  try {
-    const res = await fetch(url, { next: { revalidate: 60 } });
-    if (!res.ok) return {};
-    const data = await res.json();
-    const prices: Record<string, number> = {};
-    if (data?.symbols) {
-      for (const s of data.symbols) {
-        if (s.close !== 'N/D') {
-          const ticker = s.symbol.split('.')[0].toUpperCase();
-          prices[ticker] = Number(s.close);
-        }
-      }
-    }
-    return prices;
-  } catch (e) {
-    console.error('Failed to fetch stock prices', e);
-    return {};
-  }
-}
-
-export async function getInvestmentsPortfolio(userId: number, targetCurrency: Currency): Promise<PortfolioSummary> {
-  console.log('[investments] Getting portfolio for user', userId, 'target', targetCurrency.alias);
-
-  
-  const usd = await db.currency.findFirst({ where: { alias: { equals: 'usd', mode: 'insensitive' } } });
-
-  
-  const transactions = await db.transaction.findMany({
-    where: {
-      userId,
-      investmentAssetId: { not: null },
-    },
-    include: {
-      asset: true,
-      currency: true,
-    },
-    orderBy: { date: 'asc' },
-  });
-
-  
-  const assetMap = new Map<number, {
-    asset: NonNullable<(typeof transactions)[number]['asset']>;
-    txs: typeof transactions;
-  }>();
-
-  for (const t of transactions) {
-    if (!t.investmentAssetId) continue;
-    if (!t.asset) continue;
-    if (!assetMap.has(t.investmentAssetId)) {
-      assetMap.set(t.investmentAssetId, { asset: t.asset, txs: [] });
-    }
-    assetMap.get(t.investmentAssetId)!.txs.push(t);
-  }
-
-  
-  const cryptoIds: string[] = [];
-  const stockTickers: string[] = [];
-
-  for (const item of assetMap.values()) {
-    if (item.asset?.pricingMode === 'live') {
-      if (item.asset.assetType === 'crypto') {
-        const sym = item.asset.ticker;
-        const id = item.asset.coingeckoId || (sym ? coingeckoMap[sym] : undefined);
-        if (id) cryptoIds.push(id);
-      } else if (item.asset.assetType === 'stock' && item.asset.ticker) {
-        stockTickers.push(item.asset.ticker);
-      }
-    }
-  }
-
-  const [cryptoPrices, stockPrices, ratesMap] = await Promise.all([
-    fetchCryptoPrices(cryptoIds),
-    fetchStockPrices(stockTickers),
-    preloadRatesMap(
-      [
-        ...transactions.map(t => ({ currencyId: t.currencyId, date: t.date })),
-        
-        ...(usd ? [{ currencyId: usd.id, date: new Date() }] : [])
-      ],
-      targetCurrency.id
-    )
-  ]);
-
-  const portfolioAssets: PortfolioAsset[] = [];
-  let globalTotalValue = 0;
-  let globalTotalCost = 0;
-  let globalTotalRealizedPnl = 0;
-
-  
-  for (const [, { asset, txs }] of assetMap) {
-    if (!asset) continue;
-
-    
-    const buyLots: { qty: number; costPerUnit: number }[] = [];
-    let realizedPnl = 0;
-    let lastPrice = 0;
-
-    for (const t of txs) {
-      const qty = Number(t.quantity);
-      let pricePerUnit = Number(t.pricePerUnit);
-      if (t.currencyId !== targetCurrency.id) {
-        const rate = ratesMap.get(buildCacheKey(t.currencyId, targetCurrency.id, t.date)) ?? 1;
-        pricePerUnit = pricePerUnit * rate;
-      }
-      lastPrice = pricePerUnit;
-
-      if (t.investmentType === 'buy') {
-        buyLots.push({ qty, costPerUnit: pricePerUnit });
-      } else if (t.investmentType === 'sell') {
-        let remainingToSell = qty;
-        while (remainingToSell > 0 && buyLots.length > 0) {
-          const lot = buyLots[0];
-          const sellQty = Math.min(remainingToSell, lot.qty);
-          
-          
-          const gain = sellQty * (pricePerUnit - lot.costPerUnit);
-          realizedPnl += gain;
-
-          lot.qty -= sellQty;
-          remainingToSell -= sellQty;
-          if (lot.qty <= 0.00000001) { 
-            buyLots.shift();
-          }
-        }
-      }
-    }
-
-    const remainingQty = buyLots.reduce((sum, l) => sum + l.qty, 0);
-    const remainingCost = buyLots.reduce((sum, l) => sum + (l.qty * l.costPerUnit), 0);
-    const avgPrice = remainingQty > 0 ? remainingCost / remainingQty : 0;
-
-    
-    let currentPrice = lastPrice;
-    let isLivePriceInUSD = false;
-
-    if (asset.pricingMode === 'live') {
-      if (asset.assetType === 'crypto') {
-        const id = asset.coingeckoId || (asset.ticker ? coingeckoMap[asset.ticker] : null);
-        if (id && cryptoPrices[id]) {
-          currentPrice = cryptoPrices[id];
-          isLivePriceInUSD = true;
-        }
-      } else if (asset.assetType === 'stock' && asset.ticker) {
-        if (stockPrices[asset.ticker]) {
-          currentPrice = stockPrices[asset.ticker];
-          isLivePriceInUSD = true;
-        }
-      }
-    } else if (asset.pricingMode === 'manual' && asset.manualPrice) {
-      currentPrice = Number(asset.manualPrice);
-    }
-
-    
-    if (isLivePriceInUSD && usd && targetCurrency.id !== usd.id) {
-      const rate = ratesMap.get(buildCacheKey(usd.id, targetCurrency.id, new Date())) ?? 1;
-      currentPrice = currentPrice * rate;
-    }
-
-    const currentValue = remainingQty * currentPrice;
-    const unrealizedPnl = currentValue - remainingCost;
-    const unrealizedPnlPercent = remainingCost > 0 ? (unrealizedPnl / remainingCost) * 100 : 0;
-    const totalPnl = realizedPnl + unrealizedPnl;
-
-    let derivedIcon = asset.assetType === 'crypto' ? 'BitcoinCircle' : asset.assetType === 'stock' ? 'Cash' : asset.assetType === 'property' ? 'Neighbourhood' : 'Reports';
-    if (asset.pricingMode === 'live') {
-      if (asset.assetType === 'stock' && asset.ticker) {
-        derivedIcon = `https://logo.clearbit.com/${asset.ticker.split('.')[0]}.us`;
-      } else if (asset.assetType === 'crypto' && asset.ticker) {
-        
-        
-        derivedIcon = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${asset.ticker.toLowerCase()}.png`;
-      }
-    }
-
-    portfolioAssets.push({
-      assetId: asset.id,
-      name: asset.name,
-      ticker: asset.ticker ?? '',
-      type: asset.assetType,
-      quantity: remainingQty,
-      avgPrice,
-      currentPrice,
-      currentValue,
-      totalCost: remainingCost,
-      unrealizedPnl,
-      unrealizedPnlPercent,
-      realizedPnl,
-      pnl: totalPnl,
-      pricingMode: asset.pricingMode,
-      icon: asset.icon || derivedIcon,
-    });
-
-    globalTotalValue += currentValue;
-    globalTotalCost += remainingCost;
-    globalTotalRealizedPnl += realizedPnl;
-  }
-
-  const globalUnrealizedPnl = globalTotalValue - globalTotalCost;
-  const globalTotalPnl = globalTotalRealizedPnl + globalUnrealizedPnl;
-  const globalPnlPercent = globalTotalCost > 0 ? (globalTotalPnl / globalTotalCost) * 100 : 0;
-
-  return {
-    totalValue: globalTotalValue,
-    totalCost: globalTotalCost,
-    totalUnrealizedPnl: globalUnrealizedPnl,
-    totalRealizedPnl: globalTotalRealizedPnl,
-    totalPnl: globalTotalPnl,
-    pnlPercent: globalPnlPercent,
-    assets: portfolioAssets
-  };
-}
-
-async function fetchCryptoHistory(id: string, days: number = 30): Promise<{ date: string; value: number }[]> {
-  try {
-    const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`;
-    const res = await fetch(url, { next: { revalidate: 3600 } });
-    if (!res.ok) return [];
-    
-    const data = await res.json();
-    if (!data.prices || !Array.isArray(data.prices)) return [];
-
-    return data.prices.map((item: [number, number]) => ({
-      date: new Date(item[0]).toISOString().split('T')[0],
-      value: item[1]
-    }));
-  } catch (error) {
-    console.error(`Failed to fetch crypto history for ${id}`, error);
-    return [];
-  }
-}
-
-export async function getInvestmentPriceHistory(assetId: number, maxPoints: number = 30): Promise<{ date: string; value: number }[]> {
-  const asset = await db.asset.findUnique({ where: { id: assetId } });
-  if (!asset) return [];
-
-  
-  if (asset.pricingMode === 'manual') {
-    const price = Number(asset.manualPrice || 0);
-    return Array.from({ length: maxPoints }).map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (maxPoints - 1 - i));
-      return {
-        date: d.toISOString().split('T')[0],
-        value: price
-      };
-    });
-  }
-
-  
-  if (asset.assetType === 'crypto') {
-    const cgId = asset.coingeckoId || (asset.ticker ? coingeckoMap[asset.ticker] : null);
-    if (cgId) {
-      const history = await fetchCryptoHistory(cgId, maxPoints);
-      if (history.length > 0) {
-          return history.slice(-maxPoints);
-      }
-    }
-  }
-
-  
-  let currentPrice = 0;
-  if (asset.assetType === 'stock' && asset.ticker) {
-    
-    try {
-        const prices = await fetchStockPrices([asset.ticker]);
-        currentPrice = prices[asset.ticker] || 0;
-    } catch (e) {
-        console.error('Failed to fetch stock price for history', e);
-    }
-  }
-  
-  return Array.from({ length: maxPoints }).map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (maxPoints - 1 - i));
-      return {
-        date: d.toISOString().split('T')[0],
-        value: currentPrice
-      };
-    });
-}
-
-
-export async function getAssetHolding(userId: number, assetId: number): Promise<number> {
-  const transactions = await db.transaction.findMany({
-    where: {
-      userId,
-      investmentAssetId: assetId,
-    },
-    select: {
-      quantity: true,
-      investmentType: true,
-    },
-  });
-
-  let totalQuantity = 0;
-  for (const t of transactions) {
-    const qty = Number(t.quantity || 0);
-    if (t.investmentType === 'buy') {
-      totalQuantity += qty;
-    } else if (t.investmentType === 'sell') {
-      totalQuantity -= qty;
-    }
-  }
-
-  return totalQuantity;
-}

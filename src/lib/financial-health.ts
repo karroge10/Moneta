@@ -1,6 +1,9 @@
 import type { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
-import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
+import { preloadRates, convertTransactionsWithRatesMap, sumConverted } from '@/lib/currency-conversion';
+import { addUtcDays, getUtcComparisonRange, getUtcPeriodRange } from '@/lib/dates';
+import { moneyToNumber } from '@/lib/money';
+import { TtlCache } from '@/lib/ttl-cache';
 import { calculateGoalProgress } from '@/lib/goalUtils';
 import type { FinancialHealthDetails, TimePeriod } from '@/types/dashboard';
 
@@ -15,81 +18,130 @@ const WEIGHTS = {
 } as const;
 
 
-const CACHE_TTL_MS = 60 * 1000; 
-const cache = new Map<string, { result: FinancialHealthDetails; expiresAt: number }>();
+const CACHE_TTL_MS = 60 * 1000;
+const CACHE_MAX_ENTRIES = 1000;
+const cache = new TtlCache<FinancialHealthDetails>(CACHE_TTL_MS, CACHE_MAX_ENTRIES);
+const RECENT_ACTIVITY_DAYS = 30;
 
-function cacheKey(userId: number, timePeriod: TimePeriod, targetCurrencyId: number): string {
-  return `${userId}:${timePeriod}:${targetCurrencyId}`;
-}
-
-function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; end: Date } {
-  const year = now.getFullYear();
-  const month = now.getMonth();
-
-  switch (period) {
-    case 'This Month':
-      return {
-        start: new Date(year, month, 1),
-        end: new Date(year, month + 1, 0, 23, 59, 59, 999),
-      };
-    case 'Last Month':
-      return {
-        start: new Date(year, month - 1, 1),
-        end: new Date(year, month, 0, 23, 59, 59, 999),
-      };
-    case 'This Year':
-      return {
-        start: new Date(year, 0, 1),
-        end: new Date(year, 11, 31, 23, 59, 59, 999),
-      };
-    case 'Last Year':
-      return {
-        start: new Date(year - 1, 0, 1),
-        end: new Date(year - 1, 11, 31, 23, 59, 59, 999),
-      };
-    case 'All Time':
-      return {
-        start: new Date(2000, 0, 1),
-        end: new Date(year + 10, 11, 31, 23, 59, 59, 999),
-      };
-    default:
-      return {
-        start: new Date(year, month, 1),
-        end: new Date(year, month + 1, 0, 23, 59, 59, 999),
-      };
+export async function getFinancialHealthScore(
+  userId: number,
+  timePeriod: TimePeriod,
+  targetCurrencyId: number
+): Promise<FinancialHealthDetails> {
+  const key = cacheKey(userId, timePeriod, targetCurrencyId);
+  const cached = cache.get(key);
+  if (cached) {
+    return cached;
   }
-}
 
-function getComparisonDateRange(period: TimePeriod, now: Date): { start: Date; end: Date } | null {
-  const year = now.getFullYear();
-  const month = now.getMonth();
+  const now = new Date();
+  const selectedRange = getUtcPeriodRange(timePeriod, now);
+  const comparisonRange = getUtcComparisonRange(timePeriod, now);
+  const recentSince = addUtcDays(now, -RECENT_ACTIVITY_DAYS);
 
-  switch (period) {
-    case 'This Month':
-      return {
-        start: new Date(year, month - 1, 1),
-        end: new Date(year, month, 0, 23, 59, 59, 999),
-      };
-    case 'Last Month':
-      return {
-        start: new Date(year, month - 2, 1),
-        end: new Date(year, month - 1, 0, 23, 59, 59, 999),
-      };
-    case 'This Year':
-      return {
-        start: new Date(year - 1, 0, 1),
-        end: new Date(year - 1, 11, 31, 23, 59, 59, 999),
-      };
-    case 'Last Year':
-      return {
-        start: new Date(year - 2, 0, 1),
-        end: new Date(year - 2, 11, 31, 23, 59, 59, 999),
-      };
-    case 'All Time':
-      return null;
-    default:
-      return null;
+  const [selectedTx, comparisonTx, goals, user, recentTx] = await Promise.all([
+    db.transaction.findMany({
+      where: {
+        userId,
+        date: { gte: selectedRange.start, lte: selectedRange.end },
+        investmentAssetId: null,
+      },
+      include: { category: true, currency: true },
+      orderBy: { date: 'desc' },
+    }),
+    comparisonRange
+      ? db.transaction.findMany({
+        where: {
+          userId,
+          date: { gte: comparisonRange.start, lte: comparisonRange.end },
+          investmentAssetId: null,
+        },
+        include: { category: true, currency: true },
+      })
+      : Promise.resolve([]),
+    db.goal.findMany({
+      where: { userId },
+      select: { targetDate: true, targetAmount: true, currentAmount: true, createdAt: true },
+    }),
+    db.user.findUnique({
+      where: { id: userId },
+      select: { currencyId: true },
+    }),
+    db.transaction.findMany({
+      where: {
+        userId,
+        date: { gte: recentSince },
+        investmentAssetId: null,
+      },
+      select: { id: true, categoryId: true },
+    }),
+  ]);
+
+  const ratesMap = await preloadRates(
+    [
+      ...selectedTx.map(t => ({ currencyId: t.currencyId, date: t.date })),
+      ...(comparisonTx || []).map(t => ({ currencyId: t.currencyId, date: t.date })),
+    ],
+    targetCurrencyId
+  );
+
+  const selectedConverted = convertTransactionsWithRatesMap(selectedTx, targetCurrencyId, ratesMap);
+  const comparisonConverted = comparisonRange
+    ? convertTransactionsWithRatesMap(comparisonTx, targetCurrencyId, ratesMap)
+    : [];
+
+  const selectedIncome = sumByType(selectedConverted, 'income');
+  const selectedExpenses = sumByType(selectedConverted, 'expense');
+
+  const totalTxInPeriod = selectedConverted.length;
+  const categorizedInPeriod =
+    totalTxInPeriod > 0
+      ? selectedConverted.filter((t) => t.category?.name && t.category.name !== 'Uncategorized').length /
+      totalTxInPeriod
+      : 0;
+
+  const details = {
+    saving: pillarSaving(selectedIncome, selectedExpenses),
+    spendingControl: pillarSpendingControl(selectedIncome, selectedExpenses),
+    goals: pillarGoals(goals),
+    engagement: pillarEngagement(
+      recentTx.length > 0,
+      user?.currencyId != null,
+      goals.length > 0,
+      categorizedInPeriod
+    ),
+  };
+
+  const score = totalTxInPeriod === 0 && selectedIncome === 0 && selectedExpenses === 0 ? 0 : computeScore(details);
+
+  let trend = 0;
+  if (comparisonRange && comparisonConverted.length > 0) {
+    const compIncome = sumByType(comparisonConverted, 'income');
+    const compExpenses = sumByType(comparisonConverted, 'expense');
+    const compCategorized =
+      comparisonConverted.length > 0
+        ? comparisonConverted.filter(
+          (t) => t.category?.name && t.category.name !== 'Uncategorized'
+        ).length / comparisonConverted.length
+        : 0;
+    const compDetails = {
+      saving: pillarSaving(compIncome, compExpenses),
+      spendingControl: pillarSpendingControl(compIncome, compExpenses),
+      goals: details.goals,
+      engagement: pillarEngagement(
+        recentTx.length > 0,
+        user?.currencyId != null,
+        goals.length > 0,
+        compCategorized
+      ),
+    };
+    const compScore = computeScore(compDetails);
+    trend = score - compScore;
   }
+
+  const result: FinancialHealthDetails = { score, trend, details };
+  cache.set(key, result);
+  return result;
 }
 
 function pillarSaving(income: number, expenses: number): number {
@@ -155,130 +207,16 @@ function computeScore(details: FinancialHealthDetails['details']): number {
   return Math.round(Math.max(0, Math.min(100, raw)));
 }
 
-export async function getFinancialHealthScore(
-  userId: number,
-  timePeriod: TimePeriod,
-  targetCurrencyId: number
-): Promise<FinancialHealthDetails> {
-  const key = cacheKey(userId, timePeriod, targetCurrencyId);
-  const cached = cache.get(key);
-  if (cached && Date.now() < cached.expiresAt) {
-    return cached.result;
-  }
+function cacheKey(userId: number, timePeriod: TimePeriod, targetCurrencyId: number): string {
+  return `${userId}:${timePeriod}:${targetCurrencyId}`;
+}
 
-  const now = new Date();
-  const selectedRange = getDateRangeForPeriod(timePeriod, now);
-  const comparisonRange = getComparisonDateRange(timePeriod, now);
-
-  const [selectedTx, comparisonTx, goals, user, recentTx] = await Promise.all([
-    db.transaction.findMany({
-      where: {
-        userId,
-        date: { gte: selectedRange.start, lte: selectedRange.end },
-        investmentAssetId: null,
-      },
-      include: { category: true, currency: true },
-      orderBy: { date: 'desc' },
-    }),
-    comparisonRange
-      ? db.transaction.findMany({
-        where: {
-          userId,
-          date: { gte: comparisonRange.start, lte: comparisonRange.end },
-          investmentAssetId: null,
-        },
-        include: { category: true, currency: true },
-      })
-      : Promise.resolve([]),
-    db.goal.findMany({
-      where: { userId },
-      select: { targetDate: true, targetAmount: true, currentAmount: true, createdAt: true },
-    }),
-    db.user.findUnique({
-      where: { id: userId },
-      select: { currencyId: true },
-    }),
-    db.transaction.findMany({
-      where: {
-        userId,
-        date: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
-        investmentAssetId: null,
-      },
-      select: { id: true, categoryId: true },
-    }),
-  ]);
-
-  const ratesMap = await preloadRatesMap(
-    [
-      ...selectedTx.map(t => ({ currencyId: t.currencyId, date: t.date })),
-      ...(comparisonTx || []).map(t => ({ currencyId: t.currencyId, date: t.date })),
-    ],
-    targetCurrencyId
-  );
-
-  const selectedConverted = convertTransactionsWithRatesMap(selectedTx, targetCurrencyId, ratesMap);
-  const comparisonConverted = comparisonRange
-    ? convertTransactionsWithRatesMap(comparisonTx, targetCurrencyId, ratesMap)
-    : [];
-
-  const selectedIncome = selectedConverted
-    .filter((t) => t.type === 'income')
-    .reduce((s, t) => s + t.convertedAmount, 0);
-  const selectedExpenses = selectedConverted
-    .filter((t) => t.type === 'expense')
-    .reduce((s, t) => s + t.convertedAmount, 0);
-
-  const totalTxInPeriod = selectedConverted.length;
-  const categorizedInPeriod =
-    totalTxInPeriod > 0
-      ? selectedConverted.filter((t) => t.category?.name && t.category.name !== 'Uncategorized').length /
-      totalTxInPeriod
-      : 0;
-
-  const details = {
-    saving: pillarSaving(selectedIncome, selectedExpenses),
-    spendingControl: pillarSpendingControl(selectedIncome, selectedExpenses),
-    goals: pillarGoals(goals),
-    engagement: pillarEngagement(
-      recentTx.length > 0,
-      user?.currencyId != null,
-      goals.length > 0,
-      categorizedInPeriod
-    ),
-  };
-
-  const score = totalTxInPeriod === 0 && selectedIncome === 0 && selectedExpenses === 0 ? 0 : computeScore(details);
-
-  let trend = 0;
-  if (comparisonRange && comparisonConverted.length > 0) {
-    const compIncome = comparisonConverted
-      .filter((t) => t.type === 'income')
-      .reduce((s, t) => s + t.convertedAmount, 0);
-    const compExpenses = comparisonConverted
-      .filter((t) => t.type === 'expense')
-      .reduce((s, t) => s + t.convertedAmount, 0);
-    const compCategorized =
-      comparisonConverted.length > 0
-        ? comparisonConverted.filter(
-          (t) => t.category?.name && t.category.name !== 'Uncategorized'
-        ).length / comparisonConverted.length
-        : 0;
-    const compDetails = {
-      saving: pillarSaving(compIncome, compExpenses),
-      spendingControl: pillarSpendingControl(compIncome, compExpenses),
-      goals: details.goals,
-      engagement: pillarEngagement(
-        recentTx.length > 0,
-        user?.currencyId != null,
-        goals.length > 0,
-        compCategorized
-      ),
-    };
-    const compScore = computeScore(compDetails);
-    trend = score - compScore;
-  }
-
-  const result: FinancialHealthDetails = { score, trend, details };
-  cache.set(key, { result, expiresAt: Date.now() + CACHE_TTL_MS });
-  return result;
+/** Exact sum per type, converted to a number once for the score maths. Missing rates are excluded. */
+function sumByType(
+  items: { type: string; convertedMoney: Prisma.Decimal | null }[],
+  type: 'income' | 'expense',
+): number {
+  const ofType = items.filter((t) => t.type === type);
+  const total = sumConverted(ofType);
+  return moneyToNumber(total);
 }

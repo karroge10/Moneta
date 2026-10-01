@@ -1,5 +1,7 @@
 import { db } from '@/lib/db';
-import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
+import { preloadRates, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
+import { moneyToNumber } from '@/lib/money';
+import { computeNextDueDate } from '@/lib/recurring-utils';
 import { Transaction as PrismaTransaction } from '@prisma/client';
 
 export async function processDueRecurringItems(userId: number, now: Date) {
@@ -32,16 +34,7 @@ export async function processDueRecurringItems(userId: number, now: Date) {
     newTransactions.push(transaction);
 
     
-    const nextDate = new Date(item.nextDueDate);
-    if (item.frequencyUnit === 'day') {
-      nextDate.setDate(nextDate.getDate() + item.frequencyInterval);
-    } else if (item.frequencyUnit === 'week') {
-      nextDate.setDate(nextDate.getDate() + item.frequencyInterval * 7);
-    } else if (item.frequencyUnit === 'month') {
-      nextDate.setMonth(nextDate.getMonth() + item.frequencyInterval);
-    } else if (item.frequencyUnit === 'year') {
-      nextDate.setFullYear(nextDate.getFullYear() + item.frequencyInterval);
-    }
+    const nextDate = computeNextDueDate(item.nextDueDate, item.frequencyUnit, item.frequencyInterval);
 
     await db.recurringTransaction.update({
       where: { id: item.id },
@@ -71,7 +64,7 @@ export async function getExpenseRecurringItemsSerialized(userId: number, targetC
   
   const validItems = items.filter(item => item.nextDueDate);
   
-  const ratesMap = await preloadRatesMap(
+  const ratesMap = await preloadRates(
     validItems.map(item => ({ currencyId: item.currencyId, date: item.nextDueDate! })),
     targetCurrencyId
   );
@@ -81,7 +74,6 @@ export async function getExpenseRecurringItemsSerialized(userId: number, targetC
       ...item,
       id: String(item.id),
       date: item.nextDueDate!,
-      amount: Number(item.amount),
     })),
     targetCurrencyId,
     ratesMap
@@ -89,8 +81,8 @@ export async function getExpenseRecurringItemsSerialized(userId: number, targetC
     id: item.id,
     name: item.name,
     type: item.type,
-    amount: item.amount,
-    convertedAmount: item.convertedAmount,
+    amount: moneyToNumber(item.amount),
+    convertedAmount: item.convertedMoney ? moneyToNumber(item.convertedMoney) : null,
     currencyId: item.currencyId,
     category: item.category?.name ?? null,
     startDate: item.startDate.toISOString(),
