@@ -537,7 +537,11 @@ export default function ImportTransactionsPage() {
         });
 
         if (!response.ok) {
-          await response.json().catch(() => null);
+          const errorBody = await response.json().catch(() => null) as { error?: string; code?: string } | null;
+          if (errorBody?.code === 'PDF_IMPORT_LIMIT' && errorBody.error) {
+            const limitMessage = errorBody.error;
+            setToasts(prev => [...prev, { id: crypto.randomUUID(), message: limitMessage, type: 'error' }]);
+          }
           setUploadState('error');
           setProgressValue(0);
           setStatusNote(null);
