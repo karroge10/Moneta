@@ -1,10 +1,11 @@
 """
-Lightweight PDF processing worker used by the Next.js upload route.
+Bank statement PDF parser used by python-service (app.py, worker.py) and as a CLI.
 
-The workflow is:
-1. Read the PDF path passed from Node (argv[1]).
-2. Optionally load a scikit-learn text-classification pipeline from `transactions_model.joblib`.
-3. Try pdfplumber first for structured extraction; fall back to MinerU sample stub.
+The CLI workflow is:
+1. Read the PDF path from argv[1].
+2. Extract transactions with pdfplumber (tables first, then text lines).
+   An unreadable PDF yields zero transactions.
+3. Translate descriptions to English. Categorization happens on the Next.js side.
 4. Emit a JSON payload to stdout that matches TransactionUploadResponse plus metadata.
 """
 
@@ -13,6 +14,8 @@ from __future__ import annotations
 import json
 import re
 import sys
+import threading
+import time
 import traceback
 from dataclasses import dataclass
 from datetime import datetime
@@ -26,19 +29,9 @@ logging.basicConfig(level=logging.INFO, format="[process_pdf] %(message)s")
 logger = logging.getLogger(__name__)
 
 try:
-    import joblib  # type: ignore
-except ImportError:  # pragma: no cover
-    joblib = None  # type: ignore
-
-try:
     import pdfplumber  # type: ignore
 except ImportError:  # pragma: no cover
     pdfplumber = None  # type: ignore
-
-try:
-    import mineru  # noqa: F401  # type: ignore  # pragma: no cover
-except ImportError:  # pragma: no cover
-    mineru = None  # type: ignore
 
 try:
     from deep_translator import GoogleTranslator  # type: ignore
@@ -113,194 +106,147 @@ class StatementMetadata:
 
 
 _translation_cache: Dict[str, str] = {}
-_translator: Optional[GoogleTranslator] = None
+_translation_lock = threading.Lock()
+_last_translation_at = 0.0
+_translation_paused_until = 0.0
 
-# Temporary flag to keep categorization on the Node.js side only
-DISABLE_CATEGORY_PREDICTION = True
+TRANSLATION_MIN_INTERVAL_SECONDS = 0.25
+# Text travels in the request URL; Georgian is 9 bytes per character once URL-encoded.
+TRANSLATION_BATCH_CHARS = 800
+TRANSLATION_PAUSE_SECONDS = 120.0
+TRANSLATION_CACHE_LIMIT = 5000
+_translator: Optional[GoogleTranslator] = None
 
 if GoogleTranslator is not None:
     try:  # pragma: no cover
         _translator = GoogleTranslator(source="auto", target="en")
-    except Exception:
+    except Exception as e:
+        logger.warning("Translator unavailable: %s", e)
         _translator = None
 
-CATEGORY_KEYWORDS: Dict[str, Dict[str, float]] = {
-    "Groceries": {
-        "grocery": 1.0,
-        "supermarket": 1.0,
-        "market": 0.9,
-        "carrefour": 1.0,
-        "food": 0.6,
-        "mart": 0.6,
-        "store": 0.7,
-        "shop": 0.7,
-        "walmart": 1.0,
-        "target": 1.0,
-        "costco": 1.0,
-    },
-    "Restaurants": {
-        "restaurant": 1.0,
-        "cafe": 0.9,
-        "bar": 0.7,
-        "coffee": 0.6,
-        "burger": 0.6,
-        "pizza": 0.9,
-        "mcdonald": 1.0,
-        "starbucks": 1.0,
-        "kfc": 1.0,
-        "dining": 0.9,
-        "bistro": 0.8,
-    },
-    "Transportation": {
-        "taxi": 1.0,
-        "uber": 1.0,
-        "bolt": 1.0,
-        "bus": 0.6,
-        "fuel": 0.6,
-        "gas": 0.6,
-        "metro": 0.6,
-        "transport": 1.0,
-        "tram": 0.7,
-        "subway": 0.7,
-        "train": 0.7,
-        "parking": 0.8,
-        "toll": 0.8,
-    },
-    "Rent": {
-        "rent": 1.0,
-        "housing": 0.9,
-        "apartment": 0.8,
-        "lease": 0.8,
-        "landlord": 0.9,
-    },
-    "Entertainment": {
-        "entertainment": 1.0,
-        "movie": 0.9,
-        "cinema": 1.0,
-        "cavea": 1.0,
-        "theater": 0.9,
-        "netflix": 1.0,
-        "spotify": 1.0,
-        "streaming": 0.9,
-        "game": 0.8,
-        "gaming": 0.8,
-        "concert": 0.9,
-    },
-    "Fitness": {
-        "gym": 1.0,
-        "fitness": 1.0,
-        "workout": 0.9,
-        "exercise": 0.8,
-        "sport": 0.8,
-        "yoga": 0.9,
-        "pilates": 0.9,
-    },
-    "Clothes": {
-        "clothes": 1.0,
-        "clothing": 1.0,
-        "shirt": 0.9,
-        "pants": 0.8,
-        "shoes": 0.9,
-        "h&m": 1.0,
-        "zara": 1.0,
-        "nike": 1.0,
-        "adidas": 1.0,
-        "fashion": 0.8,
-    },
-    "Food": {
-        "food": 0.9,
-        "meal": 0.8,
-        "lunch": 0.7,
-        "dinner": 0.7,
-        "breakfast": 0.7,
-    },
-    "Technology": {
-        "technology": 1.0,
-        "tech": 1.0,
-        "computer": 0.9,
-        "laptop": 0.9,
-        "phone": 0.8,
-        "software": 0.9,
-        "app": 0.7,
-        "apple": 0.8,
-        "samsung": 0.8,
-    },
-    "Furniture": {
-        "furniture": 1.0,
-        "ikea": 1.0,
-        "sofa": 0.9,
-        "chair": 0.8,
-        "table": 0.8,
-        "bed": 0.8,
-    },
-    "Gifts": {
-        "gift": 1.0,
-        "present": 0.9,
-        "donation": 0.7,
-    },
-    "Fees": {
-        "fee": 1.0,
-        "commission": 1.0,
-        "charge": 0.6,
-        "service fee": 1.0,
-        "transaction fee": 1.0,
-    },
-    "Cash Withdrawal": {
-        "cash withdrawal": 1.0,
-        "withdrawal": 0.9,
-        "atm": 1.0,
-        "cash-out": 0.9,
-        "cash in": 0.6,
-    },
-    # Currency Exchange removed - these transactions should be excluded entirely
-    "Deposit": {
-        "deposit": 1.0,
-        "top up": 0.9,
-        "cash-in": 0.9,
-        "credit": 0.6,
-        "salary": 0.8,
-        "income": 0.7,
-    },
-}
+
+def prefetch_translations(texts: Iterable[str]) -> None:
+    """
+    Translates many descriptions with a few requests: unique texts are joined by newlines into
+    chunks of up to TRANSLATION_BATCH_CHARS and split back. A chunk whose line count does not
+    survive translation falls back to one request per text. Results land in the cache, so the
+    per-row translate_to_english calls that follow are instant.
+    """
+    if _translator is None:
+        return
+    pending = _unique_untranslated(texts)
+    for chunk in _chunk_by_length(pending, TRANSLATION_BATCH_CHARS):
+        if _translation_paused():
+            return
+        translated_lines = _translate_chunk(chunk)
+        if translated_lines is None:
+            for text in chunk:
+                translate_to_english(text)
+            continue
+        for original, translated in zip(chunk, translated_lines):
+            _remember_translation(original, translated.strip() or original)
 
 
 def translate_to_english(text: str) -> str:
+    """Translation of one description; the original text when translation is unavailable."""
     if not text:
         return text
-    cached = _translation_cache.get(text)
+    key = _cache_key(text)
+    cached = _translation_cache.get(key)
     if cached is not None:
         return cached
-    if _translator is None:
-        _translation_cache[text] = text
+    if _translator is None or _translation_paused():
         return text
+
+    translated = _call_translator(key)
+    if translated is None:
+        return text
+    _remember_translation(key, translated)
+    return translated
+
+
+def _translate_chunk(chunk: List[str]) -> Optional[List[str]]:
+    joined = "\n".join(chunk)
+    translated = _call_translator(joined)
+    if translated is None:
+        return None
+    lines = translated.split("\n")
+    if len(lines) != len(chunk):
+        logger.info("Batch translation changed the line count (%d -> %d); translating one by one", len(chunk), len(lines))
+        return None
+    return lines
+
+
+def _call_translator(text: str) -> Optional[str]:
+    """
+    One rate-limited request. On Google's "too many requests" answer, translation pauses for
+    TRANSLATION_PAUSE_SECONDS so an import keeps going with original text instead of stalling.
+    Failures are never cached: the cache outlives the request.
+    """
+    global _translation_paused_until
+    _wait_for_translation_slot()
     try:  # pragma: no cover
-        translated = _translator.translate(text)
-        _translation_cache[text] = translated
-        return translated
-    except Exception:
-        _translation_cache[text] = text
-        return text
+        return _translator.translate(text)
+    except Exception as e:  # pragma: no cover
+        if "too many requests" in str(e).lower():
+            _translation_paused_until = time.monotonic() + TRANSLATION_PAUSE_SECONDS
+            logger.warning("Translation rate-limited; keeping original text for the next %ds", TRANSLATION_PAUSE_SECONDS)
+        else:
+            logger.warning("Translation failed, keeping original text: %s", e)
+        return None
 
 
-def sample_transactions() -> List[RawTransaction]:
-    today = datetime.utcnow().date()
-    return [
-        RawTransaction(
-            date=today.replace(day=1).isoformat(),
-            description="Sample Subscription",
-            amount=-9.99,
-        ),
-        RawTransaction(
-            date=today.replace(day=2).isoformat(),
-            description="Coffee Shop",
-            amount=-4.5,
-        ),
-        RawTransaction(
-            date=today.replace(day=3).isoformat(),
-            description="Salary",
-            amount=2450.0,
-        ),
-    ]
+def _translation_paused() -> bool:
+    return time.monotonic() < _translation_paused_until
+
+
+def _unique_untranslated(texts: Iterable[str]) -> List[str]:
+    seen = set()
+    pending = []
+    for text in texts:
+        cleaned = _cache_key(text or "")
+        if not cleaned or cleaned in seen or cleaned in _translation_cache:
+            continue
+        seen.add(cleaned)
+        pending.append(cleaned)
+    return pending
+
+
+def _chunk_by_length(texts: List[str], max_chars: int) -> List[List[str]]:
+    chunks: List[List[str]] = []
+    current: List[str] = []
+    size = 0
+    for text in texts:
+        if current and size + len(text) + 1 > max_chars:
+            chunks.append(current)
+            current, size = [], 0
+        current.append(text)
+        size += len(text) + 1
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def _cache_key(text: str) -> str:
+    """Batches are newline-separated, so descriptions are cached with inner newlines flattened."""
+    return text.replace("\n", " ").strip()
+
+
+def _wait_for_translation_slot() -> None:
+    """Spaces calls to stay under Google's limit of 5 requests per second, across threads."""
+    global _last_translation_at
+    with _translation_lock:
+        now = time.monotonic()
+        wait = _last_translation_at + TRANSLATION_MIN_INTERVAL_SECONDS - now
+        if wait > 0:
+            time.sleep(wait)
+        _last_translation_at = time.monotonic()
+
+
+def _remember_translation(text: str, translated: str) -> None:
+    if len(_translation_cache) >= TRANSLATION_CACHE_LIMIT:
+        _translation_cache.clear()
+    _translation_cache[text] = translated
 
 
 def parse_date(value: str) -> Optional[str]:
@@ -592,9 +538,8 @@ def extract_transactions_with_pdfplumber(pdf_path: Path) -> Tuple[List[RawTransa
                                       page_index, len(date_patterns))
                             logger.debug("Sample dates found: %s", ", ".join(date_patterns[:5]))
                     
-    except Exception as e:  # pragma: no cover
-        logger.error("Exception during PDF extraction: %s", str(e))
-        traceback.print_exc()
+    except Exception:  # pragma: no cover
+        logger.exception("Exception during PDF extraction")
         return [], metadata
 
     # Only use text-based extraction if table-based extraction found no transactions
@@ -1196,136 +1141,12 @@ def _process_table(table: List[List], page_index: int, table_index: int, transac
     return rows_processed
 
 
-def extract_transactions_with_mineru(pdf_path: Path) -> List[RawTransaction]:
-    if mineru is None:  # pragma: no cover - placeholder extraction
-        return sample_transactions()
-
-    try:  # pragma: no cover
-        # TODO: integrate MinerU pipeline here.
-        return sample_transactions()
-    except Exception:
-        traceback.print_exc()
-        return sample_transactions()
-
-
-def load_classifier(model_path: Path):
-    if joblib is None:
-        return None
-    if not model_path.exists():
-        return None
-    try:  # pragma: no cover
-        return joblib.load(str(model_path))
-    except Exception:  # pragma: no cover
-        traceback.print_exc()
-        return None
-
-
-def predict_category(description_en: str, model) -> Tuple[Optional[str], float]:
-    if DISABLE_CATEGORY_PREDICTION:
-        # Leave categorization to merchant matching in Next.js
-        return None, 0.0
-
-    text = description_en or ""
-    
-    # Check for withdrawal patterns first - these should not be categorized
-    # (They'll be excluded in the import route, but we shouldn't suggest a category)
-    # All checks are on translated English text - translation happens before this function is called
-    lowered = text.lower()
-    if ('atm' in lowered or 
-        'cash withdrawal' in lowered or
-        'money withdrawal' in lowered or
-        'withdrawal of money' in lowered or
-        ('withdrawal' in lowered and ('account' in lowered or 'from account' in lowered)) or
-        ('withdraw' in lowered and 'account' in lowered) or
-        ('take out' in lowered and ('account' in lowered or 'money' in lowered)) or
-        ('takeout' in lowered and ('account' in lowered or 'money' in lowered))):
-        return None, 0.35  # Return uncategorized for withdrawals
-    
-    if model is not None:
-        try:  # pragma: no cover
-            if hasattr(model, "predict_proba") and hasattr(model, "classes_"):
-                probabilities = model.predict_proba([text])[0]
-                classes = getattr(model, "classes_", None)
-                if classes is not None and len(probabilities):
-                    probabilities = probabilities.tolist()
-                    best_index = max(range(len(probabilities)), key=lambda idx: probabilities[idx])
-                    return str(classes[best_index]), float(probabilities[best_index])
-            if hasattr(model, "predict"):
-                label = model.predict([text])[0]
-                return str(label), 0.6
-        except Exception:  # pragma: no cover
-            traceback.print_exc()
-
-    # Double-check for withdrawal patterns after normalization (in case translation uses different wording)
-    # Check again after normalization to catch variations
-    normalized_for_withdrawal_check = re.sub(r'[^\w\s]', ' ', lowered)
-    normalized_for_withdrawal_check = ' '.join(normalized_for_withdrawal_check.split())
-    if ('atm' in normalized_for_withdrawal_check or 
-        'cash withdrawal' in normalized_for_withdrawal_check or
-        'money withdrawal' in normalized_for_withdrawal_check or
-        'withdrawal of money' in normalized_for_withdrawal_check or
-        ('withdrawal' in normalized_for_withdrawal_check and ('account' in normalized_for_withdrawal_check or 'from account' in normalized_for_withdrawal_check)) or
-        ('withdraw' in normalized_for_withdrawal_check and 'account' in normalized_for_withdrawal_check) or
-        ('take out' in normalized_for_withdrawal_check and ('account' in normalized_for_withdrawal_check or 'money' in normalized_for_withdrawal_check)) or
-        ('takeout' in normalized_for_withdrawal_check and ('account' in normalized_for_withdrawal_check or 'money' in normalized_for_withdrawal_check))):
-        return None, 0.35  # Return uncategorized for withdrawals
-    
-    # Improved keyword matching with word boundaries and better scoring
-    # Normalize text: remove punctuation, extra spaces
-    normalized = re.sub(r'[^\w\s]', ' ', lowered)
-    normalized = ' '.join(normalized.split())
-    
-    best_category: Optional[str] = None
-    best_score = 0.0
-    
-    for category, keywords in CATEGORY_KEYWORDS.items():
-        score = 0.0
-        matched_keywords = []
-        
-        for keyword, weight in keywords.items():
-            # Use word boundaries for better matching (avoid partial matches)
-            # Check for whole word match or exact phrase match
-            pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
-            if re.search(pattern, normalized):
-                score += weight
-                matched_keywords.append(keyword)
-            # Also check for exact substring match (for multi-word phrases)
-            elif keyword.lower() in normalized:
-                score += weight * 0.8  # Slightly lower weight for substring matches
-                matched_keywords.append(keyword)
-        
-        # Bonus for multiple keyword matches (indicates stronger confidence)
-        if len(matched_keywords) > 1:
-            score *= 1.1
-        
-        if score > best_score:
-            best_category = category
-            best_score = score
-
-    if best_category is None or best_score == 0:
-        return None, 0.35
-
-    # Improved confidence calculation based on score
-    # Higher scores = higher confidence, but cap at 0.95
-    # Require minimum score of 1.0 to avoid wild guesses (e.g., "education" -> "entertainment")
-    if best_score < 1.0:
-        return None, 0.35  # Don't categorize if confidence is too low
-    
-    confidence = min(0.35 + best_score * 0.15, 0.95)
-    return best_category, confidence
-
-
 def main() -> int:
     if len(sys.argv) < 2:
         print(json.dumps({"transactions": [], "metadata": {}}))
         return 0
 
     pdf_path = Path(sys.argv[1]).expanduser().resolve()
-    model_path = (
-        Path(sys.argv[2]).expanduser().resolve()
-        if len(sys.argv) > 2
-        else Path(__file__).resolve().parent / "models" / "transactions_model.joblib"
-    )
 
     extracted_transactions: List[RawTransaction] = []
     metadata = StatementMetadata(source=pdf_path.name)
@@ -1333,29 +1154,10 @@ def main() -> int:
     if pdfplumber is not None:
         extracted_transactions, metadata = extract_transactions_with_pdfplumber(pdf_path)
 
-    if not extracted_transactions:
-        logger.warning("pdfplumber extraction returned zero rows, attempting mineru fallback")
-        extracted_transactions = extract_transactions_with_mineru(pdf_path)
-
     if extracted_transactions:
         logger.info("Extracted %d transactions from PDF", len(extracted_transactions))
-        # Check if we got sample data (indicates extraction failed)
-        if len(extracted_transactions) == 3:
-            sample_descriptions = ['Sample Subscription', 'Coffee Shop', 'Salary']
-            is_sample = all(
-                any(sample in tx.description for sample in sample_descriptions)
-                for tx in extracted_transactions
-            )
-            if is_sample:
-                logger.error("PDF extraction failed - received sample transaction data. The PDF structure may not match the expected format.")
-                logger.error("Expected table structure: Date | Operation | Debit | Credit | ... | Description | Beneficiary")
-                logger.error("Please check the PDF format and ensure it contains a transaction table.")
-                # Return empty list instead of sample data
-                extracted_transactions = []
     else:
         logger.warning("No transactions extracted from PDF. The PDF structure may not match the expected format.")
-
-    model = load_classifier(model_path)
 
     payload = {
         "transactions": [],
@@ -1369,26 +1171,28 @@ def main() -> int:
         },
     }
 
+    total = len(extracted_transactions)
+    prefetch_translations(item.description for item in extracted_transactions)
     for index, item in enumerate(extracted_transactions, start=1):
-        if index == 1:
-            logger.info("Starting translation + categorisation for %d transactions", len(extracted_transactions))
         translated = translate_to_english(item.description)
-        if index % 25 == 0 or index == len(extracted_transactions):
-            logger.info("Progress: processed %d/%d rows", index, len(extracted_transactions))
-        category, confidence = predict_category(translated, model)
-        payload["transactions"].append(
-            {
-                "date": item.date,
-                "description": item.description,
-                "translatedDescription": translated,
-                "amount": round(float(item.amount), 2),
-                "category": category,
-                "confidence": round(float(confidence), 2),
-            }
-        )
+        if index % 25 == 0 or index == total:
+            logger.info("Progress: translated %d/%d rows", index, total)
+        payload["transactions"].append(build_transaction_payload(item, translated))
 
     print(json.dumps(payload, ensure_ascii=False))
     return 0
+
+
+def build_transaction_payload(item: RawTransaction, translated: str) -> Dict[str, object]:
+    """JSON shape shared by the CLI, app.py and worker.py. Categories are assigned on the Next.js side."""
+    return {
+        "date": item.date,
+        "description": item.description,
+        "translatedDescription": translated,
+        "amount": round(float(item.amount), 2),
+        "category": None,
+        "confidence": 0.0,
+    }
 
 
 if __name__ == "__main__":  # pragma: no cover

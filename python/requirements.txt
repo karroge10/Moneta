@@ -1,5 +1,3 @@
-pdfplumber==0.11.4
-scikit-learn==1.6.1
-deep-translator==1.11.4
-
-
+# Kept so older build commands (pip install -r python/requirements.txt) still work.
+# The real list lives in python-service/requirements.txt.
+-r ../python-service/requirements.txt
