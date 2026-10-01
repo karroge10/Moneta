@@ -1,4 +1,4 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": ["scripts/**/*.ts", "prisma/**/*.ts"]
+  "entry": ["scripts/seed-*.ts", "scripts/stripe-setup.ts", "prisma/seed*.ts"]
 }

@@ -11,7 +11,7 @@
  * If you previously ran with country codes (US, GE, DE), delete demo users first and re-run.
  */
 
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, TransactionType } from '@prisma/client';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
@@ -180,7 +180,7 @@ async function main() {
 
     const txs: Array<{
       userId: number;
-      type: string;
+      type: TransactionType;
       amount: number;
       description: string;
       source: string;

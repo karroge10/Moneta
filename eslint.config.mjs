@@ -7,12 +7,6 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     rules: {
-      // Legitimate patterns: dropdown positioning, confetti init, controlled inputs synced from props.
-      "react-hooks/set-state-in-effect": "off",
-      // Dynamic icon components come from a stable string→component map (`getIcon`).
-      "react-hooks/static-components": "off",
-      // Intentional: many effects sync DOM/modals; adding deps causes loops or double-fetch.
-      "react-hooks/exhaustive-deps": "off",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {
