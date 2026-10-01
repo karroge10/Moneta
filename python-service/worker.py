@@ -10,11 +10,6 @@ import tempfile
 from pathlib import Path
 from datetime import datetime
 
-# Add parent directory to path to import process_pdf
-project_root = Path(__file__).resolve().parent.parent
-python_dir = project_root / 'python'
-sys.path.insert(0, str(project_root))
-
 try:
     import psycopg2
     from psycopg2.extras import RealDictCursor
@@ -22,26 +17,84 @@ except ImportError:
     print("ERROR: psycopg2 not installed. Run: pip install psycopg2-binary")
     sys.exit(1)
 
-try:
-    from python.process_pdf import (
-        extract_transactions_with_pdfplumber,
-        translate_to_english,
-        predict_category,
-        load_classifier,
-    )
-except ImportError:
-    sys.path.insert(0, str(python_dir))
-    from process_pdf import (
-        extract_transactions_with_pdfplumber,
-        translate_to_english,
-        predict_category,
-        load_classifier,
-    )
+# The repo root must be importable for python.process_pdf, whatever the working directory.
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-# Load classifier model once at startup
-default_model_path = project_root / 'python' / 'models' / 'transactions_model.joblib'
-model_path = Path(os.getenv('CATEGORIES_MODEL_PATH', str(default_model_path)))
-classifier_model = load_classifier(model_path)
+from python.process_pdf import (  # noqa: E402
+    build_transaction_payload,
+    extract_transactions_with_pdfplumber,
+    prefetch_translations,
+    translate_to_english,
+)
+
+def main():
+    """Main worker loop - polls for jobs and processes them."""
+    print('[worker] Starting PDF processing worker...', flush=True)
+    
+    # Connect to database
+    try:
+        conn = get_db_connection()
+        print('[worker] Connected to database', flush=True)
+    except Exception as e:
+        print(f'[worker] ERROR: Could not connect to database: {e}', flush=True)
+        sys.exit(1)
+    
+    # Main loop
+    while True:
+        try:
+            job = claim_next_job(conn)
+
+            if job:
+                job_id = job['id']
+                file_content = job['fileContent']  # Bytes from database
+                file_name = job['fileName']
+                user_id = job['userId']
+                
+                process_job(conn, job_id, file_content, file_name, user_id)
+            else:
+                # No jobs, wait before checking again
+                time.sleep(2)  # Check every 2 seconds
+                
+        except KeyboardInterrupt:
+            print('\n[worker] Shutting down...', flush=True)
+            conn.close()
+            break
+        except Exception as e:
+            print(f'[worker] Error in main loop: {e}', flush=True)
+            try:
+                conn.rollback()
+            except psycopg2.Error as rollback_error:
+                print(f'[worker] Rollback failed: {rollback_error}', flush=True)
+            time.sleep(5)  # Wait longer on error before retrying
+
+def claim_next_job(conn):
+    """
+    Atomically claim the oldest queued job and mark it as processing.
+    FOR UPDATE SKIP LOCKED keeps concurrent workers from claiming the same job.
+    Returns the job row or None.
+    """
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cursor.execute("""
+            UPDATE "PdfProcessingJob"
+            SET status = 'processing', progress = 0, "updatedAt" = NOW()
+            WHERE id = (
+                SELECT id
+                FROM "PdfProcessingJob"
+                WHERE status = 'queued'
+                ORDER BY "createdAt" ASC
+                LIMIT 1
+                FOR UPDATE SKIP LOCKED
+            )
+            RETURNING id, "fileContent", "fileName", "userId"
+        """)
+        job = cursor.fetchone()
+        conn.commit()
+        return job
+    finally:
+        cursor.close()
 
 def get_db_connection():
     """Get PostgreSQL connection from DATABASE_URL environment variable."""
@@ -119,16 +172,11 @@ def process_job(conn, job_id, file_content, file_name, user_id):
     try:
         print(f'[worker] Processing job {job_id}...', flush=True)
         
-        # Update status to processing
-        update_job_status(conn, job_id, 'processing', progress=0)
-        
-        # Write file content to temporary file on Render's filesystem
-        temp_dir = Path(tempfile.gettempdir())
-        temp_file_path = temp_dir / f'pdf_{job_id}_{file_name}'
-        
-        print(f'[worker] Writing PDF content to temp file: {temp_file_path}...', flush=True)
-        with open(temp_file_path, 'wb') as f:
-            f.write(file_content)
+        # Write file content to a temp file (the name never includes the user-supplied file name)
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp_file:
+            temp_file_path = Path(tmp_file.name)
+            tmp_file.write(file_content)
+        print(f'[worker] Wrote PDF content to temp file: {temp_file_path}', flush=True)
         
         # Extract transactions
         print(f'[worker] Extracting transactions from {file_name}...', flush=True)
@@ -142,23 +190,16 @@ def process_job(conn, job_id, file_content, file_name, user_id):
         # Update progress: 50% after extraction
         update_job_status(conn, job_id, 'processing', progress=50)
         
-        # Translate & categorize
+        # Translate descriptions
         total = len(transactions)
-        print(f'[worker] Starting translation + categorization for {total} transactions', flush=True)
+        print(f'[worker] Starting translation for {total} transactions', flush=True)
         
+        prefetch_translations(tx.description for tx in transactions)
         result_transactions = []
         for index, tx in enumerate(transactions, start=1):
             translated = translate_to_english(tx.description)
-            category, confidence = predict_category(translated, classifier_model)
-            
-            result_transactions.append({
-                'date': tx.date,
-                'description': tx.description,
-                'translatedDescription': translated,
-                'amount': round(float(tx.amount), 2),
-                'category': category,
-                'confidence': round(float(confidence), 2),
-            })
+            tx_payload = build_transaction_payload(tx, translated)
+            result_transactions.append(tx_payload)
             
             # Update progress: 50-100% during processing
             progress = 50 + int((index / total) * 50)
@@ -173,7 +214,7 @@ def process_job(conn, job_id, file_content, file_name, user_id):
             'transactions': result_transactions,
             'metadata': {
                 'currency': metadata.currency,
-                'source': metadata.source or Path(file_path).name,
+                'source': Path(file_name).name if file_name else metadata.source,
                 'periodStart': metadata.period_start,
                 'periodEnd': metadata.period_end,
             }
@@ -201,17 +242,15 @@ def process_job(conn, job_id, file_content, file_name, user_id):
     except Exception as e:
         error_msg = str(e)
         print(f'[worker] Error processing job {job_id}: {error_msg}', flush=True)
+        conn.rollback()
         update_job_status(conn, job_id, 'failed', error=error_msg)
-        
-        # Create error notification
-        try:
-            create_notification(
-                conn,
-                user_id,
-                f'PDF processing failed: {error_msg}'
-            )
-        except:
-            pass  # Don't fail if notification creation fails
+
+        # create_notification logs and swallows its own errors
+        create_notification(
+            conn,
+            user_id,
+            f'PDF processing failed: {error_msg}'
+        )
     finally:
         # Always clean up temp file
         if temp_file_path and temp_file_path.exists():
@@ -220,56 +259,6 @@ def process_job(conn, job_id, file_content, file_name, user_id):
                 print(f'[worker] Cleaned up temp file: {temp_file_path}', flush=True)
             except Exception as e:
                 print(f'[worker] Warning: Could not delete temp file {temp_file_path}: {e}', flush=True)
-
-def main():
-    """Main worker loop - polls for jobs and processes them."""
-    print('[worker] Starting PDF processing worker...', flush=True)
-    print(f'[worker] Model path: {model_path}', flush=True)
-    
-    # Connect to database
-    try:
-        conn = get_db_connection()
-        print('[worker] Connected to database', flush=True)
-    except Exception as e:
-        print(f'[worker] ERROR: Could not connect to database: {e}', flush=True)
-        sys.exit(1)
-    
-    # Main loop
-    while True:
-        try:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            
-            # Find next queued job (FOR UPDATE SKIP LOCKED prevents multiple workers from picking same job)
-            cursor.execute("""
-                SELECT id, "fileContent", "fileName", "userId"
-                FROM "PdfProcessingJob"
-                WHERE status = 'queued'
-                ORDER BY "createdAt" ASC
-                LIMIT 1
-                FOR UPDATE SKIP LOCKED
-            """)
-            
-            job = cursor.fetchone()
-            cursor.close()
-            
-            if job:
-                job_id = job['id']
-                file_content = job['fileContent']  # Bytes from database
-                file_name = job['fileName']
-                user_id = job['userId']
-                
-                process_job(conn, job_id, file_content, file_name, user_id)
-            else:
-                # No jobs, wait before checking again
-                time.sleep(2)  # Check every 2 seconds
-                
-        except KeyboardInterrupt:
-            print('\n[worker] Shutting down...', flush=True)
-            conn.close()
-            break
-        except Exception as e:
-            print(f'[worker] Error in main loop: {e}', flush=True)
-            time.sleep(5)  # Wait longer on error before retrying
 
 if __name__ == '__main__':
     main()

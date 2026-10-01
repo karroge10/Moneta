@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { getBillingState } from '@/lib/billing/entitlements';
 import { isBillingConfigured } from '@/lib/billing/stripe';
 
@@ -12,7 +13,6 @@ export async function GET() {
     const state = await getBillingState(user.id);
     return NextResponse.json({ ...state, configured: isBillingConfigured(), testMode: true });
   } catch (error) {
-    console.error('[billing] failed to load state', error);
-    return NextResponse.json({ error: 'Failed to load billing state' }, { status: 500 });
+    return errorResponse(error, '[billing] failed to load state', 'Failed to load billing state');
   }
 }

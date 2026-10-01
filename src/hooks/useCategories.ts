@@ -1,33 +1,31 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@clerk/nextjs';
 import { type Category } from '@/types/dashboard';
+import { apiFetch } from '@/lib/api-client';
+import { API, queryKeys } from '@/lib/query-keys';
+import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
 
-async function fetchCategories(): Promise<Category[]> {
-  const response = await fetch('/api/categories');
-  if (!response.ok) {
-    throw new Error('Failed to fetch categories');
-  }
-  const data = await response.json();
-  return data.categories || [];
-}
-
+/** Category list for the signed-in user, cached for a day. */
 export function useCategories() {
-  const { isLoaded, isSignedIn } = useAuth();
-  const authReady = !!(isLoaded && isSignedIn);
+  const authReady = useAuthReadyForApi();
 
   const query = useQuery({
-    queryKey: ['categories'],
+    queryKey: queryKeys.categories.all,
     queryFn: fetchCategories,
     enabled: authReady,
-    staleTime: 24 * 60 * 60 * 1000, 
+    staleTime: 24 * 60 * 60 * 1000,
   });
 
-  return { 
-    categories: query.data ?? [], 
-    loading: query.isPending, 
-    error: query.error as Error | null, 
-    refetch: query.refetch 
+  return {
+    categories: query.data ?? [],
+    loading: query.isPending,
+    error: query.error,
+    refetch: query.refetch,
   };
+}
+
+async function fetchCategories(): Promise<Category[]> {
+  const data = await apiFetch<{ categories?: Category[] }>(API.categories);
+  return data.categories ?? [];
 }

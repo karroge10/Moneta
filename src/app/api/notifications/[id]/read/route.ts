@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -39,25 +40,13 @@ export async function PATCH(
 
     
     await db.notification.update({
-      where: { id: notificationId },
+      where: { id: notificationId, userId: user.id },
       data: { read: true },
     });
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('[api/notifications/[id]/read] PATCH error', error);
-
-    if (error instanceof Error && error.message.includes('Unauthorized')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 },
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Failed to mark notification as read' },
-      { status: 500 },
-    );
+    return errorResponse(error, 'api/notifications/[id]/read] PATCH error', 'Failed to mark notification as read');
   }
 }
 

@@ -68,3 +68,10 @@ src/lib/**/*.pdf
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# python caches, venvs and the locally trained model (not shipped)
+**/__pycache__/
+python-service/__pycache__/
+python-service/.venv
+*.joblib
+tmp/

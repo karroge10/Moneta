@@ -7,10 +7,11 @@ import SearchBar from '@/components/transactions/shared/SearchBar';
 import GoalFilter from './shared/GoalFilter';
 import GoalCard from './GoalCard';
 import Card from '@/components/ui/Card';
+import EmptyState from '@/components/ui/EmptyState';
+import Skeleton from '@/components/ui/Skeleton';
 import type { CurrencyOption } from '@/lib/currency-country-map';
 
-const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
-const SKELETON_CARDS = 4;
+const SKELETON_CARDS = [0, 1, 2, 3];
 
 interface GoalsListProps {
   goals: Goal[];
@@ -28,23 +29,23 @@ export default function GoalsList({ goals, currencyOptions = [], onGoalClick, lo
   if (loading) {
     return (
       <Card title="Your Goals" className="h-full flex flex-col">
-        <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0">
-          <div className="flex gap-3 shrink-0">
-            <div className="flex-[0.6] h-10 rounded-xl animate-pulse" style={SKELETON_STYLE} />
-            <div className="flex-[0.4] h-10 rounded-xl animate-pulse" style={SKELETON_STYLE} />
+        <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4" aria-busy="true">
+          <div className="flex shrink-0 gap-3">
+            <Skeleton className="h-10 flex-[0.6] rounded-full" />
+            <Skeleton className="h-10 flex-[0.4] rounded-full" />
           </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 min-h-0 mb-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {Array.from({ length: SKELETON_CARDS }).map((_, idx) => (
-                <div key={idx} className="flex flex-col p-6 rounded-[30px] gap-4 animate-pulse" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                  <div className="h-6 w-3/4 rounded" style={SKELETON_STYLE} />
+          <div className="custom-scrollbar mb-4 min-h-0 flex-1 overflow-y-auto pr-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {SKELETON_CARDS.map((card) => (
+                <div key={card} className="flex flex-col gap-4 rounded-card bg-surface-0 p-6">
+                  <Skeleton className="h-6 w-3/4" />
                   <div className="flex items-center justify-between">
-                    <div className="h-4 w-24 rounded" style={SKELETON_STYLE} />
-                    <div className="h-6 w-20 rounded-lg" style={SKELETON_STYLE} />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-6 w-20" />
                   </div>
-                  <div className="h-12 w-2/3 rounded" style={SKELETON_STYLE} />
-                  <div className="h-2 w-full rounded-full" style={SKELETON_STYLE} />
-                  <div className="h-4 w-2/3 rounded mt-auto" style={SKELETON_STYLE} />
+                  <Skeleton className="h-12 w-2/3" />
+                  <Skeleton className="h-2 w-full rounded-full" />
+                  <Skeleton className="mt-auto h-4 w-2/3" />
                 </div>
               ))}
             </div>
@@ -71,15 +72,9 @@ export default function GoalsList({ goals, currencyOptions = [], onGoalClick, lo
 
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 min-h-0 mb-4">
           {goals.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="text-body mb-2 opacity-70">No goals yet</div>
-              <div className="text-helper">Add a goal to get started</div>
-            </div>
+            <EmptyState title="No goals yet" description="Add a goal to get started" />
           ) : filteredGoals.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="text-body mb-2 opacity-70">No goals found</div>
-              <div className="text-helper">Try adjusting your search or filters</div>
-            </div>
+            <EmptyState title="No goals found" description="Try adjusting your search or filters" />
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {filteredGoals.map((goal) => (

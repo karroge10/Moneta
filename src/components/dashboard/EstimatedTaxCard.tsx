@@ -1,51 +1,32 @@
 'use client';
 
-import { NavArrowRight } from 'iconoir-react';
-import { formatNumber } from '@/lib/utils';
-import { useCurrency } from '@/hooks/useCurrency';
-import Link from 'next/link';
 import ValueCard from '@/components/dashboard/ValueCard';
+import MoneyFigure from '@/components/dashboard/MoneyFigure';
+import CardFooterLink from '@/components/dashboard/CardFooterLink';
 
 interface EstimatedTaxCardProps {
   taxRate: number | null;
   totalIncome: number;
 }
 
-const taxSettingsLink = (
-  <Link
-    href="/settings"
-    className="text-helper flex items-center gap-1 cursor-pointer group hover:text-purple transition-colors flex-wrap w-fit"
-  >
-    <span className="text-wrap-safe wrap-break-word">Tax Settings</span>{' '}
-    <NavArrowRight
-      width={14}
-      height={14}
-      className="stroke-current transition-colors shrink-0"
-    />
-  </Link>
-);
-
+/** Income times the tax rate from Settings; asks for the rate when it is not set. */
 export default function EstimatedTaxCard({ taxRate, totalIncome }: EstimatedTaxCardProps) {
-  const { currency } = useCurrency();
-  const estimatedAmount = taxRate !== null ? totalIncome * (taxRate / 100) : 0;
+  const settingsLink = <CardFooterLink href="/settings">Tax Settings</CardFooterLink>;
 
   if (taxRate === null) {
     return (
-      <ValueCard
-        title="Estimated Tax"
-        bottomRow={taxSettingsLink}
-      >
-        <p className="text-body" style={{ color: 'rgba(231, 228, 228, 0.7)' }}>
+      <ValueCard title="Estimated Tax" bottomRow={settingsLink}>
+        <p className="text-body text-secondary">
           Configure your income tax rate in Settings to see estimated tax for the selected period.
         </p>
       </ValueCard>
     );
   }
 
+  const estimatedAmount = totalIncome * (taxRate / 100);
   return (
-    <ValueCard title="Estimated Tax" bottomRow={taxSettingsLink}>
-      <span className="text-card-currency shrink-0 opacity-50">{currency.symbol}</span>
-      <span className="text-card-value break-all min-w-0">{formatNumber(estimatedAmount)}</span>
+    <ValueCard title="Estimated Tax" bottomRow={settingsLink}>
+      <MoneyFigure amount={estimatedAmount} />
     </ValueCard>
   );
 }

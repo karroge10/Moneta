@@ -15,19 +15,19 @@ export const faqData: FAQItem[] = [
   {
     id: '2',
     question: 'Is Moneta secure?',
-    answer: 'Absolutely! We prioritize your data security and ensure all sensitive information is encrypted.',
+    answer: 'Sign-in is handled by Clerk, every connection uses HTTPS, and your data is never sold. Moneta never asks for your bank login: you add transactions by hand or upload a statement file.',
     category: 'General'
   },
   {
     id: '3',
     question: 'Is Moneta free?',
-    answer: 'Yes. Moneta is free to use; there are no paid plans or in-app payments.',
+    answer: 'Yes, the core app is free. The free plan includes 3 bank statement PDF imports per month; Moneta Premium removes that limit. Billing currently runs in Stripe test mode, so no real charges are made.',
     category: 'General'
   },
   {
     id: '4',
     question: 'How can I track my expenses?',
-    answer: 'You can log transactions manually or import them using the upload feature available in the Transactions section. We plan on adding automatic transaction feature in the future.',
+    answer: 'You can add transactions by hand or upload a bank statement PDF in the Transactions section.',
     category: 'Features'
   },
   {
@@ -52,19 +52,19 @@ export const faqData: FAQItem[] = [
   {
     id: '8',
     question: 'How do I reset my password?',
-    answer: 'Go to the Login page, click "Forgot Password," and follow the instructions. If you are logged in, go to the Settings page, click "Change Password", and follow the instructions.',
+    answer: 'On the sign-in screen, choose "Forgot password" and follow the instructions. If you are signed in, open Settings, click "Change password" and follow the steps.',
     category: 'Account'
   },
   {
     id: '9',
     question: 'How do I manage my account?',
-    answer: 'Visit the Settings page to update your profile, language, currency, and notification preferences.',
+    answer: 'Visit the Settings page to update your country, currency, date of birth, profession and tax estimate. Name, photo, email and password are managed in your account profile, opened from the same page.',
     category: 'Account'
   },
   {
     id: '10',
-    question: 'How do I change my language or currency settings?',
-    answer: 'You can visit the Settings page to customize language, currency, and country settings.',
+    question: 'How do I change my currency?',
+    answer: 'Open the Settings page and pick a new currency or country. Amounts across the app are shown in the selected currency.',
     category: 'Account'
   },
   {
@@ -76,13 +76,13 @@ export const faqData: FAQItem[] = [
   {
     id: '12',
     question: 'Can I export my data?',
-    answer: 'Yes! Use the Export Data option on the Settings page to download your financial information. You can also import data if needed.',
+    answer: 'Yes. Use Export Data on the Settings page to download your transactions as an Excel file.',
     category: 'Features'
   },
   {
     id: '13',
     question: 'Can I link my bank account?',
-    answer: 'Currently, we do not support direct bank account linking via API. However, you can upload bank statements (PDF or CSV) in the Transactions section, and Moneta will automatically categorize and import them for you.',
+    answer: 'Not at the moment. Instead, you can upload a bank statement PDF in the Transactions section. Moneta reads the transactions and suggests categories, recognizing merchants you have categorized before; you review them before importing.',
     category: 'Features'
   },
   {
@@ -94,13 +94,13 @@ export const faqData: FAQItem[] = [
   {
     id: '15',
     question: 'What should I do if I experience a bug?',
-    answer: 'Please report the issue using the contact form on the Help Center page, and our team will address it promptly.',
+    answer: 'Please report it with the Send Feedback form on the Help Center page.',
     category: 'Technical'
   },
   {
     id: '16',
-    question: 'Why am I not receiving notifications?',
-    answer: 'Check your notification settings on the Notifications page to ensure alerts are enabled for your account. Remember that cron-based notifications (like bill reminders) are sent once per day.',
+    question: 'Why have I not received a notification yet?',
+    answer: 'Scheduled notifications, like reminders for recurring transactions, are created once per day, so a new one can take up to a day to appear. Notifications older than 30 days are removed automatically.',
     category: 'Technical'
   },
 ];

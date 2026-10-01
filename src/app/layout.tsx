@@ -15,14 +15,17 @@ const sen = Sen({
   weight: ["400", "600", "700"],
 });
 
+const DESCRIPTION =
+  "Track spending, income, goals and investments in one place, with clear charts and bank statement import.";
+
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://monetafin.vercel.app";
 
 export const metadata: Metadata = {
   title: {
-    default: "Moneta — Smart Financial Dashboard",
+    default: "Moneta: Smart Financial Dashboard",
     template: "%s | Moneta"
   },
-  description: "Experience the next generation of personal finance management. Beautiful charts, deep insights, and secure tracking.",
+  description: DESCRIPTION,
   keywords: ["financial dashboard", "expense tracker", "investment portfolio", "money management", "personal finance"],
   authors: [{ name: "Moneta Team" }],
   creator: "Moneta",
@@ -46,21 +49,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: siteUrl,
     siteName: "Moneta",
-    title: "Moneta — Smart Financial Dashboard",
-    description: "Elegant and powerful financial tracking for modern investors.",
+    title: "Moneta: Smart Financial Dashboard",
+    description: DESCRIPTION,
     images: [
       {
         url: "/dashboard.png",
-        width: 1200,
-        height: 630,
+        width: 1907,
+        height: 1077,
         alt: "Moneta Dashboard Overview",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Moneta — Smart Financial Dashboard",
-    description: "Elegant and powerful financial tracking for modern investors.",
+    title: "Moneta: Smart Financial Dashboard",
+    description: DESCRIPTION,
     images: ["/dashboard.png"],
     creator: "@moneta_app",
   },
@@ -81,10 +84,9 @@ export const viewport: Viewport = {
   themeColor: "#1a1a1a",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -108,8 +110,8 @@ export default async function RootLayout({
           borderRadius: "15px",
         },
         elements: {
-          card: "border border-[rgba(231,228,228,0.06)] shadow-[0_10px_20px_rgba(0,0,0,0.3)]",
-          cardBox: "rounded-[30px]",
+          card: "border border-line-subtle shadow-[var(--shadow-card)]",
+          cardBox: "rounded-card",
         }
       }}
       afterSignOutUrl="/"
@@ -118,19 +120,16 @@ export default async function RootLayout({
       allowedRedirectOrigins={[currentSiteUrl, "http://localhost:3000"]}
     >
       <html lang="en" suppressHydrationWarning>
-        <body
-          className={`${sen.variable} antialiased`}
-        >
+        <body className={`${sen.variable} antialiased`}>
           <QueryProvider>
-            {}
             <CurrencyProvider>
               <NotificationProvider>
-              <ToastProvider>
-                {children}
-                <Analytics />
-              </ToastProvider>
-            </NotificationProvider>
-          </CurrencyProvider>
+                <ToastProvider>
+                  {children}
+                  <Analytics />
+                </ToastProvider>
+              </NotificationProvider>
+            </CurrencyProvider>
           </QueryProvider>
         </body>
       </html>

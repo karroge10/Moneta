@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import Stripe from 'stripe';
 import { getStripe } from './stripe';
 
 /**
@@ -32,4 +33,17 @@ export async function ensureStripeCustomer(user: { id: number; stripeCustomerId:
     select: { stripeCustomerId: true },
   });
   return stored.stripeCustomerId ?? customer.id;
+}
+
+/**
+ * Deletes the Stripe customer, which also cancels its subscriptions immediately.
+ * A customer that is already gone counts as success.
+ */
+export async function deleteStripeCustomer(stripeCustomerId: string): Promise<void> {
+  try {
+    await getStripe().customers.del(stripeCustomerId);
+  } catch (error) {
+    if (error instanceof Stripe.errors.StripeInvalidRequestError && error.code === 'resource_missing') return;
+    throw error;
+  }
 }

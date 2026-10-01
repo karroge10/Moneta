@@ -2,11 +2,6 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "build": {
-    "env": {
-      "PYTHON_PATH": "python3"
-    }
-  },
   "crons": [
     {
       "path": "/api/cron/recurring",
@@ -14,4 +9,3 @@
     }
   ]
 }
-

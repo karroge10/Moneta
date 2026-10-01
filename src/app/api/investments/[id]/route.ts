@@ -1,8 +1,11 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 import { Prisma } from '@prisma/client';
 import { getInvestmentsPortfolio } from '@/lib/investments';
+import { parseQuantity } from '@/lib/money';
+import { assetUpdateSchema, parseJsonBody } from '@/lib/validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,8 +38,9 @@ export async function GET(
         const portfolioAsset = portfolio.assets.find(a => a.assetId === assetId);
 
         
-        const asset = await db.asset.findUnique({
-            where: { id: assetId },
+        // Shared assets have no owner; a private asset is visible only to the user who created it.
+        const asset = await db.asset.findFirst({
+            where: { id: assetId, OR: [{ userId: null }, { userId: user.id }] },
             include: {
                 transactions: {
                     where: { userId: user.id },
@@ -61,6 +65,8 @@ export async function GET(
             pnlPercent: portfolioAsset?.unrealizedPnlPercent || 0,
             unrealizedPnl: portfolioAsset?.unrealizedPnl || 0,
             realizedPnl: portfolioAsset?.realizedPnl || 0,
+            priceMissing: portfolioAsset?.priceMissing ?? false,
+            rateMissing: portfolioAsset?.rateMissing ?? false,
             pricingMode: asset.pricingMode, 
             manualPrice: asset.manualPrice, 
             icon: portfolioAsset?.icon || asset.icon, 
@@ -68,8 +74,7 @@ export async function GET(
 
         return NextResponse.json({ asset: assetWithStats });
     } catch (error) {
-        console.error('Error fetching asset details:', error);
-        return NextResponse.json({ error: 'Failed to fetch asset details' }, { status: 500 });
+      return errorResponse(error, 'Error fetching asset details', 'Failed to fetch asset details');
     }
 }
 
@@ -81,11 +86,14 @@ export async function PUT(
         const { id } = await params;
         const user = await requireCurrentUserWithLanguage();
         const assetId = parseInt(id, 10);
-        const body = await request.json();
 
         if (isNaN(assetId)) {
             return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
         }
+
+        const parsed = await parseJsonBody(request, assetUpdateSchema);
+        if (!parsed.ok) return parsed.response;
+        const body = parsed.data;
 
         const asset = await db.asset.findUnique({ where: { id: assetId } });
         if (!asset) {
@@ -102,17 +110,16 @@ export async function PUT(
         const updateData: Prisma.AssetUpdateInput = {};
         if (name !== undefined) updateData.name = name;
         if (ticker !== undefined) updateData.ticker = ticker || null;
-        if (manualPrice !== undefined) updateData.manualPrice = manualPrice;
+        if (manualPrice !== undefined) updateData.manualPrice = manualPrice === null ? null : parseQuantity(manualPrice);
 
         const updatedAsset = await db.asset.update({
-            where: { id: assetId },
+            where: { id: assetId, userId: user.id },
             data: updateData,
         });
 
         return NextResponse.json({ asset: updatedAsset });
     } catch (error) {
-        console.error('Error updating asset:', error);
-        return NextResponse.json({ error: 'Failed to update asset' }, { status: 500 });
+      return errorResponse(error, 'Error updating asset', 'Failed to update asset');
     }
 }
 
@@ -149,12 +156,11 @@ export async function DELETE(
         });
 
         if (asset && asset.userId === user.id) {
-            await db.asset.delete({ where: { id: assetId } });
+            await db.asset.delete({ where: { id: assetId, userId: user.id } });
         }
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Error deleting investment holding:', error);
-        return NextResponse.json({ error: 'Failed to delete investment holding' }, { status: 500 });
+      return errorResponse(error, 'Error deleting investment holding', 'Failed to delete investment holding');
     }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -72,11 +73,7 @@ export async function GET(
       updatedAt: job.updatedAt
     });
   } catch (error) {
-    console.error('[job-status] Error fetching status:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch job status' },
-      { status: 500 }
-    );
+    return errorResponse(error, '[job-status] Error fetching status', 'Failed to fetch job status');
   }
 }
 

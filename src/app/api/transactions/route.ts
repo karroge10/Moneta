@@ -1,42 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser, requireCurrentUserWithLanguage } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 import { Transaction as TransactionType } from '@/types/dashboard';
-import { formatTransactionName } from '@/lib/transaction-utils';
-import { convertAmount, convertTransactionsWithRatesMap, preloadRatesMap } from '@/lib/currency-conversion';
-import { Prisma, type InvestmentType, type FrequencyUnit } from '@prisma/client';
-import { moneyToNumber, parseMoney } from '@/lib/money';
+import { formatDisplayDate, formatTransactionName, parseDisplayDate } from '@/lib/transaction-utils';
+import {
+  convertMoney,
+  convertTransactionsWithRatesMap,
+  countMissingRates,
+  preloadRates,
+} from '@/lib/currency-conversion';
+import { Prisma } from '@prisma/client';
+import type { z } from 'zod';
+import { addUtcMonths, startOfUtcDay, startOfUtcMonth, toDateKey } from '@/lib/dates';
+import { moneyToNumber, parseMoney, parseQuantity, QUANTITY_SCALE } from '@/lib/money';
+import { parseJsonBody, transactionCreateSchema, transactionUpdateSchema } from '@/lib/validation';
 
-interface TransactionUpsertBody {
-  name?: string;
-  amount?: number;
-  recurring?: {
-    isRecurring?: boolean;
-    frequencyUnit?: string;
-    frequencyInterval?: number;
-    startDate?: string;
-    endDate?: string | null;
-  };
-  dateRaw?: string;
-  date?: string;
-}
+type TransactionCreateBody = z.infer<typeof transactionCreateSchema>;
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-
-function formatDate(date: Date): string {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const day = date.getDate();
-  const month = months[date.getMonth()];
-  const year = date.getFullYear();
-
-  
-  const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
-    day === 2 || day === 22 ? 'nd' :
-      day === 3 || day === 23 ? 'rd' : 'th';
-
-  return `${month} ${day}${suffix} ${year}`;
-}
 
 
 function getIconForCategory(categoryName: string | null): string {
@@ -114,12 +97,14 @@ export async function GET(request: NextRequest) {
     
     if (month) {
       const [year, monthNum] = month.split('-').map(Number);
-      dateFilter.gte = new Date(year, monthNum - 1, 1);
-      dateFilter.lte = new Date(year, monthNum, 0, 23, 59, 59);
+      const monthStart = new Date(Date.UTC(year, monthNum - 1, 1));
+      const nextMonth = addUtcMonths(monthStart, 1);
+      dateFilter.gte = monthStart;
+      dateFilter.lte = new Date(nextMonth.getTime() - 1);
     } else if (timePeriod === 'This Month') {
-      dateFilter.gte = new Date(now.getFullYear(), now.getMonth(), 1);
+      dateFilter.gte = startOfUtcMonth(now);
     } else if (timePeriod === 'This Year') {
-      dateFilter.gte = new Date(now.getFullYear(), 0, 1);
+      dateFilter.gte = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
     }
 
     if (Object.keys(dateFilter).length > 0) {
@@ -152,6 +137,7 @@ export async function GET(request: NextRequest) {
           page,
           pageSize,
           totalPages: 0,
+          missingRates: 0,
         });
       }
     }
@@ -206,10 +192,8 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil(total / pageSize);
 
     
-    const ratesMap = await preloadRatesMap(
-      filteredTransactions.map(t => ({ currencyId: t.currencyId, date: t.date })),
-      targetCurrencyId
-    );
+    const rateRequests = filteredTransactions.map((t) => ({ currencyId: t.currencyId, date: t.date }));
+    const ratesMap = await preloadRates(rateRequests, targetCurrencyId);
     
     const transactionsWithConverted = convertTransactionsWithRatesMap(filteredTransactions, targetCurrencyId, ratesMap);
 
@@ -227,9 +211,10 @@ export async function GET(request: NextRequest) {
         name: fullName, 
         fullName: fullName, 
         originalDescription: t.description, 
-        date: formatDate(t.date),
-        dateRaw: t.date.toISOString().split('T')[0], 
+        date: formatDisplayDate(t.date),
+        dateRaw: toDateKey(t.date),
         amount: convertedSignedAmount,
+        rateMissing: t.rateMissing,
         originalAmount: originalSignedAmount,
         originalCurrencySymbol: t.currency?.symbol,
         originalCurrencyAlias: t.currency?.alias,
@@ -245,19 +230,16 @@ export async function GET(request: NextRequest) {
       page,
       pageSize,
       totalPages,
+      missingRates: countMissingRates(transactionsWithConverted),
     });
   } catch (error) {
-    console.error('Error fetching transactions:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch transactions' },
-      { status: 500 }
-    );
+    return errorResponse(error, 'Error fetching transactions', 'Failed to fetch transactions');
   }
 }
 
 async function createRecurringFromPayload(params: {
   userId: number;
-  body: TransactionUpsertBody;
+  body: TransactionCreateBody;
   type: 'income' | 'expense';
   currencyId: number;
   categoryId: number | null;
@@ -267,17 +249,14 @@ async function createRecurringFromPayload(params: {
   const recurring = body.recurring;
   if (!recurring?.isRecurring) return;
 
-  const frequencyUnitRaw = recurring.frequencyUnit || 'month';
-  const frequencyUnit = (['day', 'week', 'month', 'year'].includes(frequencyUnitRaw)
-    ? frequencyUnitRaw
-    : 'month') as FrequencyUnit;
+  const frequencyUnit = recurring.frequencyUnit || 'month';
   const frequencyInterval = recurring.frequencyInterval || 1;
   const startDateStr = recurring.startDate || body.dateRaw || body.date;
   const endDateStr = recurring.endDate;
 
-  const startDate = startDateStr ? new Date(startDateStr) : transactionDate;
+  const startDate = startDateStr ? parseDisplayDate(startDateStr)! : transactionDate;
   const nextDueDate = startDate;
-  const endDate = endDateStr ? new Date(endDateStr) : undefined;
+  const endDate = endDateStr ? parseDisplayDate(endDateStr)! : undefined;
 
   const recurringAmount = parseMoney(body.amount) ?? new Prisma.Decimal(0);
 
@@ -285,7 +264,7 @@ async function createRecurringFromPayload(params: {
     data: {
       userId,
       type,
-      name: body.name ?? '',
+      name: body.name,
       amount: recurringAmount.abs(),
       currencyId,
       categoryId,
@@ -303,23 +282,12 @@ export async function POST(request: NextRequest) {
   try {
     
     const user = await requireCurrentUserWithLanguage();
-    const body = (await request.json()) as TransactionUpsertBody & {
-      name: string;
-      date: string;
-      amount: number;
-      category?: string | null;
-      currencyId?: number;
-    };
+    const parsed = await parseJsonBody(request, transactionCreateSchema);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
 
     const { name, date, category, currencyId: requestCurrencyId } = body;
-    const amount = parseMoney(body.amount);
-
-    if (!name || !date || amount === null) {
-      return NextResponse.json(
-        { error: 'Missing required fields: name, date, amount' },
-        { status: 400 }
-      );
-    }
+    const amount = parseMoney(body.amount)!;
 
     
     let currencyId = requestCurrencyId;
@@ -346,21 +314,7 @@ export async function POST(request: NextRequest) {
     const absoluteAmount = amount.abs();
 
     
-    let transactionDate: Date;
-    if (date.includes('st') || date.includes('nd') || date.includes('rd') || date.includes('th')) {
-      
-      const months: Record<string, number> = {
-        'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
-        'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11,
-      };
-      const parts = date.split(' ');
-      const month = months[parts[0]];
-      const day = parseInt(parts[1].replace(/\D/g, ''));
-      const year = parseInt(parts[2]);
-      transactionDate = new Date(year, month, day);
-    } else {
-      transactionDate = new Date(date);
-    }
+    const transactionDate = parseDisplayDate(date)!;
 
     
     let categoryId: number | null = null;
@@ -384,14 +338,10 @@ export async function POST(request: NextRequest) {
     if (isRecurring) {
       
       const startDateStr = body.recurring?.startDate || body.dateRaw || body.date;
-      recurringStartDate = startDateStr ? new Date(startDateStr) : transactionDate;
+      recurringStartDate = startDateStr ? parseDisplayDate(startDateStr)! : transactionDate;
 
-      
-      
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const startDateOnly = new Date(recurringStartDate);
-      startDateOnly.setHours(0, 0, 0, 0);
+      const today = startOfUtcDay(new Date());
+      const startDateOnly = startOfUtcDay(recurringStartDate);
 
       shouldCreateTransaction = startDateOnly <= today;
     }
@@ -438,8 +388,8 @@ export async function POST(request: NextRequest) {
         name: formatTransactionName(newTransaction.description, userLanguageAlias, false),
         fullName: formatTransactionName(newTransaction.description, userLanguageAlias, true),
         originalDescription: newTransaction.description, 
-        date: formatDate(newTransaction.date),
-        dateRaw: newTransaction.date.toISOString().split('T')[0],
+        date: formatDisplayDate(newTransaction.date),
+        dateRaw: toDateKey(newTransaction.date),
         amount: signedAmount,
         category: newTransaction.category?.name || null,
         icon: getIconForCategory(newTransaction.category?.name || null),
@@ -458,11 +408,7 @@ export async function POST(request: NextRequest) {
       }, { status: 201 });
     }
   } catch (error) {
-    console.error('Error creating transaction:', error);
-    return NextResponse.json(
-      { error: 'Failed to create transaction' },
-      { status: 500 }
-    );
+    return errorResponse(error, 'Error creating transaction', 'Failed to create transaction');
   }
 }
 
@@ -471,32 +417,17 @@ export async function PUT(request: NextRequest) {
   try {
     
     const user = await requireCurrentUserWithLanguage();
-    const body = (await request.json()) as {
-      id: string | number;
-      name: string;
-      date: string;
-      amount: number;
-      category?: string | null;
-      currencyId?: number;
-      investmentType?: string;
-      quantity?: number;
-      pricePerUnit?: number;
-    };
+    const parsed = await parseJsonBody(request, transactionUpdateSchema);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
 
     const { id, name, date, category, currencyId, investmentType, quantity, pricePerUnit } = body;
-    const amount = parseMoney(body.amount);
-
-    if (!id || !name || !date || amount === null) {
-      return NextResponse.json(
-        { error: 'Missing required fields: id, name, date, amount' },
-        { status: 400 }
-      );
-    }
+    const amount = parseMoney(body.amount)!;
 
     
     const existingTransaction = await db.transaction.findFirst({
       where: {
-        id: parseInt(String(id), 10),
+        id,
         userId: user.id,
       },
     });
@@ -508,25 +439,12 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    
+
     const type = amount.gte(0) ? 'income' : 'expense';
     const absoluteAmount = amount.abs();
 
     
-    let transactionDate: Date;
-    if (date.includes('st') || date.includes('nd') || date.includes('rd') || date.includes('th')) {
-      const months: Record<string, number> = {
-        'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
-        'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11,
-      };
-      const parts = date.split(' ');
-      const month = months[parts[0]];
-      const day = parseInt(parts[1].replace(/\D/g, ''));
-      const year = parseInt(parts[2]);
-      transactionDate = new Date(year, month, day);
-    } else {
-      transactionDate = new Date(date);
-    }
+    const transactionDate = parseDisplayDate(date)!;
 
     
     let categoryId: number | null = null;
@@ -544,7 +462,7 @@ export async function PUT(request: NextRequest) {
     if (currencyId !== undefined && currencyId !== null) {
       
       const currencyRecord = await db.currency.findUnique({
-        where: { id: Number(currencyId) },
+        where: { id: currencyId },
       });
       if (!currencyRecord) {
         return NextResponse.json(
@@ -572,53 +490,62 @@ export async function PUT(request: NextRequest) {
     const userLanguageAlias = user.language?.alias?.toLowerCase() || null;
 
     
-    if (existingTransaction.investmentAssetId && (investmentType || quantity)) {
-      const { getAssetHolding } = await import('@/lib/investments');
-      const currentHolding = await getAssetHolding(user.id, existingTransaction.investmentAssetId);
-      
-      
-      const oldQty = Number(existingTransaction.quantity || 0);
-      const oldType = existingTransaction.investmentType;
-      const newQty = quantity !== undefined ? Number(quantity) : oldQty;
-      const newType = investmentType || oldType;
+    const parsedQuantity = quantity !== undefined ? parseQuantity(quantity)! : undefined;
+    const parsedPrice = pricePerUnit !== undefined ? parseQuantity(pricePerUnit)! : undefined;
 
-      
-      let adjustedHolding = currentHolding;
-      if (oldType === 'buy') adjustedHolding -= oldQty;
-      else if (oldType === 'sell') adjustedHolding += oldQty;
+    // Holding check and write run in one serializable transaction so two concurrent edits
+    // cannot both pass the check and leave a negative holding.
+    const assetId = existingTransaction.investmentAssetId;
+    const checksHolding = assetId !== null && Boolean(investmentType || quantity);
+    const writeResult = await db.$transaction(async (tx) => {
+      if (checksHolding && assetId !== null) {
+        const currentHolding = await getHoldingQuantity(tx, user.id, assetId);
+        const oldQty = existingTransaction.quantity ?? new Prisma.Decimal(0);
+        const oldType = existingTransaction.investmentType;
+        const newQty = parsedQuantity ?? oldQty;
+        const newType = investmentType || oldType;
 
-      
-      if (newType === 'buy') adjustedHolding += newQty;
-      else if (newType === 'sell') adjustedHolding -= newQty;
+        let adjustedHolding = currentHolding;
+        if (oldType === 'buy') adjustedHolding = adjustedHolding.minus(oldQty);
+        else if (oldType === 'sell') adjustedHolding = adjustedHolding.plus(oldQty);
 
-      const epsilon = 0.00000001;
-      if (adjustedHolding + epsilon < 0) {
-        return NextResponse.json({ 
-          error: `Invalid transaction update. This would result in a negative holding (${adjustedHolding.toLocaleString(undefined, { maximumFractionDigits: 8 })}).` 
-        }, { status: 400 });
+        if (newType === 'buy') adjustedHolding = adjustedHolding.plus(newQty);
+        else if (newType === 'sell') adjustedHolding = adjustedHolding.minus(newQty);
+
+        if (adjustedHolding.lt(0)) {
+          return { negativeHolding: adjustedHolding };
+        }
       }
+
+      const updated = await tx.transaction.update({
+        where: { id: existingTransaction.id, userId: user.id },
+        data: {
+          type,
+          amount: absoluteAmount,
+          description: name, 
+          date: transactionDate,
+          categoryId,
+          currencyId: transactionCurrencyId,
+          investmentType,
+          quantity: parsedQuantity,
+          pricePerUnit: parsedPrice,
+        },
+        include: {
+          category: true,
+          currency: true,
+        },
+      });
+      return { updated };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+    if (writeResult.negativeHolding) {
+      const holdingText = formatHolding(writeResult.negativeHolding);
+      return NextResponse.json({ 
+        error: `Invalid transaction update. This would result in a negative holding (${holdingText}).` 
+      }, { status: 400 });
     }
 
-    
-    const updatedTransaction = await db.transaction.update({
-      where: { id: parseInt(String(id), 10) },
-      data: {
-        type,
-        amount: absoluteAmount,
-        description: name, 
-        date: transactionDate,
-        categoryId,
-        currencyId: transactionCurrencyId,
-        investmentType: investmentType as InvestmentType,
-        quantity: quantity !== undefined ? Number(quantity) : undefined,
-        pricePerUnit: pricePerUnit !== undefined ? Number(pricePerUnit) : undefined,
-      },
-      include: {
-        category: true,
-        currency: true,
-      },
-    });
-
+    const updatedTransaction = writeResult.updated;
     
     
     if (categoryId && categoryId !== existingTransaction.categoryId) {
@@ -672,12 +599,13 @@ export async function PUT(request: NextRequest) {
     }
 
     const targetCurrencyId = userCurrencyRecord.id;
-    const convertedAmount = await convertAmount(
+    const convertedMoney = await convertMoney(
       updatedTransaction.amount,
       updatedTransaction.currencyId,
       targetCurrencyId,
       updatedTransaction.date,
     );
+    const convertedAmount = convertedMoney ? moneyToNumber(convertedMoney) : 0;
     const convertedSignedAmount = updatedTransaction.type === 'expense' ? -convertedAmount : convertedAmount;
 
     const transaction: TransactionType = {
@@ -685,9 +613,10 @@ export async function PUT(request: NextRequest) {
       name: formatTransactionName(updatedTransaction.description, userLanguageAlias, false),
       fullName: formatTransactionName(updatedTransaction.description, userLanguageAlias, true),
       originalDescription: updatedTransaction.description, 
-      date: formatDate(updatedTransaction.date),
-      dateRaw: updatedTransaction.date.toISOString().split('T')[0],
+      date: formatDisplayDate(updatedTransaction.date),
+      dateRaw: toDateKey(updatedTransaction.date),
       amount: convertedSignedAmount,
+      rateMissing: convertedMoney === null,
       category: updatedTransaction.category?.name || null,
       icon: getIconForCategory(updatedTransaction.category?.name || null),
       originalAmount: signedUpdatedAmount,
@@ -698,11 +627,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ transaction });
   } catch (error) {
-    console.error('Error updating transaction:', error);
-    return NextResponse.json(
-      { error: 'Failed to update transaction' },
-      { status: 500 }
-    );
+    return errorResponse(error, 'Error updating transaction', 'Failed to update transaction');
   }
 }
 
@@ -736,38 +661,65 @@ export async function DELETE(request: NextRequest) {
     }
 
     
-    if (existingTransaction.investmentAssetId) {
-      const { getAssetHolding } = await import('@/lib/investments');
-      const currentHolding = await getAssetHolding(user.id, existingTransaction.investmentAssetId);
-      
-      const qty = Number(existingTransaction.quantity || 0);
-      const type = existingTransaction.investmentType;
+    // Holding check and delete run in one serializable transaction (see PUT).
+    const assetId = existingTransaction.investmentAssetId;
+    const deleteResult = await db.$transaction(async (tx) => {
+      if (assetId !== null) {
+        const currentHolding = await getHoldingQuantity(tx, user.id, assetId);
+        const qty = existingTransaction.quantity ?? new Prisma.Decimal(0);
+        const type = existingTransaction.investmentType;
 
-      
-      let predictedTotal = currentHolding;
-      if (type === 'buy') predictedTotal -= qty;
-      else if (type === 'sell') predictedTotal += qty;
+        let predictedTotal = currentHolding;
+        if (type === 'buy') predictedTotal = predictedTotal.minus(qty);
+        else if (type === 'sell') predictedTotal = predictedTotal.plus(qty);
 
-      const epsilon = 0.00000001;
-      if (predictedTotal + epsilon < 0) {
-        return NextResponse.json({ 
-          error: `Cannot delete this transaction. It would result in a negative holding (${predictedTotal.toLocaleString(undefined, { maximumFractionDigits: 8 })}).` 
-        }, { status: 400 });
+        if (predictedTotal.lt(0)) {
+          return { negativeHolding: predictedTotal };
+        }
       }
-    }
 
-    
-    await db.transaction.delete({
-      where: { id: parseInt(String(id), 10) },
-    });
+      await tx.transaction.delete({
+        where: { id: existingTransaction.id, userId: user.id },
+      });
+      return { deleted: true };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+    if (deleteResult.negativeHolding) {
+      const holdingText = formatHolding(deleteResult.negativeHolding);
+      return NextResponse.json({ 
+        error: `Cannot delete this transaction. It would result in a negative holding (${holdingText}).` 
+      }, { status: 400 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting transaction:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete transaction' },
-      { status: 500 }
-    );
+    return errorResponse(error, 'Error deleting transaction', 'Failed to delete transaction');
   }
 }
 
+
+
+/** Sum of buys minus sells for one asset, read inside the given transaction client. */
+async function getHoldingQuantity(
+  tx: Prisma.TransactionClient,
+  userId: number,
+  assetId: number,
+): Promise<Prisma.Decimal> {
+  const rows = await tx.transaction.findMany({
+    where: { userId, investmentAssetId: assetId },
+    select: { quantity: true, investmentType: true },
+  });
+
+  let total = new Prisma.Decimal(0);
+  for (const row of rows) {
+    const qty = row.quantity ?? new Prisma.Decimal(0);
+    if (row.investmentType === 'buy') total = total.plus(qty);
+    else if (row.investmentType === 'sell') total = total.minus(qty);
+  }
+  return total;
+}
+
+function formatHolding(value: Prisma.Decimal): string {
+  const holdingNumber = value.toNumber();
+  return holdingNumber.toLocaleString(undefined, { maximumFractionDigits: QUANTITY_SCALE });
+}

@@ -1,4 +1,5 @@
 import { AssetType } from '@prisma/client';
+import { toDateKey } from './dates';
 
 export interface HistoryDataPoint {
   date: string; 
@@ -65,7 +66,8 @@ async function fetchCryptoHistory(id: string, days: string): Promise<HistoryData
     
     const dailyMap = new Map<string, number>();
     data.prices.forEach((item: [number, number]) => {
-      const dateKey = new Date(item[0]).toISOString().split('T')[0];
+      const day = new Date(item[0]);
+      const dateKey = toDateKey(day);
       dailyMap.set(dateKey, item[1]);
     });
 
@@ -113,8 +115,9 @@ async function fetchStockHistory(ticker: string, range: string, interval: string
 
     for (let i = 0; i < timestamps.length; i++) {
       if (prices[i] !== null && prices[i] !== undefined) {
+        const day = new Date(timestamps[i] * 1000);
         history.push({
-          date: new Date(timestamps[i] * 1000).toISOString().split('T')[0],
+          date: toDateKey(day),
           price: prices[i]
         });
       }

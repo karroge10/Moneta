@@ -1,62 +1,57 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Card from '@/components/ui/Card';
-import LineChart from '@/components/ui/LineChart';
-import { useState } from 'react';
+import Skeleton from '@/components/ui/Skeleton';
+import Spinner from '@/components/ui/Spinner';
+import RangeTabs from './RangeTabs';
+
+const LineChart = dynamic(() => import('@/components/ui/LineChart'), {
+  ssr: false,
+  loading: () => <Skeleton className="size-full rounded-control" />,
+});
 
 interface PortfolioPerformanceChartProps {
-    data: Array<{ date: string; value: number }>;
-    currencySymbol: string;
-    onRangeChange: (range: string) => void;
-    isLoading?: boolean;
+  data: Array<{ date: string; value: number }>;
+  currencySymbol: string;
+  range: string;
+  onRangeChange: (range: string) => void;
+  isLoading?: boolean;
+  /** The selected range failed to load. */
+  isError?: boolean;
 }
 
-export default function PortfolioPerformanceChart({ data, currencySymbol, onRangeChange, isLoading }: PortfolioPerformanceChartProps) {
-    const [timeframe, setTimeframe] = useState('1M');
+/** Portfolio value over time with a range switcher. */
+export default function PortfolioPerformanceChart({
+  data,
+  currencySymbol,
+  range,
+  onRangeChange,
+  isLoading = false,
+  isError = false,
+}: PortfolioPerformanceChartProps) {
+  return (
+    <Card title="Performance" className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="mb-4 flex items-center justify-end gap-2">
+        <RangeTabs value={range} onChange={onRangeChange} disabled={isLoading} label="Performance range" />
+      </div>
 
-    const handleTimeframeChange = (tf: string) => {
-        setTimeframe(tf);
-        onRangeChange(tf);
-    };
-
-    return (
-        <Card title="Performance" className="h-full flex flex-col min-h-0 overflow-hidden">
-            <div className="flex items-center justify-end gap-2 mb-4">
-                <div className="flex bg-background rounded-lg p-1 border border-[#3a3a3a]">
-                    {['1W', '1M', '3M', '1Y', 'All'].map((tf) => (
-                        <button
-                            key={tf}
-                            onClick={() => handleTimeframeChange(tf)}
-                            disabled={isLoading}
-                            className={`px-3 py-1 rounded-md text-helper font-semibold transition-colors ${
-                                timeframe === tf
-                                ? 'bg-[#AC66DA] text-white' 
-                                : 'text-secondary hover:text-white'
-                            } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                            {tf}
-                        </button>
-                    ))}
-                </div>
-            </div>
-            
-            <div className="flex-1 w-full min-h-0 -ml-4 relative">
-                {isLoading && (
-                    <div className="absolute inset-0 z-10 bg-[#282828]/50 flex items-center justify-center backdrop-blur-sm">
-                        <div className="w-6 h-6 border-2 border-[#AC66DA] border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                )}
-                {data && data.length > 0 ? (
-                    <LineChart 
-                        data={data} 
-                        currencySymbol={currencySymbol} 
-                    />
-                ) : (
-                    <div className="h-full flex items-center justify-center text-helper">
-                        No performance data available
-                    </div>
-                )}
-            </div>
-        </Card>
-    );
+      <div className="relative -ml-4 min-h-0 w-full flex-1" aria-busy={isLoading}>
+        {isLoading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-1/50 backdrop-blur-sm">
+            <Spinner size={24} />
+          </div>
+        )}
+        {isError ? (
+          <p role="alert" className="flex h-full items-center justify-center text-ui text-negative-fg">
+            Failed to update chart
+          </p>
+        ) : data.length > 0 ? (
+          <LineChart data={data} currencySymbol={currencySymbol} />
+        ) : (
+          <p className="flex h-full items-center justify-center text-ui text-muted">No performance data available</p>
+        )}
+      </div>
+    </Card>
+  );
 }

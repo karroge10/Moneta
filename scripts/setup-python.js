@@ -1,59 +1,76 @@
 #!/usr/bin/env node
 /**
- * Setup script to install Python dependencies
- * Runs automatically after npm install (via postinstall hook)
+ * Sets up the Python PDF service locally: creates a virtualenv at the repo
+ * root (.venv) if missing and installs python-service/requirements.txt into it.
+ * Opt-in, run via `npm run setup`.
  */
 
-const { spawn } = require('child_process');
+const { spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-const requirementsPath = path.join(__dirname, '..', 'python', 'requirements.txt');
+const repoRoot = path.join(__dirname, '..');
+const venvDir = path.join(repoRoot, '.venv');
+const requirementsPath = path.join(repoRoot, 'python-service', 'requirements.txt');
+const isWindows = process.platform === 'win32';
 
-// Vercel (and similar CI) use an externally managed Python (PEP 668); PDF/worker deps are not needed for Next build.
-if (process.env.VERCEL === '1' || process.env.CI === 'true') {
-  console.log('⏭️  Skipping Python dependency install (Vercel/CI — not required for app build).');
-  process.exit(0);
-}
+main();
 
-// Check if requirements.txt exists
-if (!fs.existsSync(requirementsPath)) {
-  console.log('⚠️  python/requirements.txt not found, skipping Python dependency installation');
-  process.exit(0);
-}
-
-// Determine Python executable
-const pythonExec = process.platform === 'win32' ? 'python' : 'python3';
-
-console.log('📦 Installing Python dependencies...');
-console.log(`   Using: ${pythonExec}`);
-console.log(`   Requirements: ${requirementsPath}`);
-
-// Use absolute path and normalize for Windows - convert to forward slashes for pip
-const normalizedPath = path.resolve(requirementsPath).replace(/\\/g, '/');
-
-const pip = spawn(pythonExec, ['-m', 'pip', 'install', '-r', normalizedPath], {
-  stdio: 'inherit',
-  shell: false, // Don't use shell to avoid path issues
-  cwd: path.join(__dirname, '..'),
-});
-
-pip.on('close', (code) => {
-  if (code === 0) {
-    console.log('✅ Python dependencies installed successfully');
-  } else {
-    console.error(`❌ Failed to install Python dependencies (exit code: ${code})`);
-    console.error('   Please run manually: pip install -r python/requirements.txt');
-    // Don't fail the npm install process, just warn
-    process.exit(0);
+function main() {
+  // Vercel and CI use an externally managed Python (PEP 668); the PDF service is not needed for the Next build.
+  if (process.env.VERCEL === '1' || process.env.CI === 'true') {
+    console.log('Skipping Python setup (Vercel/CI, not required for the app build).');
+    return;
   }
-});
 
-pip.on('error', (err) => {
-  console.error('❌ Error running pip:', err.message);
-  console.error('   Make sure Python is installed and available in PATH');
-  console.error('   Please run manually: pip install -r python/requirements.txt');
-  // Don't fail the npm install process, just warn
-  process.exit(0);
-});
+  if (!fs.existsSync(requirementsPath)) {
+    console.log('python-service/requirements.txt not found, skipping Python setup.');
+    return;
+  }
 
+  const venvPython = getVenvPython();
+  if (!fs.existsSync(venvPython)) {
+    const created = createVenv();
+    if (!created) {
+      console.error('Could not create .venv. Install Python 3.12 and run: python -m venv .venv');
+      return;
+    }
+  }
+
+  console.log(`Installing Python dependencies from ${requirementsPath}`);
+  const pipArgs = ['-m', 'pip', 'install', '-r', requirementsPath];
+  const install = run(venvPython, pipArgs);
+  if (install.status === 0) {
+    console.log('Python dependencies installed into .venv');
+  } else {
+    console.error(`Failed to install Python dependencies (exit code: ${install.status}).`);
+    console.error(`Run manually: ${venvPython} -m pip install -r python-service/requirements.txt`);
+  }
+}
+
+function createVenv() {
+  const candidates = isWindows
+    ? [['py', ['-3.12']], ['python', []]]
+    : [['python3.12', []], ['python3', []], ['python', []]];
+
+  for (const [command, prefixArgs] of candidates) {
+    const venvArgs = [...prefixArgs, '-m', 'venv', venvDir];
+    console.log(`Creating .venv with: ${command} ${venvArgs.join(' ')}`);
+    const result = run(command, venvArgs);
+    if (result.status === 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function getVenvPython() {
+  if (isWindows) {
+    return path.join(venvDir, 'Scripts', 'python.exe');
+  }
+  return path.join(venvDir, 'bin', 'python');
+}
+
+function run(command, args) {
+  return spawnSync(command, args, { stdio: 'inherit', shell: false, cwd: repoRoot });
+}

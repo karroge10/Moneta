@@ -8,7 +8,7 @@
  *   npx tsx scripts/verify-cron.ts --invoke http://localhost:3000
  *   npx tsx scripts/verify-cron.ts --invoke https://your-app.vercel.app
  *
- * --invoke sends GET /api/cron/recurring with x-cron-secret (from CRON_SECRET env).
+ * --invoke sends GET /api/cron/recurring with Authorization: Bearer <CRON_SECRET> (same header Vercel Cron sends).
  * That runs the full production job (all users). Use dev DB or expect long runtime.
  *
  * Env: loads .env.local then .env (same pattern as other scripts).
@@ -99,7 +99,7 @@ async function main() {
   const currencies = await prisma.currency.findMany({ select: { id: true, alias: true } });
   const usd = currencies.find((c) => c.alias.toLowerCase() === 'usd');
   if (!usd) {
-    console.log('[WARN] No USD row in Currency — exchange rate job may skip updates');
+    console.log('[WARN] No USD row in Currency: exchange rate job may skip updates');
   } else {
     console.log(`[OK] USD currency present (id ${usd.id})`);
   }
@@ -205,7 +205,7 @@ async function main() {
     try {
       const res = await fetch(url, {
         method: 'GET',
-        headers: { 'x-cron-secret': secret },
+        headers: { Authorization: `Bearer ${secret}` },
         signal: controller.signal,
       });
       const text = await res.text();

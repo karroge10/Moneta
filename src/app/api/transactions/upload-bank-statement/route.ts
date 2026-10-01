@@ -1,31 +1,125 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { TransactionUploadResponse, UploadedTransaction } from '@/types/dashboard';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { checkPdfImportAllowed } from '@/lib/billing/entitlements';
 import { db } from '@/lib/db';
-import { Prisma } from '@prisma/client';
+import { JobStatus, Prisma } from '@prisma/client';
 import { shouldCreateNotification } from '@/lib/notification-settings';
 import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, findMerchantByBaseWords, detectSpecialTransactionType } from '@/lib/merchant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const DEBUG_PATTERNS = [
-  'განათლება - საქართველოს ეროვნული უნივერსიტეტი',
-  'Exchange amount',
-  'ZATER DONERI',
-  'SNEAKERHUB',
-  'MANO',
-  'ლარის გადარიცხვის საკომისიო',
-  'უნაღდო კონვერტაცია',
-  'Personal Transfer',
-];
+const MAX_PDF_BYTES = 10 * 1024 * 1024;
+const PDF_MAGIC = '%PDF';
 
-const DEBUG_PATTERN_SET = DEBUG_PATTERNS.map(pattern => pattern.toLowerCase());
 
-function shouldDebugTransaction(description: string): boolean {
-  const lowered = description.toLowerCase();
-  return DEBUG_PATTERN_SET.some(pattern => lowered.includes(pattern));
+export async function POST(request: NextRequest) {
+  try {
+    const user = await requireCurrentUser();
+
+    const importAllowance = await checkPdfImportAllowed(user.id);
+    if (!importAllowance.allowed) {
+      return NextResponse.json(
+        {
+          error: `Free plan includes ${importAllowance.limit} PDF imports per month. Upgrade to Premium in Settings for unlimited imports.`,
+          code: 'PDF_IMPORT_LIMIT',
+        },
+        { status: 402 },
+      );
+    }
+
+    const formData = await request.formData();
+    const file = formData.get('file');
+
+    if (!file || !(file instanceof File)) {
+      return NextResponse.json({ error: 'A PDF file is required.' }, { status: 400 });
+    }
+
+    if (file.size > MAX_PDF_BYTES) {
+      return NextResponse.json({ error: 'The file is larger than 10 MB.' }, { status: 413 });
+    }
+
+    if (file.type !== 'application/pdf') {
+      return NextResponse.json({ error: 'Only PDF files are supported.' }, { status: 400 });
+    }
+
+    const fileArrayBuffer = await file.arrayBuffer();
+    const fileContentBuffer = Buffer.from(fileArrayBuffer);
+    const fileHeader = fileContentBuffer.subarray(0, PDF_MAGIC.length).toString('latin1');
+    if (fileHeader !== PDF_MAGIC) {
+      return NextResponse.json({ error: 'Only PDF files are supported.' }, { status: 400 });
+    }
+    const fileName = file.name;
+
+    
+    
+    const serviceUrl = process.env.PYTHON_SERVICE_URL;
+
+    const job = await db.pdfProcessingJob.create({
+      data: {
+        userId: user.id,
+        status: serviceUrl ? 'processing' : 'queued',
+        progress: 0,
+        fileName: fileName,
+        fileContent: fileContentBuffer
+      },
+      select: { id: true, fileName: true, createdAt: true }
+    });
+
+    const jobId = job.id;
+
+    
+    
+    const earlierJobsCount = await db.pdfProcessingJob.count({
+      where: {
+        status: { in: ['queued', 'processing'] },
+        createdAt: { lt: job.createdAt }
+      }
+    });
+    
+    
+    const queuePosition = Math.max(0, earlierJobsCount);
+
+    
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+    let callbackUrl = `${appUrl}/api/internal/jobs/${jobId}/progress`;
+
+    const callbackHostOverride = process.env.PYTHON_SERVICE_CALLBACK_HOST;
+    if (callbackHostOverride) {
+      try {
+        const callbackUrlObj = new URL(callbackUrl);
+        callbackUrlObj.hostname = callbackHostOverride;
+        callbackUrl = callbackUrlObj.toString();
+      } catch (err) {
+        console.error('[background-process] Invalid PYTHON_SERVICE_CALLBACK_HOST value:', err);
+      }
+    }
+    
+    if (serviceUrl) {
+      
+      await updateJobStatus(jobId, 'processing', 0);
+      
+      // after() keeps the function alive once the response is sent; a bare promise can be frozen
+      // by the platform. The Python service's progress callbacks still deliver the result if not.
+      after(() => processPdfInBackground(file, jobId, callbackUrl, user.id, serviceUrl));
+    }
+
+    
+    return NextResponse.json({
+      jobId,
+      fileName,
+      status: serviceUrl ? 'processing' : 'queued',
+      progress: 0,
+      queuePosition,
+      createdAt: job.createdAt.toISOString(),
+      message: 'Upload accepted. Processing in background.'
+    });
+
+  } catch (error) {
+    return errorResponse(error, '[upload-bank-statement] error', 'Failed to initiate processing.');
+  }
 }
 
 
@@ -50,6 +144,7 @@ async function processPdfInBackground(
 
     const response = await fetch(`${serviceUrl}/process-pdf`, {
       method: 'POST',
+      headers: { 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' },
       body: formData,
     });
 
@@ -95,7 +190,7 @@ async function processPdfInBackground(
 
 async function updateJobStatus(
   jobId: string, 
-  status: string, 
+  status: JobStatus, 
   progress?: number, 
   
   result?: unknown, 
@@ -227,7 +322,6 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
     
     let categoryId: number | null = null;
     let skipMerchantMatching = false;
-    let matchSource: string | null = null;
 
     
     
@@ -244,7 +338,6 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
         const specialCategoryId = categoryMap.get(specialType.toLowerCase());
         if (specialCategoryId) {
             categoryId = specialCategoryId;
-            matchSource = `special:${specialType}`;
             skipMerchantMatching = true;
         }
     } else if (specialType === 'EXCLUDE') {
@@ -260,7 +353,6 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
         
         if (userMerchantMap.has(normalizedMerchant)) {
             categoryId = userMerchantMap.get(normalizedMerchant)!;
-            matchSource = 'user-exact';
         } else {
             
             const foundUserMerchant = findMerchantByBaseWords(descriptionForMatching, userMerchantPatterns);
@@ -268,7 +360,6 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
                 const norm = normalizeMerchantName(foundUserMerchant);
                 if (userMerchantMap.has(norm)) {
                     categoryId = userMerchantMap.get(norm)!;
-                    matchSource = 'user-word';
                 }
             }
         }
@@ -277,7 +368,6 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
         if (!categoryId) {
             if (globalMerchantMap.has(normalizedMerchant)) {
                 categoryId = globalMerchantMap.get(normalizedMerchant)!;
-                matchSource = 'global-exact';
             } else {
                 
                 const foundGlobalMerchant = findMerchantByBaseWords(descriptionForMatching, globalMerchantPatterns);
@@ -285,7 +375,6 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
                     const norm = normalizeMerchantName(foundGlobalMerchant);
                     if (globalMerchantMap.has(norm)) {
                         categoryId = globalMerchantMap.get(norm)!;
-                        matchSource = 'global-word';
                     }
                 }
             }
@@ -298,7 +387,6 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
                 const similarity = fuzzyMatch(normalizedMerchant, pattern);
                 if (similarity > 0.85) {
                     categoryId = catId;
-                    matchSource = `user-fuzzy:${similarity.toFixed(2)}`;
                     break;
                 }
             }
@@ -308,7 +396,6 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
                     const similarity = fuzzyMatch(normalizedMerchant, pattern);
                     if (similarity > 0.85) {
                         categoryId = catId;
-                        matchSource = `global-fuzzy:${similarity.toFixed(2)}`;
                         break;
                     }
                 }
@@ -320,17 +407,6 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
     if (categoryId) {
       const matchedCategory = allCategories.find(c => c.id === categoryId);
       if (matchedCategory) {
-        if (shouldDebugTransaction(tx.description)) {
-          console.log('[upload-debug]', {
-            description: tx.description,
-            type,
-            specialType,
-            merchantName,
-            normalizedMerchant,
-            category: matchedCategory.name,
-            matchSource,
-          });
-        }
         return {
           ...tx,
           category: matchedCategory.name,
@@ -338,17 +414,6 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
       }
     }
 
-    if (shouldDebugTransaction(tx.description)) {
-      console.log('[upload-debug]', {
-        description: tx.description,
-        type,
-        specialType,
-        merchantName,
-        normalizedMerchant,
-        category: null,
-        matchSource,
-      });
-    }
     
     
     return {
@@ -356,107 +421,4 @@ async function analyzeCategorization(transactions: UploadedTransaction[], userId
         category: null
     };
   });
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const user = await requireCurrentUser();
-
-    const importAllowance = await checkPdfImportAllowed(user.id);
-    if (!importAllowance.allowed) {
-      return NextResponse.json(
-        {
-          error: `Free plan includes ${importAllowance.limit} PDF imports per month. Upgrade to Premium in Settings for unlimited imports.`,
-          code: 'PDF_IMPORT_LIMIT',
-        },
-        { status: 402 },
-      );
-    }
-
-    const formData = await request.formData();
-    const file = formData.get('file');
-
-    if (!file || !(file instanceof File)) {
-      return NextResponse.json({ error: 'A PDF file is required.' }, { status: 400 });
-    }
-
-    
-    const fileArrayBuffer = await file.arrayBuffer();
-    const fileContentBuffer = Buffer.from(fileArrayBuffer);
-    const fileName = file.name;
-
-    
-    
-    const serviceUrl = process.env.PYTHON_SERVICE_URL;
-
-    const job = await db.pdfProcessingJob.create({
-      data: {
-        userId: user.id,
-        status: serviceUrl ? 'processing' : 'queued',
-        progress: 0,
-        fileName: fileName,
-        fileContent: fileContentBuffer
-      },
-      select: { id: true, fileName: true, createdAt: true }
-    });
-
-    const jobId = job.id;
-
-    
-    
-    const earlierJobsCount = await db.pdfProcessingJob.count({
-      where: {
-        status: { in: ['queued', 'processing'] },
-        createdAt: { lt: job.createdAt }
-      }
-    });
-    
-    
-    const queuePosition = Math.max(0, earlierJobsCount);
-
-    
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
-    let callbackUrl = `${appUrl}/api/internal/jobs/${jobId}/progress`;
-
-    const callbackHostOverride = process.env.PYTHON_SERVICE_CALLBACK_HOST;
-    if (callbackHostOverride) {
-      try {
-        const callbackUrlObj = new URL(callbackUrl);
-        callbackUrlObj.hostname = callbackHostOverride;
-        callbackUrl = callbackUrlObj.toString();
-      } catch (err) {
-        console.error('[background-process] Invalid PYTHON_SERVICE_CALLBACK_HOST value:', err);
-      }
-    }
-    
-    if (serviceUrl) {
-      
-      await updateJobStatus(jobId, 'processing', 0);
-      
-      processPdfInBackground(file, jobId, callbackUrl, user.id, serviceUrl);
-    }
-
-    
-    return NextResponse.json({
-      jobId,
-      fileName,
-      status: serviceUrl ? 'processing' : 'queued',
-      progress: 0,
-      queuePosition,
-      createdAt: job.createdAt.toISOString(),
-      message: 'Upload accepted. Processing in background.'
-    });
-
-  } catch (error) {
-    console.error('[upload-bank-statement] error', error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    
-    return NextResponse.json(
-      { 
-        error: 'Failed to initiate processing.',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-      },
-      { status: 500 },
-    );
-  }
 }

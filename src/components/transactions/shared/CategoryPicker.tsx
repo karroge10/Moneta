@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { useRef, useState } from 'react';
 import { NavArrowDown } from 'iconoir-react';
-import { Category } from '@/types/dashboard';
-import { getIcon } from '@/lib/iconMapping';
+import type { Category } from '@/types/dashboard';
+import { cx } from '@/components/ui/cx';
+import { useCloseOnOutsideClick } from '@/hooks/transactions/useCloseOnOutsideClick';
+import CategoryIcon, { categoryIconName } from './CategoryIcon';
 
 const DROPDOWN_MAX_HEIGHT = 240;
 const MARGIN = 8;
@@ -15,148 +17,100 @@ interface CategoryPickerProps {
   suggestedCategory?: string | null;
 }
 
+/** Compact category select for review table cells; opens upward near the bottom of the viewport. */
 export default function CategoryPicker({ categories, selectedCategory, onSelect, suggestedCategory }: CategoryPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [openUpward, setOpenUpward] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  useCloseOnOutsideClick(ref, isOpen, () => setIsOpen(false));
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (ref.current && !ref.current.contains(target)) {
-        setIsOpen(false);
-      }
-    };
+  const selectedCategoryObj = categories.find((category) => category.name === selectedCategory);
+  const displayIconName = categoryIconName(selectedCategory, selectedCategoryObj?.icon);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const updatePosition = useCallback(() => {
-    if (!isOpen || !triggerRef.current || !dropdownRef.current) return;
-
-    const triggerRect = triggerRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - triggerRect.bottom;
-    const spaceAbove = triggerRect.top;
-
-    const shouldOpenUp =
-      spaceBelow < DROPDOWN_MAX_HEIGHT + MARGIN && spaceAbove > spaceBelow;
-    setOpenUpward(shouldOpenUp);
-  }, [isOpen]);
-
-  useLayoutEffect(() => {
-    if (!isOpen) return;
-
-    updatePosition();
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
-
-    return () => {
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
-    };
-  }, [isOpen, updatePosition]);
-
-  const selectedCategoryObj = categories.find((cat) => cat.name === selectedCategory);
-  const displayValue = selectedCategory || 'Uncategorized';
-
-  const resolveIcon = (categoryName?: string | null, iconKey?: string) => {
-    if (!categoryName) return getIcon('HelpCircle');
-    if (categoryName.toLowerCase() === 'other') return getIcon('ViewGrid');
-    return iconKey ? getIcon(iconKey) : getIcon('HelpCircle');
+  const toggle = () => {
+    if (!isOpen && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setOpenUpward(spaceBelow < DROPDOWN_MAX_HEIGHT + MARGIN && rect.top > spaceBelow);
+    }
+    setIsOpen((open) => !open);
   };
 
-  const DisplayIcon = resolveIcon(selectedCategory, selectedCategoryObj?.icon);
-  const UnassignedIcon = getIcon('HelpCircle');
+  const choose = (value: string | null) => {
+    onSelect(value);
+    setIsOpen(false);
+  };
 
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
-        ref={triggerRef}
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={toggle}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-colors cursor-pointer w-full bg-[#282828] border-[#3a3a3a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AC66DA]/60"
-        style={{ color: selectedCategory ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+        className={cx(
+          'flex w-full items-center justify-between gap-2 rounded-control border border-line bg-surface-1 px-3 py-2 text-ui font-semibold transition-colors cursor-pointer',
+          'focus-visible:outline-2 focus-visible:outline-accent',
+          selectedCategory ? 'text-fg' : 'text-secondary',
+        )}
       >
-        <div className="flex items-center gap-2 min-w-0">
-          {DisplayIcon && (
-            <DisplayIcon
-              width={20}
-              height={20}
-              strokeWidth={1.5}
-              style={{ color: 'var(--text-primary)' }}
-            />
-          )}
-          <span className="truncate">{displayValue}</span>
-        </div>
-        <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
+        <span className="flex min-w-0 items-center gap-2">
+          <CategoryIcon name={displayIconName} width={20} height={20} strokeWidth={1.5} className="shrink-0 text-fg" aria-hidden="true" />
+          <span className="truncate">{selectedCategory || 'Uncategorized'}</span>
+        </span>
+        <NavArrowDown width={16} height={16} strokeWidth={2} className="shrink-0 text-secondary" aria-hidden="true" />
       </button>
 
       {isOpen && (
-        <div
-          ref={dropdownRef}
-          className={`absolute left-0 right-0 rounded-xl shadow-lg overflow-hidden border border-[#3a3a3a] z-50 ${
-            openUpward ? 'bottom-full mb-2' : 'top-full mt-2'
-          }`}
-          style={{ backgroundColor: '#282828' }}
+        <ul
+          role="listbox"
+          aria-label="Category"
+          className={cx(
+            'custom-scrollbar absolute left-0 right-0 z-50 max-h-[240px] overflow-y-auto rounded-control border border-line bg-surface-1 shadow-lg',
+            openUpward ? 'bottom-full mb-2' : 'top-full mt-2',
+          )}
         >
-          <div className="max-h-[240px] overflow-y-auto custom-scrollbar">
-            <button
-              type="button"
-              onClick={() => {
-                onSelect(null);
-                setIsOpen(false);
-              }}
-              className="w-full text-left px-4 py-3 flex items-center gap-3 transition-colors text-body cursor-pointer hover:bg-[#2F2F2F] hover-text-purple"
-              style={{
-                color: selectedCategory === null ? 'var(--accent-purple)' : 'var(--text-primary)',
-              }}
-            >
-              <UnassignedIcon
-                width={20}
-                height={20}
-                strokeWidth={1.5}
-                style={{ color: selectedCategory === null ? 'var(--accent-purple)' : 'var(--text-primary)' }}
-              />
-              <span className="font-medium">Uncategorized</span>
-            </button>
-            {categories.map((category) => {
-              const Icon = resolveIcon(category.name, category.icon);
-              const isSelected = selectedCategory === category.name;
-              return (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => {
-                    onSelect(category.name);
-                    setIsOpen(false);
-                  }}
-                  className="w-full text-left px-4 py-3 flex items-center gap-3 transition-colors text-body cursor-pointer hover:bg-[#2F2F2F] hover-text-purple"
-                  style={{ color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' }}
-                >
-                  <Icon
-                    width={20}
-                    height={20}
-                    strokeWidth={1.5}
-                    style={{ color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' }}
-                  />
-                  <span className="font-medium">{category.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+          <PickerOption selected={selectedCategory === null} onClick={() => choose(null)} label="Uncategorized" iconName="HelpCircle" />
+          {categories.map((category) => (
+            <PickerOption
+              key={category.id}
+              selected={selectedCategory === category.name}
+              onClick={() => choose(category.name)}
+              label={category.name}
+              iconName={categoryIconName(category.name, category.icon)}
+            />
+          ))}
+        </ul>
       )}
 
       {suggestedCategory && !selectedCategory && (
-        <div className="mt-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-          <span>Suggested: {suggestedCategory}</span>
-        </div>
+        <p className="mt-1.5 text-caption text-secondary">Suggested: {suggestedCategory}</p>
       )}
     </div>
+  );
+}
+
+interface PickerOptionProps {
+  selected: boolean;
+  onClick: () => void;
+  label: string;
+  iconName: string;
+}
+
+function PickerOption({ selected, onClick, label, iconName }: PickerOptionProps) {
+  return (
+    <li role="option" aria-selected={selected}>
+      <button
+        type="button"
+        onClick={onClick}
+        className={cx(
+          'flex w-full items-center gap-3 px-4 py-3 text-left text-body transition-colors hover:bg-surface-2 hover:text-accent-fg cursor-pointer',
+          selected ? 'text-accent-fg' : 'text-fg',
+        )}
+      >
+        <CategoryIcon name={iconName} width={20} height={20} strokeWidth={1.5} aria-hidden="true" />
+        <span className="font-medium">{label}</span>
+      </button>
+    </li>
   );
 }

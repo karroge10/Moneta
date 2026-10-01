@@ -1,67 +1,62 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { NavArrowLeft } from 'iconoir-react';
 import Image from 'next/image';
+import { NavArrowLeft } from 'iconoir-react';
+
+export const metadata: Metadata = {
+  title: 'Page not found',
+  robots: { index: false },
+};
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 md:px-8 py-12 relative overflow-hidden">
-      {}
-      <div className="pointer-events-none absolute inset-0 opacity-30" aria-hidden>
-        <div className="absolute top-1/2 left-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#AC66DA]/30 blur-[100px]" />
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-6 py-12 md:px-8">
+      <div className="pointer-events-none absolute inset-0 opacity-30" aria-hidden="true">
+        <div className="absolute left-1/2 top-1/2 size-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/30 blur-[100px]" />
       </div>
 
-      <div className="max-w-lg w-full mx-auto text-center space-y-8 rounded-[30px] p-8 md:p-12 surface-elevated bg-[#282828] border border-[#3a3a3a] shadow-xl relative z-10">
-        {}
-        <div className="flex justify-center -mt-16">
-          <div className="p-2 rounded-full bg-[#202020] border border-[#3a3a3a] shadow-lg">
-            <div className="p-3 bg-[#282828] rounded-full">
-              <Image
-                src="/monetalogo.png"
-                alt="Moneta"
-                width={48}
-                height={48}
-                priority
-              />
+      <main className="surface-elevated relative z-10 mx-auto w-full max-w-lg space-y-8 rounded-card border border-line bg-surface-1 p-8 text-center shadow-xl md:p-12">
+        <div className="-mt-16 flex justify-center">
+          <div className="rounded-full border border-line bg-surface-inset p-2 shadow-lg">
+            <div className="rounded-full bg-surface-1 p-3">
+              <Image src="/monetalogo.png" alt="Moneta" width={48} height={48} priority />
             </div>
           </div>
         </div>
 
-        {}
         <div>
-          <h1 className="text-[64px] leading-none font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#AC66DA] to-[#E7E4E4] mb-2">
+          <p
+            className="mb-2 bg-gradient-to-r from-accent to-fg bg-clip-text text-[64px] font-bold leading-none tabular-nums text-transparent"
+            aria-hidden="true"
+          >
             404
-          </h1>
-          <h2 className="text-card-header text-[#E7E4E4] font-bold">
-            Page not found
-          </h2>
+          </p>
+          <h1 className="text-card-header font-bold text-fg">Page not found</h1>
         </div>
 
-        {}
-        <p className="text-body text-[#E7E4E4] opacity-80 leading-relaxed max-w-md mx-auto">
-          The page you&apos;re looking for doesn&apos;t exist, has been moved, or is temporarily unavailable. Let&apos;s get you back.
+        <p className="mx-auto max-w-md text-copy text-secondary text-pretty">
+          The page you are looking for does not exist or has been moved.
         </p>
 
-        {}
-        <div className="flex flex-col items-center justify-center pt-2 w-full">
+        <div className="flex w-full flex-col items-center justify-center pt-2">
           <Link
             href="/dashboard"
-            className="w-full sm:max-w-xs flex justify-center rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] px-8 py-3.5 text-lg font-semibold text-[#E7E4E4] shadow-lg shadow-[#AC66DA]/30 transition-all hover:opacity-90 hover:scale-[1.02] border border-[#AC66DA]/50 mb-6"
+            className="btn btn-primary mb-6 flex w-full justify-center px-8 py-3.5 text-lg font-semibold active:scale-[0.96] sm:max-w-xs"
           >
-            Go to Dashboard
+            Go to dashboard
           </Link>
         </div>
 
-        {}
-        <div className="pt-6 border-t border-[#3a3a3a] w-full mt-8">
+        <div className="mt-8 w-full border-t border-line pt-6">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-body font-semibold text-[#E7E4E4] opacity-60 hover:opacity-100 hover:text-[#AC66DA] transition-colors bg-transparent border-0 m-auto"
+            className="m-auto inline-flex items-center gap-2 text-copy font-semibold text-secondary transition-colors hover:text-accent-fg"
           >
-            <NavArrowLeft width={20} height={20} strokeWidth={1.5} />
-            <span>Return to Home</span>
+            <NavArrowLeft width={20} height={20} strokeWidth={1.5} aria-hidden="true" />
+            <span>Return to home</span>
           </Link>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

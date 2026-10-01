@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 import { ensureStripeCustomer } from '@/lib/billing/customers';
 import { isPremiumStatus } from '@/lib/billing/entitlements';
@@ -56,7 +57,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error('[billing/checkout] failed', error);
-    return NextResponse.json({ error: 'Could not start checkout' }, { status: 500 });
+    return errorResponse(error, '[billing/checkout] failed', 'Could not start checkout');
   }
 }

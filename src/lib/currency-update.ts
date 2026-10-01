@@ -1,12 +1,14 @@
 import { db } from './db';
-import { Prisma } from '@prisma/client';
+import { startOfUtcDay, toDateKey } from './dates';
+import { fetchHistoricalRate } from './currency-conversion';
 
 
 export async function updateDailyExchangeRates(): Promise<{ success: boolean; updated: number; errors: string[] }> {
     const errors: string[] = [];
     let updated = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); 
+    const now = new Date();
+    const today = startOfUtcDay(now);
+    const dateStr = toDateKey(today);
 
     try {
         
@@ -42,22 +44,14 @@ export async function updateDailyExchangeRates(): Promise<{ success: boolean; up
                 });
 
                 if (existing) {
-                    console.log(`[currency-update] Rate already exists for ${baseCurrency.alias}->${targetCurrency.alias} on ${today.toISOString().split('T')[0]}`);
+                    console.log(`[currency-update] Rate already exists for ${baseCurrency.alias}->${targetCurrency.alias} on ${dateStr}`);
                     continue;
                 }
 
                 
-                const dateStr = today.toISOString().split('T')[0];
-                const url = `https://api.frankfurter.app/${dateStr}?from=${baseCurrency.alias}&to=${targetCurrency.alias}`;
-
-                const res = await fetch(url);
-                if (!res.ok) {
-                    errors.push(`Failed to fetch ${baseCurrency.alias}->${targetCurrency.alias}: ${res.status}`);
-                    continue;
-                }
-
-                const data = await res.json();
-                const rate = data.rates?.[targetCurrency.alias.toUpperCase()];
+                const baseAlias = baseCurrency.alias.toUpperCase();
+                const targetAlias = targetCurrency.alias.toUpperCase();
+                const rate = await fetchHistoricalRate(baseAlias, targetAlias, today);
 
                 if (!rate) {
                     errors.push(`No rate data for ${baseCurrency.alias}->${targetCurrency.alias}`);
@@ -69,7 +63,7 @@ export async function updateDailyExchangeRates(): Promise<{ success: boolean; up
                     data: {
                         baseCurrencyId: baseCurrency.id,
                         quoteCurrencyId: targetCurrency.id,
-                        rate: new Prisma.Decimal(rate),
+                        rate,
                         rateDate: today,
                     }
                 });

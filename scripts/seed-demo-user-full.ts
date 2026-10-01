@@ -1,5 +1,5 @@
 /**
- * Full demo seed for a single user — fills dashboard cards (income, expenses, transactions,
+ * Full demo seed for a single user: fills dashboard cards (income, expenses, transactions,
  * top expenses, investments, goals, upcoming bills, financial health, insight) and enriches
  * investments/notifications pages.
  *
@@ -29,7 +29,7 @@ import {
   AssetType,
   PricingMode,
   FrequencyUnit,
-  RecurringType,
+  TransactionType,
 } from '@prisma/client';
 import { config } from 'dotenv';
 import { resolve } from 'path';
@@ -110,20 +110,20 @@ function buildExpenseTemplates(): Array<{
   const groceries = [
     { desc: 'Whole Foods Market', amount: 94 },
     { desc: "Trader Joe's restock", amount: 67 },
-    { desc: 'Carrefour — weekend shop', amount: 112 },
+    { desc: 'Carrefour: weekend shop', amount: 112 },
     { desc: 'Spar express', amount: 38 },
     { desc: 'Costco membership + haul', amount: 186 },
   ];
   const dining = [
     { desc: 'Starbucks', amount: 6.5 },
     { desc: 'Chipotle', amount: 14 },
-    { desc: 'Local bistro — dinner', amount: 78 },
-    { desc: 'Uber Eats — Thai', amount: 34 },
+    { desc: 'Local bistro: dinner', amount: 78 },
+    { desc: 'Uber Eats: Thai', amount: 34 },
     { desc: 'Subway lunch', amount: 11 },
   ];
   const transport = [
-    { desc: 'Uber — airport run', amount: 42 },
-    { desc: 'Shell — fuel', amount: 58 },
+    { desc: 'Uber: airport run', amount: 42 },
+    { desc: 'Shell: fuel', amount: 58 },
     { desc: 'Bolt city ride', amount: 9 },
     { desc: 'Metro monthly pass', amount: 45 },
   ];
@@ -135,15 +135,15 @@ function buildExpenseTemplates(): Array<{
     { desc: 'YouTube Premium', amount: 13.99 },
   ];
   const fun = [
-    { desc: 'Cinema — IMAX tickets', amount: 28 },
+    { desc: 'Cinema: IMAX tickets', amount: 28 },
     { desc: 'Steam sale', amount: 47 },
     { desc: 'PlayStation Store', amount: 69 },
   ];
   const util = [
-    { desc: 'Electricity Bill — utility', amount: 84 },
+    { desc: 'Electricity Bill: utility', amount: 84 },
     { desc: 'Water Bill', amount: 32 },
     { desc: 'Home Internet', amount: 55 },
-    { desc: 'Mobile Data — carrier', amount: 42 },
+    { desc: 'Mobile Data: carrier', amount: 42 },
   ];
 
   const pools = [groceries, dining, transport, subs, fun, util];
@@ -170,7 +170,7 @@ function buildExpenseTemplates(): Array<{
       });
     }
     rows.push({
-      desc: 'Rent — apartment',
+      desc: 'Rent: apartment',
       category: 'Rent',
       amount: 1650 + (mo % 2) * 25,
       day: 1,
@@ -184,7 +184,7 @@ function buildExpenseTemplates(): Array<{
       monthOffset: mo,
     });
     rows.push({
-      desc: 'Apple Store — accessory',
+      desc: 'Apple Store: accessory',
       category: 'Technology',
       amount: 79 + mo * 10,
       day: 14,
@@ -241,7 +241,7 @@ async function main() {
 
   const requireCat = (name: string) => {
     const id = catByName.get(name);
-    if (id == null) throw new Error(`Missing category "${name}" — run main seed.`);
+    if (id == null) throw new Error(`Missing category "${name}": run main seed.`);
     return id;
   };
 
@@ -293,7 +293,7 @@ async function main() {
       userId,
       type: 'income',
       amount: 4850,
-      description: 'Acme Corp — salary',
+      description: 'Acme Corp: salary',
       source: 'manual',
       date: dateInMonth(anchor, mo, 1, 9),
       categoryId: requireCat('Salary'),
@@ -303,7 +303,7 @@ async function main() {
       userId,
       type: 'income',
       amount: 4850,
-      description: 'Acme Corp — salary',
+      description: 'Acme Corp: salary',
       source: 'manual',
       date: dateInMonth(anchor, mo, 15, 9),
       categoryId: requireCat('Salary'),
@@ -313,7 +313,7 @@ async function main() {
       userId,
       type: 'income',
       amount: 620 + mo * 40,
-      description: 'Design sprint — client invoice',
+      description: 'Design sprint: client invoice',
       source: 'manual',
       date: dateInMonth(anchor, mo, 22, 11),
       categoryId: requireCat('Freelance'),
@@ -323,7 +323,7 @@ async function main() {
       userId,
       type: 'income',
       amount: 38 + mo * 5,
-      description: 'Amazon refund — order #8821',
+      description: 'Amazon refund: order #8821',
       source: 'manual',
       date: dateInMonth(anchor, mo, 11, 14),
       categoryId: requireCat('Refunds'),
@@ -465,7 +465,7 @@ async function main() {
         userId,
         type: 'expense',
         amount: 0,
-        description: 'Sell BTC — took partial profits',
+        description: 'Sell BTC: took partial profits',
         source: 'manual',
         date: dateInMonth(anchor, 1, 18, 15),
         currencyId: usd.id,
@@ -489,7 +489,7 @@ async function main() {
     data: [
       {
         userId,
-        type: RecurringType.expense,
+        type: TransactionType.expense,
         name: 'Apartment rent',
         amount: 1650,
         currencyId: usd.id,
@@ -502,7 +502,7 @@ async function main() {
       },
       {
         userId,
-        type: RecurringType.expense,
+        type: TransactionType.expense,
         name: 'Netflix',
         amount: 15.49,
         currencyId: usd.id,
@@ -515,7 +515,7 @@ async function main() {
       },
       {
         userId,
-        type: RecurringType.expense,
+        type: TransactionType.expense,
         name: 'Planet Fitness',
         amount: 29.99,
         currencyId: usd.id,
@@ -528,7 +528,7 @@ async function main() {
       },
       {
         userId,
-        type: RecurringType.expense,
+        type: TransactionType.expense,
         name: 'Car insurance',
         amount: 128,
         currencyId: usd.id,
@@ -541,7 +541,7 @@ async function main() {
       },
       {
         userId,
-        type: RecurringType.expense,
+        type: TransactionType.expense,
         name: 'Adobe CC (paused)',
         amount: 59.99,
         currencyId: usd.id,
@@ -554,7 +554,7 @@ async function main() {
       },
       {
         userId,
-        type: RecurringType.income,
+        type: TransactionType.income,
         name: 'Side project retainer',
         amount: 1200,
         currencyId: usd.id,
@@ -615,7 +615,7 @@ async function main() {
       {
         userId,
         type: 'Investments',
-        text: 'Portfolio value moved this week — review your allocation.',
+        text: 'Portfolio value moved this week: review your allocation.',
         date: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 3, 11, 0),
         time: notifTime,
         read: true,

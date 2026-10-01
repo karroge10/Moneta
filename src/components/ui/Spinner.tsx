@@ -5,7 +5,7 @@ interface SpinnerProps {
   color?: string;
 }
 
-export default function Spinner({ size = 20, color = '#AC66DA' }: SpinnerProps) {
+export default function Spinner({ size = 20, color = 'var(--color-accent)' }: SpinnerProps) {
   return (
     <div
       className="inline-block animate-spin rounded-full border-2 border-solid border-current border-r-transparent"

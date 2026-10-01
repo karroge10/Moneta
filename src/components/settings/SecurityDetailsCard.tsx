@@ -1,79 +1,37 @@
 'use client';
 
+import { Mail, Lock, Trash } from 'iconoir-react';
 import Card from '@/components/ui/Card';
-import { UserSettings } from '@/types/dashboard';
-import { Mail, Lock } from 'iconoir-react';
-
-const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
-
-function FieldRowSkeleton({ labelWidth = 'w-24' }: { labelWidth?: string }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className={`h-4 rounded animate-pulse ${labelWidth}`} style={SKELETON_STYLE} />
-      <div
-        className="flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a]"
-        style={{ backgroundColor: 'var(--bg-primary)' }}
-      >
-        <div className="w-5 h-5 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
-        <div className="h-4 flex-1 min-w-0 rounded animate-pulse max-w-[180px]" style={SKELETON_STYLE} />
-      </div>
-    </div>
-  );
-}
+import Button from '@/components/ui/Button';
+import Skeleton from '@/components/ui/Skeleton';
+import type { UserSettings } from '@/types/dashboard';
 
 interface SecurityDetailsCardProps {
   settings: UserSettings;
-  onEdit?: (field: string) => void;
-  onChange?: (field: string, value: string) => void;
+  /** Opens the Clerk profile, where email and password are changed. */
   onOpenAccountProfile?: () => void;
   onDeleteAccount?: () => void;
   loading?: boolean;
-  disabled?: boolean;
 }
 
 export default function SecurityDetailsCard({
   settings,
-  onEdit: _onEdit,
-  onChange: _onChange,
   onOpenAccountProfile,
   onDeleteAccount,
   loading = false,
-  disabled: _disabled = false,
 }: SecurityDetailsCardProps) {
-  const openProfile = onOpenAccountProfile;
-
   if (loading) {
     return (
       <Card title="Security Details" showActions={false}>
-        <div className="flex flex-col gap-4">
-          <FieldRowSkeleton labelWidth="w-20" />
-          <div className="flex flex-col gap-2">
-            <div className="h-4 w-12 rounded animate-pulse" style={SKELETON_STYLE} />
-            <div
-              className="flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a]"
-              style={{ backgroundColor: 'var(--bg-primary)' }}
-            >
-              <div className="w-5 h-5 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
-              <div className="h-4 flex-1 max-w-[200px] rounded animate-pulse" style={SKELETON_STYLE} />
-              <div className="h-4 w-24 rounded animate-pulse shrink-0" style={SKELETON_STYLE} />
+        <div className="flex flex-col gap-4" aria-busy="true">
+          <span className="sr-only">Loading security details</span>
+          {['w-12', 'w-20'].map((labelWidth) => (
+            <div key={labelWidth} className="flex flex-col gap-2">
+              <Skeleton className={`h-4 ${labelWidth}`} />
+              <Skeleton className="h-10 w-full rounded-control" />
             </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <div className="h-4 w-20 rounded animate-pulse" style={SKELETON_STYLE} />
-            <div
-              className="flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a]"
-              style={{ backgroundColor: 'var(--bg-primary)' }}
-            >
-              <div className="w-5 h-5 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
-              <div className="h-4 flex-1 max-w-[120px] rounded animate-pulse" style={SKELETON_STYLE} />
-              <div className="h-4 w-28 rounded animate-pulse shrink-0" style={SKELETON_STYLE} />
-            </div>
-          </div>
-          <div className="flex flex-col gap-3 mt-2">
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="h-10 w-36 rounded-full animate-pulse" style={SKELETON_STYLE} />
-            </div>
-          </div>
+          ))}
+          <Skeleton className="mt-2 h-10 w-40 rounded-full" />
         </div>
       </Card>
     );
@@ -81,62 +39,74 @@ export default function SecurityDetailsCard({
 
   return (
     <Card title="Security Details" showActions={false}>
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <label className="text-body" style={{ color: '#E7E4E4' }}>
-            Email
-          </label>
-          <div className="flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a]" style={{ backgroundColor: 'var(--bg-primary)', color: '#B9B9B9' }}>
-            <Mail width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />
-            <span className="flex-1 text-body" style={{ color: settings.email ? undefined : 'rgba(231, 228, 228, 0.5)' }}>
-              {settings.email || 'No email set'}
-            </span>
-            {openProfile && (
-              <button
-                type="button"
-                onClick={openProfile}
-                className="text-body font-semibold transition-opacity hover:opacity-90 cursor-pointer"
-                style={{ color: 'var(--accent-purple)' }}
-              >
-                Change email
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          <label className="text-body" style={{ color: '#E7E4E4' }}>
-            Password
-          </label>
-          <div className="flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a]" style={{ backgroundColor: 'var(--bg-primary)', color: '#B9B9B9' }}>
-            <Lock width={20} height={20} strokeWidth={1.5} style={{ color: '#B9B9B9' }} />
-            <span className="flex-1 text-body">••••••••••••</span>
-            {openProfile && (
-              <button
-                type="button"
-                onClick={openProfile}
-                className="text-body font-semibold transition-opacity hover:opacity-90 cursor-pointer"
-                style={{ color: 'var(--accent-purple)' }}
-              >
-                Change password
-              </button>
-            )}
-          </div>
-        </div>
+      <dl className="flex flex-col gap-4">
+        <SecurityRow
+          label="Email"
+          icon={<Mail width={20} height={20} strokeWidth={1.5} />}
+          value={settings.email || <span className="text-muted">No email set</span>}
+          actionLabel="Change email"
+          onAction={onOpenAccountProfile}
+        />
+        <SecurityRow
+          label="Password"
+          icon={<Lock width={20} height={20} strokeWidth={1.5} />}
+          value={
+            <>
+              <span aria-hidden="true">••••••••••••</span>
+              <span className="sr-only">Hidden</span>
+            </>
+          }
+          actionLabel="Change password"
+          onAction={onOpenAccountProfile}
+        />
+      </dl>
 
-        <div className="flex flex-col gap-3 mt-2">
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              type="button"
-              onClick={onDeleteAccount}
-              className="px-4 py-2 rounded-full text-body font-semibold transition-opacity hover:opacity-90 cursor-pointer"
-              style={{ backgroundColor: '#D93F3F', color: '#E7E4E4' }}
-            >
-              Delete Account
-            </button>
-          </div>
+      {onDeleteAccount && (
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <Button
+            variant="danger"
+            onClick={onDeleteAccount}
+            icon={<Trash width={18} height={18} strokeWidth={1.5} aria-hidden="true" />}
+          >
+            Delete account
+          </Button>
         </div>
-      </div>
+      )}
     </Card>
   );
 }
 
+function SecurityRow({
+  label,
+  icon,
+  value,
+  actionLabel,
+  onAction,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  value: React.ReactNode;
+  actionLabel: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <dt className="text-ui font-medium text-secondary">{label}</dt>
+      <dd className="flex min-h-10 items-center gap-3 rounded-control border border-line bg-surface-0 px-4 py-2 text-secondary">
+        <span className="shrink-0" aria-hidden="true">
+          {icon}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-copy">{value}</span>
+        {onAction && (
+          <button
+            type="button"
+            onClick={onAction}
+            className="shrink-0 rounded-chip text-ui font-semibold text-accent-fg transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            {actionLabel}
+          </button>
+        )}
+      </dd>
+    </div>
+  );
+}

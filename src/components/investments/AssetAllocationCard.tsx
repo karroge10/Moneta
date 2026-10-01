@@ -3,13 +3,14 @@
 import type { ComponentType, CSSProperties } from 'react';
 import Card from '@/components/ui/Card';
 import DonutChart from '@/components/ui/DonutChart';
-import { Investment } from '@/types/dashboard';
 import { getAssetColor } from '@/lib/asset-utils';
 import { BitcoinCircle, Cash, Neighbourhood, Reports } from 'iconoir-react';
 import { useCurrency } from '@/hooks/useCurrency';
+import { formatDecimal } from '@/lib/format';
+import { isValuationMissing, type Holding } from '@/hooks/investments/types';
 
 interface AssetAllocationCardProps {
-    portfolio: Investment[];
+    portfolio: Holding[];
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -35,7 +36,7 @@ const TYPE_ICONS: Record<string, ComponentType<{ width?: number; height?: number
 };
 
 export default function AssetAllocationCard({ portfolio }: AssetAllocationCardProps) {
-    const { currency } = useCurrency(); 
+    const { currency } = useCurrency();
 
     if (!portfolio || portfolio.length === 0) return null;
 
@@ -44,6 +45,7 @@ export default function AssetAllocationCard({ portfolio }: AssetAllocationCardPr
     let grandTotal = 0;
 
     portfolio.forEach(item => {
+        if (isValuationMissing(item)) return;
         const type = item.assetType || 'other';
         const val = item.currentValue || 0;
         totals[type] = (totals[type] || 0) + val;
@@ -90,11 +92,11 @@ export default function AssetAllocationCard({ portfolio }: AssetAllocationCardPr
                                 
                                 <div className="flex-1 min-w-0">
                                     <div className="text-body font-medium text-primary truncate">{item.name}</div>
-                                    <div className="text-helper text-secondary">{item.displayPct}%</div>
+                                    <div className="text-helper text-secondary tabular-nums">{item.displayPct}%</div>
                                 </div>
 
                                 <div className="text-body font-semibold flex-shrink-0 tabular-nums text-primary">
-                                     {currency.symbol}{Math.round(item.amount).toLocaleString()}
+                                     {currency.symbol}{formatDecimal(item.amount, { maxDecimals: 0 })}
                                 </div>
                             </div>
                         );

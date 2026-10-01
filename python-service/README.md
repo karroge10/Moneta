@@ -1,136 +1,87 @@
-# Python PDF Processing Service
+# PDF Processing Service
 
-This is a Flask service that processes PDF bank statements and extracts transactions.
+Extracts transactions from PDF bank statements with pdfplumber, translates
+descriptions to English (deep-translator), and returns them as JSON.
+Each transaction has `category: null` and `confidence: 0`; categories are
+assigned on the Next.js side. A PDF that cannot be parsed yields zero
+transactions. The
+extraction code lives in `python/process_pdf.py`; this folder holds the HTTP
+service and an optional database-polling worker.
 
-## Deployment on Render
+## How it is used
 
-### Manual Setup (Recommended)
+The Next.js route `src/app/api/transactions/upload-bank-statement` stores a
+`PdfProcessingJob` row, then:
 
-When creating the service on Render, use these settings:
+- If `PYTHON_SERVICE_URL` is set (production), it creates the job as
+  `processing` and POSTs the file to `POST /process-pdf` on this service. The
+  service optionally reports progress to `callbackUrl`
+  (`/api/internal/jobs/<jobId>/progress`), and the Next.js route also writes
+  the final result from the HTTP response.
+- If `PYTHON_SERVICE_URL` is not set, the job is created as `queued` and
+  `worker.py` picks it up from Postgres.
 
-- **Name**: `pdf-processor`
-- **Environment**: `Python 3`
-- **Build Command**: 
-  ```bash
-  pip install -r python-service/requirements.txt && pip install -r python/requirements.txt
-  ```
-- **Start Command**: 
-  ```bash
-  python python-service/app.py
-  ```
-- **Root Directory**: Leave empty (uses repo root)
+## Endpoints (`app.py`)
 
-### Environment Variables
+- `GET /health`: public health check.
+- `POST /process-pdf`: multipart form with `file` (required, max 10 MB),
+  `jobId` and `callbackUrl` (optional). Requires the header
+  `x-internal-secret: <INTERNAL_API_SECRET>`.
+  - 503 if `INTERNAL_API_SECRET` is not set on the service, 401 if the header
+    is wrong, 413 if the upload is over 10 MB, 400 if no transactions are found.
+  - Progress callbacks are sent only when `callbackUrl` is https (http only for
+    localhost) and, if `CALLBACK_ALLOWED_HOSTS` is set, its host is in that list.
+    Otherwise the callback is ignored and the PDF is still processed; the result
+    is returned in the response. Callbacks carry the same `x-internal-secret` header.
 
-Set these in Render dashboard:
+## Worker (`worker.py`)
 
-- `PORT`: `5000` (Render sets this automatically)
-- `CATEGORIES_MODEL_PATH`: `python/models/transactions_model.joblib` (optional; joblib sklearn pipeline — omit or leave missing to use keyword heuristics)
-- `PYTHONUNBUFFERED`: `1` (for better logging)
+Polls `PdfProcessingJob` every 2 seconds and claims the oldest `queued` job in
+one statement (`UPDATE ... WHERE id = (SELECT ... FOR UPDATE SKIP LOCKED)`), so
+several workers never take the same job. It writes progress, the result and
+errors to the job row, clears `fileContent` after success, and creates a
+`Notification` on failure.
 
-### Using render.yaml (Recommended for Production)
+## Environment variables
 
-If you want to use the `render.yaml` file, make sure it's in the root of your repository and Render is configured to use it.
+| Name | Service | Purpose |
+| --- | --- | --- |
+| `INTERNAL_API_SECRET` | web | Required. Shared secret; must equal `INTERNAL_API_SECRET` in the Next.js app. |
+| `CALLBACK_ALLOWED_HOSTS` | web | Optional. Comma-separated hostnames allowed as callback targets, e.g. `monetafin.vercel.app`. Unset allows any https host (the caller already holds the secret). |
+| `PORT` | web | Port to bind (Render sets it). |
+| `DATABASE_URL` | worker | Postgres connection string (same database as the app). |
+| `PYTHONUNBUFFERED` | both | `1` for unbuffered logs. |
 
-The `render.yaml` configuration uses Gunicorn with:
-- **Timeout**: 900 seconds (15 minutes) to handle very large PDFs (Render allows up to 100 minutes)
-- **Workers**: 2 workers with 2 threads each for better concurrency
-- **Worker Class**: gthread for better I/O handling
+## Run locally
 
-This is recommended for production as it handles large PDFs (500+ transactions) without timing out.
+From the repo root, `npm run setup` creates `.venv` and installs
+`python-service/requirements.txt` into it (or do it by hand):
 
-### Concurrency and Scaling
-
-**Free Tier:**
-- ~2 concurrent requests (limited by resources)
-- If 100 users upload simultaneously, they'll queue up
-- Fine for low-moderate traffic
-
-**Paid Tier:**
-- More workers/instances available
-- Can scale horizontally to handle hundreds of concurrent users
-- Recommended for production with 100+ users
-
-**Current Setup:**
-- 2 Gunicorn workers = 2 requests processed simultaneously
-- Remaining requests wait in queue (first-come-first-served)
-- Each request is independent (no shared queue between workers)
-
-**Future Optimization (Batching):**
-- Split PDF into chunks (e.g., pages 1-15, 16-30)
-- Process chunks in parallel across multiple requests
-- Merge results on client/server side
-- Pro: Faster per-request, better UX
-- Con: Complex implementation, more API calls, potential rate limiting
-- Recommended only if timeout becomes an issue or for very large PDFs (1000+ transactions)
-
-## Local Development
-
-1. Install dependencies:
-   ```bash
-   pip install -r python-service/requirements.txt
-   pip install -r python/requirements.txt
-   ```
-
-2. Run the service:
-   ```bash
-   python python-service/app.py
-   ```
-
-3. Test the health endpoint:
-   ```bash
-   curl http://localhost:5000/health
-   ```
-
-## Async Processing Architecture
-
-The PDF processing now uses an **async/queue pattern**:
-
-1. **Upload Endpoint** (`/api/transactions/upload-bank-statement`):
-   - Accepts PDF file
-   - Creates job in PostgreSQL database
-   - Returns job ID immediately (<1 second)
-
-2. **Background Worker** (`python-service/worker.py`):
-   - Polls PostgreSQL for queued jobs
-   - Processes PDFs (extraction, translation, categorization)
-   - Updates progress in database (0-100%)
-   - Creates notification when complete
-
-3. **Status Endpoint** (`/api/jobs/[jobId]/status`):
-   - Frontend polls this every 2 seconds
-   - Returns job status, progress, and transactions when ready
-
-4. **Frontend**:
-   - Polls status endpoint
-   - Updates progress bar in real-time
-   - Shows notification when processing completes
-
-### Benefits
-
-- ✅ **No timeout issues** - Processing happens in background
-- ✅ **Better UX** - Immediate response, progress updates
-- ✅ **Resilient** - Jobs can be retried if they fail
-- ✅ **Scalable** - Workers can scale independently
-
-### Worker Setup
-
-The worker is configured in `render.yaml` as a separate service:
-
-```yaml
-- type: worker
-  name: pdf-worker
-  startCommand: cd python-service && PYTHONPATH=.. python worker.py
-  envVars:
-    - DATABASE_URL: ${DATABASE_URL}
+```bash
+pip install -r python-service/requirements.txt
+cd python-service
+export INTERNAL_API_SECRET=dev-secret CALLBACK_ALLOWED_HOSTS=localhost
+PYTHONPATH=.. python app.py          # dev server on :5000
+PYTHONPATH=.. python worker.py       # worker, needs DATABASE_URL
+python ../python/process_pdf.py statement.pdf   # CLI, prints JSON
 ```
 
-**Required Environment Variables:**
-- `DATABASE_URL` - PostgreSQL connection string (same as main app)
-- `CATEGORIES_MODEL_PATH` - Path to joblib sklearn categorization pipeline (optional)
+```bash
+curl http://localhost:5000/health
+curl -H "x-internal-secret: dev-secret" -F file=@statement.pdf http://localhost:5000/process-pdf
+```
 
-## API Endpoints
+Docker (build from the repo root): `docker build -f python-service/Dockerfile .`
+runs the same gunicorn command as Render.
 
-- `GET /health` - Health check
-- `POST /process-pdf` - Process PDF file (multipart/form-data with 'file' field) - **Legacy, now uses async processing**
+## Deployment (Render)
 
+`render.yaml` in the repo root defines two services, both built with
+`pip install -r python-service/requirements.txt`:
+
+- `pdf-processor` (web): `cd python-service && PYTHONPATH=.. gunicorn ... wsgi:application`
+  with 2 workers x 2 threads (gthread) and a 900 s timeout for large PDFs.
+- `pdf-worker` (background worker): `cd python-service && PYTHONPATH=.. python worker.py`.
+
+Set `INTERNAL_API_SECRET` (required) and optionally `CALLBACK_ALLOWED_HOSTS` in
+the Render dashboard (they are marked `sync: false`).

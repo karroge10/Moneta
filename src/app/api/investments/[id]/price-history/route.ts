@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { getInvestmentPriceHistory } from '@/lib/investments';
 
 export const runtime = 'nodejs';
@@ -11,7 +12,7 @@ export async function GET(
 ) {
     try {
         const { id: paramId } = await params;
-        await requireCurrentUser();
+        const user = await requireCurrentUser();
         const id = parseInt(paramId, 10);
 
         if (isNaN(id)) {
@@ -21,10 +22,9 @@ export async function GET(
         const { searchParams } = new URL(request.url);
         const maxPoints = parseInt(searchParams.get('maxPoints') || '25', 10);
 
-        const history = await getInvestmentPriceHistory(id, maxPoints);
+        const history = await getInvestmentPriceHistory(user.id, id, maxPoints);
         return NextResponse.json({ history });
     } catch (error) {
-        console.error('[investments][price-history] failed', error);
-        return NextResponse.json({ error: 'Failed to fetch price history' }, { status: 500 });
+        return errorResponse(error, '[investments][price-history] failed', 'Failed to fetch price history');
     }
 }

@@ -1,4 +1,5 @@
 import { Goal } from '@/types/dashboard';
+import { addUtcDays, startOfUtcDay } from '@/lib/dates';
 
 export type GoalStatus = 'active' | 'completed' | 'failed';
 
@@ -24,12 +25,12 @@ function parseTargetDate(dateStr: string): Date {
 
 function isDatePassed(targetDate: string): boolean {
   try {
-    const target = parseTargetDate(targetDate);
-    const now = new Date();
-    
-    target.setHours(0, 0, 0, 0);
-    now.setHours(0, 0, 0, 0);
-    return target < now;
+    // The parsed target is local midnight of the written day; read its calendar fields and
+    // compare that day in UTC with today's UTC day.
+    const parsed = parseTargetDate(targetDate);
+    const targetDay = Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    const today = startOfUtcDay(new Date());
+    return targetDay < today.getTime();
   } catch {
     
     return false;
@@ -139,7 +140,7 @@ export function calculateSummaryStats(goals: Goal[]): GoalSummaryStats {
   
   if (completionDates.length > 0) {
     const now = new Date();
-    const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const cutoff = addUtcDays(now, -30);
     stats.completionsLast30d = completionDates.filter(d => d >= cutoff && d <= now).length;
   }
 

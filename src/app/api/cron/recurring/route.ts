@@ -2,48 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { processDueRecurringItems } from '@/lib/recurring-core';
 import { updateDailyExchangeRates } from '@/lib/currency-update';
+import { secretsMatch } from '@/lib/api-errors';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 
 export async function GET(request: NextRequest) {
-  
-  console.log('[cron] Endpoint called at:', new Date().toISOString());
-  console.log('[cron] Headers:', {
-    userAgent: request.headers.get('user-agent'),
-    cronSecret: request.headers.get('x-cron-secret') ? 'present' : 'missing',
-  });
-
   try {
-    
-    const userAgent = request.headers.get('user-agent') || '';
-    const cronSecret = request.headers.get('x-cron-secret');
-    const expectedSecret = process.env.CRON_SECRET;
-
-    const isVercelCron = userAgent.includes('vercel-cron');
-    const hasValidSecret = expectedSecret && cronSecret === expectedSecret;
-
-    
-    console.log('[cron] Security check:', {
-      userAgent,
-      isVercelCron,
-      hasValidSecret,
-    });
-
-    if (!isVercelCron && !hasValidSecret) {
+    // Vercel Cron sends "Authorization: Bearer <CRON_SECRET>". An unset secret rejects every call.
+    const authorization = request.headers.get('authorization');
+    const expectedAuthorization = process.env.CRON_SECRET ? `Bearer ${process.env.CRON_SECRET}` : undefined;
+    if (!secretsMatch(authorization, expectedAuthorization)) {
       console.error('[cron] Unauthorized access attempt');
-      return NextResponse.json(
-        {
-          error: 'Unauthorized',
-          debug: {
-            userAgent,
-            hasSecret: !!cronSecret,
-            hasExpectedSecret: !!expectedSecret,
-          }
-        },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const now = new Date();
@@ -142,7 +114,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to process cron tasks',
+        error: 'Failed to process cron tasks',
       },
       { status: 500 }
     );

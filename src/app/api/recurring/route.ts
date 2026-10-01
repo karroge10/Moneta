@@ -1,44 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 import { moneyToNumber, parseMoney, type MoneyValue } from '@/lib/money';
-import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
+import { preloadRates, convertTransactionsWithRatesMap, countMissingRates } from '@/lib/currency-conversion';
 import { processDueRecurringItems } from '@/lib/recurring-core';
+import { formatDisplayDate, parseDisplayDate } from '@/lib/transaction-utils';
+import { parseJsonBody, recurringCreateSchema, recurringUpdateSchema } from '@/lib/validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 type RecurringType = 'income' | 'expense';
-type FrequencyUnit = 'day' | 'week' | 'month' | 'year';
-
-interface RecurringPayload {
-  id?: number;
-  name: string;
-  amount: number;
-  currencyId?: number;
-  category?: string | null;
-  type: RecurringType;
-  startDate: string; 
-  endDate?: string | null;
-  frequencyUnit: FrequencyUnit;
-  frequencyInterval: number;
-  createInitial?: boolean;
-  isActive?: boolean;
-}
-
-function formatDate(date: Date): string {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const day = date.getDate();
-  const month = months[date.getMonth()];
-  const year = date.getFullYear();
-
-  const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
-                 day === 2 || day === 22 ? 'nd' :
-                 day === 3 || day === 23 ? 'rd' : 'th';
-
-  return `${month} ${day}${suffix} ${year}`;
-}
-
 function getIconForCategory(categoryName: string | null): string {
   if (!categoryName) return 'HelpCircle';
 
@@ -99,7 +72,8 @@ function serializeUpcoming(
     type: RecurringType;
     category?: { name: string | null } | null;
     nextDueDate: Date;
-    convertedAmount?: number;
+    convertedAmount: number;
+    rateMissing: boolean;
   }>,
 ): Array<{
   id: string;
@@ -109,6 +83,7 @@ function serializeUpcoming(
   category: string | null;
   type: RecurringType;
   icon: string;
+  rateMissing: boolean;
 }> {
   return items
     .filter(item => item.nextDueDate)
@@ -116,11 +91,12 @@ function serializeUpcoming(
     .map(item => ({
       id: item.id.toString(),
       name: item.name,
-      amount: item.convertedAmount ?? moneyToNumber(item.amount),
-      date: formatDate(new Date(item.nextDueDate)),
+      amount: item.convertedAmount,
+      date: formatDisplayDate(item.nextDueDate),
       category: item.category?.name ?? null,
       type: item.type,
       icon: getIconForCategory(item.category?.name ?? null),
+      rateMissing: item.rateMissing,
     }));
 }
 
@@ -155,26 +131,24 @@ export async function GET(request: NextRequest) {
       orderBy: { nextDueDate: 'asc' },
     });
 
-    const ratesMap = await preloadRatesMap(
-      items.filter(t => t.nextDueDate).map(t => ({ currencyId: t.currencyId, date: t.nextDueDate! })),
-      userCurrencyId
-    );
+    const rateRequests = items.map((t) => ({ currencyId: t.currencyId, date: t.nextDueDate }));
+    const ratesMap = await preloadRates(rateRequests, userCurrencyId);
 
     const itemsWithConversion = convertTransactionsWithRatesMap(
       items.map(item => ({
         ...item,
-        date: item.nextDueDate || item.startDate,
+        date: item.nextDueDate,
       })),
       userCurrencyId,
       ratesMap
     );
 
-    const upcoming = serializeUpcoming(
-      itemsWithConversion.filter((item) => item.isActive && item.nextDueDate),
-    );
+    const activeItems = itemsWithConversion.filter((item) => item.isActive);
+    const upcoming = serializeUpcoming(activeItems);
 
     if (onlyUpcoming) {
-      return NextResponse.json({ upcoming });
+      const missingRates = countMissingRates(activeItems);
+      return NextResponse.json({ upcoming, missingRates });
     }
 
     return NextResponse.json({
@@ -183,7 +157,8 @@ export async function GET(request: NextRequest) {
         name: item.name,
         type: item.type,
         amount: moneyToNumber(item.amount),
-        convertedAmount: item.convertedAmount,
+        convertedAmount: item.convertedMoney ? moneyToNumber(item.convertedMoney) : null,
+        rateMissing: item.rateMissing,
         currencyId: item.currencyId,
         category: item.category?.name ?? null,
         startDate: item.startDate,
@@ -195,44 +170,36 @@ export async function GET(request: NextRequest) {
         lastGeneratedAt: item.lastGeneratedAt,
       })),
       upcoming,
+      missingRates: countMissingRates(itemsWithConversion),
     });
   } catch (error) {
-    console.error('[recurring][GET] failed', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch recurring items' },
-      { status: 500 },
-    );
+    return errorResponse(error, '[recurring][GET] failed', 'Failed to fetch recurring items');
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const user = await requireCurrentUserWithLanguage();
-    const body = (await request.json()) as RecurringPayload;
-    const amount = parseMoney(body.amount);
+    const parsed = await parseJsonBody(request, recurringCreateSchema);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
+    const amount = parseMoney(body.amount)!;
 
-    if (!body.name || !amount || amount.isZero() || !body.startDate) {
-      return NextResponse.json(
-        { error: 'Missing required fields: name, amount, startDate' },
-        { status: 400 },
-      );
+    if (amount.isZero()) {
+      return NextResponse.json({ error: 'Amount must not be zero' }, { status: 400 });
     }
 
     const currencyId = body.currencyId ?? await getUserCurrencyId(user.currencyId ?? undefined);
     const categoryId = await resolveCategoryId(user.id, body.category);
 
-    const startDate = new Date(body.startDate);
-    if (Number.isNaN(startDate.getTime())) {
-      return NextResponse.json({ error: 'Invalid startDate' }, { status: 400 });
-    }
-
+    const startDate = parseDisplayDate(body.startDate)!;
     const nextDueDate = new Date(startDate);
-    const endDate = body.endDate ? new Date(body.endDate) : null;
+    const endDate = body.endDate ? parseDisplayDate(body.endDate) : null;
 
     const newItem = await db.recurringTransaction.create({
       data: {
         userId: user.id,
-        type: body.type === 'income' ? 'income' : 'expense',
+        type: body.type,
         name: body.name,
         amount: amount.abs(),
         currencyId,
@@ -253,26 +220,17 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ id: newItem.id });
   } catch (error) {
-    console.error('[recurring][POST] failed', error);
-    return NextResponse.json(
-      { error: 'Failed to create recurring item' },
-      { status: 500 },
-    );
+    return errorResponse(error, '[recurring][POST] failed', 'Failed to create recurring item');
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
     const user = await requireCurrentUserWithLanguage();
-    const body = (await request.json()) as RecurringPayload;
-    const updatedAmount = parseMoney(body.amount);
-
-    if (!body.id) {
-      return NextResponse.json(
-        { error: 'Missing recurring item id' },
-        { status: 400 },
-      );
-    }
+    const parsed = await parseJsonBody(request, recurringUpdateSchema);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
+    const updatedAmount = body.amount !== undefined ? parseMoney(body.amount) : null;
 
     const existing = await db.recurringTransaction.findFirst({
       where: { id: body.id, userId: user.id },
@@ -288,8 +246,8 @@ export async function PUT(request: NextRequest) {
         ? await resolveCategoryId(user.id, body.category)
         : existing.categoryId;
 
-    const startDate = body.startDate ? new Date(body.startDate) : existing.startDate;
-    const endDate = body.endDate ? new Date(body.endDate) : existing.endDate;
+    const startDate = body.startDate ? parseDisplayDate(body.startDate)! : existing.startDate;
+    const endDate = body.endDate ? parseDisplayDate(body.endDate) : existing.endDate;
     const nextDueDate = startDate && startDate <= existing.nextDueDate ? existing.nextDueDate : startDate;
 
     const isActive =
@@ -300,7 +258,7 @@ export async function PUT(request: NextRequest) {
           : existing.isActive;
 
     await db.recurringTransaction.update({
-      where: { id: existing.id },
+      where: { id: existing.id, userId: user.id },
       data: {
         name: body.name ?? existing.name,
         amount: updatedAmount && !updatedAmount.isZero() ? updatedAmount.abs() : existing.amount,
@@ -318,11 +276,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[recurring][PUT] failed', error);
-    return NextResponse.json(
-      { error: 'Failed to update recurring item' },
-      { status: 500 },
-    );
+    return errorResponse(error, '[recurring][PUT] failed', 'Failed to update recurring item');
   }
 }
 
@@ -347,15 +301,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Recurring item not found' }, { status: 404 });
     }
 
-    await db.recurringTransaction.delete({ where: { id: existing.id } });
+    await db.recurringTransaction.delete({ where: { id: existing.id, userId: user.id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[recurring][DELETE] failed', error);
-    return NextResponse.json(
-      { error: 'Failed to delete recurring item' },
-      { status: 500 },
-    );
+    return errorResponse(error, '[recurring][DELETE] failed', 'Failed to delete recurring item');
   }
 }
 

@@ -3,15 +3,12 @@
 import { useMemo } from 'react';
 import { useNotificationContext } from '@/contexts/NotificationContext';
 
+/** Recent notifications from NotificationProvider, optionally unread only, capped at `limit`. */
 export function useNotifications(limit: number = 10, unreadOnly: boolean = false) {
-  const { notifications: allNotifications, isLoading, error, refresh } = useNotificationContext();
+  const { notifications: allNotifications, isLoading, error, refresh, markAsRead } = useNotificationContext();
 
-  
   const notifications = useMemo(() => {
-    let filtered = allNotifications;
-    if (unreadOnly) {
-      filtered = allNotifications.filter(n => !n.read);
-    }
+    const filtered = unreadOnly ? allNotifications.filter((n) => !n.read) : allNotifications;
     return filtered.slice(0, limit);
   }, [allNotifications, limit, unreadOnly]);
 
@@ -20,5 +17,6 @@ export function useNotifications(limit: number = 10, unreadOnly: boolean = false
     isLoading,
     error,
     refresh,
+    markAsRead,
   };
 }

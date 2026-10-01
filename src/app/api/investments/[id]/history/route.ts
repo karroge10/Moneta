@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
+import { getConversionRate } from '@/lib/currency-conversion';
+import { moneyToNumber } from '@/lib/money';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { fetchAssetHistory, HistoryDataPoint } from '@/lib/investment-history';
 
 export async function GET(
@@ -44,26 +48,26 @@ export async function GET(
                 );
 
                 
-                const usd = await db.currency.findFirst({ 
-                    where: { alias: { equals: 'usd', mode: 'insensitive' } } 
+                const usd = await db.currency.findFirst({
+                    where: { alias: { equals: 'usd', mode: 'insensitive' } }
                 });
                 const userCurrencyId = user.currencyId || (await db.currency.findFirst())?.id;
 
                 if (usd && userCurrencyId && usd.id !== userCurrencyId && history.length > 0) {
-                    const { convertAmount } = await import('@/lib/currency-conversion');
-                    
-                    const rate = await convertAmount(1, usd.id, userCurrencyId, new Date());
-                    history = history.map(point => ({
-                        ...point,
-                        price: point.price * rate
-                    }));
+                    const rate = await getConversionRate(usd.id, userCurrencyId, new Date());
+                    if (!rate) {
+                        return NextResponse.json({ history: [], rateMissing: true });
+                    }
+                    history = history.map(point => {
+                        const usdPrice = new Prisma.Decimal(point.price);
+                        return { ...point, price: moneyToNumber(usdPrice.mul(rate)) };
+                    });
                 }
             }
-        } 
-        
-        return NextResponse.json({ history });
+        }
+
+        return NextResponse.json({ history, rateMissing: false });
     } catch (error) {
-        console.error('Error fetching asset history:', error);
-        return NextResponse.json({ error: 'Failed' }, { status: 500 });
+      return errorResponse(error, 'Error fetching asset history', 'Failed');
     }
 }

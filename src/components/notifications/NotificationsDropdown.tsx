@@ -1,59 +1,52 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { NotificationEntry } from '@/types/dashboard';
-import { useNotificationContext } from '@/contexts/NotificationContext';
+import type { NotificationEntry } from '@/types/dashboard';
 import { notificationTextForDisplay } from '@/lib/notification-display';
+import { cx } from '@/components/ui/cx';
 
 interface NotificationsDropdownProps {
   notifications: NotificationEntry[];
   isOpen: boolean;
   onClose: () => void;
   onNotificationClick?: (notificationId: string) => void;
-  onMarkAllRead?: () => void;
+  /** Element that toggles the dropdown; clicks on it are not treated as outside clicks. */
+  anchorRef?: React.RefObject<HTMLElement | null>;
+  id?: string;
 }
 
+/** Popover listing recent notifications. Closes on outside click and Escape. */
 export default function NotificationsDropdown({
   notifications,
   isOpen,
   onClose,
   onNotificationClick,
-  onMarkAllRead,
+  anchorRef,
+  id,
 }: NotificationsDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { markAsReadLocally } = useNotificationContext();
 
   useEffect(() => {
+    if (!isOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        onClose();
-      }
+      const target = event.target as Node;
+      const insideDropdown = dropdownRef.current?.contains(target);
+      const onAnchor = anchorRef?.current?.contains(target);
+      if (!insideDropdown && !onAnchor) onClose();
     };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isOpen, onClose]);
-
-  
-  useEffect(() => {
-    if (isOpen && notifications.some(n => !n.read)) {
-      
-      markAsReadLocally();
-
-      fetch('/api/notifications', {
-        method: 'PATCH',
-      })
-        .then(() => {
-          onMarkAllRead?.();
-        })
-        .catch((error) => {
-          console.error('Failed to mark notifications as read:', error);
-        });
-    }
-  }, [isOpen, notifications, markAsReadLocally, onMarkAllRead]);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      onClose();
+      anchorRef?.current?.focus();
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose, anchorRef]);
 
   if (!isOpen) return null;
 
@@ -62,90 +55,67 @@ export default function NotificationsDropdown({
   return (
     <div
       ref={dropdownRef}
-      className="absolute top-full mt-2 right-0 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[320px] max-w-[400px]"
-      style={{ backgroundColor: 'var(--bg-surface)' }}
+      id={id}
+      role="region"
+      aria-label="Recent notifications"
+      className="absolute right-0 top-full z-20 mt-2 w-[min(400px,calc(100vw-2rem))] overflow-hidden rounded-panel bg-surface-1 shadow-lg"
     >
-      {}
-      <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(231, 228, 228, 0.1)' }}>
-        <h3 className="text-body font-semibold" style={{ color: '#E7E4E4' }}>
-          Notifications
-        </h3>
+      <div className="border-b border-line-subtle px-4 py-3">
+        <h3 className="text-copy font-semibold text-fg">Notifications</h3>
       </div>
 
-      {}
-      <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+      <div className="custom-scrollbar max-h-[400px] overflow-y-auto">
         {hasNotifications ? (
-          <div className="py-2">
+          <ul className="py-2">
             {notifications.map((notification) => (
-              <Link
-                key={notification.id}
-                href="/notifications"
-                onClick={async (e) => {
-                  e.preventDefault();
-                  
-                  markAsReadLocally(notification.id);
-                  await onNotificationClick?.(notification.id);
-                  setTimeout(() => {
+              <li key={notification.id}>
+                <Link
+                  href="/notifications"
+                  onClick={() => {
+                    onNotificationClick?.(notification.id);
                     onClose();
-                  }, 100);
-                }}
-                className={`block px-4 py-3 hover:opacity-80 transition-opacity border-b relative ${!notification.read ? 'bg-[#AC66DA]/5' : ''}`}
-                style={{ borderColor: 'rgba(231, 228, 228, 0.05)' }}
-              >
-                {!notification.read && (
-                  <div
-                    className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full"
-                    style={{ backgroundColor: '#AC66DA' }}
-                  />
-                )}
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-helper text-xs" style={{ color: '#B9B9B9' }}>
-                        {notification.date} {notification.time}
-                      </span>
-                      <span
-                        className="text-xs px-2.5 py-1 rounded-full"
-                        style={{
-                          backgroundColor: 'var(--bg-primary)',
-                          color: '#E7E4E4'
-                        }}
-                      >
-                        {notification.type}
-                      </span>
-                    </div>
-                    <p className="text-xs line-clamp-2" style={{ color: '#E7E4E4' }}>
-                      {notificationTextForDisplay(notification.text)}
-                    </p>
-                  </div>
-                </div>
-              </Link>
+                  }}
+                  className={cx(
+                    'relative block border-b border-line-subtle px-4 py-3 transition-colors hover:bg-surface-2',
+                    !notification.read && 'bg-accent/5',
+                  )}
+                >
+                  {!notification.read && (
+                    <span
+                      className="absolute left-1.5 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-accent"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span className="mb-1 flex items-center gap-2">
+                    <span className="text-caption tabular-nums text-secondary">
+                      {notification.date} {notification.time}
+                    </span>
+                    <span className="rounded-full bg-surface-0 px-2.5 py-1 text-caption text-fg">
+                      {notification.type}
+                    </span>
+                    {!notification.read && <span className="sr-only">Unread</span>}
+                  </span>
+                  <span className="line-clamp-2 text-ui text-fg">
+                    {notificationTextForDisplay(notification.text)}
+                  </span>
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         ) : (
-          <div className="px-4 py-8 text-center">
-            <p className="text-body" style={{ color: '#B9B9B9' }}>
-              No new notifications
-            </p>
-          </div>
+          <p className="px-4 py-8 text-center text-copy text-secondary">No new notifications</p>
         )}
       </div>
 
-      {}
-      <div className="px-4 py-2 border-t" style={{ borderColor: 'rgba(231, 228, 228, 0.1)' }}>
+      <div className="border-t border-line-subtle px-4 py-2">
         <Link
           href="/notifications"
           onClick={onClose}
-          className="block w-full text-center px-3 py-1.5 rounded-lg transition-opacity cursor-pointer hover:opacity-80 text-sm font-semibold"
-          style={{
-            backgroundColor: '#282828',
-            color: '#E7E4E4'
-          }}
+          className="block w-full rounded-chip bg-surface-2 px-3 py-2 text-center text-ui font-semibold text-fg transition-colors hover:bg-surface-3"
         >
-          View All
+          View all
         </Link>
       </div>
     </div>
   );
 }
-

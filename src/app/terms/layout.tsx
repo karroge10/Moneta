@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Terms and Conditions | Moneta',
+  title: 'Terms and Conditions',
   description: 'Terms of service for Moneta.',
 };
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { errorResponse } from '@/lib/api-errors';
 import { clerkClient } from '@clerk/nextjs/server';
 import type { LoginHistoryEntry } from '@/types/dashboard';
 
@@ -40,18 +41,13 @@ export async function GET() {
       const location =
         activity?.city && activity?.country
           ? `${activity.city}, ${activity.country}`
-          : activity?.country ?? activity?.ipAddress ?? '—';
+          : activity?.country ?? activity?.ipAddress ?? 'Unknown';
 
       return { date, time, device, location };
     });
 
     return NextResponse.json({ history: entries });
   } catch (error) {
-    console.error('Login history fetch failed:', error);
-    const message =
-      error instanceof Error && process.env.NODE_ENV === 'development'
-        ? error.message
-        : 'Failed to load login history';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return errorResponse(error, 'Login history fetch failed:', 'Failed to load login history');
   }
 }

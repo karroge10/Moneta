@@ -44,7 +44,7 @@ interface TypeaheadSelectProps {
 const DROPDOWN_HEIGHT = 240;
 const DROPDOWN_MARGIN = 8;
 const PORTAL_Z_INDEX = 1000;
-const OPTION_ROW = 'w-full text-left px-4 py-3 flex items-center gap-3 text-body cursor-pointer transition-colors hover:bg-[#2a2a2a]';
+const OPTION_ROW = 'w-full text-left px-4 py-3 flex items-center gap-3 text-body cursor-pointer transition-colors hover:bg-surface-2';
 
 
 const NO_FLAG_COUNTRY_CODES = new Set(['EU']);
@@ -130,6 +130,8 @@ export default function TypeaheadSelect({
   useLayoutEffect(() => {
     if (!isOpen) return;
 
+    // Measuring the trigger and placing the dropdown before paint is what a layout effect is for.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     updatePosition();
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
@@ -156,7 +158,6 @@ export default function TypeaheadSelect({
 
   useEffect(() => {
     if (isOpen) {
-      setSearchQuery('');
       const id = window.setTimeout(() => searchInputRef.current?.focus(), 0);
       return () => clearTimeout(id);
     }
@@ -179,20 +180,20 @@ export default function TypeaheadSelect({
           ref.current.scrollIntoView({ block: 'center', behavior: 'auto' });
         }
       }
+      setSearchQuery('');
     }
     setIsOpen((prev) => !prev);
   };
 
   const dropdownContent = (
     <>
-      <div className="p-2 border-b border-[#2A2A2A]">
+      <div className="p-2 border-b border-line-subtle">
         <div className="relative">
           <Search
             width={18}
             height={18}
             strokeWidth={1.5}
-            className="absolute left-3 top-1/2 -translate-y-1/2 shrink-0"
-            style={{ color: '#9CA3AF' }}
+            className="absolute left-3 top-1/2 -translate-y-1/2 shrink-0 text-muted"
           />
           <input
             ref={searchInputRef}
@@ -201,7 +202,7 @@ export default function TypeaheadSelect({
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.stopPropagation()}
             placeholder={searchPlaceholder}
-            className="w-full pl-9 pr-3 py-2 rounded-xl text-body bg-[#282828] border border-[#3a3a3a] outline-none focus:border-[var(--accent-purple)]"
+            className="w-full pl-9 pr-3 py-2 rounded-control text-body bg-surface-1 border border-line outline-none focus:border-accent"
             style={{ color: 'var(--text-primary)' }}
             aria-label="Search options"
           />
@@ -285,8 +286,8 @@ export default function TypeaheadSelect({
         className="flex items-center justify-between gap-3 px-4 py-2 rounded-xl w-full text-body cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         style={{
           backgroundColor: 'var(--bg-primary)',
-          color: selectedOption ? '#E7E4E4' : 'var(--text-secondary)',
-          border: '1px solid #3a3a3a',
+          color: selectedOption ? 'var(--color-fg)' : 'var(--color-secondary)',
+          border: '1px solid var(--color-line)',
         }}
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -320,7 +321,7 @@ export default function TypeaheadSelect({
           ) : (
             <>
               {placeholderIcon ? (
-                <span className="shrink-0 flex items-center justify-center [&>svg]:w-5 [&>svg]:h-5" style={{ color: '#B9B9B9' }}>
+                <span className="shrink-0 flex items-center justify-center [&>svg]:w-5 [&>svg]:h-5 text-secondary">
                   {placeholderIcon}
                 </span>
               ) : null}
@@ -333,7 +334,7 @@ export default function TypeaheadSelect({
           height={16}
           strokeWidth={2}
           style={{
-            color: '#B9B9B9',
+            color: 'var(--color-secondary)',
             transform: isOpen ? 'rotate(180deg)' : 'none',
             transition: 'transform 150ms ease',
           }}
@@ -342,7 +343,7 @@ export default function TypeaheadSelect({
 
       {isOpen && !dropdownInPortal && (
         <div
-          className={`absolute left-0 right-0 rounded-2xl shadow-lg overflow-hidden border border-[#3a3a3a] z-50 ${
+          className={`absolute left-0 right-0 rounded-2xl shadow-lg overflow-hidden border border-line z-50 ${
             openUpward ? 'bottom-full mb-2' : 'top-full mt-2'
           }`}
           style={{ backgroundColor: 'var(--bg-primary)' }}
@@ -355,7 +356,7 @@ export default function TypeaheadSelect({
         createPortal(
           <div
             ref={dropdownRef}
-            className="rounded-2xl shadow-lg overflow-hidden border border-[#3a3a3a]"
+            className="rounded-2xl shadow-lg overflow-hidden border border-line"
             style={{
               position: 'fixed',
               zIndex: PORTAL_Z_INDEX,

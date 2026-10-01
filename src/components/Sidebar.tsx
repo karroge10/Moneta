@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import {
@@ -24,69 +24,45 @@ interface SidebarProps {
   activeSection?: string;
 }
 
+const COLLAPSED_STORAGE_KEY = "moneta.sidebarCollapsed";
+
+const MENU_ITEMS = [
+  { id: "dashboard", label: "Dashboard", icon: HomeSimpleDoor, href: "/dashboard" },
+  { id: "income", label: "Income", icon: Wallet, href: "/income" },
+  { id: "expenses", label: "Expenses", icon: ShoppingBag, href: "/expenses" },
+  { id: "transactions", label: "Transactions", icon: LotOfCash, href: "/transactions" },
+  { id: "investments", label: "Investments", icon: BitcoinCircle, href: "/investments" },
+  { id: "goals", label: "Goals", icon: CalendarCheck, href: "/goals" },
+  { id: "statistics", label: "Statistics", icon: Reports, href: "/statistics" },
+];
+
 export default function Sidebar({ activeSection }: SidebarProps) {
   const pathname = usePathname();
   const { isSignedIn } = useAuth();
-  
-  
-  const getActiveSection = () => {
-    if (activeSection) return activeSection;
-    
-    
-    if (pathname === "/settings" || pathname === "/help" || pathname.startsWith("/help")) {
-      return null;
-    }
-    
-    if (pathname === "/dashboard") return "dashboard";
-    if (pathname === "/income") return "income";
-    if (pathname === "/expenses") return "expenses";
-    if (pathname === "/transactions") return "transactions";
-    if (pathname === "/investments") return "investments";
-    if (pathname === "/goals") return "goals";
-    if (pathname === "/statistics") return "statistics";
-    
-    return null; 
-  };
-  
-  const currentActiveSection = getActiveSection();
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem("moneta.sidebarCollapsed") === "true";
-    } catch {
-      return false;
-    }
-  });
-  
+  const currentActiveSection = activeSection ?? sectionForPath(pathname);
+  const isCollapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
+
   useEffect(() => {
     document.body.classList.toggle("sidebar-collapsed", isCollapsed);
   }, [isCollapsed]);
 
-  const toggleCollapse = () => {
-    const next = !isCollapsed;
-    setIsCollapsed(next);
-    try {
-      localStorage.setItem("moneta.sidebarCollapsed", String(next));
-    } catch {}
-  };
-  const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: HomeSimpleDoor, href: "/dashboard", comingSoon: false },
-    { id: "income", label: "Income", icon: Wallet, href: "/income", comingSoon: false },
-    { id: "expenses", label: "Expenses", icon: ShoppingBag, href: "/expenses", comingSoon: false },
-    { id: "transactions", label: "Transactions", icon: LotOfCash, href: "/transactions", comingSoon: false },
-    { id: "investments", label: "Investments", icon: BitcoinCircle, href: "/investments", comingSoon: false },
-    { id: "goals", label: "Goals", icon: CalendarCheck, href: "/goals", comingSoon: false },
-    { id: "statistics", label: "Statistics", icon: Reports, href: "/statistics", comingSoon: false },
-  ];
+  const toggleCollapse = () => writeCollapsed(!isCollapsed);
 
   return (
     <aside className="sidebar">
       {}
       <div className="sidebar-logo">
-        <Link href={isSignedIn ? "/dashboard" : "/"} className="sidebar-brand" aria-label="Go to dashboard">
-          <Image src="/monetalogo.png" alt="Moneta" width={48} height={48} priority />
+        <Link href={isSignedIn ? "/dashboard" : "/"} className="sidebar-brand" aria-label={isSignedIn ? "Moneta, go to dashboard" : "Moneta, go to home page"}>
+          <Image src="/monetalogo.png" alt="" width={48} height={48} priority />
           {!isCollapsed && <span className="sidebar-title">MONETA</span>}
         </Link>
-        <button type="button" aria-label="Collapse sidebar" className="collapse-btn" onClick={toggleCollapse}>
+        <button
+          type="button"
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!isCollapsed}
+          className="collapse-btn"
+          onClick={toggleCollapse}
+        >
           {isCollapsed ? (
             <NavArrowRight width={20} height={20} strokeWidth={1.5} />
           ) : (
@@ -97,22 +73,27 @@ export default function Sidebar({ activeSection }: SidebarProps) {
 
       {}
       <div className="sidebar-scroll">
-        <nav>
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.id}
-                href={item.href}
-                className={`sidebar-nav-item ${currentActiveSection === item.id ? "active" : ""}`}
-              >
-                <Icon width={20} height={20} strokeWidth={1.5} />
-                {!isCollapsed && (
-                  <span className="text-sidebar-button truncate">{item.label}</span>
-                )}
-              </Link>
-            );
-          })}
+        <nav aria-label="Main">
+          <ul>
+            {MENU_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentActiveSection === item.id;
+              return (
+                <li key={item.id}>
+                  <Link
+                    href={item.href}
+                    aria-current={isActive ? "page" : undefined}
+                    aria-label={isCollapsed ? item.label : undefined}
+                    title={isCollapsed ? item.label : undefined}
+                    className={`sidebar-nav-item ${isActive ? "active" : ""}`}
+                  >
+                    <Icon width={20} height={20} strokeWidth={1.5} aria-hidden="true" />
+                    {!isCollapsed && <span className="text-sidebar-button truncate">{item.label}</span>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </nav>
       </div>
 
@@ -123,7 +104,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
         <ClerkLoading>
           <div className="sidebar-logout pointer-events-none" aria-hidden="true">
             <div className="sidebar-account-avatar-slot">
-              <div className="w-full h-full rounded-full bg-[#3a3a3a] animate-pulse" />
+              <div className="w-full h-full rounded-full bg-surface-3 animate-pulse" />
             </div>
             {!isCollapsed && (
               <span className="text-sidebar-button">Account</span>
@@ -132,32 +113,24 @@ export default function Sidebar({ activeSection }: SidebarProps) {
         </ClerkLoading>
         <ClerkLoaded>
           <SignedIn>
+            {/* The UserButton inside is the keyboard control; clicking the row label forwards to it. */}
             <div
               className="sidebar-logout"
-              role="button"
-              tabIndex={0}
               onClick={(e) => {
                 const trigger = (e.currentTarget as HTMLElement).querySelector<HTMLButtonElement>('.sidebar-account-avatar-slot button');
                 if (trigger && !(e.target as HTMLElement).closest('.sidebar-account-avatar-slot button')) {
                   trigger.click();
                 }
               }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  (e.currentTarget as HTMLElement).querySelector<HTMLButtonElement>('.sidebar-account-avatar-slot button')?.click();
-                }
-              }}
-              aria-label="Open account menu"
             >
               <div className="sidebar-account-avatar-slot">
                 <UserButton 
                   appearance={{
                     elements: {
                       avatarBox: "!w-5 !h-5 min-w-5 min-h-5",
-                      userButtonPopoverCard: "bg-[#282828] border border-[#3a3a3a]",
-                      userButtonPopoverActionButton: "text-[#E7E4E4] hover:bg-[#3a3a3a]",
-                      userButtonPopoverActionButtonText: "text-[#E7E4E4]",
+                      userButtonPopoverCard: "bg-surface-1 border border-line",
+                      userButtonPopoverActionButton: "text-fg hover:bg-surface-3",
+                      userButtonPopoverActionButtonText: "text-fg",
                       userButtonPopoverFooter: "hidden",
                     },
                   }}
@@ -171,7 +144,7 @@ export default function Sidebar({ activeSection }: SidebarProps) {
           <SignedOut>
             <SignInButton mode="modal">
               <button type="button" className="sidebar-logout">
-                <LogOut width={20} height={20} strokeWidth={1.5} />
+                <LogOut width={20} height={20} strokeWidth={1.5} aria-hidden="true" />
                 {!isCollapsed && (
                   <span className="text-sidebar-button">Sign In</span>
                 )}
@@ -184,3 +157,34 @@ export default function Sidebar({ activeSection }: SidebarProps) {
   );
 }
 
+/** Sidebar section for the current route; nested routes (e.g. /investments/42) keep their parent active. */
+function sectionForPath(pathname: string): string | null {
+  const match = MENU_ITEMS.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+  return match?.id ?? null;
+}
+
+// Collapsed state lives in localStorage; useSyncExternalStore reads it after hydration so the server
+// render (always expanded) and the first client render match.
+const collapsedListeners = new Set<() => void>();
+
+function subscribeCollapsed(listener: () => void): () => void {
+  collapsedListeners.add(listener);
+  return () => collapsedListeners.delete(listener);
+}
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeCollapsed(next: boolean) {
+  try {
+    localStorage.setItem(COLLAPSED_STORAGE_KEY, String(next));
+  } catch {
+    // Storage can be blocked (private mode); the sidebar then stays expanded.
+  }
+  collapsedListeners.forEach((listener) => listener());
+}

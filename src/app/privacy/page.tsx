@@ -1,76 +1,89 @@
-'use client';
+import LegalPageShell, { LegalSection } from '@/components/landing/LegalPageShell';
 
-import Link from 'next/link';
-import { NavArrowLeft } from 'iconoir-react';
-import { useAuth } from '@clerk/nextjs';
+const UPDATED_AT = '2026-10-01T12:00:00Z';
 
 export default function PrivacyPage() {
-  const { isSignedIn } = useAuth();
-
   return (
-    <main className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto px-6 md:px-8 py-16 md:py-24">
-        <Link 
-          href={isSignedIn ? "/dashboard" : "/"}
+    <LegalPageShell title="Privacy Policy" updatedAt={UPDATED_AT}>
+      <LegalSection title="1. Data ownership">
+        <p>
+          Your financial data belongs to you. We do not sell, rent or trade your personal information or financial data
+          to third parties.
+        </p>
+      </LegalSection>
 
+      <LegalSection title="2. Information we collect">
+        <p>We collect only what is needed to provide the service:</p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong className="text-fg">Account information:</strong> managed by Clerk (email, name, sign-in history).
+          </li>
+          <li>
+            <strong className="text-fg">Financial data:</strong> transactions, assets and goals that you enter by hand or
+            import from a bank statement PDF.
+          </li>
+          <li>
+            <strong className="text-fg">Profile details you choose to add:</strong> country, date of birth, profession and
+            currency.
+          </li>
+          <li>
+            <strong className="text-fg">Usage data:</strong> anonymous page view statistics and basic technical logs.
+          </li>
+        </ul>
+      </LegalSection>
 
-          className="inline-flex items-center gap-2 text-body font-semibold text-[#E7E4E4] opacity-70 hover:opacity-100 hover:text-[#AC66DA] transition-colors mb-8"
-        >
-          <NavArrowLeft width={20} height={20} />
-          Back to home
-        </Link>
-        <div className="rounded-[30px] p-8 md:p-12 surface-elevated bg-[#282828] border border-[#3a3a3a] shadow-lg">
-          <h1 className="text-page-title text-[#E7E4E4] font-bold mb-8 tracking-tight">
-            Privacy Policy
-          </h1>
-          <div className="space-y-6 text-body text-[#E7E4E4] opacity-80 leading-relaxed">
-            <p>
-              Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-            </p>
-            
-            <section className="space-y-3">
-              <h2 className="text-xl font-bold text-[#E7E4E4] mt-8 mb-4">1. Data Ownership & Privacy</h2>
-              <p>At Moneta, we believe your financial data belongs to you. We do not sell, rent, or trade your personal information or financial data to third parties. Our platform is built with a privacy-first approach.</p>
-            </section>
+      <LegalSection title="3. Peer comparisons">
+        <p>
+          If Data Sharing is on in Settings, your income, expenses, goal success rate, portfolio balance and financial
+          health score are pooled with other members who also opted in. The pool is used to show members how they
+          compare with the average for their age group, country or profession. Your name, email and individual
+          transactions are never shown to anyone. You can turn Data Sharing off at any time; you then stop contributing
+          and stop seeing comparisons.
+        </p>
+      </LegalSection>
 
-            <section className="space-y-3">
-              <h2 className="text-xl font-bold text-[#E7E4E4] mt-8 mb-4">2. Information We Collect</h2>
-              <p>We collect only the information necessary to provide our service:</p>
-              <ul className="list-disc pl-5 space-y-2">
-                <li><strong>Account Information:</strong> Managed via Clerk (email, name, authentication logs).</li>
-                <li><strong>Financial Data:</strong> Transactions, assets, and goals that you manually input or import via PDF.</li>
-                <li><strong>Usage Data:</strong> Basic technical logs to help us improve the application&apos;s performance.</li>
-              </ul>
-            </section>
+      <LegalSection title="4. Third-party services">
+        <p>We rely on these services to run Moneta:</p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong className="text-fg">Clerk:</strong> authentication and account management.
+          </li>
+          <li>
+            <strong className="text-fg">Neon:</strong> database hosting.
+          </li>
+          <li>
+            <strong className="text-fg">Stripe:</strong> payments for Moneta Premium. Card details go to Stripe and never
+            reach our servers.
+          </li>
+          <li>
+            <strong className="text-fg">Vercel Analytics:</strong> anonymous page view statistics.
+          </li>
+          <li>
+            <strong className="text-fg">CoinGecko and Stooq:</strong> market prices for your investments. Only asset
+            symbols are sent, never your holdings.
+          </li>
+        </ul>
+      </LegalSection>
 
-            <section className="space-y-3">
-              <h2 className="text-xl font-bold text-[#E7E4E4] mt-8 mb-4">3. Third-Party Services</h2>
-              <p>We use trusted third-party services to enhance Moneta:</p>
-              <ul className="list-disc pl-5 space-y-2">
-                <li><strong>Clerk:</strong> For secure authentication and user management.</li>
-                <li><strong>Neon/Prisma:</strong> For encrypted database storage.</li>
-                <li><strong>CoinGecko & Stooq:</strong> For live market data tracking.</li>
-              </ul>
-            </section>
+      <LegalSection title="5. Data security">
+        <p>
+          All traffic to Moneta uses HTTPS, and your financial information is used only to build your own dashboard and,
+          if you opt in, the peer comparisons described above.
+        </p>
+      </LegalSection>
 
-            <section className="space-y-3">
-              <h2 className="text-xl font-bold text-[#E7E4E4] mt-8 mb-4">4. Data Security</h2>
-              <p>Your data is stored securely using industry-standard encryption. Access to your financial information is restricted and used only to generate your personal dashboard and insights.</p>
-            </section>
+      <LegalSection title="6. Your rights">
+        <p>
+          You can export your transactions at any time from the Settings page, and you can permanently delete your
+          account and its data from the same page.
+        </p>
+      </LegalSection>
 
-            <section className="space-y-3">
-              <h2 className="text-xl font-bold text-[#E7E4E4] mt-8 mb-4">5. Your Rights</h2>
-              <p>You have full control over your data. You can export your transaction history at any time through the Settings page. You also have the right to permanently delete your account and all associated data through the account management interface.</p>
-            </section>
-
-            <section className="space-y-3">
-              <h2 className="text-xl font-bold text-[#E7E4E4] mt-8 mb-4">6. Contact Us</h2>
-              <p>If you have any questions or concerns about our Privacy Policy or your data, please contact us at <strong>egorkabantsov@gmail.com</strong>.</p>
-            </section>
-
-          </div>
-        </div>
-      </div>
-    </main>
+      <LegalSection title="7. Contact us">
+        <p>
+          Questions about this policy or your data? Email <strong className="text-fg">egorkabantsov@gmail.com</strong>.
+        </p>
+      </LegalSection>
+    </LegalPageShell>
   );
 }

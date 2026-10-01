@@ -1,38 +1,15 @@
 'use client';
 
+import { formatDate } from '@/lib/format';
+
+/** Legacy wrapper: "Mar 5th 2026". Prefer formatDate(value, 'ordinal') from '@/lib/format'. Invalid input is returned unchanged. */
 export function formatDateForDisplay(value: string): string {
   if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  const day = date.getDate();
-  const suffix =
-    day % 10 === 1 && day !== 11
-      ? 'st'
-      : day % 10 === 2 && day !== 12
-      ? 'nd'
-      : day % 10 === 3 && day !== 13
-      ? 'rd'
-      : 'th';
-
-  const month = date.toLocaleString('en-US', { month: 'short' });
-  const year = date.getFullYear();
-
-  return `${month} ${day}${suffix} ${year}`;
+  const formatted = formatDate(value, 'ordinal');
+  return formatted || value;
 }
 
+/** Legacy wrapper: "2026-03-05". Prefer formatDate(value, 'input') from '@/lib/format'. */
 export function formatDateToInput(value: string): string {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    const cleaned = value.replace(/(\d+)(st|nd|rd|th)/, '$1');
-    const parsed = new Date(cleaned);
-    if (Number.isNaN(parsed.getTime())) return '';
-    return parsed.toISOString().slice(0, 10);
-  }
-  return date.toISOString().slice(0, 10);
+  return formatDate(value, 'input');
 }
-
-
-
-

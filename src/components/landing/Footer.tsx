@@ -1,59 +1,73 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
 
-interface FooterProps {
-  onNavClick: (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => void;
-}
+const LINK_CLASS = "text-copy text-secondary transition-colors hover:text-fg";
 
-export default function Footer({ onNavClick }: FooterProps) {
+export default function Footer() {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="pt-20 pb-12 px-6 md:px-8 bg-[#1f1f1f] border-t border-[#2a2a2a]">
-      <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-          {}
-          <div className="md:col-span-2 space-y-4">
+    <footer className="border-t border-line-subtle bg-surface-inset px-6 pb-12 pt-20 md:px-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-16 grid grid-cols-1 gap-12 md:grid-cols-4">
+          <div className="space-y-4 md:col-span-2">
             <div className="flex items-center gap-3">
-              <Image src="/monetalogo.png" alt="Moneta" width={32} height={32} />
-              <span className="text-sidebar-title text-[#E7E4E4] tracking-wider text-xl font-bold">MONETA</span>
+              <Image src="/monetalogo.png" alt="" width={32} height={32} />
+              <span className="text-xl font-bold tracking-wider text-fg">MONETA</span>
             </div>
-            <p className="text-body text-[#E7E4E4] opacity-60 leading-relaxed max-w-sm pt-2">
+            <p className="max-w-sm pt-2 text-copy text-secondary text-pretty">
               The financial dashboard built for modern life. Manage your money, track every expense, and reach your goals.
             </p>
           </div>
 
-          {}
-          <div className="space-y-4">
-            <h3 className="text-body font-semibold text-[#E7E4E4]">Navigation</h3>
-            <nav className="flex flex-col gap-3">
-              <a href="#features" onClick={(e) => onNavClick(e, "features")} className="text-body text-[#E7E4E4] opacity-60 hover:opacity-100 transition-opacity">Features</a>
-              <a href="#about" onClick={(e) => onNavClick(e, "about")} className="text-body text-[#E7E4E4] opacity-60 hover:opacity-100 transition-opacity">About</a>
-            </nav>
-          </div>
+          <nav aria-labelledby="footer-navigation" className="space-y-4">
+            <h2 id="footer-navigation" className="text-copy font-semibold text-fg">
+              Navigation
+            </h2>
+            <ul className="flex flex-col gap-3">
+              <li>
+                <a href="#features" className={LINK_CLASS}>
+                  Features
+                </a>
+              </li>
+              <li>
+                <a href="#about" className={LINK_CLASS}>
+                  About
+                </a>
+              </li>
+            </ul>
+          </nav>
 
-          {}
-          <div className="space-y-4">
-            <h3 className="text-body font-semibold text-[#E7E4E4]">Legal</h3>
-            <nav className="flex flex-col gap-3">
-              <Link href="/terms" className="text-body text-[#E7E4E4] opacity-60 hover:opacity-100 transition-opacity">Terms & Conditions</Link>
-              <Link href="/privacy" className="text-body text-[#E7E4E4] opacity-60 hover:opacity-100 transition-opacity">Privacy Policy</Link>
-            </nav>
-          </div>
+          <nav aria-labelledby="footer-legal" className="space-y-4">
+            <h2 id="footer-legal" className="text-copy font-semibold text-fg">
+              Legal
+            </h2>
+            <ul className="flex flex-col gap-3">
+              <li>
+                <Link href="/terms" className={LINK_CLASS}>
+                  Terms &amp; Conditions
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy" className={LINK_CLASS}>
+                  Privacy Policy
+                </Link>
+              </li>
+            </ul>
+          </nav>
         </div>
 
-        {}
-        <div className="pt-8 border-t border-[#2a2a2a] flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-helper text-[#E7E4E4] opacity-50">
-            © {new Date().getFullYear()} Moneta. All rights reserved.
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-line-subtle pt-8 md:flex-row">
+          <p className="text-caption text-muted">
+            © {year} Moneta. All rights reserved.
           </p>
-          <p className="text-helper text-[#E7E4E4] opacity-50 flex items-center gap-1.5">
-            Made with <span className="text-[#D93F3F]">❤️</span> by{' '}
-            <a 
+          <p className="flex items-center gap-1.5 text-caption text-muted">
+            Made with <span aria-label="love">❤️</span> by{" "}
+            <a
               href="https://github.com/karroge10"
-              target="_blank" 
+              target="_blank"
               rel="noopener noreferrer"
-              className="text-[#AC66DA] font-semibold hover:opacity-80 transition-opacity"
+              className="font-semibold text-accent-fg transition-opacity hover:opacity-80"
             >
               Egor Kabantsov
             </a>

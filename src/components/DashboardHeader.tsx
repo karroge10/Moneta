@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Bell, Settings, LogOut, Plus, HeadsetHelp, CalendarCheck } from 'iconoir-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Settings, LogOut, Plus, HeadsetHelp, CalendarCheck } from 'iconoir-react';
 import Link from 'next/link';
 import { useClerk } from '@clerk/nextjs';
-import NotificationsDropdown from '@/components/notifications/NotificationsDropdown';
-import { useNotifications } from '@/hooks/useNotifications';
+import NotificationBell from '@/components/notifications/NotificationBell';
 import Dropdown from '@/components/ui/Dropdown';
+import { cx } from '@/components/ui/cx';
 import { TimePeriod } from '@/types/dashboard';
 
 interface ActionButton {
@@ -41,35 +41,14 @@ export default function DashboardHeader({
   timePeriod = 'This Month',
   onTimePeriodChange,
 }: DashboardHeaderProps) {
-  const { signOut } = useClerk();
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
-  const notificationsRef = useRef<HTMLDivElement>(null);
-  const { notifications, refresh } = useNotifications(5, true); 
-
   const allButtons = actionButtons || [
     ...(secondaryButton ? [secondaryButton] : []),
     ...(actionButton ? [actionButton] : []),
   ];
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
-        setIsUserMenuOpen(false);
-      }
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
-        setIsNotificationsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   return (
-    <div className="flex items-center justify-between mb-8 px-6 pt-7">
-      <h1 className="text-page-title">{pageName}</h1>
+    <header className="mb-8 flex items-center justify-between px-6 pt-7">
+      <h1 className="text-page-title text-balance">{pageName}</h1>
 
       <div className="flex items-center gap-4">
         {allButtons.map((btn, index) => {
@@ -77,18 +56,25 @@ export default function DashboardHeader({
           return (
             <button
               key={index}
+              type="button"
               onClick={btn.onClick}
               disabled={btn.disabled}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all cursor-pointer disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed ${isSecondary ? 'bg-[#312033] border border-[#AC66DA]/30 text-[#AC66DA] hover:bg-[#3d2941]' : 'bg-[#E7E4E4] text-[#282828] hover:opacity-90'
-                }`}
+              className={cx(
+                'flex h-10 items-center gap-2 rounded-full px-4 transition-[background-color,opacity,scale] active:scale-[0.96]',
+                'disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale',
+                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+                isSecondary
+                  ? 'border border-accent/30 bg-accent/15 text-accent-fg hover:bg-accent/25'
+                  : 'bg-fg text-surface-1 hover:opacity-90',
+              )}
             >
-              {!isSecondary && (btn.icon || <Plus width={18} height={18} strokeWidth={1.5} />)}
-              <span className="text-sm font-semibold">{btn.label}</span>
+              {!isSecondary && (btn.icon || <Plus width={18} height={18} strokeWidth={1.5} aria-hidden="true" />)}
+              <span className="text-ui font-semibold">{btn.label}</span>
             </button>
           );
         })}
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           {onTimePeriodChange && (
             <Dropdown
               label="Time Period"
@@ -98,96 +84,83 @@ export default function DashboardHeader({
               iconLeft={<CalendarCheck width={16} height={16} strokeWidth={1.5} />}
             />
           )}
-          <div className="relative" ref={notificationsRef}>
-            <button
-              onClick={() => {
-                setIsNotificationsOpen(!isNotificationsOpen);
-              }}
-              className="p-2 rounded-lg transition-colors relative cursor-pointer hover-text-purple"
-              aria-label="Notifications"
-            >
-              <Bell width={20} height={20} strokeWidth={1.5} className="stroke-current" />
-              {notifications.length > 0 && (
-                <span
-                  className="absolute top-0 right-0 blinking-dot"
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    backgroundColor: '#AC66DA',
-                    borderRadius: '50%'
-                  }}
-                  aria-label={`${notifications.length} unread notification${notifications.length !== 1 ? 's' : ''}`}
-                />
-              )}
-            </button>
-            <NotificationsDropdown
-              notifications={notifications}
-              isOpen={isNotificationsOpen}
-              onClose={() => {
-                setIsNotificationsOpen(false);
-              }}
-              onMarkAllRead={() => {
-                
-              }}
-              onNotificationClick={async (notificationId) => {
-                try {
-                  const response = await fetch(`/api/notifications/${notificationId}/read`, {
-                    method: 'PATCH',
-                  });
-                  if (response.ok) {
-                    
-                    await refresh();
-                  }
-                } catch (error) {
-                  console.error('Failed to mark notification as read:', error);
-                }
-              }}
-            />
-          </div>
-
-          <div className="relative" ref={userMenuRef}>
-            <button
-              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              className="p-2 rounded-lg transition-colors cursor-pointer hover-text-purple"
-              aria-label="Settings menu"
-            >
-              <Settings width={20} height={20} strokeWidth={1.5} className="stroke-current" />
-            </button>
-
-            {isUserMenuOpen && (
-              <div className="absolute top-full mt-2 right-0 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[180px]" style={{ backgroundColor: 'var(--bg-surface)' }}>
-                <Link
-                  href="/settings"
-                  className="w-full text-left px-4 py-3 flex items-center gap-2 hover-text-purple transition-colors text-body cursor-pointer"
-                  onClick={() => setIsUserMenuOpen(false)}
-                >
-                  <Settings width={18} height={18} strokeWidth={1.5} className="stroke-current" />
-                  Settings
-                </Link>
-                <Link
-                  href="/help"
-                  className="w-full text-left px-4 py-3 flex items-center gap-2 hover-text-purple transition-colors text-body cursor-pointer"
-                  onClick={() => setIsUserMenuOpen(false)}
-                >
-                  <HeadsetHelp width={18} height={18} strokeWidth={1.5} className="stroke-current" />
-                  Help Center
-                </Link>
-                <button
-                  className="w-full text-left px-4 py-3 flex items-center gap-2 hover-text-purple transition-colors text-body cursor-pointer"
-                  onClick={async () => {
-                    setIsUserMenuOpen(false);
-                    await signOut({ redirectUrl: '/' });
-                  }}
-                >
-                  <LogOut width={18} height={18} strokeWidth={1.5} className="stroke-current" />
-                  Log Out
-                </button>
-              </div>
-            )}
-          </div>
+          <NotificationBell />
+          <UserMenu />
         </div>
       </div>
+    </header>
+  );
+}
+
+/** Settings, Help and Log out behind the gear button. Closes on outside click and Escape. */
+function UserMenu() {
+  const { signOut } = useClerk();
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setIsOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setIsOpen(false);
+      buttonRef.current?.focus();
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const close = () => setIsOpen(false);
+
+  const handleSignOut = async () => {
+    close();
+    await signOut({ redirectUrl: '/' });
+  };
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setIsOpen((open) => !open)}
+        className="hover-text-purple inline-flex size-10 items-center justify-center rounded-control transition-colors"
+        aria-label="Account menu"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? menuId : undefined}
+      >
+        <Settings width={20} height={20} strokeWidth={1.5} className="stroke-current" aria-hidden="true" />
+      </button>
+
+      {isOpen && (
+        <div
+          id={menuId}
+          className="absolute right-0 top-full z-20 mt-2 min-w-[180px] overflow-hidden rounded-panel bg-surface-1 shadow-lg"
+        >
+          <Link href="/settings" className={MENU_ITEM_CLASS} onClick={close}>
+            <Settings width={18} height={18} strokeWidth={1.5} className="stroke-current" aria-hidden="true" />
+            Settings
+          </Link>
+          <Link href="/help" className={MENU_ITEM_CLASS} onClick={close}>
+            <HeadsetHelp width={18} height={18} strokeWidth={1.5} className="stroke-current" aria-hidden="true" />
+            Help Center
+          </Link>
+          <button type="button" className={MENU_ITEM_CLASS} onClick={handleSignOut}>
+            <LogOut width={18} height={18} strokeWidth={1.5} className="stroke-current" aria-hidden="true" />
+            Log out
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
+const MENU_ITEM_CLASS =
+  'hover-text-purple flex w-full items-center gap-2 px-4 py-3 text-left text-copy transition-colors hover:bg-surface-2';

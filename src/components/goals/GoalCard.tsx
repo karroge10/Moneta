@@ -6,6 +6,7 @@ import { getEncouragingMessage, getGoalStatus } from '@/lib/goalUtils';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CheckCircle, XmarkCircle } from 'iconoir-react';
 import type { CurrencyOption } from '@/lib/currency-country-map';
+import { formatDecimal } from '@/lib/format';
 
 interface GoalCardProps {
   goal: Goal;
@@ -22,86 +23,47 @@ export default function GoalCard({ goal, currencyOptions = [], onClick }: GoalCa
   const goalStatus = getGoalStatus(goal);
 
   return (
-    <div 
-      className="flex flex-col p-6 cursor-pointer transition-opacity hover:opacity-90"
-      style={{ 
-        backgroundColor: 'var(--bg-primary)',
-        borderRadius: '30px',
-      }}
+    <button
+      type="button"
       onClick={onClick}
+      className="flex w-full flex-col rounded-card bg-surface-0 p-6 text-left transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-accent"
     >
-      {}
-      <div className="flex items-center justify-between mb-4 gap-2">
-        <h3 className="text-card-header flex-1 min-w-0 text-wrap-safe break-words">
-          {goal.name}
-        </h3>
+      <div className="mb-4 flex w-full items-center justify-between gap-2">
+        <h3 className="text-card-header min-w-0 flex-1 break-words text-wrap-safe">{goal.name}</h3>
         {goalStatus === 'completed' && (
-          <div
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full flex-shrink-0"
-            style={{
-              backgroundColor: 'rgba(116, 198, 72, 0.1)',
-              border: '1px solid rgba(116, 198, 72, 0.3)',
-            }}
-          >
-            <CheckCircle width={14} height={14} strokeWidth={2} style={{ color: '#74C648' }} />
-            <span className="text-xs font-semibold" style={{ color: '#74C648' }}>
-              Completed
-            </span>
-          </div>
+          <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-3 py-1 text-positive">
+            <CheckCircle width={14} height={14} strokeWidth={2} aria-hidden="true" />
+            <span className="text-caption font-semibold">Completed</span>
+          </span>
         )}
         {goalStatus === 'failed' && (
-          <div
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full flex-shrink-0"
-            style={{
-              backgroundColor: 'rgba(217, 63, 63, 0.1)',
-              border: '1px solid rgba(217, 63, 63, 0.3)',
-            }}
-          >
-            <XmarkCircle width={14} height={14} strokeWidth={2} style={{ color: '#D93F3F' }} />
-            <span className="text-xs font-semibold" style={{ color: '#D93F3F' }}>
-              Failed
-            </span>
-          </div>
+          <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-negative/30 bg-negative/10 px-3 py-1 text-negative-fg">
+            <XmarkCircle width={14} height={14} strokeWidth={2} aria-hidden="true" />
+            <span className="text-caption font-semibold">Failed</span>
+          </span>
         )}
       </div>
 
-      {}
-      <div className="flex items-center justify-between mb-4 gap-2">
+      <div className="mb-4 flex w-full items-center justify-between gap-2">
         <span className="text-helper">{goal.targetDate}</span>
-        <div
-          className="px-3 py-1 rounded-lg flex-shrink-0"
-          style={{
-            backgroundColor: '#282828',
-            borderRadius: '10px',
-            border: '1px solid rgba(231, 228, 228, 0.1)',
-          }}
-        >
-          <span className="text-body font-semibold" style={{ color: 'var(--accent-purple)' }}>
-            {displayCurrency.symbol}{goal.targetAmount.toLocaleString('en-US')}
-          </span>
-        </div>
-      </div>
-
-      {}
-      <div className="flex items-baseline gap-2 mb-4 min-w-0 flex-wrap">
-        <span className="text-card-currency flex-shrink-0">{displayCurrency.symbol}</span>
-        <span className="text-card-value break-all min-w-0">
-          {goal.currentAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        <span className="shrink-0 rounded-control border border-fg/10 bg-surface-1 px-3 py-1 text-ui font-semibold tabular-nums text-accent-fg">
+          {displayCurrency.symbol}
+          {formatDecimal(goal.targetAmount, { maxDecimals: 2 })}
         </span>
       </div>
 
-      {}
-      <div className="mb-4">
+      <div className="mb-4 flex min-w-0 flex-wrap items-baseline gap-2">
+        <span className="text-card-currency shrink-0">{displayCurrency.symbol}</span>
+        <span className="text-card-value min-w-0 break-all tabular-nums">
+          {formatDecimal(goal.currentAmount, { minDecimals: 2, maxDecimals: 2 })}
+        </span>
+      </div>
+
+      <div className="mb-4 w-full">
         <ProgressBar value={goal.progress} />
       </div>
 
-      {}
-      <div className="mt-auto pt-4 pb-0">
-        <p className="text-sm leading-tight" style={{ color: 'var(--accent-purple)' }}>
-          {encouragingMessage}
-        </p>
-      </div>
-    </div>
+      <p className="mt-auto pt-4 text-ui leading-tight text-accent-fg">{encouragingMessage}</p>
+    </button>
   );
 }
-

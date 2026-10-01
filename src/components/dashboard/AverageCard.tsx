@@ -1,9 +1,8 @@
 'use client';
 
 import Card from '@/components/ui/Card';
-import TrendIndicator from '@/components/ui/TrendIndicator';
-import { formatCompactNumber } from '@/lib/utils';
-import { useCurrency } from '@/hooks/useCurrency';
+import MoneyFigure from '@/components/dashboard/MoneyFigure';
+import TrendFooter from '@/components/dashboard/TrendFooter';
 
 interface AverageCardProps {
   amount: number;
@@ -11,33 +10,24 @@ interface AverageCardProps {
   trendSkipped?: boolean;
   subtitle?: string;
   trendLabel?: string;
+  /** For spending a rise is bad, so trend colors flip. */
+  isExpense?: boolean;
 }
 
-export default function AverageCard({ amount, trend, trendSkipped, subtitle, trendLabel = 'from last year' }: AverageCardProps) {
-  const { currency } = useCurrency();
+export default function AverageCard({ amount, trend, trendSkipped, subtitle, trendLabel = 'from last year', isExpense = false }: AverageCardProps) {
   return (
     <Card title="Average">
-      <div className="flex flex-col flex-1 min-h-0">
-        {subtitle && (
-          <div className="text-helper mb-2">{subtitle}</div>
-        )}
-        <div className="flex flex-col justify-center items-start flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-card-currency shrink-0 opacity-50">{currency.symbol}</span>
-            <span className="text-card-value break-all min-w-0">{formatCompactNumber(amount)}</span>
+      <div className="flex min-h-0 flex-1 flex-col">
+        {subtitle && <div className="text-helper mb-2">{subtitle}</div>}
+        <div className="flex min-w-0 flex-1 flex-col items-start justify-center">
+          <div className="flex flex-wrap items-center gap-2">
+            <MoneyFigure amount={amount} compact />
           </div>
         </div>
-        {trendSkipped ? (
-          <div className="mt-3">
-            <span className="text-helper">Not enough data to compare yet</span>
-          </div>
-        ) : (
-          <div className="mt-3">
-            <TrendIndicator value={trend} label={trendLabel} />
-          </div>
-        )}
+        <div className="mt-3">
+          <TrendFooter trend={trend} label={trendLabel} skipped={trendSkipped} isExpense={isExpense} />
+        </div>
       </div>
     </Card>
   );
 }
-

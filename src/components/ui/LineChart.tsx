@@ -176,8 +176,8 @@ export default function LineChart({ data, noPadding = false, currencySymbol = '$
         >
           <defs>
             <linearGradient id={`colorGradient-${noPadding ? 'no-pad' : 'default'}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#AC66DA" stopOpacity={1} />
-              <stop offset="100%" stopColor="#282828" stopOpacity={1} />
+              <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={1} />
+              <stop offset="100%" stopColor="var(--color-surface-1)" stopOpacity={1} />
             </linearGradient>
           </defs>
           <XAxis
@@ -198,11 +198,11 @@ export default function LineChart({ data, noPadding = false, currencySymbol = '$
           <Area
             type="monotone"
             dataKey="value"
-            stroke="#AC66DA"
+            stroke="var(--color-accent)"
             strokeWidth={2}
             fill={`url(#colorGradient-${noPadding ? 'no-pad' : 'default'})`}
             dot={false} 
-            activeDot={{ r: 6, fill: '#AC66DA', stroke: '#E7E4E4', strokeWidth: 2 }}
+            activeDot={{ r: 6, fill: 'var(--color-accent)', stroke: 'var(--color-fg)', strokeWidth: 2 }}
           />
         </AreaChart>
       </ResponsiveContainer>

@@ -4,6 +4,7 @@ import { db } from './db';
 import { createNotification } from './notifications';
 import { calculateGoalProgress } from './goalUtils';
 import { moneyToNumber } from './money';
+import { addUtcDays, startOfUtcDay, toDateKey } from './dates';
 
 
 const RECURRING_LOOKAHEAD_DAYS = 3;
@@ -13,23 +14,6 @@ const GOAL_DEADLINE_LOOKAHEAD_DAYS = 7;
 
 
 const DEDUPE_WINDOW_MS = 36 * 60 * 60 * 1000;
-
-function startOfUtcDay(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
-
-function addUtcDays(base: Date, days: number): Date {
-  const t = new Date(base);
-  t.setUTCDate(t.getUTCDate() + days);
-  return t;
-}
-
-function toYmdUtc(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(d.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
 
 function formatDueLine(d: Date): string {
   return d.toLocaleDateString('en-US', {
@@ -101,7 +85,7 @@ async function notifyUpcomingRecurring(userId: number, now: Date): Promise<void>
 
   for (const item of items) {
     const due = item.nextDueDate;
-    const ymd = toYmdUtc(due);
+    const ymd = toDateKey(due);
     const dedupeToken = `#rt:${item.id}:${ymd}`;
     const notifType = item.type === 'income' ? 'Upcoming Income' : 'Upcoming Bills';
 
@@ -146,12 +130,12 @@ async function notifyGoalEvents(userId: number, now: Date): Promise<void> {
     if (target < todayStart) continue;
     if (target > deadlineEnd) continue;
 
-    const ymd = toYmdUtc(target);
+    const ymd = toDateKey(target);
     const dedupeToken = `#goal:${goal.id}:deadline:${ymd}`;
     if (await hasGoalDeadlineToken(userId, dedupeToken)) continue;
 
     const symbol = goal.currency?.symbol ?? '$';
-    const line = `Goal "${goal.name}" target ${formatDueLine(target)} — ${progress.toFixed(0)}% done (${symbol}${currentAmount.toLocaleString('en-US', { maximumFractionDigits: 0 })} of ${symbol}${targetAmount.toLocaleString('en-US', { maximumFractionDigits: 0 })}). ${dedupeToken}`;
+    const line = `Goal "${goal.name}" target ${formatDueLine(target)}: ${progress.toFixed(0)}% done (${symbol}${currentAmount.toLocaleString('en-US', { maximumFractionDigits: 0 })} of ${symbol}${targetAmount.toLocaleString('en-US', { maximumFractionDigits: 0 })}). ${dedupeToken}`;
     await createNotification(userId, { type: 'Goal Update', text: line });
   }
 }

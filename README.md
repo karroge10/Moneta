@@ -1,89 +1,95 @@
-# Moneta — Smart Financial Dashboard
+# Moneta
 
-[![Next.js](https://img.shields.io/badge/Next.js-16.2.4-black?logo=next.js)](https://nextjs.org/)
-[![Prisma](https://img.shields.io/badge/Prisma-7.7.0-2D3748?logo=prisma)](https://prisma.io/)
-[![Clerk](https://img.shields.io/badge/Auth-Clerk-6C47FF?logo=clerk)](https://clerk.com/)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+Personal finance dashboard: transactions, budgets, recurring items, investments and a financial
+health score. Bank statements (PDF) are parsed by a separate Python service.
 
-Moneta is a precision-engineered personal finance management platform built for modern life. It combines high-performance web architecture with a dedicated Python microservice to provide a seamless, secure, and data-rich experience for tracking wealth and spending.
+Live: [monetafin.vercel.app](https://monetafin.vercel.app)
 
-**Live Project:** [monetafin.vercel.app](https://monetafin.vercel.app)
-
----
-
-## 🏗️ Architecture Overview
-
-The system is designed with a clear separation of concerns, utilizing a hybrid Next.js and Python architecture to handle specialized data processing tasks effectively.
+## Architecture
 
 ```mermaid
 graph TD
-    User([User]) <--> NextApp[Next.js App Router v16]
+    User([User]) <--> NextApp[Next.js App Router]
     NextApp <--> Clerk(Clerk Auth)
     NextApp <--> DB[(PostgreSQL / Neon)]
-    NextApp <--> ExternalData(Coingecko / Stooq)
-    NextApp -- Async Request --> PythonSvc[Python PDF Microservice]
-    PythonSvc -- Data Extraction --> NextApp
-    
-    subgraph "Main Application (Vercel)"
+    NextApp <--> Stripe(Stripe, test mode)
+    NextApp <--> ExternalData(CoinGecko / Stooq)
+    NextApp -- Async Request --> PythonSvc[Python PDF Service]
+    PythonSvc -- Callback with results --> NextApp
+
+    subgraph "Vercel"
         NextApp
     end
 
-    subgraph "Data Processing (Render)"
+    subgraph "Render"
         PythonSvc
     end
 ```
 
-## ✨ Core Features
+- Bank import: the app sends the PDF to the Python service (Flask + pdfplumber, Georgian to
+  English translation), which posts the extracted transactions back to the app.
+- Recurring transactions run from a Vercel Cron job (`/api/cron/recurring`, see `vercel.json`).
+- Billing: Moneta Premium via Stripe, test mode only. See [docs/STRIPE.md](docs/STRIPE.md).
 
-- **Asynchronous Bank Import**: A dedicated Python/Flask service processes PDF bank statements, extracting and translating (KA ➔ EN) transactions without blocking the user interface.
-- **Unified Investment Portfolio**: Real-time tracking for Stocks, Crypto, Property, and Custom assets.
-- **Intelligent Financial Health**: A 4-pillar scoring system (Savings, Spending, Goals, Engagement) providing actionable insights based on demographic benchmarking.
-- **Bento Grid Dashboard**: Optimized layouts for Mobile, Tablet, and Desktop, ensuring critical financial data is always at a glance.
-- **Recurring Transactions Engine**: Automated bill and income tracking via Vercel Cron.
+## Stack
 
-## 🛠️ Technology Stack
+- Next.js 16.3 (App Router), React 19, TypeScript
+- TanStack React Query for client data fetching
+- Tailwind CSS v4
+- Prisma 6.19 with PostgreSQL
+- Clerk 6 for auth
+- Stripe (test mode)
+- Python 3.12 service in `python-service/` (deployed on Render), PDF parsing code in `python/`
 
-### Frontend & Core
-- **Framework**: [Next.js 16.2.4](https://nextjs.org/) (App Router, Server Actions)
-- **State Management**: custom hooks + SWR for optimized data fetching.
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) with a custom design system and glassmorphism accents.
-- **Type Safety**: End-to-end [TypeScript](https://www.typescriptlang.org/) integration.
+## Getting started
 
-### Backend & Infrastructure
-- **Database**: [PostgreSQL](https://www.postgresql.org/) managed via [Prisma 7.7.0](https://www.prisma.io/).
-- **Processing**: [Python 3.12](https://www.python.org/) + [Flask](https://flask.palletsprojects.com/) + [pdfplumber](https://github.com/jsvine/pdfplumber).
-- **Authentication**: [Clerk v6](https://clerk.com/) with custom themes.
+Prerequisites: Node.js 22, a PostgreSQL database, and Python 3.10+ only if you run the PDF
+service locally.
 
----
+```bash
+git clone https://github.com/karroge10/Moneta.git
+cd Moneta
+npm install
+cp .env.example .env.local   # fill in the values
+```
 
-## 🚀 Getting Started
+Set up the database with migrations, then seed reference data. Do not use `prisma db push`.
 
-### Prerequisites
-- Node.js 20+
-- Python 3.10+
-- PostgreSQL instance
+```bash
+npm run db:deploy   # prisma migrate deploy
+npm run seed
+```
 
-### Installation
+Optional: set up the local Python environment for PDF import (not run on install).
 
-1. **Clone & Install Dependencies**
-   ```bash
-   git clone https://github.com/karroge10/Moneta.git
-   cd Moneta
-   npm run setup
-   ```
+```bash
+npm run setup
+```
 
-2. **Database Setup**
-   ```bash
-   npx prisma db push
-   npm run seed
-   ```
+Start the dev server:
 
-3. **Development Server**
-   ```bash
-   npm run dev
-   ```
+```bash
+npm run dev
+```
 
----
+## Scripts
 
-## 📄 License
-MIT License. See [LICENSE](LICENSE) for details.
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Dev server |
+| `npm test` | Unit tests (Vitest) |
+| `npm run lint` | ESLint |
+| `npm run type-check` | `tsc --noEmit` |
+| `npm run db:migrate` | Create and apply a migration in development |
+| `npm run db:deploy` | Apply pending migrations |
+| `npm run seed` | Seed categories, currencies and other reference data |
+| `npm run seed:demo-user` | Fill one user with demo data |
+| `npm run verify:cron` | Check the cron setup |
+
+## Environment
+
+All variables are listed with comments in [.env.example](.env.example).
+
+## License
+
+MIT. See [LICENSE](LICENSE).

@@ -1,95 +1,79 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { SignUpButton, SignedIn, SignedOut, UserButton, ClerkLoaded, ClerkLoading } from "@clerk/nextjs";
+import { SignedIn, UserButton, ClerkLoaded } from "@clerk/nextjs";
+import { useLandingScroll } from "@/hooks/useLandingScroll";
+import { cx } from "@/components/ui/cx";
+import AuthCta from "./AuthCta";
 
-interface NavbarProps {
-  isScrolled: boolean;
-  activeSection: string;
-  onNavClick: (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => void;
-}
+const SECTIONS = [
+  { id: "home", label: "Home" },
+  { id: "features", label: "Features" },
+  { id: "about", label: "About" },
+  { id: "contact", label: "Contact" },
+];
 
-export default function Navbar({ isScrolled, activeSection, onNavClick }: NavbarProps) {
+export default function Navbar() {
+  const { isScrolled, activeSection, handleNavClick } = useLandingScroll();
+
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b border-[#3a3a3a] ${
-        isScrolled ? "bg-background/95 backdrop-blur-sm" : "bg-transparent"
-      }`}
+      className={cx(
+        "fixed left-0 right-0 top-0 z-50 border-b border-line transition-[background-color,backdrop-filter] duration-300",
+        isScrolled ? "bg-background/95 backdrop-blur-sm" : "bg-transparent",
+      )}
     >
-      <div className="max-w-7xl mx-auto px-6 md:px-8 py-6 flex items-center">
-        {}
-        <div className="flex-1 flex justify-start">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/monetalogo.png"
-              alt="Moneta"
-              width={40}
-              height={40}
-              priority
-            />
-            <span className="text-sidebar-title text-[#E7E4E4]">MONETA</span>
-          </div>
+      <div className="mx-auto flex max-w-7xl items-center px-6 py-6 md:px-8">
+        <div className="flex flex-1 justify-start">
+          <a href="#home" onClick={(e) => handleNavClick(e, "home")} className="flex items-center gap-3">
+            <Image src="/monetalogo.png" alt="" width={40} height={40} priority />
+            <span className="text-sidebar-title text-fg">MONETA</span>
+          </a>
         </div>
 
-        {}
-        <nav className="hidden md:flex items-center gap-8">
-          {["home", "features", "about", "contact"].map((section) => (
-            <a
-              key={section}
-              href={`#${section}`}
-              onClick={(e) => onNavClick(e, section)}
-              className={`text-body font-semibold transition-colors capitalize ${
-                activeSection === section ? "text-[#AC66DA]" : "text-[#E7E4E4] hover:text-[#AC66DA]"
-              }`}
-            >
-              {section}
-            </a>
-          ))}
+        <nav aria-label="Sections" className="hidden items-center gap-8 md:flex">
+          {SECTIONS.map((section) => {
+            const isActive = activeSection === section.id;
+            return (
+              <a
+                key={section.id}
+                href={`#${section.id}`}
+                onClick={(e) => handleNavClick(e, section.id)}
+                aria-current={isActive ? "location" : undefined}
+                className={cx(
+                  "text-copy font-semibold transition-colors",
+                  isActive ? "text-accent-fg" : "text-fg hover:text-accent-fg",
+                )}
+              >
+                {section.label}
+              </a>
+            );
+          })}
         </nav>
 
-        {}
-        <div className="flex-1 flex justify-end items-center gap-4">
-          <ClerkLoading>
-            <button
-              type="button"
-              className="flex items-center justify-center h-9 sm:h-10 min-w-[120px] sm:min-w-[140px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] text-[#E7E4E4] font-semibold text-sm sm:text-base border border-[#AC66DA]/50 shadow-[0_4px_12px_rgba(172,102,218,0.2)] cursor-pointer"
-            >
-              Get Started
-            </button>
-          </ClerkLoading>
+        <div className="flex flex-1 items-center justify-end gap-4">
+          <AuthCta
+            className="h-10 min-w-[120px] px-5 text-ui sm:min-w-[140px] sm:text-copy"
+            signedInLabel={
+              <>
+                <span className="hidden sm:inline">Dashboard</span>
+                <span className="sm:hidden">Open</span>
+              </>
+            }
+          />
           <ClerkLoaded>
             <SignedIn>
-              <div className="flex items-center gap-4">
-                <Link
-                  href="/dashboard"
-                  className="flex items-center justify-center h-9 sm:h-10 min-w-[120px] sm:min-w-[140px] px-5 rounded-full bg-[#E7E4E4] text-[#282828] font-semibold text-body hover:opacity-90 transition-opacity"
-                >
-                  <span className="hidden sm:inline">Dashboard</span>
-                  <span className="sm:hidden">Open</span>
-                </Link>
-                <UserButton
-                  appearance={{
-                    elements: {
-                      avatarBox: "w-8 h-8 sm:w-10 sm:h-10",
-                      userButtonPopoverCard: "bg-[#282828] border border-[#3a3a3a]",
-                      userButtonPopoverActionButton: "text-[#E7E4E4] hover:bg-[#3a3a3a]",
-                      userButtonPopoverActionButtonText: "text-[#E7E4E4]",
-                    },
-                  }}
-                />
-              </div>
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox: "w-8 h-8 sm:w-10 sm:h-10",
+                    userButtonPopoverCard: "bg-surface-1 border border-line",
+                    userButtonPopoverActionButton: "text-fg hover:bg-surface-3",
+                    userButtonPopoverActionButtonText: "text-fg",
+                  },
+                }}
+              />
             </SignedIn>
-            <SignedOut>
-              <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard">
-                <button
-                  type="button"
-                  className="flex items-center justify-center h-9 sm:h-10 min-w-[120px] sm:min-w-[140px] rounded-full bg-gradient-to-b from-[#AC66DA] to-[#904eb8] text-[#E7E4E4] font-semibold hover:opacity-90 transition-all text-sm sm:text-base border border-[#AC66DA]/50 shadow-[0_4px_12px_rgba(172,102,218,0.2)] hover:scale-[1.02] cursor-pointer"
-                >
-                  Get Started
-                </button>
-              </SignUpButton>
-            </SignedOut>
           </ClerkLoaded>
         </div>
       </div>

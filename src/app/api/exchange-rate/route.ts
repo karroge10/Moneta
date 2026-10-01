@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getConversionRate } from '@/lib/currency-conversion';
 import { requireCurrentUser } from '@/lib/auth';
+import { moneyToNumber } from '@/lib/money';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,8 +34,14 @@ export async function GET(request: NextRequest) {
         }
 
         const rate = await getConversionRate(fromCurrencyId, toCurrencyId, date);
+        if (!rate) {
+            return NextResponse.json(
+                { error: 'Exchange rate not available', rate: null, missingRate: true },
+                { status: 404 }
+            );
+        }
 
-        return NextResponse.json({ rate });
+        return NextResponse.json({ rate: moneyToNumber(rate) });
     } catch (error) {
         console.error('Error fetching exchange rate:', error);
         return NextResponse.json(

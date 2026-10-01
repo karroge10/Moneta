@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# No `next build` here: it needs real Clerk keys. Vercel builds every push instead.
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # Dummy value: prisma generate and src/lib/db.ts need it set, nothing connects to it.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run type-check
+      - run: npm run lint
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=critical

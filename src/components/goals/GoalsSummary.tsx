@@ -2,12 +2,14 @@
 
 import { Goal } from '@/types/dashboard';
 import { calculateSummaryStats } from '@/lib/goalUtils';
-import { Clock, CheckCircle, XmarkCircle, Trophy, Page, FireFlame, Timer, LotOfCash, MoreHoriz } from 'iconoir-react';
+import { Clock, CheckCircle, XmarkCircle, Trophy, Page, FireFlame, Timer, LotOfCash } from 'iconoir-react';
 import Card from '@/components/ui/Card';
+import Skeleton from '@/components/ui/Skeleton';
+import { cx } from '@/components/ui/cx';
+import { formatMoney, formatPercent } from '@/lib/format';
 import { useCurrency } from '@/hooks/useCurrency';
 
-const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
-const SKELETON_ITEMS = 8;
+const SKELETON_ITEMS = [0, 1, 2, 3, 4, 5, 6, 7];
 
 interface GoalsSummaryProps {
   goals: Goal[];
@@ -19,7 +21,9 @@ interface SummaryItem {
   label: string;
   value: string | number | null;
   icon: typeof Clock;
-  color: string;
+  /** Token classes for the icon circle; `color` is used instead for palette hues without a token. */
+  toneClass?: string;
+  color?: string;
 }
 
 export default function GoalsSummary({ goals, compact = false, loading = false }: GoalsSummaryProps) {
@@ -28,24 +32,15 @@ export default function GoalsSummary({ goals, compact = false, loading = false }
 
   if (loading) {
     return (
-      <Card
-        title="Summary"
-        className="h-full flex flex-col"
-        customHeader={
-          <div className="mb-4 flex items-center justify-between">
-            <div className="h-6 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
-            <div className="w-8 h-8 rounded-full animate-pulse" style={SKELETON_STYLE} />
-          </div>
-        }
-      >
-        <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0">
-          <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 pr-2">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-1">
-              {Array.from({ length: SKELETON_ITEMS }).map((_, idx) => (
-                <div key={idx} className="flex items-center gap-3 px-4 py-3 rounded-[30px]" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                  <div className="w-12 h-12 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
-                  <div className="h-4 flex-1 max-w-[120px] rounded animate-pulse" style={SKELETON_STYLE} />
-                  <div className="h-4 w-16 rounded shrink-0 animate-pulse" style={SKELETON_STYLE} />
+      <Card title="Summary" className="h-full flex flex-col">
+        <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4" aria-busy="true">
+          <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto pr-2">
+            <div className="grid grid-cols-1 gap-3">
+              {SKELETON_ITEMS.map((item) => (
+                <div key={item} className="flex items-center gap-3 rounded-card bg-surface-0 px-4 py-3">
+                  <Skeleton className="size-12 shrink-0 rounded-full" />
+                  <Skeleton className="h-4 max-w-[120px] flex-1" />
+                  <Skeleton className="h-4 w-16 shrink-0" />
                 </div>
               ))}
             </div>
@@ -55,77 +50,46 @@ export default function GoalsSummary({ goals, compact = false, loading = false }
     );
   }
 
-  
   const summaryItems: SummaryItem[] = [
     { label: 'Active Goals', value: stats.activeGoals, icon: Clock, color: '#4A90E2' },
-    { label: 'Completed Goals', value: stats.completedGoals, icon: CheckCircle, color: '#74C648' },
-    { label: 'Failed Goals', value: stats.failedGoals, icon: XmarkCircle, color: '#D93F3F' },
-    { label: 'Success Rate', value: `${stats.successRate.toFixed(1)}%`, icon: Trophy, color: '#FFA500' },
-    { label: 'Total Goals', value: stats.totalGoals, icon: Page, color: '#AC66DA' },
+    { label: 'Completed Goals', value: stats.completedGoals, icon: CheckCircle, toneClass: 'bg-positive/10 text-positive' },
+    { label: 'Failed Goals', value: stats.failedGoals, icon: XmarkCircle, toneClass: 'bg-negative/10 text-negative-fg' },
+    { label: 'Success Rate', value: formatPercent(stats.successRate, { decimals: 1 }), icon: Trophy, toneClass: 'bg-warning/10 text-warning' },
+    { label: 'Total Goals', value: stats.totalGoals, icon: Page, toneClass: 'bg-accent/10 text-accent' },
     { label: 'Completions (Last 30d)', value: stats.completionsLast30d, icon: FireFlame, color: '#06B6D4' },
-    { label: 'Avg Time to Complete', value: stats.averageTimeToComplete !== null ? `${stats.averageTimeToComplete} Days` : '0 Days', icon: Timer, color: '#8B5CF6' },
-    { label: 'Total Money Saved', value: `${currency.symbol}${stats.totalMoneySaved.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: LotOfCash, color: '#F59E0B' },
+    { label: 'Avg Time to Complete', value: `${stats.averageTimeToComplete ?? 0} Days`, icon: Timer, toneClass: 'bg-accent/10 text-accent' },
+    { label: 'Total Money Saved', value: formatMoney(stats.totalMoneySaved, currency.symbol), icon: LotOfCash, toneClass: 'bg-warning/10 text-warning' },
   ];
 
   return (
-    <Card 
-      title="Summary" 
-      className="h-full flex flex-col"
-      customHeader={
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-card-header">Summary</h2>
-          <button
-            className="p-1 hover:opacity-70 transition-opacity cursor-pointer"
-            aria-label="More options"
-          >
-            <MoreHoriz width={20} height={20} strokeWidth={1.5} style={{ color: '#E7E4E4' }} />
-          </button>
-        </div>
-      }
-    >
-      <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0">
-        <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 pr-2">
-          <div
-            className={`grid grid-cols-1 gap-3 ${
-              compact ? 'sm:grid-cols-2 xl:grid-cols-1' : 'sm:grid-cols-1'
-            }`}
-          >
+    <Card title="Summary" className="h-full flex flex-col">
+      <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto pr-2">
+          <ul className={cx('grid grid-cols-1 gap-3', compact && 'sm:grid-cols-2 xl:grid-cols-1')}>
             {summaryItems.map((item) => {
               const Icon = item.icon;
+              const paletteStyle = item.color ? { backgroundColor: `${item.color}1a`, color: item.color } : undefined;
               return (
-                <div
-                  key={item.label}
-                  className="flex items-center gap-3 px-4 py-3"
-                  style={{
-                    backgroundColor: 'var(--bg-primary)',
-                    borderRadius: '30px',
-                    width: '100%',
-                  }}
-                >
+                <li key={item.label} className="flex w-full items-center gap-3 rounded-card bg-surface-0 px-4 py-3">
                   <div
-                    className={`icon-circle shrink-0 ${
-                      compact ? 'w-10 h-10 sm:w-11 sm:h-11 xl:w-12 xl:h-12' : 'w-12 h-12'
-                    }`}
-                    style={{ backgroundColor: `${item.color}1a` }}
+                    className={cx(
+                      'icon-circle shrink-0',
+                      compact ? 'size-10 sm:size-11 xl:size-12' : 'size-12',
+                      item.toneClass,
+                    )}
+                    style={paletteStyle}
+                    aria-hidden="true"
                   >
-                    <Icon
-                      width={compact ? 20 : 24}
-                      height={compact ? 20 : 24}
-                      strokeWidth={1.5}
-                      style={{ color: item.color }}
-                    />
+                    <Icon width={compact ? 20 : 24} height={compact ? 20 : 24} strokeWidth={1.5} />
                   </div>
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-body font-medium">{item.label}</span>
-                  </div>
-                  <span className="text-body font-semibold shrink-0">{item.value}</span>
-                </div>
+                  <span className="min-w-0 flex-1 text-body font-medium">{item.label}</span>
+                  <span className="shrink-0 text-body font-semibold tabular-nums">{item.value}</span>
+                </li>
               );
             })}
-          </div>
+          </ul>
         </div>
       </div>
     </Card>
   );
 }
-

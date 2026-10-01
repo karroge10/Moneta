@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 import { normalizeMerchantName, extractMerchantFromDescription } from '@/lib/merchant';
 
@@ -85,19 +86,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[merchants/learn] error', error);
-    
-    if (error instanceof Error && error.message.includes('Unauthorized')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 },
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Unable to learn merchant mapping.' },
-      { status: 500 },
-    );
+    return errorResponse(error, '[merchants/learn] error', 'Unable to learn merchant mapping.');
   }
 }
 

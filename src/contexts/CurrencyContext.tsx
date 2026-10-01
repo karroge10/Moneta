@@ -271,6 +271,9 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   const notificationSettings =
     userSettingsSnapshot?.notificationSettings ?? DEFAULT_NOTIFICATION_SETTINGS;
 
+  // No useMemo here: the React Compiler (reactCompiler: true in next.config.ts) memoizes this object
+  // on its inputs, so consumers only re-render when one of the fields changes. The fetch effect depends
+  // on userId and stable callbacks only, so it runs once per signed-in user, not per render.
   return (
     <CurrencyContext.Provider
       value={{

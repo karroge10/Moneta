@@ -3,7 +3,7 @@
  * Populates: Categories, Currencies, Languages, Exchange Rates, Merchants
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, TransactionType } from '@prisma/client';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
@@ -18,7 +18,7 @@ const prisma = new PrismaClient();
 // ============================================================================
 // CATEGORIES
 // ============================================================================
-const CATEGORIES = [
+const CATEGORIES: Array<{ name: string; icon: string; color: string; type: TransactionType | null }> = [
   { name: 'Groceries', icon: 'Cart', color: '#AC66DA', type: 'expense' },
   { name: 'Restaurants', icon: 'PizzaSlice', color: '#D93F3F', type: 'expense' },
   { name: 'Entertainment', icon: 'Tv', color: '#74C648', type: 'expense' },
