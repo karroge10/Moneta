@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UploadedTransaction, TransactionUploadMetadata } from '@/types/dashboard';
 import { requireCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { moneyToNumber } from '@/lib/money';
 import { Prisma } from '@prisma/client';
 import { shouldCreateNotification } from '@/lib/notification-settings';
 import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, findMerchantByBaseWords, detectSpecialTransactionType } from '@/lib/merchant';
@@ -525,14 +526,17 @@ export async function POST(request: NextRequest) {
 
     
     
-    const responseTransactions = createdTransactions.map((tx) => ({
-      id: tx.id.toString(),
-      date: tx.date.toISOString().split('T')[0],
-      description: tx.description,
-      translatedDescription: tx.description, 
-      amount: tx.type === 'income' ? tx.amount : -tx.amount,
-      category: tx.categoryId ? categoryById.get(tx.categoryId) ?? null : null,
-    }));
+    const responseTransactions = createdTransactions.map((tx) => {
+      const amount = moneyToNumber(tx.amount);
+      return {
+        id: tx.id.toString(),
+        date: tx.date.toISOString().split('T')[0],
+        description: tx.description,
+        translatedDescription: tx.description, 
+        amount: tx.type === 'income' ? amount : -amount,
+        category: tx.categoryId ? categoryById.get(tx.categoryId) ?? null : null,
+      };
+    });
 
     console.info('[transactions/import] persisted transactions', responseTransactions.length);
 
@@ -689,14 +693,17 @@ export async function GET(request: NextRequest) {
 
     
     
-    const pageItems = transactions.map((tx) => ({
-      id: tx.id.toString(),
-      date: tx.date.toISOString().split('T')[0],
-      description: tx.description,
-      translatedDescription: tx.description, 
-      amount: tx.type === 'income' ? tx.amount : -tx.amount,
-      category: tx.category?.name ?? null,
-    }));
+    const pageItems = transactions.map((tx) => {
+      const amount = moneyToNumber(tx.amount);
+      return {
+        id: tx.id.toString(),
+        date: tx.date.toISOString().split('T')[0],
+        description: tx.description,
+        translatedDescription: tx.description, 
+        amount: tx.type === 'income' ? amount : -amount,
+        category: tx.category?.name ?? null,
+      };
+    });
 
     return NextResponse.json({
       transactions: pageItems,

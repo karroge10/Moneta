@@ -59,9 +59,9 @@ model LearningLessonProgress {
 model PortfolioSnapshot {
   id          Int      @id @default(autoincrement())
   userId      Int
-  totalValue  Float    // Total value of all assets combined in user's default currency
-  totalCost   Float    // Total cost basis in user's default currency
-  totalPnl    Float    // Value - Cost
+  totalValue  Decimal  @db.Decimal(19, 4) // Total value of all assets combined in user's default currency
+  totalCost   Decimal  @db.Decimal(19, 4) // Total cost basis in user's default currency
+  totalPnl    Decimal  @db.Decimal(19, 4) // Value - Cost
   timestamp   DateTime @default(now())
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -149,7 +149,7 @@ model Transaction {
   id                   Int       @id @default(autoincrement())
   userId               Int
   type                 String    // 'income' | 'expense'
-  amount               Float
+  amount               Decimal   @db.Decimal(19, 4) // Always positive; sign comes from type
   description          String
   source               String?   // For analytics - where transaction came from (e.g., "pdf_import", "manual")
   date                 DateTime
@@ -182,8 +182,8 @@ model Goal {
   userId        Int
   name          String
   targetDate    DateTime
-  targetAmount  Float
-  currentAmount Float    @default(0)
+  targetAmount  Decimal  @db.Decimal(19, 4)
+  currentAmount Decimal  @default(0) @db.Decimal(19, 4)
   currencyId    Int?     // null = user's default currency
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -321,7 +321,7 @@ model RecurringTransaction {
   userId            Int
   type              RecurringType
   name              String
-  amount            Float
+  amount            Decimal        @db.Decimal(19, 4)
   currencyId        Int
   categoryId        Int?
   startDate         DateTime
