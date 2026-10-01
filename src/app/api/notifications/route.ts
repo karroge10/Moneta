@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { formatDate } from '@/lib/format';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -39,12 +41,10 @@ export async function GET(request: NextRequest) {
     
     const formattedNotifications = notifications.map(notif => {
       const dateObj = notif.date instanceof Date ? notif.date : new Date(notif.date);
-      const day = String(dateObj.getDate()).padStart(2, '0');
-      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const year = dateObj.getFullYear();
+      const displayDate = formatDate(dateObj, 'ordinal');
       return {
         id: notif.id.toString(),
-        date: `${day}.${month}.${year}`,
+        date: displayDate,
         time: notif.time,
         type: notif.type,
         text: notif.text,
@@ -60,19 +60,7 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(totalCount / pageSize),
     });
   } catch (error) {
-    console.error('[api/notifications] GET error', error);
-
-    if (error instanceof Error && error.message.includes('Unauthorized')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 },
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Failed to fetch notifications' },
-      { status: 500 },
-    );
+    return errorResponse(error, '[api/notifications] GET error', 'Failed to fetch notifications');
   }
 }
 
@@ -103,14 +91,12 @@ export async function POST(request: NextRequest) {
     });
 
     const dateObj = notification.date instanceof Date ? notification.date : new Date(notification.date);
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const year = dateObj.getFullYear();
+    const displayDate = formatDate(dateObj, 'ordinal');
 
     return NextResponse.json({
       notification: {
         id: notification.id.toString(),
-        date: `${day}.${month}.${year}`,
+        date: displayDate,
         time: notification.time,
         type: notification.type,
         text: notification.text,
@@ -118,19 +104,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[api/notifications] POST error', error);
-
-    if (error instanceof Error && error.message.includes('Unauthorized')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 },
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Failed to create notification' },
-      { status: 500 },
-    );
+    return errorResponse(error, '[api/notifications] POST error', 'Failed to create notification');
   }
 }
 
@@ -155,18 +129,6 @@ export async function PATCH(_request: NextRequest) {
       count: result.count
     });
   } catch (error) {
-    console.error('[api/notifications] PATCH error', error);
-
-    if (error instanceof Error && error.message.includes('Unauthorized')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 },
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Failed to mark notifications as read' },
-      { status: 500 },
-    );
+    return errorResponse(error, '[api/notifications] PATCH error', 'Failed to mark notifications as read');
   }
 }

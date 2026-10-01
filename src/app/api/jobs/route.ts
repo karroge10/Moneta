@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -56,11 +57,7 @@ export async function GET(request: NextRequest) {
       jobs: jobsWithCounts
     });
   } catch (error) {
-    console.error('[api/jobs] error', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch jobs.' },
-      { status: 500 },
-    );
+    return errorResponse(error, '[api/jobs] error', 'Failed to fetch jobs.');
   }
 }
 

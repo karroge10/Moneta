@@ -3,222 +3,19 @@ import { db } from '@/lib/db';
 import { shouldCreateNotification } from '@/lib/notification-settings';
 import { normalizeMerchantName, extractMerchantFromDescription, fuzzyMatch, findMerchantByBaseWords, detectSpecialTransactionType } from '@/lib/merchant';
 import { UploadedTransaction } from '@/types/dashboard';
-import { Prisma } from '@prisma/client';
+import { JobStatus, Prisma } from '@prisma/client';
+import { verifyInternalSecret } from '@/lib/api-errors';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-
-async function analyzeCategorization(transactions: UploadedTransaction[], userId: number): Promise<UploadedTransaction[]> {
-  console.log(`[categorization] Starting categorization for ${transactions.length} transactions (userId: ${userId})`);
-  
-  
-  const allCategories = await db.category.findMany();
-  const categoryMap = new Map<string, number>();
-  allCategories.forEach((cat: { name: string; id: number }) => {
-    categoryMap.set(cat.name.toLowerCase(), cat.id);
-  });
-
-  
-  const globalMerchants = await db.merchantGlobal.findMany();
-  const globalMerchantMap = new Map<string, number>();
-  const globalMerchantPatterns: string[] = [];
-  globalMerchants.forEach((merchant: { namePattern: string; categoryId: number }) => {
-    const normalizedPattern = normalizeMerchantName(merchant.namePattern);
-    globalMerchantMap.set(normalizedPattern, merchant.categoryId);
-    globalMerchantPatterns.push(merchant.namePattern);
-  });
-
-  
-  const userMerchants = await db.merchant.findMany({
-    where: { userId },
-    include: { category: true },
-  });
-  const userMerchantMap = new Map<string, number>();
-  const userMerchantPatterns: string[] = [];
-  userMerchants.forEach((merchant: { namePattern: string; categoryId: number }) => {
-    const normalizedPattern = normalizeMerchantName(merchant.namePattern);
-    userMerchantMap.set(normalizedPattern, merchant.categoryId);
-    userMerchantPatterns.push(merchant.namePattern);
-  });
-
-  console.log(`[categorization] Loaded ${allCategories.length} categories, ${globalMerchants.length} global merchants, ${userMerchants.length} user merchants`);
-
-  
-  const categoryNameMapping: Record<string, string> = {
-    'transportation': 'transportation',
-    'transport': 'transportation',
-    'utilities': 'other',
-  };
-
-  
-  const categorizedTransactions = transactions
-    .map((tx) => {
-      
-      const descriptionForMatching = tx.translatedDescription || tx.description;
-      
-      
-      const specialType = detectSpecialTransactionType(descriptionForMatching);
-      
-      
-      
-      
-      
-      
-      const type = tx.amount >= 0 ? 'income' : 'expense';
-      
-      
-      const merchantName = extractMerchantFromDescription(descriptionForMatching);
-      const normalizedMerchant = normalizeMerchantName(merchantName);
-      
-      let categoryId: number | null = null;
-      let skipMerchantMatching = false;
-      
-      
-      
-      
-      if (type === 'income' && !categoryId) {
-        console.log(`[categorization] ⊘ Skipping auto-categorization for income transaction: "${tx.description.substring(0, 50)}..."`);
-        
-        return {
-          ...tx,
-          category: null,
-        };
-      }
-      
-      
-      if (specialType && specialType !== 'EXCLUDE') {
-        const specialCategoryId = categoryMap.get(specialType.toLowerCase());
-        if (specialCategoryId) {
-          categoryId = specialCategoryId;
-          skipMerchantMatching = true;
-          console.log(`[categorization] ✓ Special type: "${specialType}" -> categoryId: ${categoryId}`);
-        }
-      }
-      
-      
-      if (!skipMerchantMatching && !categoryId) {
-        
-        if (userMerchantMap.has(normalizedMerchant)) {
-          categoryId = userMerchantMap.get(normalizedMerchant)!;
-          console.log(`[categorization] ✓ User exact: "${merchantName}" -> categoryId: ${categoryId}`);
-        } else {
-          
-          const foundMerchant = findMerchantByBaseWords(descriptionForMatching, userMerchantPatterns);
-          if (foundMerchant) {
-            const foundNormalized = normalizeMerchantName(foundMerchant);
-            if (userMerchantMap.has(foundNormalized)) {
-              categoryId = userMerchantMap.get(foundNormalized)!;
-              console.log(`[categorization] ✓ User word: "${foundMerchant}" -> categoryId: ${categoryId}`);
-            }
-          }
-          
-          
-          if (!categoryId) {
-            let bestMatch: { pattern: string; catId: number; similarity: number } | null = null;
-            for (const [pattern, catId] of userMerchantMap.entries()) {
-              const similarity = fuzzyMatch(normalizedMerchant, pattern);
-              const descSimilarity = fuzzyMatch(descriptionForMatching.toLowerCase(), pattern);
-              const maxSimilarity = Math.max(similarity, descSimilarity);
-              if (maxSimilarity >= 0.65) {
-                if (!bestMatch || maxSimilarity > bestMatch.similarity) {
-                  bestMatch = { pattern, catId, similarity: maxSimilarity };
-                }
-              }
-            }
-            if (bestMatch) {
-              categoryId = bestMatch.catId;
-              console.log(`[categorization] ✓ User fuzzy: "${bestMatch.pattern}" (${bestMatch.similarity.toFixed(2)}) -> categoryId: ${categoryId}`);
-            }
-          }
-        }
-      }
-      
-      
-      if (!skipMerchantMatching && !categoryId) {
-        
-        if (globalMerchantMap.has(normalizedMerchant)) {
-          categoryId = globalMerchantMap.get(normalizedMerchant)!;
-          console.log(`[categorization] ✓ Global exact: "${merchantName}" -> categoryId: ${categoryId}`);
-        } else {
-          
-          const foundMerchant = findMerchantByBaseWords(descriptionForMatching, globalMerchantPatterns);
-          if (foundMerchant) {
-            const foundNormalized = normalizeMerchantName(foundMerchant);
-            if (globalMerchantMap.has(foundNormalized)) {
-              categoryId = globalMerchantMap.get(foundNormalized)!;
-              console.log(`[categorization] ✓ Global word: "${foundMerchant}" -> categoryId: ${categoryId}`);
-            }
-          }
-          
-          
-          if (!categoryId) {
-            let bestMatch: { pattern: string; catId: number; similarity: number } | null = null;
-            for (const [pattern, catId] of globalMerchantMap.entries()) {
-              const similarity = fuzzyMatch(normalizedMerchant, pattern);
-              const descSimilarity = fuzzyMatch(descriptionForMatching.toLowerCase(), pattern);
-              const maxSimilarity = Math.max(similarity, descSimilarity);
-              if (maxSimilarity >= 0.65) {
-                if (!bestMatch || maxSimilarity > bestMatch.similarity) {
-                  bestMatch = { pattern, catId, similarity: maxSimilarity };
-                }
-              }
-            }
-            if (bestMatch) {
-              categoryId = bestMatch.catId;
-              console.log(`[categorization] ✓ Global fuzzy: "${bestMatch.pattern}" (${bestMatch.similarity.toFixed(2)}) -> categoryId: ${categoryId}`);
-            }
-          }
-        }
-      }
-      
-      
-      if (!categoryId && tx.category) {
-        let categoryName = tx.category.toLowerCase();
-        
-        
-        if (categoryNameMapping[categoryName]) {
-          categoryName = categoryNameMapping[categoryName];
-        }
-        
-        categoryId = categoryMap.get(categoryName) ?? null;
-        if (categoryId) {
-          console.log(`[categorization] ✓ Python: "${categoryName}" -> categoryId: ${categoryId}`);
-        }
-      }
-      
-      
-      if (categoryId) {
-        const matchedCategory = allCategories.find(c => c.id === categoryId);
-        if (matchedCategory) {
-          return {
-            ...tx,
-            category: matchedCategory.name,
-          };
-        }
-      }
-      
-      
-      return {
-        ...tx,
-        category: null,
-      };
-    })
-    .filter((tx): tx is UploadedTransaction => tx !== null); 
-  
-  console.log(`[categorization] Completed: ${categorizedTransactions.length} transactions (${transactions.length - categorizedTransactions.length} excluded)`);
-  
-  return categorizedTransactions;
-}
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
-    const expectedSecret = process.env.INTERNAL_API_SECRET;
-    const providedSecret = request.headers.get('x-internal-secret');
-    if (expectedSecret && providedSecret !== expectedSecret) {
+    if (!verifyInternalSecret(request)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -233,6 +30,11 @@ export async function POST(
     
     if (typeof progress !== 'number' && !status) {
       return NextResponse.json({ error: 'Missing progress or status' }, { status: 400 });
+    }
+
+    const validStatuses: string[] = Object.values(JobStatus);
+    if (status && !validStatuses.includes(status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
     
@@ -358,6 +160,9 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
     console.error('[job-progress] Failed to update progress:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -366,3 +171,196 @@ export async function POST(
   }
 }
 
+
+async function analyzeCategorization(transactions: UploadedTransaction[], userId: number): Promise<UploadedTransaction[]> {
+  console.log(`[categorization] Starting categorization for ${transactions.length} transactions`);
+  
+  
+  const allCategories = await db.category.findMany();
+  const categoryMap = new Map<string, number>();
+  allCategories.forEach((cat: { name: string; id: number }) => {
+    categoryMap.set(cat.name.toLowerCase(), cat.id);
+  });
+
+  
+  const globalMerchants = await db.merchantGlobal.findMany();
+  const globalMerchantMap = new Map<string, number>();
+  const globalMerchantPatterns: string[] = [];
+  globalMerchants.forEach((merchant: { namePattern: string; categoryId: number }) => {
+    const normalizedPattern = normalizeMerchantName(merchant.namePattern);
+    globalMerchantMap.set(normalizedPattern, merchant.categoryId);
+    globalMerchantPatterns.push(merchant.namePattern);
+  });
+
+  
+  const userMerchants = await db.merchant.findMany({
+    where: { userId },
+    include: { category: true },
+  });
+  const userMerchantMap = new Map<string, number>();
+  const userMerchantPatterns: string[] = [];
+  userMerchants.forEach((merchant: { namePattern: string; categoryId: number }) => {
+    const normalizedPattern = normalizeMerchantName(merchant.namePattern);
+    userMerchantMap.set(normalizedPattern, merchant.categoryId);
+    userMerchantPatterns.push(merchant.namePattern);
+  });
+
+  console.log(`[categorization] Loaded ${allCategories.length} categories, ${globalMerchants.length} global merchants, ${userMerchants.length} user merchants`);
+
+  
+  const categoryNameMapping: Record<string, string> = {
+    'transportation': 'transportation',
+    'transport': 'transportation',
+    'utilities': 'other',
+  };
+
+  
+  const categorizedTransactions = transactions
+    .map((tx) => {
+      
+      const descriptionForMatching = tx.translatedDescription || tx.description;
+      
+      
+      const specialType = detectSpecialTransactionType(descriptionForMatching);
+      
+      
+      
+      
+      
+      
+      const type = tx.amount >= 0 ? 'income' : 'expense';
+      
+      
+      const merchantName = extractMerchantFromDescription(descriptionForMatching);
+      const normalizedMerchant = normalizeMerchantName(merchantName);
+      
+      let categoryId: number | null = null;
+      let skipMerchantMatching = false;
+      
+      
+      
+      
+      if (type === 'income' && !categoryId) {
+        
+        return {
+          ...tx,
+          category: null,
+        };
+      }
+      
+      
+      if (specialType && specialType !== 'EXCLUDE') {
+        const specialCategoryId = categoryMap.get(specialType.toLowerCase());
+        if (specialCategoryId) {
+          categoryId = specialCategoryId;
+          skipMerchantMatching = true;
+        }
+      }
+      
+      
+      if (!skipMerchantMatching && !categoryId) {
+        
+        if (userMerchantMap.has(normalizedMerchant)) {
+          categoryId = userMerchantMap.get(normalizedMerchant)!;
+        } else {
+          
+          const foundMerchant = findMerchantByBaseWords(descriptionForMatching, userMerchantPatterns);
+          if (foundMerchant) {
+            const foundNormalized = normalizeMerchantName(foundMerchant);
+            if (userMerchantMap.has(foundNormalized)) {
+              categoryId = userMerchantMap.get(foundNormalized)!;
+            }
+          }
+          
+          
+          if (!categoryId) {
+            let bestMatch: { pattern: string; catId: number; similarity: number } | null = null;
+            for (const [pattern, catId] of userMerchantMap.entries()) {
+              const similarity = fuzzyMatch(normalizedMerchant, pattern);
+              const descSimilarity = fuzzyMatch(descriptionForMatching.toLowerCase(), pattern);
+              const maxSimilarity = Math.max(similarity, descSimilarity);
+              if (maxSimilarity >= 0.65) {
+                if (!bestMatch || maxSimilarity > bestMatch.similarity) {
+                  bestMatch = { pattern, catId, similarity: maxSimilarity };
+                }
+              }
+            }
+            if (bestMatch) {
+              categoryId = bestMatch.catId;
+            }
+          }
+        }
+      }
+      
+      
+      if (!skipMerchantMatching && !categoryId) {
+        
+        if (globalMerchantMap.has(normalizedMerchant)) {
+          categoryId = globalMerchantMap.get(normalizedMerchant)!;
+        } else {
+          
+          const foundMerchant = findMerchantByBaseWords(descriptionForMatching, globalMerchantPatterns);
+          if (foundMerchant) {
+            const foundNormalized = normalizeMerchantName(foundMerchant);
+            if (globalMerchantMap.has(foundNormalized)) {
+              categoryId = globalMerchantMap.get(foundNormalized)!;
+            }
+          }
+          
+          
+          if (!categoryId) {
+            let bestMatch: { pattern: string; catId: number; similarity: number } | null = null;
+            for (const [pattern, catId] of globalMerchantMap.entries()) {
+              const similarity = fuzzyMatch(normalizedMerchant, pattern);
+              const descSimilarity = fuzzyMatch(descriptionForMatching.toLowerCase(), pattern);
+              const maxSimilarity = Math.max(similarity, descSimilarity);
+              if (maxSimilarity >= 0.65) {
+                if (!bestMatch || maxSimilarity > bestMatch.similarity) {
+                  bestMatch = { pattern, catId, similarity: maxSimilarity };
+                }
+              }
+            }
+            if (bestMatch) {
+              categoryId = bestMatch.catId;
+            }
+          }
+        }
+      }
+      
+      
+      if (!categoryId && tx.category) {
+        let categoryName = tx.category.toLowerCase();
+        
+        
+        if (categoryNameMapping[categoryName]) {
+          categoryName = categoryNameMapping[categoryName];
+        }
+        
+        categoryId = categoryMap.get(categoryName) ?? null;
+        if (categoryId) {
+        }
+      }
+      
+      
+      if (categoryId) {
+        const matchedCategory = allCategories.find(c => c.id === categoryId);
+        if (matchedCategory) {
+          return {
+            ...tx,
+            category: matchedCategory.name,
+          };
+        }
+      }
+      
+      
+      return {
+        ...tx,
+        category: null,
+      };
+    })
+    .filter((tx): tx is UploadedTransaction => tx !== null); 
+  
+  console.log(`[categorization] Completed: ${categorizedTransactions.length} transactions (${transactions.length - categorizedTransactions.length} excluded)`);
+  
+  return categorizedTransactions;
+}

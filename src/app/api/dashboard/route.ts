@@ -3,12 +3,19 @@ import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Transaction as TransactionType, ExpenseCategory, TimePeriod } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
-import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
+import {
+  preloadRates,
+  convertTransactionsWithRatesMap,
+  sumConverted,
+  countMissingRates,
+} from '@/lib/currency-conversion';
+import { getUtcComparisonRange, getUtcPeriodRange, toDateKey } from '@/lib/dates';
 import { getFinancialHealthScore, FINANCIAL_HEALTH_TIME_PERIOD } from '@/lib/financial-health';
 import { getInvestmentsPortfolio } from '@/lib/investments';
 import { computeRoundupInsight } from '@/lib/roundup-insight';
 import { calculateGoalProgress } from '@/lib/goalUtils';
-import { moneyToNumber } from '@/lib/money';
+import { moneyToNumber, sumMoney } from '@/lib/money';
+import type { Prisma } from '@prisma/client';
 import {
   processDueRecurringItems,
   getExpenseRecurringItemsSerialized,
@@ -17,168 +24,8 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-
-function formatDate(date: Date): string {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const day = date.getDate();
-  const month = months[date.getMonth()];
-  const year = date.getFullYear();
-
-  
-  const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
-    day === 2 || day === 22 ? 'nd' :
-      day === 3 || day === 23 ? 'rd' : 'th';
-
-  return `${month} ${day}${suffix} ${year}`;
-}
-
-
-function getIconForCategory(categoryName: string | null): string {
-  if (!categoryName) return 'HelpCircle';
-
-  const iconMap: Record<string, string> = {
-    'Rent': 'City',
-    'Entertainment': 'Tv',
-    'Restaurants': 'PizzaSlice',
-    'Furniture': 'Sofa',
-    'Groceries': 'Cart',
-    'Gifts': 'Gift',
-    'Fitness': 'Gym',
-    'Water Bill': 'Droplet',
-    'Technology': 'Tv',
-    'Electricity Bill': 'Flash',
-    'Clothes': 'Shirt',
-    'Transportation': 'Tram',
-    'Heating Bill': 'FireFlame',
-    'Home Internet': 'Wifi',
-    'Taxes': 'Cash',
-    'Mobile Data': 'SmartphoneDevice',
-  };
-
-  return iconMap[categoryName] || 'HelpCircle';
-}
-
-
 const categoryColors = ['#AC66DA', '#74C648', '#D93F3F'];
 
-
-function getDateRangeForPeriod(period: TimePeriod, now: Date): { start: Date; end: Date } {
-  const year = now.getFullYear();
-  const month = now.getMonth();
-
-  switch (period) {
-    case 'This Month':
-      return {
-        start: new Date(year, month, 1),
-        end: new Date(year, month + 1, 0, 23, 59, 59, 999),
-      };
-
-    case 'Last Month':
-      return {
-        start: new Date(year, month - 1, 1),
-        end: new Date(year, month, 0, 23, 59, 59, 999),
-      };
-
-    case 'This Year':
-      return {
-        start: new Date(year, 0, 1),
-        end: new Date(year, 11, 31, 23, 59, 59, 999),
-      };
-
-    case 'Last Year':
-      return {
-        start: new Date(year - 1, 0, 1),
-        end: new Date(year - 1, 11, 31, 23, 59, 59, 999),
-      };
-
-    case 'All Time':
-      
-      return {
-        start: new Date(2000, 0, 1),
-        end: new Date(year + 10, 11, 31, 23, 59, 59, 999),
-      };
-
-    default:
-      
-      return {
-        start: new Date(year, month, 1),
-        end: new Date(year, month + 1, 0, 23, 59, 59, 999),
-      };
-  }
-}
-
-
-function getComparisonDateRange(period: TimePeriod, now: Date): { start: Date; end: Date } | null {
-  const year = now.getFullYear();
-  const month = now.getMonth();
-
-  switch (period) {
-    case 'This Month':
-      
-      return {
-        start: new Date(year, month - 1, 1),
-        end: new Date(year, month, 0, 23, 59, 59, 999),
-      };
-
-    case 'Last Month':
-      
-      return {
-        start: new Date(year, month - 2, 1),
-        end: new Date(year, month - 1, 0, 23, 59, 59, 999),
-      };
-
-    case 'This Year':
-      
-      return {
-        start: new Date(year - 1, 0, 1),
-        end: new Date(year - 1, 11, 31, 23, 59, 59, 999),
-      };
-
-    case 'Last Year':
-      
-      return {
-        start: new Date(year - 2, 0, 1),
-        end: new Date(year - 2, 11, 31, 23, 59, 59, 999),
-      };
-
-    case 'All Time':
-      return null; 
-
-    default:
-      return null;
-  }
-}
-
-
-function getComparisonLabel(period: TimePeriod): string {
-  switch (period) {
-    case 'This Month':
-      return 'from last month';
-    case 'Last Month':
-      return 'from 2 months ago';
-    case 'This Year':
-      return 'from last year';
-    case 'Last Year':
-      return 'from 2 years ago';
-    case 'All Time':
-      return '';
-    default:
-      return '';
-  }
-}
-
-
-
-
-
-
-
-
-function buildServerTimingHeader(durationsMs: Record<string, number>): string {
-  return Object.entries(durationsMs)
-    .map(([name, dur]) => `${encodeURIComponent(name.replace(/\s+/g, '-'))};dur=${Math.max(0, Math.round(dur))}`)
-    .join(', ');
-}
 
 export async function GET(request: NextRequest) {
   const tReq = performance.now();
@@ -214,8 +61,8 @@ export async function GET(request: NextRequest) {
 
     const timePeriod = (searchParams.get('timePeriod') || 'This Month') as TimePeriod;
 
-    const selectedRange = getDateRangeForPeriod(timePeriod, now);
-    const comparisonRange = getComparisonDateRange(timePeriod, now);
+    const selectedRange = getUtcPeriodRange(timePeriod, now);
+    const comparisonRange = getUtcComparisonRange(timePeriod, now);
 
     t = mark('auth-and-currency', t);
 
@@ -276,7 +123,7 @@ export async function GET(request: NextRequest) {
           ]);
 
         const allTxsForPreload = [...selectedTransactions, ...(comparisonTransactions || []), ...latestTransactionsRaw];
-        const ratesMap = await preloadRatesMap(
+        const ratesMap = await preloadRates(
           allTxsForPreload.map(t => ({ currencyId: t.currencyId, date: t.date })),
           targetCurrencyId
         );
@@ -310,25 +157,23 @@ export async function GET(request: NextRequest) {
     } = batch;
 
     
-    const selectedPeriodIncome = selectedWithConverted
-      .filter((t) => t.type === 'income')
-      .reduce((sum: number, t) => sum + t.convertedAmount, 0);
-    const selectedPeriodExpenses = selectedWithConverted
-      .filter((t) => t.type === 'expense')
-      .reduce((sum: number, t) => sum + t.convertedAmount, 0);
+    const selectedIncomeMoney = sumByType(selectedWithConverted, 'income');
+    const selectedExpensesMoney = sumByType(selectedWithConverted, 'expense');
+    const selectedPeriodIncome = moneyToNumber(selectedIncomeMoney);
+    const selectedPeriodExpenses = moneyToNumber(selectedExpensesMoney);
 
     
     let comparisonIncome = 0;
     let comparisonExpenses = 0;
 
     if (comparisonRange) {
-      comparisonIncome = comparisonWithConverted
-        .filter((t) => t.type === 'income')
-        .reduce((sum: number, t) => sum + t.convertedAmount, 0);
-      comparisonExpenses = comparisonWithConverted
-        .filter((t) => t.type === 'expense')
-        .reduce((sum: number, t) => sum + t.convertedAmount, 0);
+      const comparisonIncomeMoney = sumByType(comparisonWithConverted, 'income');
+      const comparisonExpensesMoney = sumByType(comparisonWithConverted, 'expense');
+      comparisonIncome = moneyToNumber(comparisonIncomeMoney);
+      comparisonExpenses = moneyToNumber(comparisonExpensesMoney);
     }
+
+    const missingRates = countMissingRates(selectedWithConverted) + countMissingRates(comparisonWithConverted);
 
     
     
@@ -351,7 +196,9 @@ export async function GET(request: NextRequest) {
     const latestTransactions: TransactionType[] = latestWithConverted.map((t) => {
       const originalAmount = moneyToNumber(t.amount);
       const originalSignedAmount = t.type === 'expense' ? -originalAmount : originalAmount;
-      const convertedSignedAmount = t.type === 'expense' ? -t.convertedAmount : t.convertedAmount;
+      // Without a rate the row shows its original amount; originalCurrency* tells the client which currency.
+      const displayAmount = t.convertedMoney ? moneyToNumber(t.convertedMoney) : originalAmount;
+      const convertedSignedAmount = t.type === 'expense' ? -displayAmount : displayAmount;
       
       const displayName = formatTransactionName(t.description, userLanguageAlias, false);
       
@@ -363,7 +210,7 @@ export async function GET(request: NextRequest) {
         fullName: fullName, 
         originalDescription: t.description, 
         date: formatDate(t.date),
-        dateRaw: t.date.toISOString().split('T')[0],
+        dateRaw: toDateKey(t.date),
         amount: convertedSignedAmount,
         originalAmount: originalSignedAmount,
         originalCurrencySymbol: t.currency?.symbol,
@@ -376,26 +223,31 @@ export async function GET(request: NextRequest) {
 
     
     const expenseTransactions = selectedWithConverted.filter((t) => t.type === 'expense');
-    const categoryTotals = new Map<string, { amount: number; categoryId: number; categoryName: string }>();
+    const categoryMoney = new Map<string, { amounts: Prisma.Decimal[]; categoryId: number; categoryName: string }>();
 
     expenseTransactions.forEach((t) => {
+      if (!t.convertedMoney) return;
       const categoryName = t.category?.name || 'Uncategorized';
       const categoryId = t.categoryId || 0;
 
-      if (!categoryTotals.has(categoryName)) {
-        categoryTotals.set(categoryName, {
-          amount: 0,
+      if (!categoryMoney.has(categoryName)) {
+        categoryMoney.set(categoryName, {
+          amounts: [],
           categoryId,
           categoryName,
         });
       }
 
-      const existing = categoryTotals.get(categoryName)!;
-      existing.amount += t.convertedAmount;
+      categoryMoney.get(categoryName)!.amounts.push(t.convertedMoney);
+    });
+
+    const categoryTotals = Array.from(categoryMoney.values()).map((c) => {
+      const total = sumMoney(c.amounts);
+      return { amount: moneyToNumber(total), categoryId: c.categoryId, categoryName: c.categoryName };
     });
 
     
-    const topCategoriesArray = Array.from(categoryTotals.values())
+    const topCategoriesArray = categoryTotals
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 3); 
 
@@ -467,10 +319,13 @@ export async function GET(request: NextRequest) {
         currentPrice: a.currentPrice,
         gainLoss: a.pnl,
         changePercent: a.unrealizedPnlPercent,
+        priceMissing: a.priceMissing,
+        rateMissing: a.rateMissing,
         icon: a.icon || (a.type === 'crypto' ? 'BitcoinCircle' : 'Reports'),
         priceHistory: [],
       })),
       portfolioBalance: investmentsPortfolio.totalValue,
+      portfolioMissingValuations: investmentsPortfolio.missingValuations,
       financialHealth: {
         score: financialHealth.score,
         trend: financialHealth.trend,
@@ -479,6 +334,7 @@ export async function GET(request: NextRequest) {
       roundupInsight,
       goals: goalsPayload,
       recurringItems,
+      missingRates,
     };
 
     dur['total'] = performance.now() - tReq;
@@ -501,3 +357,85 @@ export async function GET(request: NextRequest) {
   }
 }
 
+
+function formatDate(date: Date): string {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const day = date.getUTCDate();
+  const month = months[date.getUTCMonth()];
+  const year = date.getUTCFullYear();
+
+  
+  const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
+    day === 2 || day === 22 ? 'nd' :
+      day === 3 || day === 23 ? 'rd' : 'th';
+
+  return `${month} ${day}${suffix} ${year}`;
+}
+
+
+function getIconForCategory(categoryName: string | null): string {
+  if (!categoryName) return 'HelpCircle';
+
+  const iconMap: Record<string, string> = {
+    'Rent': 'City',
+    'Entertainment': 'Tv',
+    'Restaurants': 'PizzaSlice',
+    'Furniture': 'Sofa',
+    'Groceries': 'Cart',
+    'Gifts': 'Gift',
+    'Fitness': 'Gym',
+    'Water Bill': 'Droplet',
+    'Technology': 'Tv',
+    'Electricity Bill': 'Flash',
+    'Clothes': 'Shirt',
+    'Transportation': 'Tram',
+    'Heating Bill': 'FireFlame',
+    'Home Internet': 'Wifi',
+    'Taxes': 'Cash',
+    'Mobile Data': 'SmartphoneDevice',
+  };
+
+  return iconMap[categoryName] || 'HelpCircle';
+}
+
+
+
+
+function getComparisonLabel(period: TimePeriod): string {
+  switch (period) {
+    case 'This Month':
+      return 'from last month';
+    case 'Last Month':
+      return 'from 2 months ago';
+    case 'This Year':
+      return 'from last year';
+    case 'Last Year':
+      return 'from 2 years ago';
+    case 'All Time':
+      return '';
+    default:
+      return '';
+  }
+}
+
+
+
+
+
+
+
+
+function buildServerTimingHeader(durationsMs: Record<string, number>): string {
+  return Object.entries(durationsMs)
+    .map(([name, dur]) => `${encodeURIComponent(name.replace(/\s+/g, '-'))};dur=${Math.max(0, Math.round(dur))}`)
+    .join(', ');
+}
+
+/** Exact sum of converted amounts of one type; rows without a rate are excluded. */
+function sumByType(
+  items: { type: string; convertedMoney: Prisma.Decimal | null }[],
+  type: 'income' | 'expense',
+): Prisma.Decimal {
+  const ofType = items.filter((t) => t.type === type);
+  return sumConverted(ofType);
+}

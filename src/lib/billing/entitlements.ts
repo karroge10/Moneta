@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 
-export const FREE_PDF_IMPORTS_PER_MONTH = 3;
+const FREE_PDF_IMPORTS_PER_MONTH = 3;
 
 /**
  * Which Stripe subscription statuses grant Premium.

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 import type { PrismaClient } from '@prisma/client';
 
@@ -33,11 +34,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[jobs/delete] error', error);
-    return NextResponse.json(
-      { error: 'Failed to delete job.' },
-      { status: 500 },
-    );
+    return errorResponse(error, '[jobs/delete] error', 'Failed to delete job.');
   }
 }
 

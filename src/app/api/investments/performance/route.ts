@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { addUtcDays, addUtcMonths, toDateKey } from '@/lib/dates';
+import { moneyToNumber } from '@/lib/money';
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -12,33 +14,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const range = searchParams.get('range') || '1M';
 
-  let startDate: Date | undefined;
-  const now = new Date();
-
-  switch (range) {
-    case '1W':
-      startDate = new Date();
-      startDate.setDate(now.getDate() - 7);
-      break;
-    case '1M':
-      startDate = new Date();
-      startDate.setDate(now.getDate() - 30);
-      break;
-    case '3M':
-      startDate = new Date();
-      startDate.setDate(now.getDate() - 90);
-      break;
-    case '1Y':
-      startDate = new Date();
-      startDate.setFullYear(now.getFullYear() - 1);
-      break;
-    case 'All':
-      startDate = undefined;
-      break;
-    default:
-      startDate = new Date();
-      startDate.setDate(now.getDate() - 30); 
-  }
+  const startDate = rangeStart(range, new Date());
 
   try {
     const whereClause: Prisma.PortfolioSnapshotWhereInput = {
@@ -65,27 +41,33 @@ export async function GET(req: NextRequest) {
     
     
     
-    const usd = await db.currency.findFirst({ 
-        where: { alias: { equals: 'usd', mode: 'insensitive' } } 
-    });
-    const userCurrencyId = user.currencyId || (await db.currency.findFirst())?.id;
-    
-    let rate = 1;
-    if (usd && userCurrencyId && usd.id !== userCurrencyId) {
-        const { convertAmount } = await import('@/lib/currency-conversion');
-        rate = await convertAmount(1, usd.id, userCurrencyId, new Date());
-    }
-
+    // Snapshots are written by the cron in the user's currency, so no conversion is applied.
     const graphData = snapshots.map((s) => ({
-      date: s.timestamp.toISOString().split('T')[0],
-      value: Number(s.totalValue) * rate,
-      cost: Number(s.totalCost) * rate,
-      pnl: Number(s.totalPnl) * rate,
+      date: toDateKey(s.timestamp),
+      value: moneyToNumber(s.totalValue),
+      cost: moneyToNumber(s.totalCost),
+      pnl: moneyToNumber(s.totalPnl),
     }));
 
     return NextResponse.json(graphData);
   } catch (error) {
     console.error('[INVESTMENTS_PERFORMANCE]', error);
     return new NextResponse('Internal Error', { status: 500 });
+  }
+}
+
+function rangeStart(range: string, now: Date): Date | undefined {
+  switch (range) {
+    case '1W':
+      return addUtcDays(now, -7);
+    case '3M':
+      return addUtcDays(now, -90);
+    case '1Y':
+      return addUtcMonths(now, -12);
+    case 'All':
+      return undefined;
+    case '1M':
+    default:
+      return addUtcDays(now, -30);
   }
 }

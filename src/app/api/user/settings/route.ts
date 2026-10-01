@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
+import { parseDisplayDate } from '@/lib/transaction-utils';
+import { parseJsonBody, userSettingsSchema } from '@/lib/validation';
 import {
   getNotificationSettings,
   DEFAULT_NOTIFICATION_SETTINGS,
@@ -75,14 +78,7 @@ export async function GET() {
       currencies: currencies.map((c) => ({ id: c.id, name: c.name, symbol: c.symbol, alias: c.alias })),
     });
   } catch (error) {
-    console.error('Error fetching user settings:', error);
-    if (error instanceof Error && error.message.includes('Unauthorized')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    return NextResponse.json(
-      { error: 'Failed to fetch user settings' },
-      { status: 500 }
-    );
+    return errorResponse(error, 'Error fetching user settings', 'Failed to fetch user settings');
   }
 }
 
@@ -90,7 +86,9 @@ export async function GET() {
 export async function PATCH(request: NextRequest) {
   try {
     const user = await requireCurrentUser();
-    const body = await request.json();
+    const parsed = await parseJsonBody(request, userSettingsSchema);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
     const clerkUser = await currentUser();
 
     const updateData: {
@@ -108,14 +106,7 @@ export async function PATCH(request: NextRequest) {
       if (body.dateOfBirth === null || body.dateOfBirth === '') {
         updateData.dateOfBirth = null;
       } else {
-        const d = new Date(body.dateOfBirth);
-        if (Number.isNaN(d.getTime())) {
-          return NextResponse.json(
-            { error: 'Invalid date of birth' },
-            { status: 400 }
-          );
-        }
-        updateData.dateOfBirth = d;
+        updateData.dateOfBirth = parseDisplayDate(body.dateOfBirth);
       }
     }
     if (body.country !== undefined) {
@@ -180,7 +171,7 @@ export async function PATCH(request: NextRequest) {
 
     if (body.notificationSettings !== undefined) {
       const raw = body.notificationSettings;
-      if (raw !== null && typeof raw === 'object') {
+      if (raw !== null) {
         const keys = Object.keys(DEFAULT_NOTIFICATION_SETTINGS) as (keyof typeof DEFAULT_NOTIFICATION_SETTINGS)[];
         const validated: Record<string, boolean> = {};
         for (const key of keys) {
@@ -253,12 +244,7 @@ export async function PATCH(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error updating user settings:', error);
-    const message =
-      error instanceof Error && process.env.NODE_ENV === 'development'
-        ? error.message
-        : 'Failed to update user settings';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return errorResponse(error, 'Error updating user settings:', 'Failed to update user settings');
   }
 }
 

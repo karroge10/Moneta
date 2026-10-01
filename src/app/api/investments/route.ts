@@ -1,11 +1,16 @@
 import { NextResponse, NextRequest } from 'next/server';
+import { getDerivedAssetIcon } from '@/lib/asset-utils';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
-import { moneyToNumber } from '@/lib/money';
-import { getInvestmentsPortfolio } from '@/lib/investments';
+import { moneyToNumber, parseQuantity } from '@/lib/money';
+import { getAssetHolding, getInvestmentsPortfolio } from '@/lib/investments';
 import { ensureAsset } from '@/lib/assets';
-import { AssetType, PricingMode, InvestmentType } from '@prisma/client';
-import { convertTransactionsWithRatesMap, preloadRatesMap } from '@/lib/currency-conversion';
+import { Prisma } from '@prisma/client';
+import { convertTransactionsWithRatesMap, countMissingRates, preloadRates } from '@/lib/currency-conversion';
+import { addUtcDays, toDateKey } from '@/lib/dates';
+import { parseDisplayDate } from '@/lib/transaction-utils';
+import { investmentCreateSchema, parseJsonBody } from '@/lib/validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,8 +27,7 @@ export async function GET() {
     }
 
     
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgo = addUtcDays(new Date(), -30);
 
     
     const [summary, recentTransactions, latestNotification, snapshots] = await Promise.all([
@@ -46,31 +50,20 @@ export async function GET() {
     ]);
 
     
-    const ratesMap = await preloadRatesMap(
-      recentTransactions.map(t => ({ currencyId: t.currencyId, date: t.date })),
-      userCurrency.id
-    );
-    
-    
-    const activitiesWithPrice = recentTransactions.map(t => ({
-      ...t,
-      amount: Number(t.pricePerUnit) * Number(t.quantity),
-      date: t.date
-    }));
-    
+    const rateRequests = recentTransactions.map((t) => ({ currencyId: t.currencyId, date: t.date }));
+    const ratesMap = await preloadRates(rateRequests, userCurrency.id);
+
+    const activitiesWithPrice = recentTransactions.map((t) => {
+      const price = t.pricePerUnit ?? new Prisma.Decimal(0);
+      const quantity = t.quantity ?? new Prisma.Decimal(0);
+      return { ...t, amount: price.mul(quantity) };
+    });
+
     const convertedActivities = convertTransactionsWithRatesMap(activitiesWithPrice, userCurrency.id, ratesMap);
 
     const recentActivities = convertedActivities.map((t) => {
-      const assetIcon = t.asset?.icon || (
-        t.asset?.assetType === 'crypto' ? (
-          t.asset?.pricingMode === 'live' && t.asset?.ticker
-            ? `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${t.asset.ticker.toLowerCase()}.png`
-            : 'BitcoinCircle'
-        ) :
-        t.asset?.assetType === 'stock' && t.asset.ticker
-          ? `https://logo.clearbit.com/${t.asset.ticker.split('.')[0]}.us` :
-        t.asset?.assetType === 'property' ? 'Neighbourhood' : 'Reports'
-      );
+      const derivedIcon = getDerivedAssetIcon(t.asset?.assetType, t.asset?.ticker, t.asset?.pricingMode);
+      const assetIcon = t.asset?.icon || derivedIcon;
 
       return {
         id: t.id.toString(),
@@ -82,6 +75,7 @@ export async function GET() {
         quantity: Number(t.quantity),
         pricePerUnit: Number(t.pricePerUnit),
         amount: t.convertedAmount,
+        rateMissing: t.rateMissing,
         date: t.date.toISOString(),
         icon: assetIcon,
         assetType: t.asset?.assetType,
@@ -104,6 +98,8 @@ export async function GET() {
       changePercent: a.unrealizedPnlPercent, 
       unrealizedPnl: a.unrealizedPnl,
       realizedPnl: a.realizedPnl,
+      priceMissing: a.priceMissing,
+      rateMissing: a.rateMissing,
       icon: a.icon || (a.type === 'crypto' ? 'BitcoinCircle' : 'Reports'),
       priceHistory: [], 
     }));
@@ -124,7 +120,7 @@ export async function GET() {
     };
 
     const graphData = snapshots.map(s => ({
-        date: s.timestamp.toISOString().split('T')[0], 
+        date: toDateKey(s.timestamp),
         value: moneyToNumber(s.totalValue),
         cost: moneyToNumber(s.totalCost),
         pnl: moneyToNumber(s.totalPnl)
@@ -164,19 +160,22 @@ export async function GET() {
         data: graphData, 
       },
       recentActivities,
+      missingValuations: summary.missingValuations,
+      missingRates: countMissingRates(convertedActivities),
     };
 
     return NextResponse.json(responsePayload);
   } catch (error) {
-    console.error('Error fetching investments data:', error);
-    return NextResponse.json({ error: 'Failed to fetch investments data' }, { status: 500 });
+    return errorResponse(error, 'Error fetching investments data', 'Failed to fetch investments data');
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const user = await requireCurrentUserWithLanguage();
-    const body = await request.json();
+    const parsed = await parseJsonBody(request, investmentCreateSchema);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
 
     const {
       assetId,
@@ -194,11 +193,9 @@ export async function POST(request: NextRequest) {
       icon,
     } = body;
 
-    if (!investmentType || !quantity || !pricePerUnit) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    let targetAssetId = assetId ? Number(assetId) : null;
+    const quantityValue = parseQuantity(quantity)!;
+    const priceValue = parseQuantity(pricePerUnit)!;
+    let targetAssetId = assetId ?? null;
 
     
     if (!targetAssetId) {
@@ -219,11 +216,11 @@ export async function POST(request: NextRequest) {
       const asset = await ensureAsset(
         ticker || null,
         name,
-        assetType as AssetType,
-        (pricingMode as PricingMode) || 'manual',
-        coingeckoId,
+        assetType,
+        pricingMode || 'manual',
+        coingeckoId ?? undefined,
         assetUserId,
-        icon
+        icon ?? undefined
       );
       targetAssetId = asset.id;
     }
@@ -237,13 +234,11 @@ export async function POST(request: NextRequest) {
 
     
     if (investmentType === 'sell') {
-      const { getAssetHolding } = await import('@/lib/investments');
       const currentHolding = await getAssetHolding(user.id, targetAssetId);
-      const epsilon = 0.00000001; 
-      
-      if (currentHolding + epsilon < Number(quantity)) {
-        return NextResponse.json({ 
-          error: `Insufficient holdings. You only own ${currentHolding.toLocaleString(undefined, { maximumFractionDigits: 8 })} of this asset.` 
+      if (currentHolding.lt(quantityValue)) {
+        const holdingText = currentHolding.toNumber().toLocaleString(undefined, { maximumFractionDigits: 8 });
+        return NextResponse.json({
+          error: `Insufficient holdings. You only own ${holdingText} of this asset.`
         }, { status: 400 });
       }
     }
@@ -255,19 +250,18 @@ export async function POST(request: NextRequest) {
         type: legacyType,
         amount: 0, 
         description: `${investmentType === 'buy' ? 'Bought' : 'Sold'} ${quantity} ${ticker || 'Asset'}`,
-        date: date ? new Date(date) : new Date(),
-        currencyId: currencyId ? Number(currencyId) : user.currencyId!,
+        date: date ? parseDisplayDate(date)! : new Date(),
+        currencyId: currencyId ?? user.currencyId!,
 
         investmentAssetId: targetAssetId,
-        investmentType: investmentType as InvestmentType,
-        quantity: Number(quantity),
-        pricePerUnit: Number(pricePerUnit),
+        investmentType,
+        quantity: quantityValue,
+        pricePerUnit: priceValue,
       },
     });
 
     return NextResponse.json({ transaction });
   } catch (error) {
-    console.error('Error creating investment transaction:', error);
-    return NextResponse.json({ error: 'Failed to create investment transaction' }, { status: 500 });
+    return errorResponse(error, 'Error creating investment transaction', 'Failed to create investment transaction');
   }
 }

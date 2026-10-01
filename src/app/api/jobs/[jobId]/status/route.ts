@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 import { UploadedTransaction } from '@/types/dashboard';
 import type { PrismaClient } from '@prisma/client';
@@ -48,11 +49,7 @@ export async function GET(
       error: job.error,
     });
   } catch (error) {
-    console.error('[jobs/status] error', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch job status.' },
-      { status: 500 },
-    );
+    return errorResponse(error, '[jobs/status] error', 'Failed to fetch job status.');
   }
 }
 

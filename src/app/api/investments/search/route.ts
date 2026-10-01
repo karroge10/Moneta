@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
+import { fetchStockQuote } from '@/lib/stock-prices';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,27 +35,18 @@ async function searchCoingecko(query: string): Promise<SearchResult[]> {
   }));
 }
 
-async function tryStooqQuote(ticker: string): Promise<SearchResult[]> {
-  if (!ticker) return [];
-  const normalized = ticker.toLowerCase().replace(/\.us$/i, '');
-  const res = await fetch(`https://stooq.com/q/l/?s=${normalized}.us&f=sd2t2ohlcv&h&e=json`, {
-    cache: 'no-store',
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  const symbolData = data?.symbols?.[0];
-  if (!symbolData || symbolData.close === 'N/D') return [];
-  const close = Number(symbolData.close);
-  if (!Number.isFinite(close)) return [];
+async function searchStockQuote(ticker: string): Promise<SearchResult[]> {
+  const quote = await fetchStockQuote(ticker);
+  if (!quote) return [];
   return [
     {
-      id: `stooq:${normalized.toUpperCase()}`,
-      name: symbolData.name || normalized.toUpperCase(),
-      symbol: normalized.toUpperCase(),
+      id: `stock:${quote.ticker}`,
+      name: quote.name,
+      symbol: quote.ticker,
       type: 'stock',
-      icon: `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${normalized.toLowerCase()}.png`,
-      price: close,
-      ticker: normalized.toUpperCase(),
+      icon: 'Cash',
+      price: quote.price,
+      ticker: quote.ticker,
     },
   ];
 }
@@ -129,7 +121,7 @@ export async function GET(request: NextRequest) {
 
     
     if (!type || type === 'stock') {
-      promises.push(query.length <= 6 ? tryStooqQuote(query) : Promise.resolve([]));
+      promises.push(query.length <= 6 ? searchStockQuote(query) : Promise.resolve([]));
     } else {
       promises.push(Promise.resolve([]));
     }

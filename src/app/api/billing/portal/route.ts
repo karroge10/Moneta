@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { getStripe, isBillingConfigured } from '@/lib/billing/stripe';
 
 export const runtime = 'nodejs';
@@ -33,7 +34,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error('[billing/portal] failed', error);
-    return NextResponse.json({ error: 'Could not open billing portal' }, { status: 500 });
+    return errorResponse(error, '[billing/portal] failed', 'Could not open billing portal');
   }
 }

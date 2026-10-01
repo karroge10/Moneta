@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUser } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-errors';
 import { db } from '@/lib/db';
 import { Category } from '@/types/dashboard';
 
@@ -64,11 +65,7 @@ export async function GET(_request: NextRequest) {
     
     return NextResponse.json({ categories: sortedCategories });
   } catch (error) {
-    console.error('Error fetching categories:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch categories' },
-      { status: 500 }
-    );
+    return errorResponse(error, 'Error fetching categories', 'Failed to fetch categories');
   }
 }
 
