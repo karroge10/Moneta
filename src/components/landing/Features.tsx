@@ -1,69 +1,70 @@
-"use client";
-
 import Image from "next/image";
 import { Spark, StatUp, LotOfCash, CalendarCheck, BitcoinCircle } from "iconoir-react";
 
+const SCREENSHOT_WIDTH = 1625;
+const SCREENSHOT_HEIGHT = 1077;
+const THREE_COLUMN_SIZES = "(min-width: 1152px) 368px, (min-width: 768px) 33vw, 100vw";
+const TWO_COLUMN_SIZES = "(min-width: 1152px) 564px, (min-width: 768px) 50vw, 100vw";
+
 export default function Features() {
   return (
-    <section id="features" className="pt-16 pb-16 md:pt-24 md:pb-24 px-6 md:px-8 bg-gradient-to-b from-transparent to-[#1f1f1f]">
-      <div className="max-w-6xl mx-auto">
-        {}
-        <div className="text-center mb-16 space-y-6">
-          <h2 className="text-[40px] md:text-[56px] lg:text-[64px] text-[#E7E4E4] font-bold leading-tight">
-            Faster. Smarter.
-            <br />
-            Start in seconds
+    <section
+      id="features"
+      className="scroll-mt-24 bg-gradient-to-b from-transparent to-surface-inset px-6 py-16 md:px-8 md:py-24"
+    >
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-16 space-y-6 text-center">
+          <h2 className="text-[40px] font-bold leading-tight text-fg text-balance md:text-[56px] lg:text-[64px]">
+            Everything in one place
           </h2>
-          <p className="text-body text-[#E7E4E4] opacity-70 max-w-2xl mx-auto text-lg">
-            Get started in seconds with tools that handle the heavy lifting for you.
+          <p className="mx-auto max-w-2xl text-lg text-secondary text-pretty">
+            Import a bank statement or add transactions by hand, and Moneta turns them into a clear picture of your money.
           </p>
         </div>
 
-        {}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
           <FeatureCard
-            icon={<Spark width={24} height={24} strokeWidth={1.5} className="text-[#AC66DA]" />}
-            title="Smart Automation"
-            description="Your transactions categorized automatically so you don’t have to lift a finger."
+            icon={<Spark width={24} height={24} strokeWidth={1.5} className="text-accent" />}
+            title="Statement import"
+            description="Upload a bank statement PDF. Merchants you have categorized before are recognized next time."
             imageSrc="/expenses.png"
-            imageAlt="Automation"
-            color="purple"
+            imageAlt="Expenses page with spending by category"
+            sizes={THREE_COLUMN_SIZES}
           />
           <FeatureCard
-            icon={<StatUp width={24} height={24} strokeWidth={1.5} className="text-[#74C648]" />}
-            title="Real-Time Insights"
-            description="Stop wondering where your money goes. See every trend as it happens."
+            icon={<StatUp width={24} height={24} strokeWidth={1.5} className="text-positive" />}
+            title="Clear insights"
+            description="See where your money goes, how spending trends month to month, and how you compare with peers."
             imageSrc="/statistics.png"
-            imageAlt="Insights"
-            color="green"
+            imageAlt="Statistics page with spending trends"
+            sizes={THREE_COLUMN_SIZES}
           />
           <FeatureCard
-            icon={<LotOfCash width={24} height={24} strokeWidth={1.5} className="text-[#AC66DA]" />}
-            title="All Your Transactions"
-            description="Instantly track every transaction across all your accounts. Find what you need."
+            icon={<LotOfCash width={24} height={24} strokeWidth={1.5} className="text-accent" />}
+            title="All your transactions"
+            description="Search, filter and edit every transaction you have imported or added, in any currency."
             imageSrc="/transactions.png"
-            imageAlt="Transactions"
-            color="purple"
+            imageAlt="Transactions list with filters"
+            sizes={THREE_COLUMN_SIZES}
           />
         </div>
 
-        {}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <FeatureCard
-            icon={<CalendarCheck width={24} height={24} strokeWidth={1.5} className="text-[#74C648]" />}
-            title="Goal Tracking"
-            description="Pick a goal, set a target, and watch your progress update in real-time."
+            icon={<CalendarCheck width={24} height={24} strokeWidth={1.5} className="text-positive" />}
+            title="Goal tracking"
+            description="Pick a goal, set a target, and see your progress toward it."
             imageSrc="/goals.png"
-            imageAlt="Goals"
-            color="green"
+            imageAlt="Goals page with progress bars"
+            sizes={TWO_COLUMN_SIZES}
           />
           <FeatureCard
-            icon={<BitcoinCircle width={24} height={24} strokeWidth={1.5} className="text-[#AC66DA]" />}
-            title="Investment Portfolio"
-            description="Keep an eye on everything from Bitcoin to stocks in one unified dashboard."
+            icon={<BitcoinCircle width={24} height={24} strokeWidth={1.5} className="text-accent" />}
+            title="Investment portfolio"
+            description="Keep crypto, stocks and private assets together in one portfolio view."
             imageSrc="/investments.png"
-            imageAlt="Portfolio"
-            color="purple"
+            imageAlt="Investments page with portfolio allocation"
+            sizes={TWO_COLUMN_SIZES}
           />
         </div>
       </div>
@@ -71,33 +72,39 @@ export default function Features() {
   );
 }
 
-function FeatureCard({ icon, title, description, imageSrc, imageAlt, color: _color }: { 
-  icon: React.ReactNode; 
-  title: string; 
-  description: string; 
-  imageSrc: string; 
+function FeatureCard({
+  icon,
+  title,
+  description,
+  imageSrc,
+  imageAlt,
+  sizes,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  imageSrc: string;
   imageAlt: string;
-  color: 'purple' | 'green';
+  sizes: string;
 }) {
   return (
-    <div className="card-surface h-full flex flex-col gap-4 group hover:-translate-y-1 transition-all duration-300">
+    <div className="card-surface group flex h-full flex-col gap-4 transition-transform duration-300 hover:-translate-y-1">
       <div className="flex items-center gap-3">
-        <div className="p-3 rounded-full bg-[#282828] border border-[#3a3a3a]">
+        <div className="rounded-full border border-line bg-surface-1 p-3" aria-hidden="true">
           {icon}
         </div>
-        <h3 className="text-card-header text-[#E7E4E4]">{title}</h3>
+        <h3 className="text-card-header text-fg">{title}</h3>
       </div>
-      <p className="text-body text-[#E7E4E4] opacity-70">
-        {description}
-      </p>
-      <div className="mt-auto pt-6 relative -mx-6 -mb-6">
-        <div className="bg-[#1a1a1a] rounded-t-2xl border-t border-[#3a3a3a] overflow-hidden">
+      <p className="text-copy text-secondary text-pretty">{description}</p>
+      <div className="relative -mx-6 -mb-6 mt-auto pt-6">
+        <div className="overflow-hidden rounded-t-panel border-t border-line bg-surface-0">
           <Image
             src={imageSrc}
             alt={imageAlt}
-            width={800}
-            height={450}
-            className="w-full h-auto block opacity-80 group-hover:opacity-100 transition-transform duration-700 group-hover:scale-[1.02]"
+            width={SCREENSHOT_WIDTH}
+            height={SCREENSHOT_HEIGHT}
+            sizes={sizes}
+            className="block h-auto w-full opacity-80 transition-[opacity,scale] duration-700 group-hover:scale-[1.02] group-hover:opacity-100"
           />
         </div>
       </div>

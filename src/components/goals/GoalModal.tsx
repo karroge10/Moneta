@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Xmark } from 'iconoir-react';
+import Dialog from '@/components/ui/Dialog';
 import { Goal } from '@/types/dashboard';
 import GoalForm from './GoalForm';
 import type { CurrencyOption } from '@/lib/currency-country-map';
@@ -16,6 +15,7 @@ interface GoalModalProps {
   isSaving?: boolean;
 }
 
+/** Add or edit a goal. Cannot be dismissed while saving. */
 export default function GoalModal({
   goal,
   mode = 'edit',
@@ -25,91 +25,26 @@ export default function GoalModal({
   onDelete,
   isSaving = false,
 }: GoalModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const pointerDownOnOverlay = useRef(false);
-  const [isFloatingPanelOpen, setIsFloatingPanelOpen] = useState(false);
-
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !isSaving) {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
-      document.documentElement.style.overflow = 'unset';
-    };
-  }, [onClose]);
-
-  if (!goal) return null;
-
   return (
-    <>
-      <div
-        ref={overlayRef}
-        className="fixed inset-0 bg-black/60 z-50 animate-in fade-in duration-200"
-        onMouseDown={() => {
-          pointerDownOnOverlay.current = true;
-        }}
-        onMouseUp={() => {
-          if (pointerDownOnOverlay.current && overlayRef.current && !isSaving) {
-            onClose();
-          }
-          pointerDownOnOverlay.current = false;
-        }}
-      />
-      <div
-        ref={modalRef}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in zoom-in-95 duration-200 pointer-events-none"
-      >
-        <div
-          className="w-full max-w-2xl max-h-[94vh] rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300 overflow-hidden flex flex-col pointer-events-auto"
-          style={{ backgroundColor: 'var(--bg-surface)' }}
-          onMouseDown={() => {
-            pointerDownOnOverlay.current = false;
-          }}
-        >
-          <div
-            className="flex items-center justify-between p-6 border-b border-[#3a3a3a]"
-            style={{ backgroundColor: 'var(--bg-surface)' }}
-          >
-            <h2 className="text-card-header">
-              {mode === 'add' ? 'Add Goal' : 'Edit Goal'}
-            </h2>
-            <button
-              onClick={onClose}
-              disabled={isSaving}
-              className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Close"
-            >
-              <Xmark width={24} height={24} strokeWidth={1.5} />
-            </button>
-          </div>
-          <div className={`flex-1 ${isFloatingPanelOpen ? 'overflow-visible' : 'overflow-y-auto'}`}>
-            <div className="p-6 pb-8">
-              <GoalForm
-                key={goal.id}
-                goal={goal}
-                mode={mode}
-                currencyOptions={currencyOptions}
-                onSave={onSave}
-                onCancel={onClose}
-                onDelete={onDelete}
-                onFloatingPanelToggle={setIsFloatingPanelOpen}
-                isSaving={isSaving}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+    <Dialog
+      open={Boolean(goal)}
+      onClose={onClose}
+      title={mode === 'add' ? 'Add Goal' : 'Edit Goal'}
+      size="lg"
+      dismissible={!isSaving}
+    >
+      {goal && (
+        <GoalForm
+          key={goal.id}
+          goal={goal}
+          mode={mode}
+          currencyOptions={currencyOptions}
+          onSave={onSave}
+          onCancel={onClose}
+          onDelete={onDelete}
+          isSaving={isSaving}
+        />
+      )}
+    </Dialog>
   );
 }
-

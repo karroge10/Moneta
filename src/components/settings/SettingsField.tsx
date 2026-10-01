@@ -1,54 +1,144 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { NavArrowDown, Edit } from 'iconoir-react';
-import { ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import ReviewDatePicker from '@/components/transactions/shared/ReviewDatePicker';
 import TypeaheadSelect, { type TypeaheadOption } from '@/components/ui/TypeaheadSelect';
-
+import { cx } from '@/components/ui/cx';
 
 export interface SelectOptionItem {
   value: string;
   label: string;
   symbol?: string;
-  
   alias?: string;
   icon?: ReactNode;
-  
   countryCode?: string;
-  
   searchTerms?: string[];
-  
   suffix?: string;
 }
-
-const DROPDOWN_OPTION_STYLE = {
-  row: 'w-full text-left px-4 py-2 flex items-center gap-3 text-body cursor-pointer transition-colors hover:bg-[#2a2a2a]',
-  iconSize: 18,
-  currencySymbolColor: '#C9A227',
-  textColor: 'var(--text-primary)',
-  selectedColor: 'var(--accent-purple)',
-} as const;
 
 interface SettingsFieldProps {
   label: string;
   value: string;
   icon: ReactNode;
-  type: 'input' | 'select' | 'date' | 'typeahead';
-  options?: string[];
-  
+  /** input: free text saved on blur or Enter; date: date picker; typeahead: searchable list. */
+  type: 'input' | 'date' | 'typeahead';
   optionItems?: SelectOptionItem[];
   placeholder?: string;
-  
-  searchable?: boolean;
-  
   searchPlaceholder?: string;
-  
   dropdownInPortal?: boolean;
-  
   disabled?: boolean;
-  onEdit?: () => void;
   onChange?: (value: string) => void;
+}
+
+/** One labelled settings control. Changes are reported through onChange; the parent saves them. */
+export default function SettingsField({
+  label,
+  value,
+  icon,
+  type,
+  optionItems = [],
+  placeholder,
+  searchPlaceholder = 'Search...',
+  dropdownInPortal = false,
+  disabled = false,
+  onChange,
+}: SettingsFieldProps) {
+  const id = useId();
+
+  if (type === 'date') {
+    return (
+      <div className="flex flex-col gap-2">
+        <span className="text-ui font-medium text-secondary">{label}</span>
+        <div className={FIELD_SHELL_CLASS}>
+          <span className="shrink-0 text-secondary" aria-hidden="true">
+            {icon}
+          </span>
+          <div className="min-w-0 flex-1">
+            <ReviewDatePicker
+              value={value || ''}
+              onChange={(v) => onChange?.(v)}
+              placeholder={placeholder ?? 'Select date'}
+              disabled={disabled}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'typeahead') {
+    return (
+      <div className="flex flex-col gap-2">
+        <span className="text-ui font-medium text-secondary">{label}</span>
+        <TypeaheadSelect
+          options={toTypeaheadOptions(optionItems)}
+          value={value}
+          onChange={(v) => onChange?.(v)}
+          placeholder={placeholder ?? 'Select...'}
+          searchPlaceholder={searchPlaceholder}
+          aria-label={label}
+          placeholderIcon={icon}
+          dropdownInPortal={dropdownInPortal}
+          disabled={disabled}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor={id} className="text-ui font-medium text-secondary">
+        {label}
+      </label>
+      <TextInput id={id} value={value} icon={icon} placeholder={placeholder} disabled={disabled} onChange={onChange} />
+    </div>
+  );
+}
+
+/** Text field that keeps a local draft while typing and reports it on blur or Enter. */
+function TextInput({
+  id,
+  value,
+  icon,
+  placeholder,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  icon: ReactNode;
+  placeholder?: string;
+  disabled: boolean;
+  onChange?: (value: string) => void;
+}) {
+  // null while not editing, so the field always shows the saved value otherwise.
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const commit = () => {
+    if (draft !== null && draft !== value) onChange?.(draft);
+    setDraft(null);
+  };
+
+  return (
+    <div className={cx(FIELD_SHELL_CLASS, 'focus-within:border-accent', disabled && 'cursor-not-allowed opacity-60')}>
+      <span className="shrink-0 text-secondary" aria-hidden="true">
+        {icon}
+      </span>
+      <input
+        id={id}
+        type="text"
+        value={draft ?? value}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+        }}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="min-w-0 flex-1 border-none bg-transparent text-base text-fg outline-none placeholder:text-muted disabled:cursor-not-allowed sm:text-ui"
+      />
+    </div>
+  );
 }
 
 function toTypeaheadOptions(items: SelectOptionItem[]): TypeaheadOption[] {
@@ -63,251 +153,4 @@ function toTypeaheadOptions(items: SelectOptionItem[]): TypeaheadOption[] {
   }));
 }
 
-export default function SettingsField({
-  label,
-  value,
-  icon,
-  type,
-  options = [],
-  optionItems,
-  placeholder,
-  searchable = false,
-  searchPlaceholder = 'Search...',
-  dropdownInPortal = false,
-  disabled = false,
-  onEdit,
-  onChange,
-}: SettingsFieldProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedValue, setSelectedValue] = useState(value);
-  const [inputValue, setInputValue] = useState(value);
-  const [searchQuery, setSearchQuery] = useState('');
-  const ref = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setSelectedValue(value);
-    setInputValue(value);
-  }, [value]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen && searchable) {
-      setSearchQuery('');
-      const id = window.setTimeout(() => searchInputRef.current?.focus(), 0);
-      return () => clearTimeout(id);
-    }
-    return undefined;
-  }, [isOpen, searchable]);
-
-  const handleSelect = (optionValue: string) => {
-    setSelectedValue(optionValue);
-    onChange?.(optionValue);
-    setIsOpen(false);
-  };
-
-  const isEditableInput = type === 'input' && onChange;
-
-  const effectiveOptions: SelectOptionItem[] =
-    optionItems ?? options.map((o) => ({ value: o, label: o }));
-  const filteredOptions = searchable && searchQuery.trim()
-    ? effectiveOptions.filter(
-        (item) =>
-          item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.value.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : effectiveOptions;
-
-  if (type === 'date') {
-    return (
-      <div className="flex flex-col gap-2">
-        <label className="text-body" style={{ color: '#E7E4E4' }}>
-          {label}
-        </label>
-        <div className="flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a]" style={{ backgroundColor: 'var(--bg-primary)' }}>
-          <div className="shrink-0">{icon}</div>
-          <div className="flex-1 min-w-0">
-            <ReviewDatePicker
-              value={value || ''}
-              onChange={(v) => onChange?.(v)}
-              placeholder={placeholder ?? 'Select date'}
-              disabled={disabled}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (type === 'typeahead') {
-    const typeaheadItems = optionItems ?? options.map((o) => ({ value: o, label: o }));
-    return (
-      <div className="flex flex-col gap-2">
-        <label className="text-body" style={{ color: '#E7E4E4' }}>
-          {label}
-        </label>
-        <div className="flex-1 min-w-0">
-          <TypeaheadSelect
-            options={toTypeaheadOptions(typeaheadItems)}
-            value={value}
-            onChange={(v) => onChange?.(v)}
-            placeholder={placeholder ?? 'Select...'}
-            searchPlaceholder={searchPlaceholder}
-            aria-label={label}
-            placeholderIcon={icon}
-            dropdownInPortal={dropdownInPortal}
-            disabled={disabled}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <label className="text-body" style={{ color: '#E7E4E4' }}>
-        {label}
-      </label>
-      <div className="relative" ref={ref}>
-        {isEditableInput ? (
-          <div
-            className={`flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a] ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-            style={{ backgroundColor: 'var(--bg-primary)', color: '#B9B9B9' }}
-          >
-            <div className="shrink-0">{icon}</div>
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onBlur={() => {
-                if (inputValue !== value) onChange?.(inputValue);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              placeholder={placeholder}
-              disabled={disabled}
-              className="flex-1 text-body bg-transparent border-none outline-none min-w-0 placeholder:[color:var(--text-secondary)] disabled:cursor-not-allowed"
-              style={{ color: '#E7E4E4' }}
-              aria-label={label}
-            />
-          </div>
-        ) : (
-          <div
-            className={`flex items-center gap-3 px-4 py-2 rounded-xl border border-[#3a3a3a] ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
-            style={{ backgroundColor: 'var(--bg-primary)', color: '#B9B9B9' }}
-            onClick={() => {
-              if (disabled) return;
-              if (type === 'select') {
-                setIsOpen(!isOpen);
-              } else if (onEdit) {
-                onEdit();
-              }
-            }}
-          >
-            <div className="shrink-0">{icon}</div>
-            <span className="flex-1 text-body" style={{ color: (type === 'select' ? selectedValue : value) ? '#B9B9B9' : 'var(--text-secondary)' }}>
-              {type === 'select' ? (selectedValue || placeholder || '') : (value || placeholder || '')}
-            </span>
-            {type === 'select' ? (
-              <NavArrowDown
-                width={16}
-                height={16}
-                strokeWidth={2}
-                style={{ color: '#B9B9B9' }}
-              />
-            ) : onEdit ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit();
-                }}
-                className="shrink-0 hover:opacity-70 transition-opacity cursor-pointer"
-              >
-                <Edit
-                  width={16}
-                  height={16}
-                  strokeWidth={1.5}
-                  style={{ color: '#B9B9B9' }}
-                />
-              </button>
-            ) : null}
-          </div>
-        )}
-
-        {type === 'select' && isOpen && (
-          <div
-            className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10 border border-[#3a3a3a]"
-            style={{ backgroundColor: 'var(--bg-primary)' }}
-          >
-            {searchable && (
-              <div className="p-2 border-b border-[#2A2A2A]">
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.stopPropagation()}
-                  placeholder="Search..."
-                  className="w-full px-3 py-2 rounded-xl text-body bg-[#282828] border border-[#3a3a3a] outline-none focus:border-[var(--accent-purple)]"
-                  style={{ color: 'var(--text-primary)' }}
-                />
-              </div>
-            )}
-            <div className="max-h-[240px] overflow-y-auto custom-scrollbar">
-              {filteredOptions.map((item) => {
-                const isSelected = selectedValue === item.value;
-                return (
-                  <button
-                    key={item.value}
-                    type="button"
-                    onClick={() => handleSelect(item.value)}
-                    className={DROPDOWN_OPTION_STYLE.row}
-                    style={{
-                      backgroundColor: 'transparent',
-                      color: isSelected ? DROPDOWN_OPTION_STYLE.selectedColor : DROPDOWN_OPTION_STYLE.textColor,
-                    }}
-                  >
-                    {item.symbol != null ? (
-                      <span
-                        className="shrink-0 font-semibold"
-                        style={{
-                          fontSize: DROPDOWN_OPTION_STYLE.iconSize,
-                          lineHeight: 1,
-                          color: DROPDOWN_OPTION_STYLE.currencySymbolColor,
-                        }}
-                      >
-                        {item.symbol}
-                      </span>
-                    ) : item.icon ? (
-                      <span className="shrink-0 flex items-center justify-center" style={{ width: DROPDOWN_OPTION_STYLE.iconSize, height: DROPDOWN_OPTION_STYLE.iconSize }}>
-                        {item.icon}
-                      </span>
-                    ) : null}
-                    <span className="flex-1 min-w-0 truncate">
-                      {item.symbol != null && item.alias != null ? item.alias : item.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
+const FIELD_SHELL_CLASS = 'flex min-h-10 items-center gap-3 rounded-control border border-line bg-surface-0 px-4 py-2 transition-colors';

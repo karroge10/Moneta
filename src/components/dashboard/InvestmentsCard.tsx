@@ -1,103 +1,73 @@
 'use client';
 
-import Card from '@/components/ui/Card';
-import { Investment } from '@/types/dashboard';
-import { getIcon } from '@/lib/iconMapping';
-import { getTrendColor, formatNumber } from '@/lib/utils';
-import { useCurrency } from '@/hooks/useCurrency';
 import { StatUp, StatDown } from 'iconoir-react';
-import { NavArrowRight } from 'iconoir-react';
+import Card from '@/components/ui/Card';
+import EmptyState from '@/components/ui/EmptyState';
+import CardFooterLink from '@/components/dashboard/CardFooterLink';
+import type { Investment } from '@/types/dashboard';
+import { formatMoney, formatPercent } from '@/lib/format';
 import { getAssetColor } from '@/lib/asset-utils';
-
-import Link from 'next/link';
+import { useCurrency } from '@/hooks/useCurrency';
+import NamedIcon from '@/components/dashboard/NamedIcon';
 
 interface InvestmentsCardProps {
   investments: Investment[];
 }
 
+/** First few holdings with current value and unrealized change. */
 export default function InvestmentsCard({ investments }: InvestmentsCardProps) {
   const { currency } = useCurrency();
-  
+
   if (investments.length === 0) {
     return (
-      <Card 
-        title="Investments" 
-        href="/investments"
-        customHeader={
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="text-card-header">Investments</h2>
-            </div>
-          </div>
-        }
-        showActions={false}
-      >
-        <div className="flex flex-col flex-1 mt-2 justify-center items-center py-8">
-          <div className="text-body text-center mb-2 opacity-70">Add your first investment</div>
-          <div className="text-helper text-center">Track stocks, crypto, and other assets</div>
-        </div>
+      <Card title="Investments" href="/investments" showActions={false}>
+        <EmptyState title="Add your first investment" description="Track stocks, crypto, and other assets" className="flex-1" />
       </Card>
     );
   }
 
   return (
-    <Card 
-      title="Investments" 
-      href="/investments"
-      customHeader={
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h2 className="text-card-header">Investments</h2>
-          </div>
-        </div>
-      }
-      showActions={false}
-    >
-      <div className="flex flex-col flex-1 mt-2">
-        <div className="space-y-4 flex-1">
-          {investments.slice(0, 4).map((investment) => {
-            const Icon = getIcon(investment.icon);
-            const changePercent = investment.changePercent ?? 0;
-            const isPositive = changePercent >= 0;
-            const TrendIcon = isPositive ? StatUp : StatDown;
-            const trendColor = getTrendColor(changePercent);
-            
-            return (
-              <div key={investment.id} className="relative flex items-start gap-3 min-w-0">
-                <div className="shrink-0">
-                  <div
-                    className="w-12 h-12 icon-circle"
-                    style={{ backgroundColor: `${getAssetColor(investment.assetType)}1a` }}
-                  >
-                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: getAssetColor(investment.assetType) }} />
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0 overflow-hidden">
-                  <div className="text-body font-medium text-wrap-safe leading-tight">{investment.name}</div>
-                  <div className="text-helper text-wrap-safe">{investment.subtitle}</div>
-                </div>
-                <div className="text-right shrink-0 ml-auto">
-                  <div className="text-body font-semibold whitespace-nowrap">
-                    <span className="opacity-50">{currency.symbol}</span> {formatNumber(investment.currentValue)}
-                  </div>
-                  <div className="flex items-center gap-1 text-sm whitespace-nowrap" style={{ color: trendColor }}>
-                    <TrendIcon width={14} height={14} strokeWidth={2} />
-                    <span>{changePercent >= 0 ? '+' : ''}{changePercent.toFixed(2)}%</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <Link 
-          href="/investments" 
-          className="text-helper flex items-start gap-1 mt-4 cursor-pointer group hover-text-purple transition-colors"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <span className="leading-tight">View All</span> <NavArrowRight width={14} height={14} className="stroke-current transition-colors mt-[2px]" />
-        </Link>
+    <Card title="Investments" href="/investments" showActions={false}>
+      <div className="mt-2 flex flex-1 flex-col">
+        <ul className="flex-1 space-y-4">
+          {investments.slice(0, 4).map((investment) => (
+            <InvestmentRow key={investment.id} investment={investment} currencySymbol={currency.symbol} />
+          ))}
+        </ul>
+        <CardFooterLink href="/investments" className="mt-4">View All</CardFooterLink>
       </div>
     </Card>
   );
 }
 
+function InvestmentRow({ investment, currencySymbol }: { investment: Investment; currencySymbol: string }) {
+  const assetColor = getAssetColor(investment.assetType);
+  const changePercent = investment.changePercent ?? 0;
+  const isGain = changePercent >= 0;
+  const TrendIcon = isGain ? StatUp : StatDown;
+
+  return (
+    <li className="flex min-w-0 items-start gap-3">
+      <span
+        className="icon-circle size-12 shrink-0"
+        style={{ backgroundColor: `color-mix(in oklch, ${assetColor} 10%, transparent)` }}
+        aria-hidden="true"
+      >
+        <NamedIcon name={investment.icon} width={24} height={24} strokeWidth={1.5} style={{ color: assetColor }} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="text-wrap-safe block text-body font-medium leading-tight">{investment.name}</span>
+        <span className="text-helper text-wrap-safe block">{investment.subtitle}</span>
+      </span>
+      <span className="ml-auto shrink-0 text-right">
+        <span className="block whitespace-nowrap text-body font-semibold tabular-nums">
+          {formatMoney(investment.currentValue, currencySymbol)}
+        </span>
+        <span className={`flex items-center justify-end gap-1 whitespace-nowrap text-ui tabular-nums ${isGain ? 'text-positive' : 'text-negative-fg'}`}>
+          <TrendIcon width={14} height={14} strokeWidth={2} aria-hidden="true" />
+          {formatPercent(changePercent, { signed: true })}
+        </span>
+      </span>
+    </li>
+  );
+}

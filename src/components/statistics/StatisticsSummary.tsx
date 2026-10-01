@@ -1,261 +1,185 @@
 'use client';
 
-import { StatisticsSummaryItem } from '@/types/dashboard';
+import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { NavArrowRight } from 'iconoir-react';
 import Card from '@/components/ui/Card';
-import { getIcon } from '@/lib/iconMapping';
-import { formatNumber } from '@/lib/utils';
+import Button from '@/components/ui/Button';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
+import Skeleton from '@/components/ui/Skeleton';
+import ChangeText from '@/components/statistics/ChangeText';
+import MissingRatesNote from '@/components/dashboard/MissingRatesNote';
+import type { StatisticsSummaryItem } from '@/types/dashboard';
+import { formatMoney } from '@/lib/format';
 import { useCurrency } from '@/hooks/useCurrency';
-import Link from 'next/link';
-
-const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
-const SKELETON_ITEMS = 5;
+import NamedIcon from '@/components/dashboard/NamedIcon';
 
 interface StatisticsSummaryProps {
   items: StatisticsSummaryItem[];
+  /** Transactions left out of the totals because no exchange rate was found. */
+  missingRates?: number;
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
-  
+  /** Opens the score explanation in a dialog; without it the link goes to /financial-health. */
   onFinancialHealthLearnClick?: () => void;
 }
 
+/** All-time totals, goals, portfolio and the financial health score, with the score highlighted. */
 export default function StatisticsSummary({
   items,
+  missingRates = 0,
   loading = false,
   error = null,
   onRetry,
   onFinancialHealthLearnClick,
 }: StatisticsSummaryProps) {
-  const { currency } = useCurrency();
-  const regularItems = items.filter(item => !item.isLarge);
-  const largeItem = items.find(item => item.isLarge);
-  const portfolioIndex = regularItems.findIndex(item => item.label === 'Portfolio Balance');
-
-  
-  const itemsBeforePortfolio = portfolioIndex >= 0 ? regularItems.slice(0, portfolioIndex) : regularItems;
-  const portfolioItem = portfolioIndex >= 0 ? regularItems[portfolioIndex] : null;
-  const itemsAfterPortfolio = portfolioIndex >= 0 ? regularItems.slice(portfolioIndex + 1) : [];
-
-  const contentMinHeight = 420;
-
-  const showError = !loading && !!error;
-
-  if (showError) {
-    return (
-      <Card title="Summary" className="h-full flex flex-col min-h-0 flex-1" showActions={false}>
-        <div
-          className="flex flex-col flex-1 justify-center items-center gap-4 py-10 px-4 text-center mt-4"
-          style={{ minHeight: contentMinHeight }}
-        >
-          <p className="text-body" style={{ color: 'var(--text-secondary)' }}>
-            {error}
-          </p>
-          {onRetry && (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="px-4 py-2 rounded-full text-body font-semibold cursor-pointer transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
-            >
-              Try again
-            </button>
-          )}
-        </div>
-      </Card>
-    );
-  }
-
-  if (!loading && items.length === 0) {
-    return (
-      <Card title="Summary" className="h-full flex flex-col min-h-0 flex-1" showActions={false}>
-        <div
-          className="flex flex-col flex-1 justify-center items-center gap-4 py-10 px-4 text-center mt-4"
-          style={{ minHeight: contentMinHeight }}
-        >
-          <p className="text-body font-medium" style={{ color: 'var(--text-primary)' }}>
-            No summary yet
-          </p>
-          <p className="text-helper max-w-sm mx-auto" style={{ color: 'var(--text-secondary)' }}>
-            Log income and expenses to unlock income and expense totals, trends, goals, portfolio balance, and your financial health score.
-          </p>
-          <Link
-            href="/transactions"
-            className="inline-flex items-center gap-1 px-4 py-2 rounded-full text-body font-semibold transition-opacity hover:opacity-90"
-            style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
-          >
-            Go to Transactions
-            <NavArrowRight width={16} height={16} strokeWidth={1.5} />
-          </Link>
-        </div>
-      </Card>
-    );
-  }
-
   if (loading) {
     return (
-      <Card
-        title="Summary"
-        className="h-full flex flex-col min-h-0 flex-1"
-        showActions={false}
-      >
-        <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0" style={{ minHeight: contentMinHeight }}>
-          {}
-          <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0 space-y-3 pr-2">
-            {Array.from({ length: SKELETON_ITEMS }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-3xl" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                <div className="w-12 h-12 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
-                <div className="flex-1 min-w-0 space-y-2">
-                  <div className="h-4 w-28 rounded animate-pulse" style={SKELETON_STYLE} />
-                  <div className="h-3 w-20 rounded animate-pulse" style={SKELETON_STYLE} />
-                </div>
-                <div className="h-4 w-14 rounded animate-pulse shrink-0" style={SKELETON_STYLE} />
-              </div>
-            ))}
-            <div className="p-6 mt-4 rounded-3xl min-h-[200px] flex flex-col items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
-              <div className="w-16 h-16 rounded-full animate-pulse mb-4" style={SKELETON_STYLE} />
-              <div className="h-6 w-32 rounded animate-pulse mb-4" style={SKELETON_STYLE} />
-              <div className="h-12 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
-            </div>
-          </div>
-        </div>
-      </Card>
+      <SummaryCard>
+        <SummarySkeleton />
+      </SummaryCard>
     );
   }
 
+  if (error) {
+    return (
+      <SummaryCard>
+        <ErrorState message={error} onRetry={onRetry} className="min-h-[420px] flex-1" />
+      </SummaryCard>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <SummaryCard>
+        <EmptyState
+          title="No summary yet"
+          description="Log income and expenses to unlock income and expense totals, trends, goals, portfolio balance, and your financial health score."
+          action={<Button href="/transactions">Go to Transactions</Button>}
+          className="min-h-[420px] flex-1"
+        />
+      </SummaryCard>
+    );
+  }
+
+  const regularItems = items.filter((item) => !item.isLarge);
+  const largeItem = items.find((item) => item.isLarge);
+  const portfolioIndex = regularItems.findIndex((item) => item.label === 'Portfolio Balance');
+  const splitAt = portfolioIndex >= 0 ? portfolioIndex + 1 : regularItems.length;
+  const itemsBefore = regularItems.slice(0, splitAt);
+  const itemsAfter = regularItems.slice(splitAt);
+
   return (
-    <Card
-      title="Summary"
-      className="h-full flex flex-col"
-      showActions={false}
-    >
-      <div className="flex flex-col gap-4 mt-4 flex-1 min-h-0" style={{ filter: 'none', minHeight: contentMinHeight }}>
-        <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 space-y-3 pr-2">
-          {itemsBeforePortfolio.map((item) => (
-            <SummaryItem key={item.id} item={item} currency={currency} />
-          ))}
-          {portfolioItem && <SummaryItem key={portfolioItem.id} item={portfolioItem} currency={currency} />}
-          {largeItem && (
-            <div
-              key={largeItem.id}
-              className="flex flex-col items-center justify-center p-6 mt-4"
-              style={{
-                backgroundColor: 'var(--bg-primary)',
-                borderRadius: '30px',
-                width: '100%',
-                minHeight: '200px',
-              }}
-            >
-              <div
-                className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-                style={{ 
-                  backgroundColor: `${largeItem.iconColor}1a`,
-                  border: '1px solid rgba(231, 228, 228, 0.1)'
-                }}
-              >
-                {(() => {
-                  const Icon = getIcon(largeItem.icon);
-                  return (
-                    <Icon
-                      width={32}
-                      height={32}
-                      strokeWidth={1.5}
-                      style={{ color: largeItem.iconColor }}
-                    />
-                  );
-                })()}
-              </div>
-              <h3 className="text-card-header mb-4">{largeItem.label}</h3>
-              <div
-                className="mb-4"
-                style={{
-                  color: largeItem.iconColor,
-                  fontSize: 'clamp(48px, 5vw, 64px)',
-                  fontWeight: 700,
-                  lineHeight: 1.1,
-                }}
-              >
-                {largeItem.value}
-              </div>
-              {largeItem.change && (
-                <div className="text-helper mb-2">{largeItem.change}</div>
-              )}
-              {largeItem.link && (
-                onFinancialHealthLearnClick ? (
-                  <button
-                    type="button"
-                    onClick={onFinancialHealthLearnClick}
-                    className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap text-left"
-                  >
-                    <span className="text-wrap-safe break-words">{largeItem.link}</span>
-                    <NavArrowRight width={14} height={14} className="stroke-current transition-colors shrink-0" />
-                  </button>
-                ) : (
-                  <Link
-                    href="/financial-health"
-                    className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap"
-                  >
-                    <span className="text-wrap-safe break-words">{largeItem.link}</span>
-                    <NavArrowRight width={14} height={14} className="stroke-current transition-colors shrink-0" />
-                  </Link>
-                )
-              )}
-            </div>
-          )}
-          {itemsAfterPortfolio.map((item) => (
-            <SummaryItem key={item.id} item={item} currency={currency} />
-          ))}
-        </div>
+    <SummaryCard>
+      <div className="custom-scrollbar mt-4 flex min-h-[420px] flex-1 flex-col gap-3 overflow-y-auto pr-2">
+        <MissingRatesNote count={missingRates} />
+        {itemsBefore.map((item) => (
+          <SummaryRow key={item.id} item={item} />
+        ))}
+        {largeItem && <HealthHighlight item={largeItem} onLearnClick={onFinancialHealthLearnClick} />}
+        {itemsAfter.map((item) => (
+          <SummaryRow key={item.id} item={item} />
+        ))}
       </div>
+    </SummaryCard>
+  );
+}
+
+function SummaryCard({ children }: { children: ReactNode }) {
+  return (
+    <Card title="Summary" className="flex h-full min-h-0 flex-1 flex-col" showActions={false}>
+      {children}
     </Card>
   );
 }
 
-function SummaryItem({ item, currency }: { item: StatisticsSummaryItem; currency: { symbol: string } }) {
-  const Icon = getIcon(item.icon);
-  const displayValue = typeof item.value === 'number'
-    ? formatNumber(item.value)
-    : item.value;
-  const isNegativeChange = item.change.startsWith('-');
-  const changeColor = isNegativeChange ? '#D93F3F' : '#74C648';
-  const changeParts = item.change ? item.change.split(/\s+(.+)/) : [];
-  const changePct = changeParts[0] ?? '';
-  const changeLabel = changeParts[1] ?? '';
+function SummaryRow({ item }: { item: StatisticsSummaryItem }) {
+  const { currency } = useCurrency();
+  const displayValue = typeof item.value === 'number' ? formatMoney(item.value, currency.symbol) : item.value;
 
   return (
-    <div
-      className="flex items-center gap-3 px-4 py-3 relative"
-      style={{
-        backgroundColor: 'var(--bg-primary)',
-        borderRadius: '30px',
-        width: '100%',
-      }}
-    >
-      <div
-        className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
-        style={{ 
-          backgroundColor: `${item.iconColor}1a`,
-          border: '1px solid rgba(231, 228, 228, 0.1)'
-        }}
-      >
-        <Icon width={24} height={24} strokeWidth={1.5} style={{ color: item.iconColor }} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-body font-medium text-wrap-safe break-words">{item.label}</div>
+    <div className="flex w-full items-center gap-3 rounded-card bg-surface-0 px-4 py-3">
+      <IconBubble color={item.iconColor} size="md">
+        <NamedIcon name={item.icon} width={24} height={24} strokeWidth={1.5} style={{ color: item.iconColor }} />
+      </IconBubble>
+      <div className="min-w-0 flex-1">
+        <div className="text-wrap-safe break-words text-body font-medium">{item.label}</div>
         {item.change && (
-          <div className="flex items-center gap-2 mt-1">
-            <span>
-              <span style={{ color: changeColor, fontWeight: 600 }}>{changePct}</span>
-              {changeLabel && <span className="text-helper"> {changeLabel}</span>}
-            </span>
+          <div className="mt-1">
+            <ChangeText change={item.change} invert={item.invertChangeColor} />
           </div>
         )}
       </div>
-      <div className="flex items-baseline gap-1 flex-shrink-0">
-        {typeof item.value === 'number' && <span className="text-body font-semibold">{currency.symbol}</span>}
-        <span className="text-body font-semibold">{displayValue}</span>
-      </div>
+      <span className="shrink-0 text-body font-semibold tabular-nums">{displayValue}</span>
     </div>
   );
 }
 
+function HealthHighlight({ item, onLearnClick }: { item: StatisticsSummaryItem; onLearnClick?: () => void }) {
+  const linkClass = 'text-helper flex flex-wrap items-center gap-1 text-left transition-colors hover-text-purple';
+  const linkContent = (
+    <>
+      <span className="text-wrap-safe break-words">{item.link}</span>
+      <NavArrowRight width={14} height={14} className="shrink-0 stroke-current" aria-hidden="true" />
+    </>
+  );
+
+  return (
+    <div className="mt-4 flex min-h-[200px] w-full flex-col items-center justify-center rounded-card bg-surface-0 p-6">
+      <IconBubble color={item.iconColor} size="lg">
+        <NamedIcon name={item.icon} width={32} height={32} strokeWidth={1.5} style={{ color: item.iconColor }} />
+      </IconBubble>
+      <h3 className="mb-4 mt-4 text-card-header">{item.label}</h3>
+      <div className="mb-4 text-[clamp(48px,5vw,64px)] font-bold leading-[1.1] tabular-nums" style={{ color: item.iconColor }}>
+        {item.value}
+      </div>
+      {item.change && <div className="text-helper mb-2">{item.change}</div>}
+      {item.link &&
+        (onLearnClick ? (
+          <button type="button" onClick={onLearnClick} className={linkClass}>
+            {linkContent}
+          </button>
+        ) : (
+          <Link href="/financial-health" className={linkClass}>
+            {linkContent}
+          </Link>
+        ))}
+    </div>
+  );
+}
+
+function IconBubble({ color, size, children }: { color: string; size: 'md' | 'lg'; children: ReactNode }) {
+  return (
+    <span
+      className={`icon-circle shrink-0 border border-line-subtle ${size === 'lg' ? 'size-16' : 'size-12'}`}
+      style={{ backgroundColor: `color-mix(in oklch, ${color} 10%, transparent)` }}
+      aria-hidden="true"
+    >
+      {children}
+    </span>
+  );
+}
+
+function SummarySkeleton() {
+  return (
+    <div className="mt-4 flex min-h-[420px] flex-1 flex-col gap-3 pr-2" aria-busy="true">
+      {Array.from({ length: 5 }, (_, i) => (
+        <div key={i} className="flex items-center gap-3 rounded-card bg-surface-0 px-4 py-3">
+          <Skeleton className="size-12 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+          <Skeleton className="h-4 w-14 shrink-0" />
+        </div>
+      ))}
+      <div className="mt-4 flex min-h-[200px] flex-col items-center justify-center gap-4 rounded-card bg-surface-0 p-6">
+        <Skeleton className="size-16 rounded-full" />
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-12 w-24" />
+      </div>
+    </div>
+  );
+}

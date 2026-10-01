@@ -1,57 +1,49 @@
+import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import PulsingDot from '@/components/ui/PulsingDot';
-import { NavArrowRight } from 'iconoir-react';
-import Link from 'next/link';
+import CardFooterLink from '@/components/dashboard/CardFooterLink';
 
 interface UpdateCardProps {
   date: string;
   message: string;
+  /** Part of `message` shown in green. */
   highlight: string;
   link: string;
   linkHref?: string;
   isUnread?: boolean;
 }
 
-export default function UpdateCard({ date, message, highlight, link, linkHref, isUnread: _isUnread = false }: UpdateCardProps) {
+export default function UpdateCard({ date, message, highlight, link, linkHref }: UpdateCardProps) {
+  const parts = highlight ? message.split(highlight) : [message];
+
   return (
     <Card
       title="Update"
       customHeader={
-        <Link href="/notifications" className="mb-4 flex items-center justify-between hover-text-purple transition-colors cursor-pointer">
-          <div className="flex items-center gap-3">
-            <PulsingDot />
-            <h2 className="text-card-header">Update</h2>
-          </div>
+        <Link href="/notifications" className="mb-4 flex items-center gap-3 transition-colors hover-text-purple">
+          <PulsingDot />
+          <h2 className="text-card-header">Update</h2>
         </Link>
       }
     >
-      <div className="flex flex-col flex-1 min-h-0">
-        <div className="flex-1 min-h-0">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1">
           <div className="text-helper mb-2">{date}</div>
-          <div className="text-body mb-4 text-wrap-safe break-words">
-            {highlight ? (
-              message.split(highlight).map((part, idx) => (
-                <span key={idx}>
-                  {part}
-                  {idx === 0 && <span style={{ color: 'var(--accent-green)', fontWeight: 600 }}>{highlight}</span>}
-                </span>
-              ))
-            ) : (
-              message
-            )}
-          </div>
+          <p className="text-body text-wrap-safe mb-4 break-words">
+            {parts.map((part, idx) => (
+              <span key={idx}>
+                {part}
+                {idx === 0 && parts.length > 1 && <span className="font-semibold text-positive">{highlight}</span>}
+              </span>
+            ))}
+          </p>
         </div>
         {linkHref ? (
-          <Link href={linkHref} className="text-helper flex items-start gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap">
-            <span className="text-wrap-safe break-words leading-tight">{link}</span> <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0 mt-0.5" />
-          </Link>
+          <CardFooterLink href={linkHref}>{link}</CardFooterLink>
         ) : (
-          <div className="text-helper flex items-start gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap">
-            <span className="text-wrap-safe break-words leading-tight">{link}</span> <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0 mt-0.5" />
-          </div>
+          <span className="text-helper">{link}</span>
         )}
       </div>
     </Card>
   );
 }
-

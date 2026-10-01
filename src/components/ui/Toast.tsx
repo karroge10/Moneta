@@ -44,7 +44,7 @@ function Toast({ message, type = 'success', duration = 3000, onClose }: ToastPro
 
   const typeStyles: Record<ToastType, { accentColor: string; borderColor: string; iconBg: string }> = {
     success: {
-      accentColor: '#74C648',
+      accentColor: 'var(--color-positive)',
       borderColor: 'var(--accent-purple)', 
       iconBg: 'rgba(116, 198, 72, 0.1)',
     },

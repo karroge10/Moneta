@@ -1,11 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Xmark } from 'iconoir-react';
-import { Transaction, Category } from '@/types/dashboard';
-import TransactionForm from './TransactionForm';
-import { useCurrency } from '@/hooks/useCurrency';
+import { useId, useState } from 'react';
+import { FloppyDisk, Pause, Play, Trash } from 'iconoir-react';
+import type { Transaction, Category } from '@/types/dashboard';
+import Dialog from '@/components/ui/Dialog';
+import Button from '@/components/ui/Button';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import Spinner from '@/components/ui/Spinner';
+import { useCurrency } from '@/hooks/useCurrency';
+import { useTransactionForm, type CurrencyOptionLite } from '@/hooks/transactions/useTransactionForm';
+import TransactionForm from './TransactionForm';
 
 interface TransactionModalProps {
   transaction: Transaction | null;
@@ -17,11 +21,17 @@ interface TransactionModalProps {
   isSaving?: boolean;
   isDeleting?: boolean;
   categories: Category[];
-  currencyOptions: Array<{ id: number; name: string; symbol: string; alias: string }>;
+  currencyOptions: CurrencyOptionLite[];
   currencyOptionsLoading?: boolean;
 }
 
-export default function TransactionModal({
+/** Add / edit transaction dialog. Keyed by transaction id so the form starts fresh per transaction. */
+export default function TransactionModal(props: TransactionModalProps) {
+  if (!props.transaction) return null;
+  return <TransactionDialog key={props.transaction.id} {...props} transaction={props.transaction} />;
+}
+
+function TransactionDialog({
   transaction,
   mode = 'edit',
   onClose,
@@ -33,108 +43,141 @@ export default function TransactionModal({
   categories,
   currencyOptions,
   currencyOptionsLoading = false,
-}: TransactionModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const pointerDownOnOverlay = useRef(false);
-  const [isFloatingPanelOpen, setIsFloatingPanelOpen] = useState(false);
+}: TransactionModalProps & { transaction: Transaction }) {
+  const formId = useId();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { loading: currencyLoading } = useCurrency();
-  
-  
+  const form = useTransactionForm({ transaction, mode, categories, currencyOptions, onSave });
+  const isBusy = isSaving || isDeleting;
   const isLoadingCurrencyData = currencyLoading || currencyOptionsLoading;
 
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !isSaving && !isDeleting) {
-        onClose();
-      }
-    };
+  const handleDeleteConfirm = () => {
+    onDelete?.();
+    setShowDeleteConfirm(false);
+  };
 
-    document.addEventListener('keydown', handleEscape);
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
-      document.documentElement.style.overflow = 'unset';
-    };
-  }, [onClose]);
-
-  if (!transaction) return null;
+  const footer = (
+    <FormActions
+      formId={formId}
+      transaction={transaction}
+      canDelete={mode === 'edit' && Boolean(onDelete)}
+      onPauseResume={onPauseResume}
+      onDelete={() => setShowDeleteConfirm(true)}
+      onCancel={onClose}
+      isSaving={isSaving}
+      isDeleting={isDeleting}
+    />
+  );
 
   return (
     <>
-      <div
-        ref={overlayRef}
-        className="fixed inset-0 bg-black/60 z-50 animate-in fade-in duration-200"
-        onMouseDown={() => {
-          pointerDownOnOverlay.current = true;
-        }}
-        onMouseUp={() => {
-          if (pointerDownOnOverlay.current && overlayRef.current && !isSaving && !isDeleting) {
-            onClose();
-          }
-          pointerDownOnOverlay.current = false;
-        }}
-      />
-      <div
-        ref={modalRef}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in zoom-in-95 duration-200 pointer-events-none"
+      <Dialog
+        open
+        onClose={onClose}
+        title={mode === 'add' ? 'Add Transaction' : 'Edit Transaction'}
+        size="lg"
+        dismissible={!isBusy}
+        footer={footer}
       >
-        <div
-          className="w-full max-w-2xl max-h-[94vh] rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300 overflow-hidden flex flex-col pointer-events-auto"
-          style={{ backgroundColor: 'var(--bg-surface)' }}
-          onMouseDown={() => {
-            pointerDownOnOverlay.current = false;
-          }}
-        >
-          <div
-            className="flex items-center justify-between p-6 border-b border-[#3a3a3a]"
-            style={{ backgroundColor: 'var(--bg-surface)' }}
-          >
-            <h2 className="text-card-header">
-              {mode === 'add' ? 'Add Transaction' : 'Edit Transaction'}
-            </h2>
-            <button
-              onClick={onClose}
-              disabled={isSaving || isDeleting}
-              className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Close"
-            >
-              <Xmark width={24} height={24} strokeWidth={1.5} />
-            </button>
-          </div>
-          <div className={`flex-1 ${isFloatingPanelOpen ? 'overflow-visible' : 'overflow-y-auto'} relative`}>
-            {isLoadingCurrencyData && (
-              <div className="absolute inset-0 bg-[#282828]/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-b-3xl">
-                <div className="flex flex-col items-center gap-3">
-                  <Spinner />
-                  <p className="text-body" style={{ color: 'var(--text-secondary)' }}>
-                    Loading currency data...
-                  </p>
-                </div>
+        <div className="relative">
+          {isLoadingCurrencyData && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-1/80 backdrop-blur-sm" role="status">
+              <div className="flex flex-col items-center gap-3">
+                <Spinner />
+                <p className="text-body text-secondary">Loading currency data...</p>
               </div>
-            )}
-            <div className="p-6 pb-8">
-              <TransactionForm
-                transaction={transaction}
-                mode={mode}
-                onSave={onSave}
-                onCancel={onClose}
-                onDelete={onDelete}
-                onPauseResume={onPauseResume}
-                onFloatingPanelToggle={setIsFloatingPanelOpen}
-                isSaving={isSaving}
-                isDeleting={isDeleting}
-                categories={categories}
-                currencyOptions={currencyOptions}
-              />
             </div>
-          </div>
+          )}
+          <TransactionForm id={formId} form={form} currencyOptions={currencyOptions} isSaving={isSaving} />
         </div>
-      </div>
+      </Dialog>
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Transaction"
+        message={
+          <>
+            Are you sure you want to delete <span className="font-bold text-fg">{form.name || 'this transaction'}</span>?
+            <br />
+            <br />
+            This action cannot be undone and will remove the record from your history.
+          </>
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteConfirm(false)}
+        isLoading={isDeleting}
+        variant="danger"
+      />
     </>
   );
 }
 
+interface FormActionsProps {
+  formId: string;
+  transaction: Transaction;
+  canDelete: boolean;
+  onPauseResume?: (recurringId: number, isActive: boolean) => void;
+  onDelete: () => void;
+  onCancel: () => void;
+  isSaving: boolean;
+  isDeleting: boolean;
+}
+
+function FormActions({
+  formId,
+  transaction,
+  canDelete,
+  onPauseResume,
+  onDelete,
+  onCancel,
+  isSaving,
+  isDeleting,
+}: FormActionsProps) {
+  const recurringId = transaction.recurringId;
+  const isActive = transaction.recurring?.isActive !== false;
+  const showPauseResume = recurringId !== undefined && onPauseResume;
+
+  return (
+    <>
+      {showPauseResume && (
+        <Button
+          variant="secondary"
+          onClick={() => onPauseResume(recurringId, !isActive)}
+          disabled={isSaving}
+          icon={
+            isActive ? (
+              <Pause width={16} height={16} strokeWidth={1.5} className="text-warning" aria-hidden="true" />
+            ) : (
+              <Play width={16} height={16} strokeWidth={1.5} className="text-positive" aria-hidden="true" />
+            )
+          }
+        >
+          {isActive ? 'Pause' : 'Resume'}
+        </Button>
+      )}
+      {canDelete && (
+        <Button
+          variant="danger"
+          onClick={onDelete}
+          disabled={isSaving}
+          loading={isDeleting}
+          icon={<Trash width={16} height={16} strokeWidth={1.5} aria-hidden="true" />}
+        >
+          Delete
+        </Button>
+      )}
+      <Button variant="secondary" onClick={onCancel} disabled={isSaving}>
+        Cancel
+      </Button>
+      <Button
+        type="submit"
+        form={formId}
+        loading={isSaving}
+        icon={<FloppyDisk width={18} height={18} strokeWidth={1.5} aria-hidden="true" />}
+      >
+        Save Changes
+      </Button>
+    </>
+  );
+}

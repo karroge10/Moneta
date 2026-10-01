@@ -2,8 +2,8 @@ import LandingPage from '@/components/LandingPage';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: "Moneta — Elegant Financial Tracking",
-  description: "Experience the next generation of personal finance management. Beautiful charts, deep insights, and secure tracking.",
+  title: { absolute: "Moneta: Smart Financial Dashboard" },
+  description: "Track spending, income, goals and investments in one place, with clear charts and bank statement import.",
   alternates: {
     canonical: '/',
   },
@@ -21,7 +21,7 @@ export default function Home() {
       "price": "0",
       "priceCurrency": "USD"
     },
-    "description": "Smart financial dashboard for modern life. Experience the next generation of personal finance management with beautiful charts, deep insights, and secure tracking."
+    "description": "Smart financial dashboard for modern life. Track spending, income, goals and investments in one place, with clear charts and bank statement import."
   };
 
   return (

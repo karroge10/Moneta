@@ -1,19 +1,38 @@
 'use client';
 
-import { useRef, useEffect, useMemo, useState } from 'react';
-import { Xmark } from 'iconoir-react';
-import { Category, Transaction } from '@/types/dashboard';
-import { getIcon } from '@/lib/iconMapping';
-import { formatNumber } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import type { Category, Transaction } from '@/types/dashboard';
+import Dialog from '@/components/ui/Dialog';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
+import Skeleton from '@/components/ui/Skeleton';
+import { cx } from '@/components/ui/cx';
+import CategoryIcon from '@/components/transactions/shared/CategoryIcon';
+import { MissingRatesNote } from '@/components/transactions/list/TransactionsFooter';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useAuthReadyForApi } from '@/hooks/useAuthReadyForApi';
+import type { TransactionsListResponse } from '@/hooks/transactions/useTransactionsPage';
+import { apiFetch } from '@/lib/api-client';
+import { API, queryKeys } from '@/lib/query-keys';
+import { formatDecimal, formatMoney, formatPercent } from '@/lib/format';
 
 interface CategoryStatsModalProps {
   categories: Category[];
   timePeriod: string;
   onClose: () => void;
-  transactions?: Transaction[]; 
+  /** When given (import preview), stats are computed from these instead of fetching. */
+  transactions?: Transaction[];
 }
 
+interface CategoryStat {
+  category: Category;
+  total: number;
+  count: number;
+}
+
+const STATS_PAGE_SIZE = 1000;
+
+/** Income and expense totals per category, as bars with share of the total. */
 export default function CategoryStatsModal({
   categories,
   timePeriod,
@@ -21,250 +40,171 @@ export default function CategoryStatsModal({
   transactions: providedTransactions,
 }: CategoryStatsModalProps) {
   const { currency } = useCurrency();
-  const modalRef = useRef<HTMLDivElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const pointerDownOnOverlay = useRef(false);
-  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(!providedTransactions);
+  const authReady = useAuthReadyForApi();
+  const filters = { page: 1, pageSize: STATS_PAGE_SIZE, timePeriod };
 
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !loading) {
-        onClose();
-      }
-    };
+  const query = useQuery({
+    queryKey: queryKeys.transactions.list(filters),
+    queryFn: () => apiFetch<TransactionsListResponse>(API.transactions, { params: filters }),
+    enabled: authReady && !providedTransactions,
+  });
 
-    document.addEventListener('keydown', handleEscape);
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
+  if (!categories.length) return null;
 
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
-      document.documentElement.style.overflow = 'unset';
-    };
-  }, [onClose]);
-
-  
-  useEffect(() => {
-    if (providedTransactions) {
-      setAllTransactions(providedTransactions);
-      setLoading(false);
-      return;
-    }
-
-    const fetchAllTransactions = async () => {
-      try {
-        setLoading(true);
-        const params = new URLSearchParams({
-          page: '1',
-          pageSize: '1000', 
-          timePeriod: timePeriod,
-        });
-        
-        const response = await fetch(`/api/transactions?${params.toString()}`);
-        if (response.ok) {
-          const data = await response.json();
-          setAllTransactions(data.transactions || []);
-        }
-      } catch (err) {
-        console.error('Error fetching transactions for stats:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchAllTransactions();
-  }, [timePeriod, providedTransactions]);
-
-  
-  const { incomeStats, expenseStats, incomeTotal, expenseTotal } = useMemo(() => {
-    const incomeMap = new Map<string, { category: Category; total: number; count: number }>();
-    const expenseMap = new Map<string, { category: Category; total: number; count: number }>();
-    
-    allTransactions.forEach(transaction => {
-      if (!transaction.category) return;
-      
-      const category = categories.find(c => c.name === transaction.category);
-      if (!category) return;
-      
-      const isIncome = transaction.amount >= 0;
-      const map = isIncome ? incomeMap : expenseMap;
-      const existing = map.get(category.id) || { category, total: 0, count: 0 };
-      existing.total += Math.abs(transaction.amount);
-      existing.count += 1;
-      map.set(category.id, existing);
-    });
-    
-    const incomeStats = Array.from(incomeMap.values())
-      .sort((a, b) => b.total - a.total);
-    const expenseStats = Array.from(expenseMap.values())
-      .sort((a, b) => b.total - a.total);
-    
-    const incomeTotal = incomeStats.reduce((sum, stat) => sum + stat.total, 0);
-    const expenseTotal = expenseStats.reduce((sum, stat) => sum + stat.total, 0);
-    
-    return { incomeStats, expenseStats, incomeTotal, expenseTotal };
-  }, [categories, allTransactions]);
-
-  if (!categories.length) {
-    return null;
-  }
+  const transactions = providedTransactions ?? query.data?.transactions ?? [];
+  const isLoading = !providedTransactions && query.isPending;
+  const { incomeStats, expenseStats } = buildStats(transactions, categories);
+  const missingRates = providedTransactions ? 0 : (query.data?.missingRates ?? 0);
 
   return (
-    <>
-      <div
-        ref={overlayRef}
-        className="fixed inset-0 bg-black/60 z-50 animate-in fade-in duration-200"
-        onMouseDown={() => {
-          pointerDownOnOverlay.current = true;
-        }}
-        onMouseUp={() => {
-          if (pointerDownOnOverlay.current && overlayRef.current) {
-            onClose();
-          }
-          pointerDownOnOverlay.current = false;
-        }}
+    <Dialog open onClose={onClose} title="Category Statistics" size="xl">
+      <StatsBody
+        isLoading={isLoading}
+        error={providedTransactions ? null : query.error}
+        onRetry={() => query.refetch()}
+        retrying={query.isFetching}
+        incomeStats={incomeStats}
+        expenseStats={expenseStats}
+        currencySymbol={currency.symbol}
       />
-      <div
-        ref={modalRef}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in zoom-in-95 duration-200 pointer-events-none"
-      >
-        <div
-          className="w-full max-w-3xl max-h-[90vh] rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300 overflow-hidden flex flex-col pointer-events-auto"
-          style={{ backgroundColor: 'var(--bg-surface)' }}
-          onMouseDown={() => {
-            pointerDownOnOverlay.current = false;
-          }}
-        >
-          <div
-            className="flex items-center justify-between p-6 border-b border-[#3a3a3a]"
-            style={{ backgroundColor: 'var(--bg-surface)' }}
-          >
-            <h2 className="text-card-header">Category Statistics</h2>
-            <button
-              onClick={onClose}
-              disabled={loading}
-              className="p-2 rounded-full hover-text-purple transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Close"
-            >
-              <Xmark width={24} height={24} strokeWidth={1.5} />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-6">
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="text-body opacity-70">Loading category statistics...</div>
-              </div>
-            ) : incomeStats.length === 0 && expenseStats.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-body opacity-70">No category data available</div>
-              </div>
-            ) : (
-              <div className="space-y-8">
-                {}
-                {incomeStats.length > 0 && (
-                  <div>
-                    <h3 className="text-card-header mb-4" style={{ color: '#74C648' }}>Incomes</h3>
-                    <div className="space-y-4">
-                      {incomeStats.map(stat => {
-                        const Icon = getIcon(stat.category.icon);
-                        const percentage = incomeTotal > 0 ? (stat.total / incomeTotal) * 100 : 0;
-                        
-                        return (
-                          <div
-                            key={`income-${stat.category.id}`}
-                            className="rounded-2xl p-4 border border-[#3a3a3a]"
-                            style={{ backgroundColor: '#181818' }}
-                          >
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                                  style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
-                                >
-                                  <Icon width={20} height={20} strokeWidth={1.5} style={{ color: stat.category.color || '#E7E4E4' }} />
-                                </div>
-                                <div>
-                                  <div className="text-body font-semibold">{stat.category.name}</div>
-                                  <div className="text-helper text-xs">{stat.count} transactions</div>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-body font-semibold" style={{ color: '#74C648' }}>{currency.symbol}{formatNumber(stat.total)}</div>
-                                <div className="text-helper text-xs">{percentage.toFixed(1)}%</div>
-                              </div>
-                            </div>
-                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#2A2A2A' }}>
-                              <div
-                                className="h-full rounded-full transition-all"
-                                style={{
-                                  backgroundColor: stat.category.color || '#74C648',
-                                  width: `${percentage}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {}
-                {expenseStats.length > 0 && (
-                  <div>
-                    <h3 className="text-card-header mb-4" style={{ color: '#D93F3F' }}>Expenses</h3>
-                    <div className="space-y-4">
-                      {expenseStats.map(stat => {
-                        const Icon = getIcon(stat.category.icon);
-                        const percentage = expenseTotal > 0 ? (stat.total / expenseTotal) * 100 : 0;
-                        
-                        return (
-                          <div
-                            key={`expense-${stat.category.id}`}
-                            className="rounded-2xl p-4 border border-[#3a3a3a]"
-                            style={{ backgroundColor: '#181818' }}
-                          >
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                                  style={{ backgroundColor: 'rgba(163, 102, 203, 0.1)' }}
-                                >
-                                  <Icon width={20} height={20} strokeWidth={1.5} style={{ color: stat.category.color || '#E7E4E4' }} />
-                                </div>
-                                <div>
-                                  <div className="text-body font-semibold">{stat.category.name}</div>
-                                  <div className="text-helper text-xs">{stat.count} transactions</div>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-body font-semibold" style={{ color: '#D93F3F' }}>{currency.symbol}{formatNumber(stat.total)}</div>
-                                <div className="text-helper text-xs">{percentage.toFixed(1)}%</div>
-                              </div>
-                            </div>
-                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#2A2A2A' }}>
-                              <div
-                                className="h-full rounded-full transition-all"
-                                style={{
-                                  backgroundColor: stat.category.color || '#D93F3F',
-                                  width: `${percentage}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+      {missingRates > 0 && (
+        <div className="mt-4">
+          <MissingRatesNote count={missingRates} />
         </div>
-      </div>
-    </>
+      )}
+    </Dialog>
   );
 }
 
+interface StatsBodyProps {
+  isLoading: boolean;
+  error: Error | null;
+  onRetry: () => void;
+  retrying: boolean;
+  incomeStats: CategoryStat[];
+  expenseStats: CategoryStat[];
+  currencySymbol: string;
+}
+
+function StatsBody({ isLoading, error, onRetry, retrying, incomeStats, expenseStats, currencySymbol }: StatsBodyProps) {
+  if (isLoading) {
+    return (
+      <div className="space-y-4" aria-busy="true">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-20 w-full rounded-panel" />
+        <Skeleton className="h-20 w-full rounded-panel" />
+      </div>
+    );
+  }
+  if (error) return <ErrorState message={error.message} onRetry={onRetry} retrying={retrying} />;
+  if (incomeStats.length === 0 && expenseStats.length === 0) {
+    return <EmptyState title="No category data available" />;
+  }
+
+  return (
+    <div className="space-y-8">
+      <StatsSection title="Incomes" kind="income" stats={incomeStats} currencySymbol={currencySymbol} />
+      <StatsSection title="Expenses" kind="expense" stats={expenseStats} currencySymbol={currencySymbol} />
+    </div>
+  );
+}
+
+interface StatsSectionProps {
+  title: string;
+  kind: 'income' | 'expense';
+  stats: CategoryStat[];
+  currencySymbol: string;
+}
+
+function StatsSection({ title, kind, stats, currencySymbol }: StatsSectionProps) {
+  if (stats.length === 0) return null;
+  const sectionTotal = stats.reduce((sum, stat) => sum + stat.total, 0);
+  const isIncome = kind === 'income';
+
+  return (
+    <section>
+      <h3 className={cx('text-card-header mb-4', isIncome ? 'text-positive' : 'text-negative')}>{title}</h3>
+      <ul className="space-y-4">
+        {stats.map((stat) => (
+          <StatRow
+            key={`${kind}-${stat.category.id}`}
+            stat={stat}
+            share={sectionTotal > 0 ? (stat.total / sectionTotal) * 100 : 0}
+            isIncome={isIncome}
+            currencySymbol={currencySymbol}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+interface StatRowProps {
+  stat: CategoryStat;
+  share: number;
+  isIncome: boolean;
+  currencySymbol: string;
+}
+
+function StatRow({ stat, share, isIncome, currencySymbol }: StatRowProps) {
+  const amount = formatMoney(stat.total, currencySymbol, { sign: 'never' });
+  const count = formatDecimal(stat.count);
+  const barColor = stat.category.color || (isIncome ? 'var(--color-positive)' : 'var(--color-negative)');
+
+  return (
+    <li className="rounded-panel border border-line bg-surface-inset p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/10">
+            <CategoryIcon
+              name={stat.category.icon}
+              width={20}
+              height={20}
+              strokeWidth={1.5}
+              style={{ color: stat.category.color || undefined }}
+              aria-hidden="true"
+            />
+          </div>
+          <div>
+            <div className="text-body font-semibold">{stat.category.name}</div>
+            <div className="text-helper text-caption tabular-nums">{count} transactions</div>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className={cx('text-body font-semibold tabular-nums', isIncome ? 'text-positive' : 'text-negative-fg')}>
+            {isIncome ? '+' : '-'}
+            {amount}
+          </div>
+          <div className="text-helper text-caption tabular-nums">{formatPercent(share, { decimals: 1 })}</div>
+        </div>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-surface-1" aria-hidden="true">
+        <div
+          className="h-full rounded-full transition-[width]"
+          style={{ backgroundColor: barColor, width: `${share}%` }}
+        />
+      </div>
+    </li>
+  );
+}
+
+function buildStats(transactions: Transaction[], categories: Category[]) {
+  const income = new Map<string, CategoryStat>();
+  const expense = new Map<string, CategoryStat>();
+
+  for (const transaction of transactions) {
+    if (!transaction.category) continue;
+    const category = categories.find((c) => c.name === transaction.category);
+    if (!category) continue;
+    const bucket = transaction.amount >= 0 ? income : expense;
+    const stat = bucket.get(category.id) ?? { category, total: 0, count: 0 };
+    stat.total += Math.abs(transaction.amount);
+    stat.count += 1;
+    bucket.set(category.id, stat);
+  }
+
+  const byTotal = (a: CategoryStat, b: CategoryStat) => b.total - a.total;
+  const incomeStats = [...income.values()].sort(byTotal);
+  const expenseStats = [...expense.values()].sort(byTotal);
+  return { incomeStats, expenseStats };
+}

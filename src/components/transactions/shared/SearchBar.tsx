@@ -1,7 +1,6 @@
 'use client';
 
 import { Search } from 'iconoir-react';
-import { useState } from 'react';
 
 interface SearchBarProps {
   placeholder?: string;
@@ -9,51 +8,24 @@ interface SearchBarProps {
   onChange: (value: string) => void;
 }
 
+/** Pill search input; icon, text and placeholder turn accent on hover and focus. */
 export default function SearchBar({ placeholder = 'Search...', value, onChange }: SearchBarProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-
-  const isActive = isHovered || isFocused;
-  const activeColor = isActive ? '#AC66DA' : '#E7E4E4';
-
   return (
-    <div 
-      className="relative"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          .search-input-active::placeholder {
-            color: #AC66DA;
-            opacity: 0.7;
-          }
-          .search-input-inactive::placeholder {
-            color: #E7E4E4;
-            opacity: 0.7;
-          }
-        `
-      }} />
-      <Search 
-        width={20} 
-        height={20} 
-        strokeWidth={1.5} 
-        className="absolute left-3 top-1/2 -translate-y-1/2"
-        style={{ color: activeColor, transition: 'color 150ms ease-in-out' }}
+    <div className="group relative">
+      <Search
+        width={20}
+        height={20}
+        strokeWidth={1.5}
+        aria-hidden="true"
+        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg transition-colors group-focus-within:text-accent-fg group-hover:text-accent-fg"
       />
       <input
         type="text"
+        aria-label={placeholder}
         placeholder={placeholder}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        className={`w-full pl-10 pr-4 py-2 rounded-full text-body border-none focus:outline-none ${isActive ? 'search-input-active' : 'search-input-inactive'}`}
-        style={{ 
-          backgroundColor: 'var(--bg-primary)',
-          color: activeColor,
-          transition: 'color 150ms ease-in-out'
-        }}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-full border-none bg-surface-0 py-2 pl-10 pr-4 text-base text-fg transition-colors placeholder:text-fg/70 focus:outline-none focus-visible:outline-2 focus-visible:outline-accent group-hover:text-accent-fg group-hover:placeholder:text-accent-fg/70 focus:text-accent-fg focus:placeholder:text-accent-fg/70 sm:text-body"
       />
     </div>
   );

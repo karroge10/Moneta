@@ -111,7 +111,7 @@ export function CalendarPanel({
           <button
             type="button"
             onClick={() => onMonthChange(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
-            className="w-9 h-9 rounded-full hover-text-purple transition-colors cursor-pointer bg-[#1f1f1f] flex items-center justify-center"
+            className="w-9 h-9 rounded-full hover-text-purple transition-colors cursor-pointer bg-surface-inset flex items-center justify-center"
             aria-label="Previous month"
           >
             <NavArrowLeft width={18} height={18} strokeWidth={1.5} />
@@ -123,21 +123,19 @@ export function CalendarPanel({
                 onClick={() => { setYearOpen(false); setMonthOpen((o) => !o); }}
                 aria-label="Select month"
                 aria-expanded={monthOpen}
-                className="relative h-10 bg-background border border-[#3a3a3a] text-body text-sm rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:border-[var(--accent-purple)] cursor-pointer flex items-center gap-2 min-w-[100px]"
-                style={{ color: 'var(--text-primary)' }}
+                className="relative h-10 text-fg bg-background border border-line text-body text-sm rounded-control pl-3 pr-8 py-2 focus:outline-none focus:border-accent cursor-pointer flex items-center gap-2 min-w-[100px]"
               >
                 <span className="truncate">{monthNames[currentMonth.getMonth()]}</span>
-                <NavArrowDown width={14} height={14} strokeWidth={2} className="absolute right-2 top-1/2 -translate-y-1/2 shrink-0" style={{ color: '#B9B9B9' }} />
+                <NavArrowDown width={14} height={14} strokeWidth={2} className="absolute right-2 top-1/2 -translate-y-1/2 shrink-0 text-secondary" aria-hidden="true" />
               </button>
               {monthOpen && (
-                <div className="absolute top-full left-0 mt-1 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[100px] max-h-[200px] overflow-y-auto" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid #3a3a3a' }}>
+                <div className="absolute top-full left-0 mt-1 rounded-panel shadow-lg overflow-hidden z-20 min-w-[100px] max-h-[200px] overflow-y-auto bg-surface-0 border border-line">
                   {monthNames.map((name, idx) => (
                     <button
                       key={name}
                       type="button"
                       onClick={() => selectMonth(idx)}
-                      className="w-full text-left px-3 py-2 text-body text-sm hover:bg-[#2a2a2a] transition-colors cursor-pointer"
-                      style={{ color: currentMonth.getMonth() === idx ? 'var(--accent-purple)' : 'var(--text-primary)' }}
+                      className={`w-full text-left px-3 py-2 text-body text-sm hover:bg-surface-2 transition-colors cursor-pointer ${currentMonth.getMonth() === idx ? 'text-accent-fg' : 'text-fg'}`}
                     >
                       {name}
                     </button>
@@ -151,21 +149,19 @@ export function CalendarPanel({
                 onClick={() => { setMonthOpen(false); setYearOpen((o) => !o); }}
                 aria-label="Select year"
                 aria-expanded={yearOpen}
-                className="relative h-10 bg-background border border-[#3a3a3a] text-body text-sm rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:border-[var(--accent-purple)] cursor-pointer flex items-center gap-2 min-w-[72px]"
-                style={{ color: 'var(--text-primary)' }}
+                className="relative h-10 text-fg bg-background border border-line text-body text-sm rounded-control pl-3 pr-8 py-2 focus:outline-none focus:border-accent cursor-pointer flex items-center gap-2 min-w-[72px]"
               >
                 <span>{currentMonth.getFullYear()}</span>
-                <NavArrowDown width={14} height={14} strokeWidth={2} className="absolute right-2 top-1/2 -translate-y-1/2 shrink-0" style={{ color: '#B9B9B9' }} />
+                <NavArrowDown width={14} height={14} strokeWidth={2} className="absolute right-2 top-1/2 -translate-y-1/2 shrink-0 text-secondary" aria-hidden="true" />
               </button>
               {yearOpen && (
-                <div className="absolute top-full left-0 mt-1 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[72px] max-h-[200px] overflow-y-auto" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid #3a3a3a' }}>
+                <div className="absolute top-full left-0 mt-1 rounded-panel shadow-lg overflow-hidden z-20 min-w-[72px] max-h-[200px] overflow-y-auto bg-surface-0 border border-line">
                   {years.map((y) => (
                     <button
                       key={y}
                       type="button"
                       onClick={() => selectYear(y)}
-                      className="w-full text-left px-3 py-2 text-body text-sm hover:bg-[#2a2a2a] transition-colors cursor-pointer"
-                      style={{ color: currentMonth.getFullYear() === y ? 'var(--accent-purple)' : 'var(--text-primary)' }}
+                      className={`w-full text-left px-3 py-2 text-body text-sm hover:bg-surface-2 transition-colors cursor-pointer tabular-nums ${currentMonth.getFullYear() === y ? 'text-accent-fg' : 'text-fg'}`}
                     >
                       {y}
                     </button>
@@ -177,7 +173,7 @@ export function CalendarPanel({
           <button
             type="button"
             onClick={() => onMonthChange(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-            className="w-9 h-9 rounded-full hover-text-purple transition-colors cursor-pointer bg-[#1f1f1f] flex items-center justify-center"
+            className="w-9 h-9 rounded-full hover-text-purple transition-colors cursor-pointer bg-surface-inset flex items-center justify-center"
             aria-label="Next month"
           >
             <NavArrowRight width={18} height={18} strokeWidth={1.5} />
@@ -185,7 +181,7 @@ export function CalendarPanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-helper text-[10px] uppercase tracking-wide">
+      <div className="grid grid-cols-7 gap-1 text-center text-helper text-[0.625rem] uppercase tracking-wide">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
           <div key={day}>{day}</div>
         ))}
@@ -199,16 +195,16 @@ export function CalendarPanel({
           const isSelected = selected && isSameDay(day, selected);
 
           const buttonClasses = [
-            'h-9 rounded-xl text-body font-medium transition-colors cursor-pointer flex items-center justify-center',
-            'bg-[#1f1f1f]',
+            'h-9 rounded-control text-body font-medium transition-colors cursor-pointer flex items-center justify-center',
+            'bg-surface-inset',
           ];
 
           if (isSelected) {
-            buttonClasses.push('text-black', 'bg-[var(--accent-purple)]');
+            buttonClasses.push('text-surface-0', 'bg-accent');
           } else {
-            buttonClasses.push('text-[var(--text-primary)]', 'hover:text-[var(--accent-purple)]', 'hover:bg-[#262626]');
+            buttonClasses.push('text-fg', 'hover:text-accent-fg', 'hover:bg-surface-2');
             if (isToday) {
-              buttonClasses.push('border', 'border-[var(--accent-purple)]');
+              buttonClasses.push('border', 'border-accent');
             }
           }
 

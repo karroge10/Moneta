@@ -4,32 +4,33 @@ interface ProgressBarProps {
   height?: number;
 }
 
-export default function ProgressBar({ value, showLabel = true, height = 32 }: ProgressBarProps) {
+/**
+ * Horizontal progress bar. The percentage sits to the right of the track rather than on it,
+ * so it stays readable whatever the fill level.
+ */
+export default function ProgressBar({ value, showLabel = true, height = 12 }: ProgressBarProps) {
   const percentage = Math.min(100, Math.max(0, value));
-  const displayValue = percentage.toFixed(1);
-  
+  const displayValue = `${percentage.toFixed(1)}%`;
+
   return (
-    <div
-      className="relative w-full rounded-full overflow-hidden"
-      style={{ backgroundColor: '#E7E4E4', height }}
-    >
+    <div className="flex w-full items-center gap-3">
       <div
-        className="h-full rounded-full transition-all duration-500"
-        style={{
-          backgroundColor: 'var(--accent-purple)',
-          width: `${percentage}%`,
-        }}
-      />
-      {showLabel && (
+        className="relative flex-1 overflow-hidden rounded-full bg-surface-3"
+        style={{ height }}
+        role="progressbar"
+        aria-valuenow={Math.round(percentage)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={showLabel ? undefined : displayValue}
+      >
         <div
-          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-        >
-          <span className="text-sm font-bold" style={{ color: '#282828' }}>
-            {displayValue}%
-          </span>
-        </div>
+          className="h-full rounded-full bg-accent transition-[width] duration-500"
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      {showLabel && (
+        <span className="w-14 shrink-0 text-right text-ui font-semibold tabular-nums text-fg">{displayValue}</span>
       )}
     </div>
   );
 }
-

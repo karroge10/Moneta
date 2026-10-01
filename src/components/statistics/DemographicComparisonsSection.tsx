@@ -1,301 +1,159 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
+import type { ReactNode } from 'react';
+import { Settings, WarningTriangle } from 'iconoir-react';
 import Card from '@/components/ui/Card';
-import { NavArrowDown, User, Settings, City, Suitcase } from 'iconoir-react';
-import { DemographicComparison } from '@/types/dashboard';
-import { getIcon } from '@/lib/iconMapping';
-import type { DemographicDimension } from '@/app/(app)/statistics/page';
+import Button from '@/components/ui/Button';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
+import Skeleton from '@/components/ui/Skeleton';
+import DimensionPicker from '@/components/statistics/DimensionPicker';
+import DemographicComparisonRow from '@/components/statistics/DemographicComparisonRow';
+import type { DemographicDimension } from '@/lib/statistics/cohort';
+import type { DemographicSection } from '@/hooks/useStatisticsData';
+import { formatDecimal } from '@/lib/format';
 
-const SKELETON_STYLE = { backgroundColor: '#3a3a3a' };
-const SKELETON_ITEMS = 5;
-const DIMENSION_LABELS: Record<DemographicDimension, string> = {
-  age: 'By age group',
-  country: 'By country',
-  profession: 'By profession',
-};
-
-const ICON_SIZE = 20;
-const OPTION_ROW = 'w-full text-left px-4 py-3 flex items-center gap-3 text-body cursor-pointer transition-colors hover:bg-[#2a2a2a]';
-
-function DemographicChangeLine({
-  change,
-  invertChangeColor,
-}: {
-  change: string | null;
-  invertChangeColor?: boolean;
-}) {
-  if (change == null) {
-    return (
-      <span className="text-helper mt-1 inline-block" style={{ color: 'var(--text-secondary)' }}>
-        Same as other users
-      </span>
-    );
-  }
-  const changeParts = change.split(/\s+(.+)/);
-  const changePct = changeParts[0] ?? '';
-  const changeLabel = changeParts[1] ?? '';
-  const isNegativeChange = changePct.startsWith('-');
-  const changeColor = invertChangeColor
-    ? isNegativeChange
-      ? '#74C648'
-      : '#D93F3F'
-    : isNegativeChange
-      ? '#D93F3F'
-      : '#74C648';
-
-  return (
-    <div className="flex items-center gap-2 mt-1">
-      <span>
-        <span style={{ color: changeColor, fontWeight: 600 }}>{changePct}</span>
-        {changeLabel ? <span className="text-helper"> {changeLabel}</span> : null}
-      </span>
-    </div>
-  );
-}
+/**
+ * Smallest real cohort we show figures for. The API returns comparisons from a single peer, which
+ * would let anyone read that person's numbers off the screen and is not a meaningful average anyway.
+ */
+const MIN_PEER_COHORT = 10;
 
 interface DemographicComparisonsSectionProps {
-  comparisons: DemographicComparison[];
-  cohortSize?: number;
+  section: DemographicSection | undefined;
   loading?: boolean;
-  demographicComparisonsDisabled?: boolean;
-  demographicCohortValueMissing?: boolean;
-  
-  syntheticDemographicCohort?: boolean;
-  demographicDimension: DemographicDimension;
-  onDemographicChange: (dimension: DemographicDimension) => void;
+  dimension: DemographicDimension;
+  onDimensionChange: (dimension: DemographicDimension) => void;
   error?: string | null;
   onRetry?: () => void;
 }
 
 export default function DemographicComparisonsSection({
-  comparisons,
-  cohortSize = 0,
+  section,
   loading = false,
-  demographicComparisonsDisabled = false,
-  demographicCohortValueMissing = false,
-  syntheticDemographicCohort = false,
-  demographicDimension,
-  onDemographicChange,
+  dimension,
+  onDimensionChange,
   error = null,
   onRetry,
 }: DemographicComparisonsSectionProps) {
-  const [dimensionOpen, setDimensionOpen] = useState(false);
-  const [dimensionHovered, setDimensionHovered] = useState(false);
-  const dimensionRef = useRef<HTMLDivElement>(null);
-
-  const dimensionLabel = DIMENSION_LABELS[demographicDimension];
-  const textColor = dimensionHovered ? '#AC66DA' : '#E7E4E4';
-  const contentMinHeight = 280;
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (dimensionRef.current && !dimensionRef.current.contains(target)) {
-        setDimensionOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  if (loading) {
+  if (loading || (!section && !error)) {
     return (
-      <Card
-        title="Demographic Comparisons"
-        showActions={false}
-        className="flex flex-col min-h-0 flex-1"
-      >
-        <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-visible" style={{ minHeight: contentMinHeight }}>
-          <div className="w-full flex items-center gap-2 px-4 py-2 rounded-full" style={{ backgroundColor: 'var(--bg-primary)' }}>
-            <div className="w-5 h-5 rounded animate-pulse shrink-0" style={SKELETON_STYLE} />
-            <div className="h-5 flex-1 max-w-[140px] rounded animate-pulse" style={SKELETON_STYLE} />
-          </div>
-          <div className="flex flex-col gap-3 pr-2">
-            {Array.from({ length: SKELETON_ITEMS }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-3xl" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                <div className="w-12 h-12 rounded-full shrink-0 animate-pulse" style={SKELETON_STYLE} />
-                <div className="flex-1 min-w-0 space-y-2">
-                  <div className="h-4 w-24 rounded animate-pulse" style={SKELETON_STYLE} />
-                  <div className="h-4 w-32 rounded animate-pulse" style={SKELETON_STYLE} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Card>
+      <SectionCard>
+        <SectionSkeleton />
+      </SectionCard>
     );
   }
 
-  const header = (
-    <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-3">
-      <h2 className="text-card-header">Demographic Comparisons</h2>
-      {cohortSize > 0 && comparisons.length > 0 ? (
-        <span className="text-helper" style={{ color: 'var(--text-secondary)' }}>
-          {cohortSize} {cohortSize === 1 ? 'user' : 'users'}
-          {syntheticDemographicCohort ? ' · illustrative demo cohort' : ''}
-        </span>
-      ) : null}
-    </div>
-  );
-
-  if (demographicComparisonsDisabled) {
+  if (error || !section) {
     return (
-      <Card
-        title="Demographic Comparisons"
-        customHeader={header}
-        showActions={false}
-        className="flex flex-col min-h-0 flex-1"
-      >
-        <div
-          className="flex flex-col gap-4 flex-1 min-h-0 items-center justify-center p-6 text-center"
-          style={{ minHeight: contentMinHeight }}
-        >
-          <p className="text-body" style={{ color: 'rgba(231, 228, 228, 0.7)' }}>
-            Enable data sharing in Settings to see how you compare to others in your age group, country, or profession.
-          </p>
-          <Link
-            href="/settings"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-body transition-colors"
-            style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
-          >
-            <Settings width={18} height={18} strokeWidth={1.5} />
-            Open Settings
-          </Link>
-        </div>
-      </Card>
+      <SectionCard>
+        <ErrorState message={error ?? undefined} onRetry={onRetry} className="flex-1" />
+      </SectionCard>
     );
   }
 
-  if (error) {
+  if (section.disabled) {
     return (
-      <Card
-        title="Demographic Comparisons"
-        customHeader={header}
-        showActions={false}
-        className="flex flex-col min-h-0 flex-1"
-      >
-        <div
-          className="flex flex-col gap-4 flex-1 min-h-0 items-center justify-center p-6 text-center"
-          style={{ minHeight: contentMinHeight }}
-        >
-          <p className="text-body" style={{ color: 'rgba(231, 228, 228, 0.7)' }}>
-            {error}
-          </p>
-          {onRetry && (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-body transition-colors"
-              style={{ backgroundColor: '#E7E4E4', color: '#282828' }}
-            >
-              Try again
-            </button>
-          )}
-        </div>
-      </Card>
+      <SectionCard>
+        <EmptyState
+          icon={<Settings width={24} height={24} strokeWidth={1.5} />}
+          title="Data sharing is off"
+          description="Enable data sharing in Settings to see how you compare to others in your age group, country, or profession."
+          action={<Button href="/settings" variant="secondary">Open Settings</Button>}
+          className="flex-1"
+        />
+      </SectionCard>
     );
   }
+
+  const isSynthetic = section.synthetic;
+  const cohortTooSmall = !isSynthetic && section.cohortSize < MIN_PEER_COHORT;
+  const showRows = section.comparisons.length > 0 && !cohortTooSmall;
+  const subtitle = showRows && !isSynthetic ? `Compared with ${formatDecimal(section.cohortSize, { maxDecimals: 0 })} people` : null;
 
   return (
-    <Card
-      title="Demographic Comparisons"
-      customHeader={header}
-      showActions={false}
-      className="flex flex-col min-h-0 flex-1"
-    >
-      <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-visible" style={{ minHeight: contentMinHeight }}>
-        <div className="mb-2 w-full shrink-0">
-          <div className="relative w-full" ref={dimensionRef}>
-            <button
-              type="button"
-              onClick={() => setDimensionOpen(!dimensionOpen)}
-              onMouseEnter={() => setDimensionHovered(true)}
-              onMouseLeave={() => setDimensionHovered(false)}
-              className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors duration-150 cursor-pointer w-full justify-between text-body"
-              style={{ backgroundColor: 'var(--bg-primary)', color: textColor, transitionProperty: 'color' }}
-            >
-              <div className="flex items-center gap-2">
-                {demographicDimension === 'age' && <User width={ICON_SIZE} height={ICON_SIZE} strokeWidth={1.5} style={{ color: textColor, transition: 'color 150ms ease-in-out' }} />}
-                {demographicDimension === 'country' && <City width={ICON_SIZE} height={ICON_SIZE} strokeWidth={1.5} style={{ color: textColor, transition: 'color 150ms ease-in-out' }} />}
-                {demographicDimension === 'profession' && <Suitcase width={ICON_SIZE} height={ICON_SIZE} strokeWidth={1.5} style={{ color: textColor, transition: 'color 150ms ease-in-out' }} />}
-                <span className="font-semibold" style={{ transition: 'color 150ms ease-in-out' }}>{dimensionLabel}</span>
-              </div>
-              <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: textColor, transition: 'color 150ms ease-in-out' }} />
-            </button>
-            {dimensionOpen && (
-              <div className="absolute top-full mt-2 left-0 right-0 min-w-[200px] rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                {(['age', 'country', 'profession'] as const).map((dim) => {
-                  const isSelected = demographicDimension === dim;
-                  const Icon = dim === 'age' ? User : dim === 'country' ? City : Suitcase;
-                  return (
-                    <button
-                      key={dim}
-                      type="button"
-                      onClick={() => {
-                        onDemographicChange(dim);
-                        setDimensionOpen(false);
-                      }}
-                      className={OPTION_ROW}
-                      style={{ backgroundColor: 'transparent', color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' }}
-                    >
-                      <Icon width={ICON_SIZE} height={ICON_SIZE} strokeWidth={1.5} style={{ color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)', flexShrink: 0 }} />
-                      <span>{DIMENSION_LABELS[dim]}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 pr-2 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-          {comparisons.length === 0 ? (
-            <p className="text-body text-center py-4" style={{ color: 'var(--text-secondary)' }}>
-              {demographicCohortValueMissing
-                ? demographicDimension === 'age'
-                  ? 'Add your date of birth in Settings to compare with others in your age group.'
-                  : demographicDimension === 'country'
-                    ? 'Add your country in Settings to compare with others in your country.'
-                    : 'Add your profession in Settings to compare with others in your profession.'
-                : `Not enough people in your ${demographicDimension === 'age' ? 'age group' : demographicDimension === 'country' ? 'country' : 'profession'} have shared data yet. Check back as more people join.`}
-            </p>
+    <SectionCard subtitle={subtitle}>
+      <div className="flex min-h-[280px] flex-1 flex-col gap-4">
+        <DimensionPicker value={dimension} onChange={onDimensionChange} />
+        {isSynthetic && showRows && <SyntheticBanner />}
+        <div className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-2">
+          {showRows ? (
+            section.comparisons.map((comparison) => <DemographicComparisonRow key={comparison.id} comparison={comparison} />)
           ) : (
-            <>
-            {comparisons.map((comparison) => {
-              const Icon = getIcon(comparison.icon);
-
-              return (
-                <div
-                  key={comparison.id}
-                  className="flex items-center gap-3 px-4 py-3"
-                  style={{
-                    backgroundColor: 'var(--bg-primary)',
-                    borderRadius: '30px',
-                  }}
-                >
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
-                    style={{ 
-                      backgroundColor: `${comparison.iconColor}1a`,
-                      border: '1px solid rgba(231, 228, 228, 0.1)'
-                    }}
-                  >
-                    <Icon width={24} height={24} strokeWidth={1.5} style={{ color: comparison.iconColor }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-body font-medium text-wrap-safe wrap-break-word">{comparison.label}</div>
-                    <DemographicChangeLine change={comparison.change} invertChangeColor={comparison.invertChangeColor} />
-                  </div>
-                </div>
-              );
-            })}
-            </>
+            <p className="py-4 text-center text-body text-secondary text-pretty">{emptyMessage(section, dimension, cohortTooSmall)}</p>
           )}
         </div>
       </div>
+    </SectionCard>
+  );
+}
+
+function SectionCard({ subtitle, children }: { subtitle?: string | null; children: ReactNode }) {
+  return (
+    <Card
+      title="Demographic Comparisons"
+      showActions={false}
+      className="flex min-h-0 flex-1 flex-col"
+      customHeader={
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-3">
+          <h2 className="text-card-header">Demographic Comparisons</h2>
+          {subtitle && <span className="text-ui text-secondary tabular-nums">{subtitle}</span>}
+        </div>
+      }
+    >
+      {children}
     </Card>
   );
+}
+
+/** Shown above generated peers so nobody mistakes them for real users. */
+function SyntheticBanner() {
+  return (
+    <div role="note" className="flex items-start gap-3 rounded-control border border-warning/40 bg-warning/10 p-3 text-ui text-fg">
+      <WarningTriangle width={20} height={20} strokeWidth={1.5} className="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
+      <p className="text-pretty">
+        <span className="font-semibold">Demo data.</span> These peers are generated for illustration and are not real
+        users. Do not read them as how people like you actually spend or earn.
+      </p>
+    </div>
+  );
+}
+
+function SectionSkeleton() {
+  return (
+    <div className="flex min-h-[280px] flex-1 flex-col gap-4" aria-busy="true">
+      <Skeleton className="h-10 w-full rounded-full" />
+      <div className="flex flex-col gap-3 pr-2">
+        {Array.from({ length: 5 }, (_, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-card bg-surface-0 px-4 py-3">
+            <Skeleton className="size-12 shrink-0 rounded-full" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const GROUP_NAMES: Record<DemographicDimension, string> = {
+  age: 'age group',
+  country: 'country',
+  profession: 'profession',
+};
+
+function emptyMessage(section: DemographicSection, dimension: DemographicDimension, cohortTooSmall: boolean): string {
+  const group = GROUP_NAMES[dimension];
+  if (section.cohortValueMissing) {
+    const field = dimension === 'age' ? 'date of birth' : group;
+    return `Add your ${field} in Settings to compare with others in your ${group}.`;
+  }
+  if (cohortTooSmall && section.cohortSize > 0) {
+    const count = formatDecimal(section.cohortSize, { maxDecimals: 0 });
+    const people = section.cohortSize === 1 ? 'person' : 'people';
+    return `Only ${count} ${people} in your ${group} share data so far. Comparisons appear once at least ${MIN_PEER_COHORT} do, so no one's numbers can be singled out.`;
+  }
+  return `Not enough people in your ${group} have shared data yet. Check back as more people join.`;
 }

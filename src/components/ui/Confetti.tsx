@@ -7,31 +7,10 @@ interface ConfettiProps {
 }
 
 export default function Confetti({ onComplete }: ConfettiProps) {
-  const [particles, setParticles] = useState<Array<{
-    id: number;
-    x: number;
-    y: number;
-    angle: number;
-    velocity: number;
-    color: string;
-    size: number;
-  }>>([]);
+  // Confetti only mounts after a user action, never during SSR, so random values in the initializer are safe.
+  const [particles, setParticles] = useState<Particle[]>(createParticles);
 
   useEffect(() => {
-    
-    const colors = ['#AC66DA', '#74C648', '#E7E4E4', '#D93F3F'];
-    const newParticles = Array.from({ length: 50 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: -10,
-      angle: Math.random() * 360,
-      velocity: 0.8 + Math.random() * 1.2, 
-      color: colors[Math.floor(Math.random() * colors.length)],
-      size: 8 + Math.random() * 6,
-    }));
-
-    setParticles(newParticles);
-
     
     const interval = setInterval(() => {
       setParticles(prev => 
@@ -78,3 +57,27 @@ export default function Confetti({ onComplete }: ConfettiProps) {
   );
 }
 
+type Particle = {
+  id: number;
+  x: number;
+  y: number;
+  angle: number;
+  velocity: number;
+  color: string;
+  size: number;
+};
+
+// Brand colors as literals: particles are painted with inline styles, not utility classes.
+const PARTICLE_COLORS = ['#AC66DA', '#74C648', '#E7E4E4', '#D93F3F'];
+
+function createParticles(): Particle[] {
+  return Array.from({ length: 50 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: -10,
+    angle: Math.random() * 360,
+    velocity: 0.8 + Math.random() * 1.2,
+    color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
+    size: 8 + Math.random() * 6,
+  }));
+}

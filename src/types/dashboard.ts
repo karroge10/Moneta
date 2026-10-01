@@ -12,6 +12,8 @@ export interface Transaction {
   originalCurrencySymbol?: string;
   originalCurrencyAlias?: string;
   currencyId?: number; 
+  /** True when no FX rate was found; `amount` is then 0 and excluded from totals. */
+  rateMissing?: boolean;
   recurring?: RecurringSettings;
   
   recurringId?: number;
@@ -193,6 +195,8 @@ export interface StatisticsSummaryItem {
   label: string;
   value: string | number;
   change: string; 
+  /** For spending a rise is bad, so the change color flips. */
+  invertChangeColor?: boolean;
   icon: string;
   iconColor: string;
   isLarge?: boolean; 

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavArrowDown, Filter, CheckCircle, Clock, Xmark } from 'iconoir-react';
 import { GoalStatus } from '@/lib/goalUtils';
+import { cx } from '@/components/ui/cx';
 
 interface GoalFilterProps {
   selectedStatus: GoalStatus | 'all' | null;
@@ -16,68 +17,71 @@ const statusOptions: Array<{ value: GoalStatus | 'all'; label: string; icon: typ
   { value: 'failed', label: 'Failed', icon: Xmark },
 ];
 
+/** Status filter dropdown for the goals list. */
 export default function GoalFilter({ selectedStatus, onSelect }: GoalFilterProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!isOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      if (ref.current && !ref.current.contains(event.target as Node)) setIsOpen(false);
     };
-
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
 
-  const selectedOption = statusOptions.find(opt => opt.value === selectedStatus) || statusOptions[0];
-  const displayValue = selectedOption.label;
-  const textColor = isHovered ? '#AC66DA' : '#E7E4E4';
+  const selectedOption = statusOptions.find((option) => option.value === selectedStatus) || statusOptions[0];
 
   return (
     <div className="relative" ref={ref}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors cursor-pointer w-full justify-between"
-        style={{ backgroundColor: 'var(--bg-primary)', color: textColor }}
+        type="button"
+        onClick={() => setIsOpen((open) => !open)}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        className="flex min-h-10 w-full items-center justify-between gap-2 rounded-full bg-surface-0 px-4 py-2 text-fg transition-colors hover:text-accent-fg"
       >
-        <div className="flex items-center gap-2">
-          <Filter width={18} height={18} strokeWidth={1.5} style={{ color: textColor }} />
-          <span className="text-sm font-semibold whitespace-nowrap">{displayValue}</span>
-        </div>
-        <NavArrowDown width={16} height={16} strokeWidth={2} style={{ color: textColor }} />
+        <span className="flex items-center gap-2">
+          <Filter width={18} height={18} strokeWidth={1.5} aria-hidden="true" />
+          <span className="whitespace-nowrap text-ui font-semibold">{selectedOption.label}</span>
+        </span>
+        <NavArrowDown width={16} height={16} strokeWidth={2} aria-hidden="true" />
       </button>
-      
+
       {isOpen && (
-        <div className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <ul role="listbox" aria-label="Goal status" className="absolute left-0 right-0 top-full z-10 mt-2 overflow-hidden rounded-panel bg-surface-0 shadow-lg">
           {statusOptions.map((option) => {
             const Icon = option.icon;
             const isSelected = selectedStatus === option.value;
             return (
-              <button
-                key={option.value}
-                onClick={() => {
-                  onSelect(option.value);
-                  setIsOpen(false);
-                }}
-                className="w-full text-left px-4 py-3 flex items-center gap-3 hover-text-purple transition-colors text-body cursor-pointer"
-                style={{ 
-                  backgroundColor: 'transparent',
-                  color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' 
-                }}
-              >
-                <Icon width={20} height={20} strokeWidth={1.5} style={{ color: isSelected ? 'var(--accent-purple)' : 'var(--text-primary)' }} />
-                <span>{option.label}</span>
-              </button>
+              <li key={option.value} role="option" aria-selected={isSelected}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelect(option.value);
+                    setIsOpen(false);
+                  }}
+                  className={cx(
+                    'flex w-full items-center gap-3 px-4 py-3 text-left text-body transition-colors hover:text-accent-fg',
+                    isSelected ? 'text-accent-fg' : 'text-fg',
+                  )}
+                >
+                  <Icon width={20} height={20} strokeWidth={1.5} aria-hidden="true" />
+                  <span>{option.label}</span>
+                </button>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </div>
   );
 }
-

@@ -1,19 +1,80 @@
 @import "tailwindcss";
 
-:root {
-  /* MONETA Design Tokens */
-  --bg-primary: #1a1a1a;
-  --bg-surface: #282828;
-  /* Card elevation: refined soft shadow for depth without corner artifacts */
-  --shadow-card: 0 10px 20px rgba(0, 0, 0, 0.3);
-  --text-primary: #E7E4E4;
-  --text-secondary: rgba(231, 228, 228, 0.7);
-  --accent-green: #74C648;
-  --accent-purple: #AC66DA;
-  --accent-purple-glow: rgba(163, 102, 203, 0.5);
-  --error: #D93F3F;
+/*
+ * MONETA design tokens (Tailwind v4 @theme). Each token becomes a utility:
+ * --color-surface-1 -> bg-surface-1, --color-line -> border-line, --color-muted -> text-muted,
+ * --radius-card -> rounded-card, --text-figure -> text-figure.
+ * Hex -> token mapping for the codemod lives in docs/DESIGN_TOKENS.md.
+ *
+ * Figures: any amount, percent, quantity or counter that can change gets `tabular-nums`
+ * so digits keep a fixed width and columns line up. The Stat primitive and .text-card-value apply it.
+ */
+@theme {
+  /* Surfaces, darkest to lightest */
+  --color-surface-inset: oklch(0.239 0 0); /* #1f1f1f inputs, wells, chart tracks */
+  --color-surface-0: oklch(0.218 0 0); /* #1a1a1a page background */
+  --color-surface-1: oklch(0.277 0 0); /* #282828 cards, sidebar, modals */
+  --color-surface-2: oklch(0.317 0 0); /* #323232 raised rows, hover on surface-1 */
+  --color-surface-3: oklch(0.348 0 0); /* #3a3a3a selected, active, pressed */
 
-  --radius-card: 30px;
+  /* Borders and dividers */
+  --color-line-subtle: oklch(0.285 0 0); /* #2a2a2a dividers inside cards */
+  --color-line: oklch(0.348 0 0); /* #3a3a3a default control and card borders */
+  --color-line-strong: oklch(0.409 0 0); /* #4a4a4a hover and focus-adjacent borders */
+
+  /* Text */
+  --color-fg: oklch(0.921 0.003 17.22); /* #e7e4e4 primary text */
+  --color-secondary: oklch(0.786 0 0); /* #b9b9b9 secondary text */
+  --color-muted: oklch(0.663 0 0); /* #939393 helper text; 4.8:1 on surface-1 (old #8c8c8c was 4.4:1) */
+
+  /* Brand accent (purple) */
+  --color-accent: oklch(0.636 0.178 310.14); /* #ac66da fills, focus rings, icons */
+  --color-accent-strong: oklch(0.549 0.168 310.79); /* #904eb8 gradient end, pressed */
+  --color-accent-fg: oklch(0.69 0.15 310); /* #b87ee0 accent text on dark surfaces, 4.9:1 */
+  --color-on-accent: oklch(0.921 0.003 17.22); /* text on accent fills */
+
+  /* Semantic */
+  --color-positive: oklch(0.748 0.18 136.38); /* #74c648 gains, success */
+  --color-positive-strong: oklch(0.641 0.157 136.46); /* #5ca137 gradient end */
+  --color-negative: oklch(0.594 0.191 25.14); /* #d93f3f losses, errors (fills, icons, large text) */
+  --color-negative-strong: oklch(0.524 0.17 25.25); /* #b83333 gradient end */
+  --color-negative-fg: oklch(0.7 0.16 25); /* #f2716a small error text, 5.1:1 on surface-1 */
+  --color-warning: oklch(0.769 0.165 70.08); /* #f59e0b warnings, pending */
+
+  /* Radius scale: concentric, outer = inner + padding */
+  --radius-card: 30px; /* cards */
+  --radius-panel: 20px; /* modals on mobile, nested panels */
+  --radius-control: 12px; /* inputs, selects, small panels */
+  --radius-chip: 8px; /* tags, tooltips, tiny swatches */
+
+  /* Type scale (font-size + line-height) */
+  --text-caption: 0.8125rem; /* 13px captions, chart labels */
+  --text-caption--line-height: 1.4;
+  --text-ui: 0.875rem; /* 14px menus, table cells, buttons */
+  --text-ui--line-height: 1.45;
+  --text-copy: 1rem; /* 16px body copy and inputs */
+  --text-copy--line-height: 1.55;
+  --text-heading: 1.25rem; /* 20px card headers */
+  --text-heading--line-height: 1.3;
+  --text-title: 2.25rem; /* 36px page titles */
+  --text-title--line-height: 1.15;
+  --text-figure: 2.5rem; /* 40px headline amounts, use with tabular-nums */
+  --text-figure--line-height: 1.1;
+}
+
+:root {
+  /* Legacy aliases kept for existing var() usage; they point at the tokens above. */
+  --bg-primary: var(--color-surface-0);
+  --bg-surface: var(--color-surface-1);
+  /* Card elevation: refined soft shadow for depth without corner artifacts */
+  --shadow-card: 0 10px 20px oklch(0 0 0 / 0.3);
+  --text-primary: var(--color-fg);
+  --text-secondary: oklch(0.921 0.003 17.22 / 0.7);
+  --accent-green: var(--color-positive);
+  --accent-purple: var(--color-accent);
+  --accent-purple-glow: oklch(0.6 0.15 312 / 0.5);
+  --error: var(--color-negative);
+
   --radius-sidebar-active: 15px;
   --space-xs: 4px;
   --space-s: 8px;
@@ -62,7 +123,7 @@ body.sidebar-collapsed {
 .text-sidebar-button { font-size: 18px; font-weight: 400; white-space: nowrap; }
 .sidebar-title { font-size: 24px; font-weight: 700; letter-spacing: 0.02em; }
 .text-card-header { font-size: clamp(18px, 1.5vw, 20px); font-weight: 600; }
-.text-card-value { font-size: clamp(24px, 5vw, 48px); font-weight: 700; line-height: 1.1; }
+.text-card-value { font-size: clamp(24px, 5vw, 48px); font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .text-card-currency { font-size: clamp(20px, 3vw, 30px); font-weight: 600; }
 .text-body { font-size: clamp(15px, 1.2vw, 16px); font-weight: 400; }
 .text-helper { font-size: clamp(12px, 1.2vw, 14px); font-weight: 400; opacity: 0.7; }
@@ -122,7 +183,7 @@ body.sidebar-collapsed {
 /* Buttons */
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
-.btn { border-radius: 9999px; font-family: inherit; transition: all 0.2s ease; cursor: pointer; }
+.btn { border-radius: 9999px; font-family: inherit; transition-property: background-color, border-color, color, box-shadow, opacity, transform; transition-duration: 0.2s; transition-timing-function: ease; cursor: pointer; }
 .btn-primary { background: linear-gradient(180deg, var(--accent-purple) 0%, #904eb8 100%); color: var(--text-primary); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(172,102,218,0.25); border: 1px solid rgba(172,102,218,0.5); }
 .btn-primary:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 12px rgba(172,102,218,0.4); transform: translateY(-1px); }
 .btn-success { background: linear-gradient(180deg, var(--accent-green) 0%, #5ca137 100%); color: var(--text-primary); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(116,198,72,0.25); border: 1px solid rgba(116,198,72,0.5); }
@@ -455,6 +516,15 @@ body.controls-accent-always .sidebar .sidebar-logout {
     transform: scale(1.02);
     box-shadow: 0 0 0 4px rgba(163, 102, 203, 0);
   }
+}
+
+/* Dialog enter animation (Dialog.tsx). Runs once on open; exits are instant. */
+@keyframes dialog-backdrop-in { from { opacity: 0; } }
+@keyframes dialog-panel-in { from { opacity: 0; translate: 0 8px; scale: 0.98; } }
+.dialog-backdrop { animation: dialog-backdrop-in 160ms ease-out; }
+.dialog-panel { animation: dialog-panel-in 200ms cubic-bezier(0.2, 0, 0, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .dialog-backdrop, .dialog-panel { animation: none; }
 }
 
 .blinking-dot {

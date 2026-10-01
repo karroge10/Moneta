@@ -1,8 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import Card from '@/components/ui/Card';
+import { useMutation } from '@tanstack/react-query';
 import { Download } from 'iconoir-react';
+import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import Skeleton from '@/components/ui/Skeleton';
+import { apiFetch } from '@/lib/api-client';
+import { formatDate, formatDecimal } from '@/lib/format';
 
 interface ExportDataCardProps {
   loading?: boolean;
@@ -17,117 +21,18 @@ interface ExportTransactionRow {
   Category: string;
 }
 
+type ExportResult = 'downloaded' | 'empty';
+
 export default function ExportDataCard({ loading = false }: ExportDataCardProps) {
-  const [exporting, setExporting] = useState(false);
-
-  const handleExport = async () => {
-    try {
-      setExporting(true);
-      const response = await fetch('/api/user/export');
-      
-      if (!response.ok) {
-        throw new Error('Export failed');
-      }
-
-      const { data } = await response.json() as { data: ExportTransactionRow[] };
-      
-      if (!data || data.length === 0) {
-          alert('No transactions found to export.');
-          return;
-      }
-
-      
-      const timestamp = new Date().toISOString().split('T')[0];
-      const fileName = `moneta_export_${timestamp}.xls`;
-
-      
-      const lastRow = data.length + 1;
-      const filterRange = `A1:F${lastRow}`;
-
-      const xml = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http:
-        <head>
-          <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">
-          <!--[if gte mso 9]>
-          <xml>
-            <x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
-              <x:Name>Transactions</x:Name>
-              <x:WorksheetOptions>
-                <x:DisplayGridlines/>
-                <x:AutoFilter x:Range="${filterRange}"/>
-              </x:WorksheetOptions>
-            </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook>
-          </xml>
-          <![endif]-->
-          <style>
-            table { border-collapse: collapse; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-            th { background-color: #AC66DA; color: #FFFFFF; font-weight: bold; border: 1px solid #3a3a3a; padding: 10px 8px; text-align: left; }
-            td { border: 1px solid #e0e0e0; padding: 6px 8px; color: #282828; }
-            .income { color: #2E7D32; font-weight: 500; }
-            .expense { color: #C62828; }
-            .date-cell { color: #666666; width: 100px; }
-          </style>
-        </head>
-        <body>
-          <table x:str border=0 cellpadding=0 cellspacing=0 style='border-collapse: collapse;'>
-            <thead>
-              <tr x:autofilter="all">
-                <th style="width: 100px;">Date</th>
-                <th style="width: 350px;">Transaction</th>
-                <th style="width: 100px;">Amount</th>
-                <th style="width: 80px;">Currency</th>
-                <th style="width: 80px;">Type</th>
-                <th style="width: 180px;">Category</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${data.map((row: ExportTransactionRow) => `
-                <tr>
-                  <td class="date-cell">${row.Date}</td>
-                  <td>${row.Name}</td>
-                  <td class="${row.Type === 'income' ? 'income' : 'expense'}">
-                    ${row.Type === 'income' ? '+' : '-'}${row.Amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </td>
-                  <td>${row.Currency}</td>
-                  <td>${row.Type}</td>
-                  <td>${row.Category}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </body>
-        </html>
-      `;
-
-      const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-    } catch (error) {
-      console.error('Export error:', error);
-      alert('Failed to export data. Please try again.');
-    } finally {
-      setExporting(false);
-    }
-  };
+  const exportMutation = useMutation({ mutationFn: exportTransactions });
 
   if (loading) {
     return (
       <Card title="Export Data" showActions={false} className="h-full">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-6 h-6 rounded shrink-0 animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
-            <div className="flex-1 min-w-0">
-              <div className="h-4 w-full max-w-md rounded animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
-            </div>
-            <div className="h-10 px-6 min-w-[7.5rem] rounded-full shrink-0 animate-pulse" style={{ backgroundColor: '#3a3a3a' }} />
-          </div>
+        <div className="flex items-center gap-4" aria-busy="true">
+          <span className="sr-only">Loading</span>
+          <Skeleton className="h-4 max-w-md flex-1" />
+          <Skeleton className="h-10 w-32 shrink-0 rounded-full" />
         </div>
       </Card>
     );
@@ -135,32 +40,111 @@ export default function ExportDataCard({ loading = false }: ExportDataCardProps)
 
   return (
     <Card title="Export Data" showActions={false} className="h-full">
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center gap-4">
-          <div className="shrink-0">
-            <Download
-              width={24}
-              height={24}
-              strokeWidth={1.5}
-              style={{ color: '#B9B9B9' }}
-            />
-          </div>
-          <p className="flex-1 text-body" style={{ color: '#E7E4E4' }}>
-            Download a copy of your data as a CSV file.
+          <Download width={24} height={24} strokeWidth={1.5} className="shrink-0 text-secondary" aria-hidden="true" />
+          <p className="flex-1 text-copy text-fg text-pretty">
+            Download all your transactions as an Excel file (.xls).
           </p>
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={exporting}
-            className={`px-4 py-2 rounded-full text-body font-semibold transition-opacity shrink-0 flex items-center gap-2 ${
-              exporting ? 'opacity-60 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'
-            }`}
-            style={{ backgroundColor: 'var(--accent-purple)', color: 'var(--text-primary)' }}
-          >
-            {exporting ? 'Exporting...' : 'Export Data'}
-          </button>
+          <Button onClick={() => exportMutation.mutate()} loading={exportMutation.isPending} className="shrink-0">
+            Export data
+          </Button>
+        </div>
+        <div aria-live="polite">
+          {exportMutation.data === 'empty' && (
+            <p className="text-ui text-secondary">There are no transactions to export yet.</p>
+          )}
+          {exportMutation.isError && (
+            <p className="text-ui text-negative-fg">Could not export your data. Please try again.</p>
+          )}
         </div>
       </div>
     </Card>
   );
+}
+
+async function exportTransactions(): Promise<ExportResult> {
+  const { data } = await apiFetch<{ data: ExportTransactionRow[] }>('/api/user/export');
+  if (!data || data.length === 0) return 'empty';
+
+  const timestamp = formatDate(new Date(), 'input');
+  const workbook = buildWorkbookHtml(data);
+  downloadFile(workbook, `moneta_export_${timestamp}.xls`, 'application/vnd.ms-excel');
+  return 'downloaded';
+}
+
+/** Excel opens this HTML table as a worksheet. Every cell is escaped, since names come from user input. */
+function buildWorkbookHtml(rows: ExportTransactionRow[]): string {
+  const filterRange = `A1:F${rows.length + 1}`;
+  const bodyRows = rows.map(renderRow).join('');
+
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">
+<!--[if gte mso 9]><xml>
+<x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>Transactions</x:Name>
+<x:WorksheetOptions><x:DisplayGridlines/><x:AutoFilter x:Range="${filterRange}"/></x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook>
+</xml><![endif]-->
+<style>
+table { border-collapse: collapse; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+th { background-color: #AC66DA; color: #FFFFFF; font-weight: bold; border: 1px solid #3a3a3a; padding: 10px 8px; text-align: left; }
+td { border: 1px solid #e0e0e0; padding: 6px 8px; color: #282828; }
+.income { color: #2E7D32; font-weight: 500; }
+.expense { color: #C62828; }
+.date-cell { color: #666666; width: 100px; }
+</style>
+</head>
+<body>
+<table x:str border=0 cellpadding=0 cellspacing=0>
+<thead>
+<tr x:autofilter="all">
+<th style="width: 100px;">Date</th>
+<th style="width: 350px;">Transaction</th>
+<th style="width: 100px;">Amount</th>
+<th style="width: 80px;">Currency</th>
+<th style="width: 80px;">Type</th>
+<th style="width: 180px;">Category</th>
+</tr>
+</thead>
+<tbody>${bodyRows}</tbody>
+</table>
+</body>
+</html>`;
+}
+
+function renderRow(row: ExportTransactionRow): string {
+  const isIncome = row.Type === 'income';
+  const amount = formatDecimal(row.Amount, { minDecimals: 2, maxDecimals: 2 });
+  const signedAmount = `${isIncome ? '+' : '-'}${amount}`;
+  return `<tr>
+<td class="date-cell">${escapeHtml(row.Date)}</td>
+<td>${escapeHtml(row.Name)}</td>
+<td class="${isIncome ? 'income' : 'expense'}">${escapeHtml(signedAmount)}</td>
+<td>${escapeHtml(row.Currency)}</td>
+<td>${escapeHtml(row.Type)}</td>
+<td>${escapeHtml(row.Category)}</td>
+</tr>`;
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function downloadFile(contents: string, fileName: string, type: string) {
+  const blob = new Blob([contents], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

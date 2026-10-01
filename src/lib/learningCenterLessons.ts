@@ -40,7 +40,7 @@ export const learningCenterLessons: LearningCenterLesson[] = [
     steps: [
       'Saving rate, spending vs income, goals, and engagement shape your score.',
       'Open Statistics for long-run trends and the score breakdown link.',
-      'Small habits—regular logging and categorized spend—compound over time.',
+      'Small habits, like regular logging and categorized spending, compound over time.',
     ],
     primaryHref: '/statistics',
     primaryLabel: 'View Statistics',

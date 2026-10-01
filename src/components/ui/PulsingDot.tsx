@@ -4,7 +4,7 @@ export default function PulsingDot() {
       <div className="blinking-dot" style={{ 
         width: '8px', 
         height: '8px', 
-        backgroundColor: '#AC66DA',
+        backgroundColor: 'var(--color-accent)',
         borderRadius: '50%',
       }} />
     </div>

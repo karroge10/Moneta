@@ -1,388 +1,299 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { CheckCircle, WarningTriangle, RefreshDouble, Page, Trash } from 'iconoir-react';
 import ProgressBar from '@/components/ui/ProgressBar';
-import { APP_CONFIG } from '@/lib/config';
+import Skeleton from '@/components/ui/Skeleton';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
+import Button from '@/components/ui/Button';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+import { cx } from '@/components/ui/cx';
+import {
+  RECENT_JOBS_LIMIT,
+  useDeleteImportJob,
+  useImportJobs,
+  type ImportJob,
+  type JobStatus,
+} from '@/hooks/transactions/useImportJobs';
+import { formatDecimal } from '@/lib/format';
 
-export type JobStatus = 'queued' | 'processing' | 'completed' | 'failed';
-
-interface Job {
-  id: string;
-  status: JobStatus;
-  progress: number;
-  fileName: string;
-  processedCount: number | null;
-  totalCount: number | null;
-  createdAt: string;
-  completedAt: string | null;
-  error: string | null;
-}
+export type { JobStatus };
 
 interface RecentJobsListProps {
   onResumeJob: (jobId: string, status: JobStatus) => void;
   currentJobId?: string | null;
   className?: string;
-  showTitle?: boolean;
-  refreshTrigger?: number; 
-  optimisticJob?: { 
-    id: string;
-    fileName: string;
-    status: JobStatus;
-    createdAt: string;
-  } | null;
-  onDeleteActiveJob?: () => void; 
+  /** Called after the job that is open in the review table was deleted. */
+  onDeleteActiveJob?: () => void;
+  onError?: (message: string) => void;
 }
 
-const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
-
-function formatTimestamp(dateString: string): string {
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) {
-    return 'Unknown date';
-  }
-  return dateTimeFormatter.format(date);
-}
-
-function formatDuration(createdAt: string, completedAt: string | null): string | null {
-  if (!completedAt) return null;
-  
-  const start = new Date(createdAt);
-  const end = new Date(completedAt);
-  
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return null;
-  }
-  
-  const totalSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
-  
-  if (totalSeconds < 0) return null;
-  
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  
-  const parts: string[] = [];
-  if (hours > 0) {
-    parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
-  }
-  if (minutes > 0) {
-    parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
-  }
-  if (seconds > 0 || parts.length === 0) {
-    parts.push(`${seconds} second${seconds !== 1 ? 's' : ''}`);
-  }
-  
-  return parts.join(' ');
-}
-
+/** Recent PDF imports with status, progress and delete. Selecting a job loads it into the review table. */
 export default function RecentJobsList({
   onResumeJob,
   currentJobId,
-  className = '',
-  showTitle = true,
-  refreshTrigger,
-  optimisticJob,
+  className,
   onDeleteActiveJob,
+  onError,
 }: RecentJobsListProps) {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<ImportJob | null>(null);
+  const jobsQuery = useImportJobs(showAll);
+  const deleteJob = useDeleteImportJob();
+  const jobs = jobsQuery.data ?? [];
 
-  const fetchJobs = useCallback(async () => {
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const jobId = pendingDelete.id;
     try {
-      const limit = showAll ? 50 : 20;
-      const res = await fetch(`/api/jobs?limit=${limit}`);
-      if (res.ok) {
-        const data = await res.json();
-        const fetchedJobs = data.jobs || [];
-        
-        
-        if (optimisticJob) {
-          const hasOptimisticJob = fetchedJobs.some((j: Job) => j.id === optimisticJob.id);
-          if (!hasOptimisticJob) {
-            const optimisticJobEntry: Job = {
-              id: optimisticJob.id,
-              status: optimisticJob.status,
-              progress: 0,
-              fileName: optimisticJob.fileName,
-              processedCount: null,
-              totalCount: null,
-              createdAt: optimisticJob.createdAt,
-              completedAt: null,
-              error: null,
-            };
-            
-            fetchedJobs.unshift(optimisticJobEntry);
-          }
-        }
-        
-        setJobs(fetchedJobs);
-        
-        setIsLoading(false);
-      } else {
-        
-        setIsLoading(false);
-      }
+      await deleteJob.mutateAsync(jobId);
+      if (jobId === currentJobId) onDeleteActiveJob?.();
     } catch (error) {
-      console.error('Failed to fetch recent jobs', error);
-      
-      setIsLoading(false);
-    }
-  }, [optimisticJob, showAll]);
-
-  const handleDelete = async (e: React.MouseEvent, jobId: string) => {
-    e.stopPropagation(); 
-    
-    if (!confirm('Are you sure you want to delete this import job? This action cannot be undone.')) {
-      return;
-    }
-
-    const isActiveJob = jobId === currentJobId;
-
-    setDeletingJobId(jobId);
-    try {
-      const res = await fetch(`/api/jobs/${jobId}`, {
-        method: 'DELETE',
-      });
-
-      if (res.ok) {
-        
-        setJobs(jobs.filter(job => job.id !== jobId));
-        
-        
-        if (isActiveJob && onDeleteActiveJob) {
-          onDeleteActiveJob();
-        }
-      } else {
-        const error = await res.json().catch(() => ({ error: 'Failed to delete job' }));
-        alert(error.error || 'Failed to delete job');
-      }
-    } catch (error) {
-      console.error('Failed to delete job', error);
-      alert('Failed to delete job. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to delete job. Please try again.';
+      onError?.(message);
     } finally {
-      setDeletingJobId(null);
+      setPendingDelete(null);
     }
   };
 
-  
-  
-  
-  
-  const activeJobsCount = jobs.filter(j => j.status === 'queued' || j.status === 'processing').length;
-  const pollInterval = activeJobsCount > 0 
-    ? APP_CONFIG.polling.recentJobs.activeInterval 
-    : APP_CONFIG.polling.recentJobs.idleInterval;
+  return (
+    <div className={cx('min-h-0 space-y-2', className)}>
+      <JobsBody
+        jobs={jobs}
+        isLoading={jobsQuery.isPending}
+        error={jobsQuery.error}
+        onRetry={() => jobsQuery.refetch()}
+        retrying={jobsQuery.isFetching}
+        currentJobId={currentJobId ?? null}
+        deletingJobId={deleteJob.isPending ? (deleteJob.variables ?? null) : null}
+        onResumeJob={onResumeJob}
+        onDelete={setPendingDelete}
+      />
 
-  useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
+      {jobs.length >= RECENT_JOBS_LIMIT && !showAll && (
+        <Button variant="secondary" fullWidth onClick={() => setShowAll(true)}>
+          View All Imports
+        </Button>
+      )}
 
-  useEffect(() => {
-    if (currentJobId === undefined) return;
-    fetchJobs();
-  }, [currentJobId, fetchJobs]);
+      <ConfirmModal
+        isOpen={pendingDelete !== null}
+        title="Delete import"
+        message="Are you sure you want to delete this import job? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+        isLoading={deleteJob.isPending}
+        variant="danger"
+      />
+    </div>
+  );
+}
 
-  
-  useEffect(() => {
-    if (refreshTrigger !== undefined && refreshTrigger > 0) {
-      fetchJobs();
-    }
-  }, [refreshTrigger, fetchJobs]);
+interface JobsBodyProps {
+  jobs: ImportJob[];
+  isLoading: boolean;
+  error: Error | null;
+  onRetry: () => void;
+  retrying: boolean;
+  currentJobId: string | null;
+  deletingJobId: string | null;
+  onResumeJob: RecentJobsListProps['onResumeJob'];
+  onDelete: (job: ImportJob) => void;
+}
 
-  
-  useEffect(() => {
-    if (optimisticJob) {
-      setJobs(prev => {
-        
-        const exists = prev.some(j => j.id === optimisticJob.id);
-        if (exists) {
-          
-          return prev.map(j => j.id === optimisticJob.id ? {
-            ...j,
-            status: optimisticJob.status,
-            fileName: optimisticJob.fileName,
-          } : j);
-        } else {
-          
-          const optimisticJobEntry: Job = {
-            id: optimisticJob.id,
-            status: optimisticJob.status,
-            progress: 0,
-            fileName: optimisticJob.fileName,
-            processedCount: null,
-            totalCount: null,
-            createdAt: optimisticJob.createdAt,
-            completedAt: null,
-            error: null,
-          };
-          return [optimisticJobEntry, ...prev].slice(0, 5); 
-        }
-      });
-    }
-  }, [optimisticJob]);
-
-  useEffect(() => {
-    if (APP_CONFIG.polling.recentJobs.temporarilyDisabled) {
-      return;
-    }
-    const interval = setInterval(fetchJobs, pollInterval);
-    return () => clearInterval(interval);
-  }, [pollInterval, fetchJobs]);
-
-  const showSkeleton = isLoading;
-  const hasJobs = jobs.length > 0;
+function JobsBody({
+  jobs,
+  isLoading,
+  error,
+  onRetry,
+  retrying,
+  currentJobId,
+  deletingJobId,
+  onResumeJob,
+  onDelete,
+}: JobsBodyProps) {
+  if (isLoading) {
+    return (
+      <div className="space-y-2" aria-busy="true">
+        {Array.from({ length: 3 }, (_, index) => (
+          <JobSkeleton key={`job-skeleton-${index}`} />
+        ))}
+      </div>
+    );
+  }
+  if (error && jobs.length === 0) return <ErrorState message={error.message} onRetry={onRetry} retrying={retrying} />;
+  if (jobs.length === 0) {
+    return (
+      <EmptyState
+        icon={<Page width={24} height={24} strokeWidth={1.5} />}
+        title="No imports yet"
+        description="Start by uploading a PDF to see history here."
+        className="rounded-panel border border-dashed border-line"
+      />
+    );
+  }
 
   return (
-    <div className={`space-y-3 min-h-0 ${className}`}>
-      {showTitle && <h3 className="text-sm font-semibold text-[#E7E4E4] px-1">Recent Imports</h3>}
-      <div className="space-y-2">
-        {showSkeleton && (
-          Array.from({ length: 3 }).map((_, index) => (
-            <div
-              key={`job-skeleton-${index}`}
-              className="rounded-2xl p-4 border border-[#3a3a3a] bg-[#282828] animate-pulse"
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#343434]" />
-                <div className="flex-1 space-y-3">
-                  <div className="h-4 bg-[#343434] rounded w-3/5" />
-                  <div className="h-3 bg-[#343434] rounded w-4/5" />
-                  <div className="h-2 bg-[#343434] rounded w-full" />
-                </div>
-              </div>
-            </div>
-          ))
-        )}
+    <ul className="space-y-2">
+      {jobs.map((job) => (
+        <li key={job.id}>
+          <JobItem
+            job={job}
+            isCurrent={job.id === currentJobId}
+            isDeleting={deletingJobId === job.id}
+            onResume={() => onResumeJob(job.id, job.status)}
+            onDelete={() => onDelete(job)}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
 
-        {!showSkeleton && hasJobs && jobs.map((job) => {
-          const isCurrent = job.id === currentJobId;
-          const isCompleted = job.status === 'completed';
-          const isFailed = job.status === 'failed';
-          const isProcessing = job.status === 'processing' || job.status === 'queued';
-          const completionDuration = isCompleted ? formatDuration(job.createdAt, job.completedAt) : null;
+interface JobItemProps {
+  job: ImportJob;
+  isCurrent: boolean;
+  isDeleting: boolean;
+  onResume: () => void;
+  onDelete: () => void;
+}
 
-          return (
-            <div
-              key={job.id}
-              onClick={() => !isCurrent && onResumeJob(job.id, job.status)}
-              className={`
-                rounded-2xl p-4 border transition-all
-                ${isCurrent 
-                  ? 'border-[#AC66DA] bg-[#2A2A2A] cursor-default' 
-                  : 'border-[#3a3a3a] bg-[#282828] hover:border-[#555] hover:bg-[#2A2A2A] cursor-pointer active:scale-[0.98]'
-                }
-              `}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <div className={`
-                    w-10 h-10 rounded-full flex items-center justify-center shrink-0
-                    ${isCompleted ? 'bg-[rgba(116,198,72,0.1)] text-[#74C648]' : ''}
-                    ${isFailed ? 'bg-[rgba(217,63,63,0.1)] text-[#D93F3F]' : ''}
-                    ${isProcessing ? 'bg-[rgba(172,102,218,0.1)] text-[#AC66DA]' : ''}
-                  `}>
-                    {isCompleted && <CheckCircle width={20} height={20} strokeWidth={1.5} />}
-                    {isFailed && <WarningTriangle width={20} height={20} strokeWidth={1.5} />}
-                    {isProcessing && <RefreshDouble width={20} height={20} strokeWidth={1.5} className="animate-spin" />}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0 max-w-full">
-                    <div className="flex items-center gap-2 mb-1 min-w-0">
-                      <Page width={14} height={14} strokeWidth={1.5} className="text-[var(--text-secondary)] shrink-0" />
-                      <p className="text-sm font-medium text-[#E7E4E4] truncate min-w-0 flex-1" title={job.fileName}>
-                        {job.fileName}
-                      </p>
-                    </div>
-                    
-                    <div className="text-xs text-[var(--text-secondary)] flex items-center gap-2 flex-wrap">
-                      <span>{formatTimestamp(job.createdAt)}</span>
-                      
-                      {isProcessing && (
-                        <>
-                           <span>•</span>
-                           <span>{job.status === 'queued' ? 'Queued' : `${job.progress}%`}</span>
-                        </>
-                      )}
-                      
-                      {isCompleted && job.processedCount && (
-                        <>
-                          <span>•</span>
-                          <span>{job.processedCount} transactions</span>
-                        </>
-                      )}
-                      
-                      {isCompleted && completionDuration && (
-                        <>
-                          <span>•</span>
-                          <span>{completionDuration}</span>
-                        </>
-                      )}
-                    </div>
+function JobItem({ job, isCurrent, isDeleting, onResume, onDelete }: JobItemProps) {
+  const isCompleted = job.status === 'completed';
+  const isFailed = job.status === 'failed';
+  const isProcessing = job.status === 'processing' || job.status === 'queued';
+  const duration = isCompleted ? formatJobDuration(job.createdAt, job.completedAt) : null;
 
-                    {isProcessing && (
-                      <div className="mt-3">
-                         <ProgressBar value={job.progress} height={4} showLabel={false} />
-                      </div>
-                    )}
-                  </div>
-                </div>
+  return (
+    <div
+      className={cx(
+        'relative rounded-panel border p-4 transition-colors',
+        isCurrent ? 'border-accent bg-surface-2' : 'border-line bg-surface-1 hover:border-line-strong hover:bg-surface-2',
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <button
+          type="button"
+          onClick={onResume}
+          disabled={isCurrent}
+          aria-current={isCurrent || undefined}
+          className="flex min-w-0 flex-1 items-start gap-3 text-left cursor-pointer disabled:cursor-default focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          <JobStatusIcon status={job.status} />
+          <span className="min-w-0 max-w-full flex-1">
+            <span className="mb-1 flex min-w-0 items-center gap-2">
+              <Page width={14} height={14} strokeWidth={1.5} className="shrink-0 text-secondary" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate text-ui font-medium text-fg" title={job.fileName}>
+                {job.fileName}
+              </span>
+            </span>
+            <span className="flex flex-wrap items-center gap-2 text-caption text-secondary tabular-nums">
+              <span>{formatTimestamp(job.createdAt)}</span>
+              {isProcessing && <Meta>{job.status === 'queued' ? 'Queued' : `${job.progress}%`}</Meta>}
+              {isFailed && <Meta>Failed</Meta>}
+              {isCompleted && job.processedCount ? <Meta>{formatDecimal(job.processedCount)} transactions</Meta> : null}
+              {duration && <Meta>{duration}</Meta>}
+            </span>
+            {isProcessing && (
+              <span className="mt-3 block">
+                <ProgressBar value={job.progress} height={4} showLabel={false} />
+              </span>
+            )}
+          </span>
+        </button>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  {isCurrent && (
-                    <span className="text-xs font-medium text-[#AC66DA] bg-[rgba(172,102,218,0.1)] px-2 py-1 rounded-full">
-                      Active
-                    </span>
-                  )}
-                  
-                  <button
-                    onClick={(e) => handleDelete(e, job.id)}
-                    disabled={deletingJobId === job.id}
-                    className={`
-                      p-2 rounded-full transition-all
-                      ${deletingJobId === job.id 
-                        ? 'opacity-50 cursor-not-allowed' 
-                        : 'hover:bg-[rgba(217,63,63,0.1)] hover:text-[#D93F3F] active:scale-95'
-                      }
-                      text-[var(--text-secondary)]
-                    `}
-                    title="Delete job"
-                  >
-                    <Trash 
-                      width={16} 
-                      height={16} 
-                      strokeWidth={1.5}
-                      className={deletingJobId === job.id ? 'animate-pulse' : ''}
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        {!showSkeleton && !hasJobs && (
-          <div className="rounded-2xl border border-dashed border-[#3a3a3a] bg-[#252525] p-6 text-center text-xs text-[var(--text-secondary)]">
-            No imports yet. Start by uploading a PDF to see history here.
-          </div>
-        )}
-
-        {!showSkeleton && hasJobs && jobs.length >= 20 && !showAll && (
+        <div className="flex shrink-0 items-center gap-2">
+          {isCurrent && (
+            <span className="rounded-full bg-accent/10 px-2 py-1 text-caption font-medium text-accent-fg">Active</span>
+          )}
           <button
-            onClick={() => setShowAll(true)}
-            className="w-full rounded-xl border border-[#3a3a3a] bg-[#282828] px-4 py-3 text-sm font-medium transition-colors hover:border-[#AC66DA] hover:bg-[#2A2A2A] cursor-pointer"
-            style={{ color: 'var(--text-primary)' }}
+            type="button"
+            onClick={onDelete}
+            disabled={isDeleting}
+            aria-label={`Delete import ${job.fileName}`}
+            title="Delete job"
+            className="inline-flex size-10 items-center justify-center rounded-full text-secondary transition-colors hover:bg-negative/10 hover:text-negative-fg disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent cursor-pointer"
           >
-            View All Imports
+            <Trash width={16} height={16} strokeWidth={1.5} className={cx(isDeleting && 'animate-pulse')} aria-hidden="true" />
           </button>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
+function JobStatusIcon({ status }: { status: JobStatus }) {
+  const isCompleted = status === 'completed';
+  const isFailed = status === 'failed';
+  return (
+    <span
+      aria-hidden="true"
+      className={cx(
+        'flex size-10 shrink-0 items-center justify-center rounded-full',
+        isCompleted && 'bg-positive/10 text-positive',
+        isFailed && 'bg-negative/10 text-negative-fg',
+        !isCompleted && !isFailed && 'bg-accent/10 text-accent-fg',
+      )}
+    >
+      {isCompleted && <CheckCircle width={20} height={20} strokeWidth={1.5} />}
+      {isFailed && <WarningTriangle width={20} height={20} strokeWidth={1.5} />}
+      {!isCompleted && !isFailed && <RefreshDouble width={20} height={20} strokeWidth={1.5} className="animate-spin" />}
+    </span>
+  );
+}
+
+function Meta({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <span aria-hidden="true">•</span>
+      <span>{children}</span>
+    </>
+  );
+}
+
+function JobSkeleton() {
+  return (
+    <div className="rounded-panel border border-line bg-surface-1 p-4">
+      <div className="flex items-start gap-3">
+        <Skeleton className="size-10 rounded-full" />
+        <div className="flex-1 space-y-3">
+          <Skeleton className="h-4 w-3/5" />
+          <Skeleton className="h-3 w-4/5" />
+          <Skeleton className="h-2 w-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const dateTimeFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+
+function formatTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Unknown date';
+  return dateTimeFormatter.format(date);
+}
+
+function formatJobDuration(createdAt: string, completedAt: string | null): string | null {
+  if (!completedAt) return null;
+  const start = new Date(createdAt).getTime();
+  const end = new Date(completedAt).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  const totalSeconds = Math.floor((end - start) / 1000);
+  if (totalSeconds < 0) return null;
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts: string[] = [];
+  if (hours > 0) parts.push(plural(hours, 'hour'));
+  if (minutes > 0) parts.push(plural(minutes, 'minute'));
+  if (seconds > 0 || parts.length === 0) parts.push(plural(seconds, 'second'));
+  return parts.join(' ');
+}
+
+function plural(count: number, unit: string): string {
+  return `${count} ${unit}${count !== 1 ? 's' : ''}`;
+}

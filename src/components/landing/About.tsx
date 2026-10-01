@@ -1,39 +1,39 @@
-"use client";
-
 import { CheckCircle, Spark, StatUp } from "iconoir-react";
+import { cx } from "@/components/ui/cx";
 
 export default function About() {
   return (
-    <section id="about" className="py-16 md:py-24 px-6 md:px-8 bg-[#1f1f1f]">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col md:flex-row items-center gap-12 lg:gap-20">
-          <div className="md:w-1/2 space-y-6 text-center md:text-left">
-            <h2 className="text-[32px] md:text-[44px] lg:text-[48px] text-[#E7E4E4] font-bold leading-tight tracking-tight">
-              A new standard for<br/>your financial life
+    <section id="about" className="scroll-mt-24 bg-surface-inset px-6 py-16 md:px-8 md:py-24">
+      <div className="mx-auto max-w-5xl">
+        <div className="flex flex-col items-center gap-12 md:flex-row lg:gap-20">
+          <div className="space-y-6 text-center md:w-1/2 md:text-left">
+            <h2 className="text-[32px] font-bold leading-tight tracking-tight text-fg text-balance md:text-[44px] lg:text-[48px]">
+              A calmer way to run your finances
             </h2>
-            <p className="text-body text-[#E7E4E4] opacity-70 text-lg leading-relaxed max-w-md mx-auto md:mx-0">
-              Moneta was engineered to solve a clear problem: financial apps are often cluttered and designed to sell user data. Managing your money shouldn&apos;t be a chore.
+            <p className="mx-auto max-w-md text-lg leading-relaxed text-secondary text-pretty md:mx-0">
+              Moneta exists because most finance apps are cluttered and built to sell you something. Managing your money
+              should not be a chore.
             </p>
           </div>
-          
-          <div className="md:w-1/2 w-full card-surface space-y-8">
+
+          <div className="card-surface w-full space-y-8 md:w-1/2">
             <AboutItem
-              icon={<CheckCircle width={18} height={18} className="text-[#AC66DA]" strokeWidth={2} />}
-              title="Radical Clarity"
-              description="The noise is stripped away so you can focus directly on your goals."
-              bgColor="purple"
+              icon={<CheckCircle width={18} height={18} strokeWidth={2} className="text-accent" />}
+              title="Radical clarity"
+              description="The noise is stripped away so you can focus on your goals."
+              tone="accent"
             />
             <AboutItem
-              icon={<Spark width={18} height={18} className="text-[#74C648]" strokeWidth={2} />}
-              title="Privacy First"
-              description="No information is sold, and no credit cards are pushed. Secure by design."
-              bgColor="green"
+              icon={<Spark width={18} height={18} strokeWidth={2} className="text-positive" />}
+              title="Privacy first"
+              description="Your data is never sold and nobody pushes credit cards at you. Contributing to peer comparisons is optional and off with one switch."
+              tone="positive"
             />
             <AboutItem
-              icon={<StatUp width={18} height={18} className="text-[#AC66DA]" strokeWidth={2} />}
-              title="Built for Action"
-              description="Smart projections and real-time tracking for an active financial life."
-              bgColor="purple"
+              icon={<StatUp width={18} height={18} strokeWidth={2} className="text-accent" />}
+              title="Built for action"
+              description="Goal projections and spending breakdowns update as soon as you add or import transactions."
+              tone="accent"
             />
           </div>
         </div>
@@ -42,24 +42,27 @@ export default function About() {
   );
 }
 
-function AboutItem({ icon, title, description, bgColor }: { 
-  icon: React.ReactNode; 
-  title: string; 
+function AboutItem({
+  icon,
+  title,
+  description,
+  tone,
+}: {
+  icon: React.ReactNode;
+  title: string;
   description: string;
-  bgColor: 'purple' | 'green';
+  tone: "accent" | "positive";
 }) {
-  const bgClass = bgColor === 'purple' ? 'bg-[#AC66DA]/10 border-[#AC66DA]/20' : 'bg-[#74C648]/10 border-[#74C648]/20';
+  const toneClass = tone === "accent" ? "border-accent/20 bg-accent/10" : "border-positive/20 bg-positive/10";
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-3">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${bgClass}`}>
+        <div className={cx("flex size-8 items-center justify-center rounded-full border", toneClass)} aria-hidden="true">
           {icon}
         </div>
-        <h3 className="text-card-header text-[#E7E4E4]">{title}</h3>
+        <h3 className="text-card-header text-fg">{title}</h3>
       </div>
-      <p className="text-[#E7E4E4] opacity-70 text-body leading-relaxed pl-11">
-        {description}
-      </p>
+      <p className="pl-11 text-copy text-secondary text-pretty">{description}</p>
     </div>
   );
 }

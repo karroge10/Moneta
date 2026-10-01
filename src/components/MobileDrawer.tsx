@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type KeyboardEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -16,7 +16,8 @@ import {
   Settings,
   HeadsetHelp,
 } from 'iconoir-react';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth, useClerk } from '@clerk/nextjs';
+import { cx } from '@/components/ui/cx';
 
 interface MobileDrawerProps {
   isOpen: boolean;
@@ -24,122 +25,147 @@ interface MobileDrawerProps {
   activeSection?: string;
 }
 
+const MENU_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: HomeSimpleDoor, href: '/dashboard' },
+  { id: 'income', label: 'Income', icon: Wallet, href: '/income' },
+  { id: 'expenses', label: 'Expenses', icon: ShoppingBag, href: '/expenses' },
+  { id: 'transactions', label: 'Transactions', icon: LotOfCash, href: '/transactions' },
+  { id: 'investments', label: 'Investments', icon: BitcoinCircle, href: '/investments' },
+  { id: 'goals', label: 'Goals', icon: CalendarCheck, href: '/goals' },
+  { id: 'statistics', label: 'Statistics', icon: Reports, href: '/statistics' },
+  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
+  { id: 'help', label: 'Help Center', icon: HeadsetHelp, href: '/help' },
+];
+
+/**
+ * Slide-in navigation for mobile. A modal dialog while open: focus moves into it, Tab stays inside,
+ * Escape and the backdrop close it, page scroll is locked. Inert while closed so hidden links are
+ * not reachable by keyboard.
+ */
 export default function MobileDrawer({ isOpen, onClose, activeSection = 'dashboard' }: MobileDrawerProps) {
   const { isSignedIn } = useAuth();
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const pointerDownOnOverlay = useRef(false);
+  const { signOut } = useClerk();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-  
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    if (!isOpen) return;
+    const previousOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    closeButtonRef.current?.focus();
     return () => {
-      document.body.style.overflow = '';
+      document.documentElement.style.overflow = previousOverflow;
     };
   }, [isOpen]);
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: HomeSimpleDoor, href: '/dashboard' },
-    { id: 'income', label: 'Income', icon: Wallet, href: '/income' },
-    { id: 'expenses', label: 'Expenses', icon: ShoppingBag, href: '/expenses' },
-    { id: 'transactions', label: 'Transactions', icon: LotOfCash, href: '/transactions' },
-    { id: 'investments', label: 'Investments', icon: BitcoinCircle, href: '/investments' },
-    { id: 'goals', label: 'Goals', icon: CalendarCheck, href: '/goals' },
-    { id: 'statistics', label: 'Statistics', icon: Reports, href: '/statistics' },
-    { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
-    { id: 'help', label: 'Help Center', icon: HeadsetHelp, href: '/help' },
-  ];
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      onClose();
+      return;
+    }
+    if (event.key === 'Tab') trapTab(event, panelRef.current);
+  };
+
+  const handleSignOut = async () => {
+    onClose();
+    await signOut({ redirectUrl: '/' });
+  };
 
   return (
     <>
-      {}
       {isOpen && (
-        <div
-          ref={overlayRef}
-          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
-          aria-hidden="true"
-          onMouseDown={() => {
-            pointerDownOnOverlay.current = true;
-          }}
-          onMouseUp={() => {
-            if (pointerDownOnOverlay.current && overlayRef.current) {
-              onClose();
-            }
-            pointerDownOnOverlay.current = false;
-          }}
-        />
+        <div className="fixed inset-0 z-40 bg-black/50 md:hidden" aria-hidden="true" onClick={onClose} />
       )}
 
-      {}
       <div
-        className={`
-          fixed top-0 left-0 h-full w-80 max-w-[85vw] z-50 md:hidden
-          bg-[var(--bg-surface)] shadow-2xl
-          transform transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
-        onMouseDown={() => {
-          pointerDownOnOverlay.current = false;
-        }}
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Main menu"
+        inert={!isOpen}
+        onKeyDown={handleKeyDown}
+        className={cx(
+          'fixed left-0 top-0 z-50 h-full w-80 max-w-[85vw] bg-surface-1 shadow-2xl md:hidden',
+          'transition-transform duration-300 ease-in-out',
+          isOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
       >
-        <div className="flex flex-col h-full">
-          {}
-          <div className="flex items-center justify-between p-6 border-b border-[rgba(231,228,228,0.1)]">
-            <Link href={isSignedIn ? "/dashboard" : "/"} className="flex items-center gap-3" onClick={onClose}>
-              <Image src="/monetalogo.png" alt="Moneta" width={40} height={40} priority />
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between border-b border-line-subtle p-6">
+            <Link href={isSignedIn ? '/dashboard' : '/'} className="flex items-center gap-3" onClick={onClose}>
+              <Image src="/monetalogo.png" alt="" width={40} height={40} />
               <span className="sidebar-title">MONETA</span>
             </Link>
             <button
+              ref={closeButtonRef}
+              type="button"
               onClick={onClose}
-              className="p-2 rounded-lg transition-colors cursor-pointer hover-text-purple"
+              className="hover-text-purple inline-flex size-11 items-center justify-center rounded-control transition-colors"
               aria-label="Close menu"
             >
-              <Xmark width={24} height={24} strokeWidth={1.5} className="stroke-current" />
+              <Xmark width={24} height={24} strokeWidth={1.5} className="stroke-current" aria-hidden="true" />
             </button>
           </div>
 
-          {}
-          <nav className="flex-1 overflow-y-auto py-4">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeSection === item.id;
-              return (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  onClick={onClose}
-                  className={`
-                    flex items-center gap-3 px-6 py-3 mx-2 mb-1 rounded-[15px]
-                    transition-colors cursor-pointer
-                    ${isActive 
-                      ? 'bg-[var(--bg-primary)] text-[var(--accent-purple)]' 
-                      : 'hover:bg-[var(--bg-primary)] hover:text-[var(--accent-purple)]'
-                    }
-                  `}
-                >
-                  <Icon width={20} height={20} strokeWidth={1.5} />
-                  <span className="text-sidebar-button">{item.label}</span>
-                </Link>
-              );
-            })}
+          <nav aria-label="Main" className="flex-1 overflow-y-auto py-4">
+            <ul>
+              {MENU_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeSection === item.id;
+                return (
+                  <li key={item.id}>
+                    <Link
+                      href={item.href}
+                      onClick={onClose}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={cx(
+                        'mx-2 mb-1 flex items-center gap-3 rounded-control px-6 py-3 transition-colors',
+                        isActive ? 'bg-surface-0 text-accent-fg' : 'hover:bg-surface-0 hover:text-accent-fg',
+                      )}
+                    >
+                      <Icon width={20} height={20} strokeWidth={1.5} aria-hidden="true" />
+                      <span className="text-sidebar-button">{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           </nav>
 
-          {}
-          <div className="border-t border-[rgba(231,228,228,0.1)] p-4">
-            <button
-              type="button"
-              className="flex items-center gap-3 w-full px-6 py-3 rounded-[15px] hover:bg-[var(--bg-primary)] hover:text-[var(--accent-purple)] transition-colors cursor-pointer"
-            >
-              <LogOut width={20} height={20} strokeWidth={1.5} />
-              <span className="text-sidebar-button">Log Out</span>
-            </button>
-          </div>
+          {isSignedIn && (
+            <div className="border-t border-line-subtle p-4">
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="flex w-full items-center gap-3 rounded-control px-6 py-3 transition-colors hover:bg-surface-0 hover:text-accent-fg"
+              >
+                <LogOut width={20} height={20} strokeWidth={1.5} aria-hidden="true" />
+                <span className="text-sidebar-button">Log out</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>
   );
 }
 
+const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled])';
+
+function trapTab(event: KeyboardEvent<HTMLDivElement>, container: HTMLElement | null) {
+  if (!container) return;
+  const nodes = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+  const elements = Array.from(nodes);
+  if (elements.length === 0) return;
+  const first = elements[0];
+  const last = elements[elements.length - 1];
+  const active = document.activeElement;
+  if (event.shiftKey && active === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}

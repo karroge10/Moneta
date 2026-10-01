@@ -1,70 +1,45 @@
+import { Neighbourhood } from 'iconoir-react';
 import Card from '@/components/ui/Card';
-
-import { NavArrowRight, Neighbourhood } from 'iconoir-react';
-import Link from 'next/link';
+import CardFooterLink from '@/components/dashboard/CardFooterLink';
 
 interface DemographicComparisonCardProps {
-  message: string;
-  percentage: number;
-  percentageLabel: string;
-  link: string;
-  linkHref?: string;
+  type: 'expense' | 'income';
+  /** Data sharing is off, so there is nothing to compare against. */
+  disabled: boolean;
 }
 
-export default function DemographicComparisonCard({ 
-  message, 
-  percentage, 
-  percentageLabel,
-  link,
-  linkHref
-}: DemographicComparisonCardProps) {
+/**
+ * Points to the peer comparisons on Statistics. It deliberately shows no figure: the expenses and
+ * income endpoints compare against a fixed regional constant, not real users, so a percentage here
+ * would present made-up peer data as real. Statistics checks the cohort size before showing numbers.
+ */
+export default function DemographicComparisonCard({ type, disabled }: DemographicComparisonCardProps) {
+  const subject = type === 'expense' ? 'spending' : 'income';
+
   return (
-    <Card 
+    <Card
       title="Demographic Comparison"
       customHeader={
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div 
-              className="icon-circle w-10 h-10" 
-              style={{ backgroundColor: 'rgba(172, 102, 218, 0.1)', borderColor: 'rgba(231, 228, 228, 0.1)' }}
-            >
-              <Neighbourhood width={20} height={20} style={{ color: 'var(--accent-purple)' }} />
-            </div>
-            <h2 className="text-card-header">Demographic Comparison</h2>
-          </div>
+        <div className="mb-4 flex items-center gap-3">
+          <span className="icon-circle size-10 border border-line-subtle bg-accent/10" aria-hidden="true">
+            <Neighbourhood width={20} height={20} className="text-accent" />
+          </span>
+          <h2 className="text-card-header">Demographic Comparison</h2>
         </div>
       }
     >
-      <div className="flex flex-col flex-1 min-h-0">
-        <div className="flex-1 min-h-0">
-          <div className="text-body mb-6 text-wrap-safe break-words leading-relaxed text-secondary">
-            {!percentageLabel ? (
-              message
-            ) : (
-              message.split(percentageLabel).map((part, idx) => (
-                <span key={idx}>
-                  {part}
-                  {idx === 0 && (
-                    <span className="font-bold inline-flex items-center mx-1" style={{ color: percentage > 0 ? (message.includes('higher') ? 'var(--accent-green)' : 'var(--accent-purple)') : 'var(--text-primary)' }}>
-                      {percentageLabel}
-                    </span>
-                  )}
-                </span>
-              ))
-            )}
-          </div>
-        </div>
-        {linkHref ? (
-          <Link href={linkHref} className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap">
-            <span className="text-wrap-safe break-words">{link}</span> <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0" />
-          </Link>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <p className="text-body text-wrap-safe mb-6 flex-1 break-words leading-relaxed text-secondary">
+          {disabled
+            ? 'Enable data sharing in Settings to see how you compare to others in your age group, country, or profession.'
+            : `See how your ${subject} compares with people in your age group, country, or profession.`}
+        </p>
+        {disabled ? (
+          <CardFooterLink href="/settings">Settings</CardFooterLink>
         ) : (
-          <div className="text-helper flex items-center gap-1 cursor-pointer group hover-text-purple transition-colors flex-wrap">
-            <span className="text-wrap-safe break-words">{link}</span> <NavArrowRight width={14} height={14} className="stroke-current transition-colors flex-shrink-0" />
-          </div>
+          <CardFooterLink href="/statistics">Statistics</CardFooterLink>
         )}
       </div>
     </Card>
   );
 }
-

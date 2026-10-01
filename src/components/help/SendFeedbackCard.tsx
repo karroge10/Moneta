@@ -1,175 +1,110 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { Mail, WarningTriangle, NavArrowDown } from 'iconoir-react';
+import { useMutation } from '@tanstack/react-query';
 import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import Field, { inputClass } from '@/components/ui/Field';
+import Select from '@/components/ui/Select';
+import { cx } from '@/components/ui/cx';
+import {
+  FEEDBACK_CATEGORIES,
+  FEEDBACK_MAX_MESSAGE_LENGTH,
+  feedbackErrorMessage,
+  hasFeedbackErrors,
+  sendFeedback,
+  validateFeedback,
+  type FeedbackCategory,
+  type FeedbackErrors,
+} from '@/components/help/feedbackForm';
 
 export default function SendFeedbackCard() {
   const { user } = useUser();
-  const [email, setEmail] = useState('');
-  const [category, setCategory] = useState('Bug Report');
+  const accountEmail = user?.primaryEmailAddress?.emailAddress ?? '';
+  // null until the user edits the field, so the Clerk email fills it once it loads.
+  const [emailDraft, setEmailDraft] = useState<string | null>(null);
+  const [category, setCategory] = useState<FeedbackCategory>('Bug Report');
   const [message, setMessage] = useState('');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [fieldErrors, setFieldErrors] = useState<FeedbackErrors>({});
+  const email = emailDraft ?? accountEmail;
 
-  const categoryOptions = ['Bug Report', 'Feature Request', 'Other'];
+  const mutation = useMutation({
+    mutationFn: sendFeedback,
+    onSuccess: () => setMessage(''),
+  });
 
-  useEffect(() => {
-    setEmail(user?.primaryEmailAddress?.emailAddress ?? '');
-  }, [user?.primaryEmailAddress?.emailAddress]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(false);
-    setIsSubmitting(true);
-    try {
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, category, message }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data?.error ?? 'Failed to send feedback');
-        return;
-      }
-      setSuccess(true);
-      setMessage('');
-    } catch {
-      setError('Failed to send feedback');
-    } finally {
-      setIsSubmitting(false);
-    }
+    const input = { email, category, message };
+    const errors = validateFeedback(input);
+    setFieldErrors(errors);
+    if (hasFeedbackErrors(errors)) return;
+    mutation.mutate(input);
   };
 
+  const messageLength = message.trim().length;
+  const isOverLimit = messageLength > FEEDBACK_MAX_MESSAGE_LENGTH;
+
   return (
-    <Card 
-      title="Send Feedback"
-      showActions={false}
-      customHeader={
-        <div className="mb-4">
-          <h2 className="text-card-header">Send Feedback</h2>
-        </div>
-      }
-    >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {success && (
-          <p className="text-body" style={{ color: 'var(--accent-green)' }}>
-            Thank you! Your feedback has been saved.
-          </p>
-        )}
-        {error && (
-          <p className="text-body" style={{ color: 'var(--error)' }}>
-            {error}
-          </p>
-        )}
-        {}
-        <div>
-          <label className="block text-body font-medium mb-2">Your Email</label>
-          <div className="relative">
-            <Mail 
-              width={20} 
-              height={20} 
-              strokeWidth={1.5}
-              className="absolute left-3 top-1/2 -translate-y-1/2"
-              style={{ color: 'var(--text-secondary)' }}
-            />
+    <Card title="Send Feedback" showActions={false}>
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+        <Field label="Your email" error={fieldErrors.email}>
+          {(props) => (
             <input
+              {...props}
               type="email"
+              autoComplete="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="hello@moneta.app"
-              className="w-full pl-10 pr-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors"
-              style={{ color: 'var(--text-primary)' }}
+              onChange={(e) => setEmailDraft(e.target.value)}
+              placeholder="name@example.com"
+              className={inputClass}
             />
-          </div>
-        </div>
+          )}
+        </Field>
 
-        {}
-        <div>
-          <label className="block text-body font-medium mb-2">Category</label>
-          <div className="relative" ref={dropdownRef}>
-            <button
-              type="button"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full flex items-center gap-2 px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors text-left"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              <WarningTriangle 
-                width={20} 
-                height={20} 
-                strokeWidth={1.5}
-                style={{ color: 'var(--text-secondary)' }}
-              />
-              <span className="flex-1">{category}</span>
-              <NavArrowDown width={16} height={16} strokeWidth={2} />
-            </button>
-            
-            {isDropdownOpen && (
-              <div className="absolute top-full mt-2 left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-10" style={{ backgroundColor: 'var(--bg-surface)' }}>
-                {categoryOptions.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => {
-                      setCategory(option);
-                      setIsDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-3 hover-text-purple transition-colors text-body cursor-pointer"
-                    style={{ 
-                      backgroundColor: 'transparent',
-                      color: category === option ? 'var(--accent-purple)' : 'var(--text-primary)' 
-                    }}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <Field label="Category">
+          {(props) => (
+            <Select {...props} value={category} onChange={(e) => setCategory(e.target.value as FeedbackCategory)}>
+              {FEEDBACK_CATEGORIES.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
 
-        {}
-        <div>
-          <label className="block text-body font-medium mb-2">Message</label>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Describe your issue or feedback"
-            rows={6}
-            className="w-full px-4 py-2 rounded-xl bg-background text-body border border-[#3a3a3a] focus:border-[#AC66DA] focus:outline-none transition-colors resize-none"
-            style={{ color: 'var(--text-primary)' }}
-          />
-        </div>
-
-        {}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full px-6 py-3 rounded-full text-body font-semibold transition-colors cursor-pointer hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
-          style={{ backgroundColor: '#E7E4E4', color: 'var(--bg-primary)' }}
+        <Field
+          label="Message"
+          error={fieldErrors.message}
+          hint={
+            <span className={cx('tabular-nums', isOverLimit && 'text-negative-fg')}>
+              {messageLength.toLocaleString('en-US')} / {FEEDBACK_MAX_MESSAGE_LENGTH.toLocaleString('en-US')}
+            </span>
+          }
         >
-          {isSubmitting ? 'Sending…' : 'Send Message'}
-        </button>
+          {(props) => (
+            <textarea
+              {...props}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Describe the issue or idea"
+              rows={6}
+              className={cx(inputClass, 'resize-none')}
+            />
+          )}
+        </Field>
 
+        <div aria-live="polite">
+          {mutation.isSuccess && <p className="text-ui text-positive">Thank you. Your feedback has been sent.</p>}
+          {mutation.isError && <p className="text-ui text-negative-fg">{feedbackErrorMessage(mutation.error)}</p>}
+        </div>
+
+        <Button type="submit" fullWidth loading={mutation.isPending}>
+          Send message
+        </Button>
       </form>
     </Card>
   );
 }
-
