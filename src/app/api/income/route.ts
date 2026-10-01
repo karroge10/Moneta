@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { moneyToNumber } from '@/lib/money';
 import { LatestIncome, IncomeSource, PerformanceDataPoint, TimePeriod } from '@/types/dashboard';
 import { formatTransactionName } from '@/lib/transaction-utils';
 import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
@@ -357,7 +358,7 @@ export async function GET(request: NextRequest) {
           date: formatDate(t.date),
           dateRaw: t.date.toISOString().split('T')[0],
           amount: t.convertedAmount,
-          originalAmount: t.amount,
+          originalAmount: moneyToNumber(t.amount),
           originalCurrencySymbol: t.currency?.symbol,
           originalCurrencyAlias: t.currency?.alias,
           category: t.category?.name || null,

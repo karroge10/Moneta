@@ -4,6 +4,7 @@ import type { Goal } from '@prisma/client';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { calculateGoalProgress } from '@/lib/goalUtils';
+import { moneyToNumber } from '@/lib/money';
 import { getFinancialHealthScore, FINANCIAL_HEALTH_TIME_PERIOD } from '@/lib/financial-health';
 import { getInvestmentsPortfolio } from '@/lib/investments';
 import { TimePeriod, MonthlySummaryRow, StatisticsSummaryItem, DemographicComparison } from '@/types/dashboard';
@@ -348,7 +349,7 @@ export async function GET(request: NextRequest) {
             orderBy: { timestamp: 'desc' },
             distinct: ['userId'],
           });
-          const snapshotByUserId = new Map(recentSnapshots.map(s => [s.userId, s.totalValue]));
+          const snapshotByUserId = new Map(recentSnapshots.map(s => [s.userId, moneyToNumber(s.totalValue)]));
 
           const cohortMetrics = filteredCohort.map((cohortUser) => {
             const cohortTx = cohortTxByUserId.get(cohortUser.id) ?? [];
@@ -705,7 +706,7 @@ export async function GET(request: NextRequest) {
           if (!cohortGoalsByUserId.has(g.userId)) cohortGoalsByUserId.set(g.userId, []);
           cohortGoalsByUserId.get(g.userId)!.push(g);
         }
-        const snapshotByUserId = new Map(recentSnapshots.map(s => [s.userId, s.totalValue]));
+        const snapshotByUserId = new Map(recentSnapshots.map(s => [s.userId, moneyToNumber(s.totalValue)]));
 
         
         const allCohortRawTx: CohortTxWithUserId[] = [];

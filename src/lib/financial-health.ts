@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
 import { calculateGoalProgress } from '@/lib/goalUtils';
@@ -107,7 +108,7 @@ function pillarSpendingControl(income: number, expenses: number): number {
   return Math.round(100 - ((ratio - 1) / 0.5) * 100);
 }
 
-type GoalRow = { targetDate: Date; targetAmount: number; currentAmount: number; createdAt: Date };
+type GoalRow = { targetDate: Date; targetAmount: Prisma.Decimal; currentAmount: Prisma.Decimal; createdAt: Date };
 
 function pillarGoals(goals: GoalRow[]): number {
   if (goals.length === 0) return 50;
