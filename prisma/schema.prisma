@@ -15,35 +15,35 @@ model User {
   updatedAt   DateTime @updatedAt
 
   // Profile (optional)
-  dateOfBirth   DateTime?
-  country       String?
-  profession    String?
+  dateOfBirth DateTime?
+  country     String?
+  profession  String?
 
   // User preferences (stored directly in User table)
-  languageId       Int?
-  currencyId       Int?
+  languageId         Int?
+  currencyId         Int?
   dataSharingEnabled Boolean? @default(false)
-  incomeTaxRate    Float?  // Percentage (e.g., 25.0 for 25%). null = disabled
+  incomeTaxRate      Float? // Percentage (e.g., 25.0 for 25%). null = disabled
 
   // Billing (Stripe, test mode only)
   stripeCustomerId String? @unique
 
   // Relations
-  language    Language?    @relation(fields: [languageId], references: [id])
-  currency    Currency?    @relation(fields: [currencyId], references: [id])
-  notificationSettings UserNotificationSettings?
-  transactions Transaction[]
-  goals       Goal[]
-  notifications Notification[]
-  merchants   Merchant[]
-  recurringTransactions RecurringTransaction[]
-  pdfProcessingJobs PdfProcessingJob[]
-  feedback         Feedback[]
-  portfolioSnapshots PortfolioSnapshot[]
-  assets           Asset[]
+  language               Language?                 @relation(fields: [languageId], references: [id])
+  currency               Currency?                 @relation(fields: [currencyId], references: [id])
+  notificationSettings   UserNotificationSettings?
+  transactions           Transaction[]
+  goals                  Goal[]
+  notifications          Notification[]
+  merchants              Merchant[]
+  recurringTransactions  RecurringTransaction[]
+  pdfProcessingJobs      PdfProcessingJob[]
+  feedback               Feedback[]
+  portfolioSnapshots     PortfolioSnapshot[]
+  assets                 Asset[]
   learningLessonProgress LearningLessonProgress[]
-  subscription     Subscription?
-  payments         Payment[]
+  subscription           Subscription?
+  payments               Payment[]
 }
 
 // Billing: our copy of the user's Stripe subscription, kept in sync by the webhook.
@@ -67,9 +67,9 @@ model Subscription {
 
 // Billing: one row per Stripe invoice (each subscription charge attempt lands here).
 model Payment {
-  id                   Int      @id @default(autoincrement())
+  id                   Int       @id @default(autoincrement())
   userId               Int
-  stripeInvoiceId      String   @unique
+  stripeInvoiceId      String    @unique
   stripeSubscriptionId String?
   // Stripe invoice status: paid | open (payment failed, Stripe is retrying) | void | uncollectible
   status               String
@@ -77,11 +77,11 @@ model Payment {
   amountDueMinor       Int
   amountPaidMinor      Int
   currency             String
-  attemptCount         Int      @default(0)
+  attemptCount         Int       @default(0)
   nextPaymentAttemptAt DateTime? // when Stripe will retry a failed charge (null once paid)
   hostedInvoiceUrl     String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -108,22 +108,20 @@ model LearningLessonProgress {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonId])
-  @@index([userId])
 }
 
 // Portfolio Snapshots for historical tracking
 model PortfolioSnapshot {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  totalValue  Decimal  @db.Decimal(19, 4) // Total value of all assets combined in user's default currency
-  totalCost   Decimal  @db.Decimal(19, 4) // Total cost basis in user's default currency
-  totalPnl    Decimal  @db.Decimal(19, 4) // Value - Cost
-  timestamp   DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  totalValue Decimal  @db.Decimal(19, 4) // Total value of all assets combined in user's default currency
+  totalCost  Decimal  @db.Decimal(19, 4) // Total cost basis in user's default currency
+  totalPnl   Decimal  @db.Decimal(19, 4) // Value - Cost
+  timestamp  DateTime @default(now())
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([timestamp])
+  @@index([userId, timestamp])
 }
 
 // Feedback from Help Center (no email sending; stored in DB only)
@@ -143,21 +141,19 @@ model Feedback {
 
 // User notification preferences (separate table - read infrequently)
 model UserNotificationSettings {
-  id                 Int      @id @default(autoincrement())
-  userId             Int      @unique
-  pushNotifications  Boolean  @default(true)
-  upcomingBills      Boolean  @default(true)
-  upcomingIncome     Boolean  @default(true)
-  investments        Boolean  @default(true)
-  goals              Boolean  @default(true)
-  promotionalEmail   Boolean  @default(true)
-  aiInsights         Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                Int      @id @default(autoincrement())
+  userId            Int      @unique
+  pushNotifications Boolean  @default(true)
+  upcomingBills     Boolean  @default(true)
+  upcomingIncome    Boolean  @default(true)
+  investments       Boolean  @default(true)
+  goals             Boolean  @default(true)
+  promotionalEmail  Boolean  @default(true)
+  aiInsights        Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
 }
 
 // Enums for Investment Refactor
@@ -181,38 +177,38 @@ enum PricingMode {
 
 // Global Asset Table
 model Asset {
-  id          Int          @id @default(autoincrement())
+  id          Int         @id @default(autoincrement())
   name        String
-  ticker      String?      // Optional for manual/private assets
-  assetType   AssetType    // crypto | stock | property | custom | other
+  ticker      String? // Optional for manual/private assets
+  assetType   AssetType // crypto | stock | property | custom | other
   coingeckoId String?
-  pricingMode PricingMode  // live | manual
+  pricingMode PricingMode // live | manual
   icon        String?
-  
+
   // New Fields for Private/Manual Assets
-  userId      Int?         // If set, this is a private asset for this user
-  manualPrice Decimal?     @db.Decimal(18, 8) // User-set price for manual tracking
+  userId      Int? // If set, this is a private asset for this user
+  manualPrice Decimal? @db.Decimal(18, 8) // User-set price for manual tracking
 
   transactions Transaction[]
-  user        User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([ticker])
   @@index([userId])
 }
 
 // Unified Transaction table replacing Expense and Income
 model Transaction {
-  id                   Int       @id @default(autoincrement())
-  userId               Int
-  type                 String    // 'income' | 'expense'
-  amount               Decimal   @db.Decimal(19, 4) // Always positive; sign comes from type
-  description          String
-  source               String?   // For analytics - where transaction came from (e.g., "pdf_import", "manual")
-  date                 DateTime
-  categoryId           Int?
-  currencyId           Int
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  id          Int             @id @default(autoincrement())
+  userId      Int
+  type        TransactionType
+  amount      Decimal         @db.Decimal(19, 4) // Always positive; sign comes from type
+  description String
+  source      String? // For analytics - where transaction came from (e.g., "pdf_import", "manual")
+  date        DateTime
+  categoryId  Int?
+  currencyId  Int
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   // Investment Fields
   investmentAssetId Int?
@@ -221,14 +217,12 @@ model Transaction {
   pricePerUnit      Decimal?        @db.Decimal(18, 8)
 
   // Relations
-  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category?    @relation(fields: [categoryId], references: [id])
-  currency Currency     @relation(fields: [currencyId], references: [id])
-  asset    Asset?       @relation(fields: [investmentAssetId], references: [id])
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id])
+  currency Currency  @relation(fields: [currencyId], references: [id])
+  asset    Asset?    @relation(fields: [investmentAssetId], references: [id])
 
-  @@index([userId])
-  @@index([date])
-  @@index([type])
+  @@index([userId, date])
   @@index([investmentAssetId])
 }
 
@@ -240,7 +234,7 @@ model Goal {
   targetDate    DateTime
   targetAmount  Decimal  @db.Decimal(19, 4)
   currentAmount Decimal  @default(0) @db.Decimal(19, 4)
-  currencyId    Int?     // null = user's default currency
+  currencyId    Int? // null = user's default currency
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -253,26 +247,26 @@ model Goal {
 
 // Category table - Standard categories with icon/color mappings
 model Category {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
+  id        Int              @id @default(autoincrement())
+  name      String           @unique
   icon      String
   color     String
-  type      String?  // 'income' | 'expense' | null (null means both/all types)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  type      TransactionType? // null means the category applies to both types
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   // Relations
-  transactions Transaction[]
+  transactions          Transaction[]
   recurringTransactions RecurringTransaction[]
-  merchants     Merchant[]
-  merchantsGlobal MerchantGlobal[]
+  merchants             Merchant[]
+  merchantsGlobal       MerchantGlobal[]
 }
 
 // Notification table
 model Notification {
   id        Int      @id @default(autoincrement())
   userId    Int
-  type      String   // 'Upcoming Bills', 'Goal Update', 'Upcoming Income', 'Investments', 'Goals', 'AI Insights', 'PDF Processing'
+  type      String // 'Upcoming Bills', 'Goal Update', 'Upcoming Income', 'Investments', 'Goals', 'AI Insights', 'PDF Processing'
   text      String
   date      DateTime
   time      String
@@ -283,47 +277,43 @@ model Notification {
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([read])
+  @@index([userId, read])
 }
-
 
 // PDF Processing Job table - Tracks async PDF processing jobs
 model PdfProcessingJob {
-  id            String   @id @default(uuid())
-  userId        Int
-  status        String   // 'queued', 'processing', 'completed', 'failed'
-  progress      Int      @default(0) // 0-100
-  processedCount Int?    // Current number of transactions processed (e.g., 125)
-  totalCount    Int?     // Total number of transactions to process (e.g., 326)
-  fileContent   Bytes    // PDF file content stored in database (accessible from Render worker)
-  fileName      String    // Original filename for reference
-  result        Json?    // Transactions stored here when done
-  error         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  completedAt   DateTime?
+  id             String    @id @default(uuid())
+  userId         Int
+  status         JobStatus
+  progress       Int       @default(0) // 0-100
+  processedCount Int? // Current number of transactions processed (e.g., 125)
+  totalCount     Int? // Total number of transactions to process (e.g., 326)
+  fileContent    Bytes // PDF file content stored in database (accessible from Render worker)
+  fileName       String // Original filename for reference
+  result         Json? // Transactions stored here when done
+  error          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  completedAt    DateTime?
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([status])
-  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 // MerchantGlobal table - Global merchant-to-category mappings (shared by all users)
 model MerchantGlobal {
   id          Int      @id @default(autoincrement())
   namePattern String   @unique // Normalized merchant name pattern (e.g., "starbucks", "uber")
-  categoryId  Int      // The category this merchant maps to
+  categoryId  Int // The category this merchant maps to
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
-  @@index([namePattern])
   @@index([categoryId])
 }
 
@@ -331,8 +321,8 @@ model MerchantGlobal {
 model Merchant {
   id          Int      @id @default(autoincrement())
   userId      Int
-  namePattern String   // Normalized merchant name pattern (e.g., "starbucks", "uber")
-  categoryId  Int      // The category this merchant maps to
+  namePattern String // Normalized merchant name pattern (e.g., "starbucks", "uber")
+  categoryId  Int // The category this merchant maps to
   matchCount  Int      @default(1) // How many times this mapping was confirmed
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -342,27 +332,33 @@ model Merchant {
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([userId, namePattern])
-  @@index([userId])
   @@index([namePattern])
 }
 
 // Currency table - Preserved from existing schema
 model Currency {
-  id      Int       @id @default(autoincrement())
-  name    String
-  symbol  String
-  alias   String
-  User    User[]
-  transactions Transaction[]
+  id                    Int                    @id @default(autoincrement())
+  name                  String
+  symbol                String
+  alias                 String
+  User                  User[]
+  transactions          Transaction[]
   recurringTransactions RecurringTransaction[]
-  goals   Goal[]
-  baseRates  ExchangeRate[] @relation("BaseCurrencyRates")
-  quoteRates ExchangeRate[] @relation("QuoteCurrencyRates")
+  goals                 Goal[]
+  baseRates             ExchangeRate[]         @relation("BaseCurrencyRates")
+  quoteRates            ExchangeRate[]         @relation("QuoteCurrencyRates")
 }
 
-enum RecurringType {
+enum TransactionType {
   income
   expense
+}
+
+enum JobStatus {
+  queued
+  processing
+  completed
+  failed
 }
 
 enum FrequencyUnit {
@@ -373,30 +369,29 @@ enum FrequencyUnit {
 }
 
 model RecurringTransaction {
-  id                Int            @id @default(autoincrement())
+  id                Int             @id @default(autoincrement())
   userId            Int
-  type              RecurringType
+  type              TransactionType
   name              String
-  amount            Decimal        @db.Decimal(19, 4)
+  amount            Decimal         @db.Decimal(19, 4)
   currencyId        Int
   categoryId        Int?
   startDate         DateTime
   nextDueDate       DateTime
   frequencyUnit     FrequencyUnit
-  frequencyInterval Int            @default(1)
+  frequencyInterval Int             @default(1)
   endDate           DateTime?
-  isActive          Boolean        @default(true)
+  isActive          Boolean         @default(true)
   lastGeneratedAt   DateTime?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id])
-  currency Currency @relation(fields: [currencyId], references: [id])
+  currency Currency  @relation(fields: [currencyId], references: [id])
 
   @@index([userId])
-  @@index([nextDueDate])
-  @@index([type])
+  @@index([isActive, nextDueDate])
 }
 
 // Language table - Preserved from existing schema
@@ -408,17 +403,17 @@ model Language {
 }
 
 model ExchangeRate {
-  id              Int       @id @default(autoincrement())
+  id              Int      @id @default(autoincrement())
   baseCurrencyId  Int
   quoteCurrencyId Int
-  rate            Decimal   @db.Decimal(18, 8)
+  rate            Decimal  @db.Decimal(18, 8)
   rateDate        DateTime
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  baseCurrency    Currency  @relation("BaseCurrencyRates", fields: [baseCurrencyId], references: [id], onDelete: Cascade)
-  quoteCurrency   Currency  @relation("QuoteCurrencyRates", fields: [quoteCurrencyId], references: [id], onDelete: Cascade)
+  baseCurrency  Currency @relation("BaseCurrencyRates", fields: [baseCurrencyId], references: [id], onDelete: Cascade)
+  quoteCurrency Currency @relation("QuoteCurrencyRates", fields: [quoteCurrencyId], references: [id], onDelete: Cascade)
 
+  // rateDate is always UTC midnight: one rate per currency pair per day
   @@unique([baseCurrencyId, quoteCurrencyId, rateDate])
-  @@index([baseCurrencyId, quoteCurrencyId, rateDate])
 }

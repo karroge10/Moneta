@@ -1,6 +1,7 @@
+-- IF NOT EXISTS: the baseline already creates these enum values, so a fresh database would fail here otherwise.
 -- AlterEnum
-ALTER TYPE "AssetType" ADD VALUE 'property';
-ALTER TYPE "AssetType" ADD VALUE 'custom';
+ALTER TYPE "AssetType" ADD VALUE IF NOT EXISTS 'property';
+ALTER TYPE "AssetType" ADD VALUE IF NOT EXISTS 'custom';
 
 -- AlterTable
 ALTER TABLE "Asset" ADD COLUMN "userId" INTEGER,
