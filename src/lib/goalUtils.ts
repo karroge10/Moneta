@@ -3,9 +3,15 @@ import { Goal } from '@/types/dashboard';
 export type GoalStatus = 'active' | 'completed' | 'failed';
 
 
-export function calculateGoalProgress(currentAmount: number, targetAmount: number): number {
-  if (targetAmount === 0) return 0;
-  return Math.min(100, Math.round((currentAmount / targetAmount) * 100 * 10) / 10);
+// Accepts plain numbers or Prisma.Decimal (via toNumber) without importing Prisma, since this
+// file is also bundled for the browser. Progress is a percentage, so float maths is fine here.
+type AmountLike = number | { toNumber(): number };
+
+export function calculateGoalProgress(currentAmount: AmountLike, targetAmount: AmountLike): number {
+  const current = typeof currentAmount === 'number' ? currentAmount : currentAmount.toNumber();
+  const target = typeof targetAmount === 'number' ? targetAmount : targetAmount.toNumber();
+  if (target === 0) return 0;
+  return Math.min(100, Math.round((current / target) * 100 * 10) / 10);
 }
 
 

@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { db } from './db';
+import type { MoneyValue } from './money';
 
 type RateCacheKey = string;
 
@@ -358,7 +359,7 @@ export async function preloadRatesMap(
 }
 
 
-export function convertTransactionsWithRatesMap<T extends { amount: number; currencyId: number; date: Date }>(
+export function convertTransactionsWithRatesMap<T extends { amount: MoneyValue; currencyId: number; date: Date }>(
   transactions: T[],
   targetCurrencyId: number,
   ratesMap: Map<string, number>,
@@ -372,12 +373,12 @@ export function convertTransactionsWithRatesMap<T extends { amount: number; curr
 }
 
 export async function convertAmount(
-  amount: number,
+  amount: MoneyValue,
   baseCurrencyId: number,
   quoteCurrencyId: number,
   date: Date = new Date(),
 ): Promise<number> {
-  if (!Number.isFinite(amount)) {
+  if (typeof amount === 'number' && !Number.isFinite(amount)) {
     return 0;
   }
 

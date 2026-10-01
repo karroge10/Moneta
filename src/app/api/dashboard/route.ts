@@ -8,6 +8,7 @@ import { getFinancialHealthScore, FINANCIAL_HEALTH_TIME_PERIOD } from '@/lib/fin
 import { getInvestmentsPortfolio } from '@/lib/investments';
 import { computeRoundupInsight } from '@/lib/roundup-insight';
 import { calculateGoalProgress } from '@/lib/goalUtils';
+import { moneyToNumber } from '@/lib/money';
 import {
   processDueRecurringItems,
   getExpenseRecurringItemsSerialized,
@@ -348,7 +349,8 @@ export async function GET(request: NextRequest) {
 
     
     const latestTransactions: TransactionType[] = latestWithConverted.map((t) => {
-      const originalSignedAmount = t.type === 'expense' ? -t.amount : t.amount;
+      const originalAmount = moneyToNumber(t.amount);
+      const originalSignedAmount = t.type === 'expense' ? -originalAmount : originalAmount;
       const convertedSignedAmount = t.type === 'expense' ? -t.convertedAmount : t.convertedAmount;
       
       const displayName = formatTransactionName(t.description, userLanguageAlias, false);
@@ -424,17 +426,21 @@ export async function GET(request: NextRequest) {
     const roundupInsight = await computeRoundupInsight(selectedPeriodExpenses, investmentsPortfolio.assets);
     dur['roundup-insight'] = performance.now() - tRoundup;
 
-    const goalsPayload = goalsRaw.map((goal) => ({
-      id: goal.id.toString(),
-      name: goal.name,
-      targetDate: formatDate(goal.targetDate),
-      targetAmount: goal.targetAmount,
-      currentAmount: goal.currentAmount,
-      progress: calculateGoalProgress(goal.currentAmount, goal.targetAmount),
-      currencyId: goal.currencyId ?? undefined,
-      createdAt: goal.createdAt.toISOString(),
-      updatedAt: goal.updatedAt.toISOString(),
-    }));
+    const goalsPayload = goalsRaw.map((goal) => {
+      const targetAmount = moneyToNumber(goal.targetAmount);
+      const currentAmount = moneyToNumber(goal.currentAmount);
+      return {
+        id: goal.id.toString(),
+        name: goal.name,
+        targetDate: formatDate(goal.targetDate),
+        targetAmount,
+        currentAmount,
+        progress: calculateGoalProgress(currentAmount, targetAmount),
+        currencyId: goal.currencyId ?? undefined,
+        createdAt: goal.createdAt.toISOString(),
+        updatedAt: goal.updatedAt.toISOString(),
+      };
+    });
 
     const body = {
       income: {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCurrentUserWithLanguage } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { moneyToNumber, parseMoney, type MoneyValue } from '@/lib/money';
 import { preloadRatesMap, convertTransactionsWithRatesMap } from '@/lib/currency-conversion';
 import { processDueRecurringItems } from '@/lib/recurring-core';
 
@@ -94,7 +95,7 @@ function serializeUpcoming(
   items: Array<{
     id: number;
     name: string;
-    amount: number;
+    amount: MoneyValue;
     type: RecurringType;
     category?: { name: string | null } | null;
     nextDueDate: Date;
@@ -115,7 +116,7 @@ function serializeUpcoming(
     .map(item => ({
       id: item.id.toString(),
       name: item.name,
-      amount: item.convertedAmount ?? item.amount,
+      amount: item.convertedAmount ?? moneyToNumber(item.amount),
       date: formatDate(new Date(item.nextDueDate)),
       category: item.category?.name ?? null,
       type: item.type,
@@ -181,7 +182,7 @@ export async function GET(request: NextRequest) {
         id: item.id,
         name: item.name,
         type: item.type,
-        amount: item.amount,
+        amount: moneyToNumber(item.amount),
         convertedAmount: item.convertedAmount,
         currencyId: item.currencyId,
         category: item.category?.name ?? null,
@@ -208,8 +209,9 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireCurrentUserWithLanguage();
     const body = (await request.json()) as RecurringPayload;
+    const amount = parseMoney(body.amount);
 
-    if (!body.name || !body.amount || !body.startDate) {
+    if (!body.name || !amount || amount.isZero() || !body.startDate) {
       return NextResponse.json(
         { error: 'Missing required fields: name, amount, startDate' },
         { status: 400 },
@@ -232,7 +234,7 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         type: body.type === 'income' ? 'income' : 'expense',
         name: body.name,
-        amount: Math.abs(body.amount),
+        amount: amount.abs(),
         currencyId,
         categoryId,
         startDate,
@@ -263,6 +265,7 @@ export async function PUT(request: NextRequest) {
   try {
     const user = await requireCurrentUserWithLanguage();
     const body = (await request.json()) as RecurringPayload;
+    const updatedAmount = parseMoney(body.amount);
 
     if (!body.id) {
       return NextResponse.json(
@@ -300,7 +303,7 @@ export async function PUT(request: NextRequest) {
       where: { id: existing.id },
       data: {
         name: body.name ?? existing.name,
-        amount: body.amount ? Math.abs(body.amount) : existing.amount,
+        amount: updatedAmount && !updatedAmount.isZero() ? updatedAmount.abs() : existing.amount,
         type: body.type ?? existing.type,
         currencyId,
         categoryId,

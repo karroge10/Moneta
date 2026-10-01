@@ -258,8 +258,8 @@ async function main() {
   console.log(`Expense total:  ${fmt(expenseTotal)} (trend vs comparison: ${expenseTrend}%)`);
   console.log(`Net (income-expense): ${fmt(incomeTotal - expenseTotal)}`);
 
-  const incomeNegatives = selectedWithConverted.filter((t) => t.type === 'income' && t.amount < 0).length;
-  const expenseNegatives = selectedWithConverted.filter((t) => t.type === 'expense' && t.amount < 0).length;
+  const incomeNegatives = selectedWithConverted.filter((t) => t.type === 'income' && t.amount.lt(0)).length;
+  const expenseNegatives = selectedWithConverted.filter((t) => t.type === 'expense' && t.amount.lt(0)).length;
   if (incomeNegatives || expenseNegatives) {
     console.log(
       `⚠️ Sign check: income negatives=${incomeNegatives}, expense negatives=${expenseNegatives} (stored amounts might already be signed)`,
