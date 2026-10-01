@@ -41,7 +41,7 @@ Settings "Upgrade"  ->  POST /api/billing/checkout  ->  Stripe Checkout (hosted 
 - **Order independence.** Events can arrive out of order, so a payload is only a trigger:
   the handler re-reads the subscription/invoice from Stripe and stores the current state. A
   late event about an old, ended subscription cannot overwrite a newer live one.
-- **Idempotency keys** on every Stripe call that creates something: `customer:<userId>`,
+- **Idempotency keys** on every Stripe call that creates something: `customer:<env>:<userId>` (env in the key because local dev and production share one sandbox),
   `checkout:<userId>:<attemptId>` (one UUID per click, from the browser). The SDK retries
   network errors with the same key, so a retry never creates a duplicate.
 - **Failed payments.** `past_due` keeps Premium while Stripe retries the card and the Plan
