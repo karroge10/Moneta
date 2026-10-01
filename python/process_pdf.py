@@ -17,6 +17,7 @@ import sys
 import threading
 import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -106,14 +107,19 @@ class StatementMetadata:
 
 
 _translation_cache: Dict[str, str] = {}
+_recent_failures: Dict[str, float] = {}
 _translation_lock = threading.Lock()
 _last_translation_at = 0.0
 _translation_paused_until = 0.0
 
+# Google's free endpoint allows about 5 requests per second; stay a little under it.
 TRANSLATION_MIN_INTERVAL_SECONDS = 0.25
-# Text travels in the request URL; Georgian is 9 bytes per character once URL-encoded.
-TRANSLATION_BATCH_CHARS = 800
-TRANSLATION_PAUSE_SECONDS = 120.0
+TRANSLATION_WORKERS = 4
+TRANSLATION_ATTEMPTS = 3
+TRANSLATION_RATE_LIMIT_PAUSE_SECONDS = 5.0
+# Whole-statement budget, so an import never stalls on translation; leftovers keep the original text.
+TRANSLATION_BUDGET_SECONDS = 150.0
+TRANSLATION_RETRY_AFTER_SECONDS = 300.0
 TRANSLATION_CACHE_LIMIT = 5000
 _translator: Optional[GoogleTranslator] = None
 
@@ -127,24 +133,25 @@ if GoogleTranslator is not None:
 
 def prefetch_translations(texts: Iterable[str]) -> None:
     """
-    Translates many descriptions with a few requests: unique texts are joined by newlines into
-    chunks of up to TRANSLATION_BATCH_CHARS and split back. A chunk whose line count does not
-    survive translation falls back to one request per text. Results land in the cache, so the
-    per-row translate_to_english calls that follow are instant.
+    Translates every distinct description up front, a few at a time in parallel, within
+    TRANSLATION_BUDGET_SECONDS. The per-row translate_to_english calls that follow read the cache.
     """
     if _translator is None:
         return
     pending = _unique_untranslated(texts)
-    for chunk in _chunk_by_length(pending, TRANSLATION_BATCH_CHARS):
-        if _translation_paused():
-            return
-        translated_lines = _translate_chunk(chunk)
-        if translated_lines is None:
-            for text in chunk:
-                translate_to_english(text)
-            continue
-        for original, translated in zip(chunk, translated_lines):
-            _remember_translation(original, translated.strip() or original)
+    if not pending:
+        return
+    deadline = time.monotonic() + TRANSLATION_BUDGET_SECONDS
+    started = time.monotonic()
+    with ThreadPoolExecutor(max_workers=TRANSLATION_WORKERS) as pool:
+        results = list(pool.map(lambda text: _translate_once(text, deadline), pending))
+    translated_count = sum(1 for result in results if result is not None)
+    logger.info(
+        "Translated %d of %d distinct descriptions in %.1fs",
+        translated_count,
+        len(pending),
+        time.monotonic() - started,
+    )
 
 
 def translate_to_english(text: str) -> str:
@@ -155,49 +162,71 @@ def translate_to_english(text: str) -> str:
     cached = _translation_cache.get(key)
     if cached is not None:
         return cached
-    if _translator is None or _translation_paused():
-        return text
-
-    translated = _call_translator(key)
-    if translated is None:
-        return text
-    _remember_translation(key, translated)
-    return translated
+    deadline = time.monotonic() + TRANSLATION_BUDGET_SECONDS
+    translated = _translate_once(key, deadline)
+    return translated if translated is not None else text
 
 
-def _translate_chunk(chunk: List[str]) -> Optional[List[str]]:
-    joined = "\n".join(chunk)
-    translated = _call_translator(joined)
-    if translated is None:
-        return None
-    lines = translated.split("\n")
-    if len(lines) != len(chunk):
-        logger.info("Batch translation changed the line count (%d -> %d); translating one by one", len(chunk), len(lines))
-        return None
-    return lines
-
-
-def _call_translator(text: str) -> Optional[str]:
+def _translate_once(key: str, deadline: float) -> Optional[str]:
     """
-    One rate-limited request. On Google's "too many requests" answer, translation pauses for
-    TRANSLATION_PAUSE_SECONDS so an import keeps going with original text instead of stalling.
-    Failures are never cached: the cache outlives the request.
+    Translates and caches one normalized description. Returns None when it could not be
+    translated; that text is then not retried for TRANSLATION_RETRY_AFTER_SECONDS. Failures are
+    never cached as translations, because the cache outlives the request.
     """
-    global _translation_paused_until
-    _wait_for_translation_slot()
-    try:  # pragma: no cover
-        return _translator.translate(text)
-    except Exception as e:  # pragma: no cover
-        if "too many requests" in str(e).lower():
-            _translation_paused_until = time.monotonic() + TRANSLATION_PAUSE_SECONDS
-            logger.warning("Translation rate-limited; keeping original text for the next %ds", TRANSLATION_PAUSE_SECONDS)
-        else:
+    if _translator is None or _failed_recently(key):
+        return None
+    for _ in range(TRANSLATION_ATTEMPTS):
+        if not _wait_for_translation_slot(deadline):
+            break
+        try:  # pragma: no cover
+            translated = _translator.translate(key)
+        except Exception as e:  # pragma: no cover
+            if "too many requests" in str(e).lower():
+                _pause_translation()
+                continue
             logger.warning("Translation failed, keeping original text: %s", e)
-        return None
+            break
+        result = (translated or "").strip() or key
+        _remember_translation(key, result)
+        return result
+    _recent_failures[key] = time.monotonic() + TRANSLATION_RETRY_AFTER_SECONDS
+    return None
 
 
-def _translation_paused() -> bool:
-    return time.monotonic() < _translation_paused_until
+def _wait_for_translation_slot(deadline: float) -> bool:
+    """
+    Blocks until the next request may go out: at most one per TRANSLATION_MIN_INTERVAL_SECONDS
+    across all threads, and not during a rate-limit pause. False once the deadline would pass.
+    """
+    global _last_translation_at
+    with _translation_lock:
+        now = time.monotonic()
+        ready_at = max(_last_translation_at + TRANSLATION_MIN_INTERVAL_SECONDS, _translation_paused_until)
+        if ready_at > deadline:
+            return False
+        if ready_at > now:
+            time.sleep(ready_at - now)
+        _last_translation_at = time.monotonic()
+        return True
+
+
+def _pause_translation() -> None:
+    global _translation_paused_until
+    with _translation_lock:
+        pause_until = time.monotonic() + TRANSLATION_RATE_LIMIT_PAUSE_SECONDS
+        if pause_until > _translation_paused_until:
+            _translation_paused_until = pause_until
+            logger.warning("Translation rate-limited; pausing %.0fs", TRANSLATION_RATE_LIMIT_PAUSE_SECONDS)
+
+
+def _failed_recently(key: str) -> bool:
+    retry_at = _recent_failures.get(key)
+    if retry_at is None:
+        return False
+    if time.monotonic() >= retry_at:
+        _recent_failures.pop(key, None)
+        return False
+    return True
 
 
 def _unique_untranslated(texts: Iterable[str]) -> List[str]:
@@ -212,41 +241,16 @@ def _unique_untranslated(texts: Iterable[str]) -> List[str]:
     return pending
 
 
-def _chunk_by_length(texts: List[str], max_chars: int) -> List[List[str]]:
-    chunks: List[List[str]] = []
-    current: List[str] = []
-    size = 0
-    for text in texts:
-        if current and size + len(text) + 1 > max_chars:
-            chunks.append(current)
-            current, size = [], 0
-        current.append(text)
-        size += len(text) + 1
-    if current:
-        chunks.append(current)
-    return chunks
-
-
 def _cache_key(text: str) -> str:
-    """Batches are newline-separated, so descriptions are cached with inner newlines flattened."""
+    """Descriptions are cached with inner newlines flattened and outer whitespace removed."""
     return text.replace("\n", " ").strip()
-
-
-def _wait_for_translation_slot() -> None:
-    """Spaces calls to stay under Google's limit of 5 requests per second, across threads."""
-    global _last_translation_at
-    with _translation_lock:
-        now = time.monotonic()
-        wait = _last_translation_at + TRANSLATION_MIN_INTERVAL_SECONDS - now
-        if wait > 0:
-            time.sleep(wait)
-        _last_translation_at = time.monotonic()
 
 
 def _remember_translation(text: str, translated: str) -> None:
     if len(_translation_cache) >= TRANSLATION_CACHE_LIMIT:
         _translation_cache.clear()
     _translation_cache[text] = translated
+    _recent_failures.pop(text, None)
 
 
 def parse_date(value: str) -> Optional[str]:
